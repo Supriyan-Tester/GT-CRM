@@ -248,6 +248,10 @@
     }
   };
 
+  // The built-in sample shops are no longer given to anyone's route. They are kept only to build the demo attendance history below.
+  var DEMO_SHOPS = DEFAULT_DATA.shops;
+  DEFAULT_DATA.shops = [];
+
   // DEMO HISTORY (past days only): vehicle, odometer, shops and returns for completed shifts.
   // Delete this block when real data comes from a backend.
   (function () {
@@ -263,7 +267,7 @@
       var d = days[i].d, key = days[i].key;
       d.endKm = running; d.startKm = running - d.km; running = d.startKm;
       d.vehicle = DEFAULT_DATA.shift.assignedVehicle;
-      d.shops = DEFAULT_DATA.shops.map(function (sh, n) {
+      d.shops = DEMO_SHOPS.map(function (sh, n) {
         var retry = key === '2026-10' && d.day === 2 && n === 4;
         return { name: sh.name, address: sh.address.split(',')[0], boxes: sh.boxes, billNo: sh.billNo, time: times[n], status: retry ? 'retry' : 'delivered' };
       });
@@ -277,6 +281,15 @@
       if (raw) {
         var st = JSON.parse(raw);
         if (st.worker && (st.worker.password || st.worker.pin)) { delete st.worker.password; delete st.worker.pin; saveStore(st); }
+        // Remove the old sample shops (Shree Krishna Stores etc.) that earlier versions put in every employee's record.
+        // Only when no real plan was ever applied, so a real route is never touched.
+        if (typeof st.appliedPlan !== 'string' && Array.isArray(st.shops) && st.shops.length &&
+            st.shops.every(function (x) { return x && /^s[1-5]$/.test(x.id) && /^INV-204[1-5]$/.test(x.billNo || ''); })) {
+          st.shops = [];
+          st.shift = Object.assign(st.shift || {}, { punchedIn: false, punchInTime: null, startKm: null, punchedOut: false, punchOutTime: null, endKm: null, drivenKm: null, handoverCompleted: false });
+          st.returns = [];
+          saveStore(st);
+        }
         return st;
       }
     } catch (e) {}
