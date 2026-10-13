@@ -385,8 +385,10 @@ function openShopLoc() {
   var ws = GA.workers().filter(function (w) { return w.active !== false; });
   function ro() { return '<option value="">All routes</option><option value="__none"' + (GR === '__none' ? ' selected' : '') + '>Shops with no route</option>' + S.routes.map(function (r) { return '<option value="' + esc(r.id) + '"' + (GR === r.id ? ' selected' : '') + '>' + esc(r.name) + ' (' + r.codes.length + ')</option>'; }).join(''); }
   function chk(k, t) { return '<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-f="' + k + '"' + (GF[k] ? ' checked' : '') + '> ' + t + '</label>'; }
+  function inRoute(code) { var r = routeOf(code); return GR === '__none' ? !r : !!(r && r.id === GR); }
   function draw() {
     var l = gapList(GF, GR), st = taskStats(), n = l.length, anyF = GF.pin || GF.phone || GF.address;
+    var keepN = GR ? Object.keys((jlGet(PTK, {}).tasks) || {}).filter(inRoute).length : 0;
     show('<div class="card-title">Shop locations</div>' +
       '<p class="mu" style="margin-bottom:10px">Find the shops that are missing details. Download them as Excel with everything you already know filled in, or send them to an employee who saves the missing details standing at the shop.</p>' +
       '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px"><b>Missing:</b>' + chk('pin', 'Map location') + chk('phone', 'Phone number') + chk('address', 'Address') + '</div>' +
@@ -398,6 +400,7 @@ function openShopLoc() {
       '<button class="btn a-btn" id="slSend" type="button"' + (n ? '' : ' disabled') + '>Send ' + n + ' shops' + (GW.length ? ' to ' + GW.length + ' employee' + (GW.length > 1 ? 's' : '') : '') + '</button>' +
       '<p class="mu" style="font-size:12px;margin:6px 0 0">Each employee sees them on the Home screen. When one employee saves a shop, it disappears from the other employees\' lists.</p>' +
       (st.sent ? '<p style="margin:14px 0 0"><b>Already sent:</b> ' + st.sent + ' shops, ' + st.fin + ' saved by employees. <button class="btn btn-secondary a-btn" id="slClear" type="button" style="margin-left:6px">Clear finished</button> <button class="btn btn-secondary a-btn" id="slWipe" type="button" style="margin-left:6px">Delete all sent</button></p>' : '') +
+      (st.sent && GR ? '<p style="margin:10px 0 0"><button class="btn btn-secondary a-btn" id="slKeep" type="button">Keep only ' + esc(GR === '__none' ? 'shops with no route' : (S.routes.filter(function (r) { return r.id === GR; })[0] || { name: 'this route' }).name) + ' (' + keepN + ' kept, ' + (st.sent - keepN) + ' removed)</button></p><p class="mu" style="font-size:12px;margin:4px 0 0">Use this if you sent too many shops. Shops on the chosen route stay on the employees\' lists, all other sent shops are removed.</p>' : '') +
       '<div class="msg" id="mm" style="margin:10px 0"></div><div class="btn-group"><button class="btn btn-secondary a-btn" id="no">Close</button></div>');
     $('no').onclick = closeM;
     [].forEach.call($('mc').querySelectorAll('[data-f]'), function (b) { b.onchange = function () { GF[b.getAttribute('data-f')] = b.checked; draw(); }; });
@@ -422,6 +425,14 @@ function openShopLoc() {
       var T = jlGet(PTK, {}); T.tasks = {};
       try { localStorage.setItem(PTK, JSON.stringify(T)); } catch (e) { err('Could not delete. Try again.'); return; }
       draw(); err('The old list is deleted. Choose a route and send the new shops.', true);
+    };
+    if ($('slKeep')) $('slKeep').onclick = function () {
+      var T = jlGet(PTK, {}), all = Object.keys(T.tasks || {}), keep = {}, kept = 0;
+      all.forEach(function (k) { if (inRoute(k)) { keep[k] = T.tasks[k]; kept++; } });
+      var gone = all.length - kept; if (!gone) { err('Nothing to remove. All sent shops are already on this route.'); return; }
+      if (!confirm('Keep the ' + kept + ' sent shops on this route and remove the other ' + gone + ' from the employees\' lists? Locations employees already saved are kept.')) return;
+      T.tasks = keep; try { localStorage.setItem(PTK, JSON.stringify(T)); } catch (e) { err('Could not save. Try again.'); return; }
+      draw(); err(gone + ' shops removed. ' + kept + ' shops on this route stay on the lists.', true);
     };
     if ($('slClear')) $('slClear').onclick = function () {
       var T = jlGet(PTK, {}), keep = {};
