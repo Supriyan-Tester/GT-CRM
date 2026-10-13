@@ -397,7 +397,7 @@ function openShopLoc() {
       '<div class="a-fg"><label>Send these shops to (tick one or more employees)</label><div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">' + (ws.length ? ws.map(function (w) { return '<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-w="' + esc(w.id) + '"' + (GW.indexOf(w.id) > -1 ? ' checked' : '') + '> ' + esc(w.name) + '</label>'; }).join('') : '<span class="mu">No employees yet.</span>') + '</div></div>' +
       '<button class="btn a-btn" id="slSend" type="button"' + (n ? '' : ' disabled') + '>Send ' + n + ' shops' + (GW.length ? ' to ' + GW.length + ' employee' + (GW.length > 1 ? 's' : '') : '') + '</button>' +
       '<p class="mu" style="font-size:12px;margin:6px 0 0">Each employee sees them on the Home screen. When one employee saves a shop, it disappears from the other employees\' lists.</p>' +
-      (st.sent ? '<p style="margin:14px 0 0"><b>Already sent:</b> ' + st.sent + ' shops, ' + st.fin + ' saved by employees. <button class="btn btn-secondary a-btn" id="slClear" type="button" style="margin-left:6px">Clear finished</button></p>' : '') +
+      (st.sent ? '<p style="margin:14px 0 0"><b>Already sent:</b> ' + st.sent + ' shops, ' + st.fin + ' saved by employees. <button class="btn btn-secondary a-btn" id="slClear" type="button" style="margin-left:6px">Clear finished</button> <button class="btn btn-secondary a-btn" id="slWipe" type="button" style="margin-left:6px">Delete all sent</button></p>' : '') +
       '<div class="msg" id="mm" style="margin:10px 0"></div><div class="btn-group"><button class="btn btn-secondary a-btn" id="no">Close</button></div>');
     $('no').onclick = closeM;
     [].forEach.call($('mc').querySelectorAll('[data-f]'), function (b) { b.onchange = function () { GF[b.getAttribute('data-f')] = b.checked; draw(); }; });
@@ -416,6 +416,12 @@ function openShopLoc() {
       });
       try { localStorage.setItem(PTK, JSON.stringify(T)); } catch (e) { err('Could not save. Try again.'); return; }
       draw(); err(n + ' shops sent to ' + names + '. They show on each employee\'s Home screen.', true);
+    };
+    if ($('slWipe')) $('slWipe').onclick = function () {
+      if (!confirm('Delete all ' + st.sent + ' shops you sent to employees? Locations employees already saved are kept. After this you can send a new list.')) return;
+      var T = jlGet(PTK, {}); T.tasks = {};
+      try { localStorage.setItem(PTK, JSON.stringify(T)); } catch (e) { err('Could not delete. Try again.'); return; }
+      draw(); err('The old list is deleted. Choose a route and send the new shops.', true);
     };
     if ($('slClear')) $('slClear').onclick = function () {
       var T = jlGet(PTK, {}), keep = {};

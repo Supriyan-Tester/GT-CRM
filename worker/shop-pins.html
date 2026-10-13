@@ -111,13 +111,38 @@
       '</div></div>';
   }
 
+  var LEFT = [], typeTimer = null;
+
+  // The list part of the page: the shops that match the search and the area. Uses the shops already loaded in LEFT (no recalculation).
+  function listHtml() {
+    var q = query.trim().toLowerCase();
+    var shown = LEFT.filter(function (s) { return (!area || (s.area || 'No area') === area) && (!q || s._k.indexOf(q) > -1); });
+    var h = shown.length ? shown.slice(0, shownN).map(card).join('') : '<div class="sp-empty">No shop matches.</div>';
+    if (shown.length > shownN) h += '<button class="btn btn-secondary sp-more" type="button" id="moreBtn">Show next ' + Math.min(PAGE, shown.length - shownN) + ' (' + (shown.length - shownN) + ' more)</button>';
+    return h;
+  }
+  function wireList() {
+    var mb = $('moreBtn'); if (mb) mb.onclick = function () { shownN += PAGE; paintList(); };
+    [].forEach.call($('list').querySelectorAll('[data-go]'), function (b) { b.onclick = function () { locate(b.getAttribute('data-go')); }; });
+    [].forEach.call($('list').querySelectorAll('[data-save]'), function (b) { b.onclick = function () { save(b.getAttribute('data-save')); }; });
+  }
+  // Searching or choosing an area only redraws the list, so the search box keeps what you typed and the dropdown is not rebuilt.
+  function paintList() {
+    var box = $('list'); if (!box) return;
+    var typedVals = {};
+    [].forEach.call(box.querySelectorAll('.sp-in'), function (e) { if (e.value) typedVals[e.id] = e.value; });
+    box.innerHTML = listHtml();
+    Object.keys(typedVals).forEach(function (id) { var e = $(id); if (e && !e.value) e.value = typedVals[id]; });
+    wireList();
+  }
+
   function render() {
     if (GM.paintPinBadge) GM.paintPinBadge();
     var all = GM.pinTasks(), left = all.filter(function (s) { return !s.done; }), done = all.filter(function (s) { return s.done; });
-    var q = query.trim().toLowerCase();
+    left.forEach(function (s) { s._k = [s.name, s.area, s.address, s.code, s.phone].join(' ').toLowerCase(); });
+    LEFT = left;
     var areas = {}; left.forEach(function (s) { var a = s.area || 'No area'; areas[a] = (areas[a] || 0) + 1; });
     if (area && !areas[area]) area = '';
-    var shown = left.filter(function (s) { return (!area || (s.area || 'No area') === area) && (!q || (s.name + ' ' + s.area + ' ' + s.address).toLowerCase().indexOf(q) > -1); });
     var h = '';
     if (!all.length) {
       $('view').innerHTML = '<div class="sp-empty"><b>No shops to save</b>When the office sends you a list of shops, it shows up here.</div>';
@@ -128,8 +153,7 @@
     else {
       h += '<div class="sp-filters"><select id="areaSel" aria-label="Area"><option value="">All areas (' + left.length + ')</option>' + Object.keys(areas).sort().map(function (a) { return '<option value="' + esc(a) + '"' + (a === area ? ' selected' : '') + '>' + esc(a) + ' (' + areas[a] + ')</option>'; }).join('') + '</select>' +
         '<div class="sp-search"><input type="search" id="q" placeholder="Search shops" value="' + esc(query) + '" autocomplete="off"></div></div>';
-      h += shown.length ? shown.slice(0, shownN).map(card).join('') : '<div class="sp-empty">No shop matches.</div>';
-      if (shown.length > shownN) h += '<button class="btn btn-secondary sp-more" type="button" id="moreBtn">Show next ' + Math.min(PAGE, shown.length - shownN) + ' (' + (shown.length - shownN) + ' more)</button>';
+      h += '<div id="list">' + listHtml() + '</div>';
     }
     if (done.length) h += '<div class="sp-sec">Saved (' + done.length + ')</div><div class="sp-list">' + done.slice(0, 60).map(function (s) { return '<div class="sp-done">' + TICK + '<span>' + esc(s.name) + '</span></div>'; }).join('') + '</div>';
     var keep = document.activeElement && document.activeElement.id === 'q', typedVals = {};
@@ -137,11 +161,9 @@
     $('view').innerHTML = h;
     Object.keys(typedVals).forEach(function (id) { var e = $(id); if (e && !e.value) e.value = typedVals[id]; });
     if (keep && $('q')) { var el = $('q'); el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
-    var qi = $('q'); if (qi) qi.oninput = function () { query = qi.value; shownN = PAGE; render(); };
-    var as = $('areaSel'); if (as) as.onchange = function () { area = as.value; shownN = PAGE; render(); };
-    var mb = $('moreBtn'); if (mb) mb.onclick = function () { shownN += PAGE; render(); };
-    [].forEach.call($('view').querySelectorAll('[data-go]'), function (b) { b.onclick = function () { locate(b.getAttribute('data-go')); }; });
-    [].forEach.call($('view').querySelectorAll('[data-save]'), function (b) { b.onclick = function () { save(b.getAttribute('data-save')); }; });
+    var qi = $('q'); if (qi) qi.oninput = function () { query = qi.value; shownN = PAGE; clearTimeout(typeTimer); typeTimer = setTimeout(paintList, 150); };
+    var as = $('areaSel'); if (as) as.onchange = function () { area = as.value; shownN = PAGE; paintList(); };
+    if ($('list')) wireList();
   }
 
   function msg(code, text, cls) { var m = $('view').querySelector('[data-m="' + code.replace(/"/g, '') + '"]'); if (m) { m.textContent = text; m.className = 'sp-msg' + (cls ? ' ' + cls : ''); } }

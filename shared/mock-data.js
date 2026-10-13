@@ -484,17 +484,28 @@
 
     // Shops the office sent to this employee to fill in (location, phone, address). Sent from Admin > Customers > Shop locations.
     pinTasks: function () {
-      var w = loadStore().worker || {}, d = loadStore(), done = d.pinDone || {}, T = {}, adm = {}, P = pinStore();
+      var d = loadStore(), w = d.worker || {}, done = d.pinDone || {}, T = {}, adm = {}, P = pinStore();
       try { T = (JSON.parse(localStorage.getItem('gm_pintasks_v1')) || {}).tasks || {}; } catch (e) {}
       try { adm = JSON.parse(localStorage.getItem('gm_admin_v1')) || {}; } catch (e) {}
-      var byCode = {}; (adm.customers || []).forEach(function (c) { if (c && c.code) byCode[c.code] = c; });
+      var byCode = {}, pinnedCode = {}, pinnedName = {};
+      (adm.customers || []).forEach(function (c) {
+        if (!c) return;
+        if (c.code) byCode[c.code] = c;
+        if (typeof c.lat === 'number' && typeof c.lng === 'number') { if (c.code) pinnedCode[c.code] = 1; if (c.name) pinnedName[String(c.name).toLowerCase()] = 1; }
+      });
+      // Same answer as GM.shopPin, but without reading the whole customer list again for every shop (that made long lists very slow).
+      function hasPinFast(code, name) {
+        if (pinnedCode[code] || (name && pinnedName[String(name).toLowerCase()])) return true;
+        var pk = code || (name ? 'N:' + String(name).toUpperCase() : '');
+        return !!(pk && P[pk] && typeof P[pk].lat === 'number');
+      }
       var out = [];
       Object.keys(T).forEach(function (k) {
         var t = T[k]; if (!t || !t.code) return;
         var to = t.to == null || t.to === '' ? ['all'] : [].concat(t.to); if (to.indexOf('all') < 0 && to.indexOf(w.id) < 0) return;
         var c = byCode[t.code] || {}, p = P[t.code] || P['N:' + String(t.name || '').toUpperCase()] || {};
         var s = { code: t.code, name: c.name || t.name || t.code, area: c.area || t.area || '', address: c.address || p.address || t.address || '', phone: c.phone || p.phone || t.phone || '' };
-        var hasPin = !!GM.shopPin({ code: t.code, name: s.name });
+        var hasPin = hasPinFast(t.code, s.name);
         var needs = (t.need || ['pin']).filter(function (n) { return n === 'pin' ? !hasPin : (n === 'phone' ? !s.phone : !s.address); });
         var anyone = p && p.at && (Date.parse(p.at) || 0) >= (t.ts || 0);   // some employee saved this shop after it was sent
         s.hasPin = hasPin; s.needs = needs; s.done = !needs.length || (done[t.code] || 0) >= (t.ts || 0) || (hasPin && (t.need || ['pin']).indexOf('pin') > -1) || !!anyone;
