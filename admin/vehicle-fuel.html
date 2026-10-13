@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script src="../shared/sync.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fuel records - General Traders Admin</title>
+<link rel="stylesheet" href="../shared/theme.css">
+<link rel="stylesheet" href="../shared/admin.css">
+<link rel="stylesheet" href="../shared/plan.css">
+<link rel="stylesheet" href="../shared/vehicles.css">
+<script src="../shared/theme.js"></script></head>
+<body>
+<script src="../shared/mock-data.js"></script>
+<script src="../shared/admin.js"></script>
+<script src="../shared/plan-core.js"></script>
+<script src="../shared/vehicles.js"></script>
+<script>
+GA.guard();
+var $ = function (i) { return document.getElementById(i); }, esc = GA.esc, id = VX.qs('id'), date = VX.viewDate(), T = VX.today();
+var st = { from: T.slice(0, 8) + '01', to: T, q: '', month: '', page: 1 }, PS = 10;
+var pg = GA.mount('vehicles.html', 'Fuel records', { back: ['vehicles.html', 'Vehicles'] });
+VX.initTips();
+
+function inRange(L, a, b) { return L.filter(function (e) { return e.date >= a && e.date <= b; }); }
+function sum(L, k) { return L.reduce(function (s, e) { return s + (e[k] || 0); }, 0); }
+function avgM(L) { var m = L.filter(function (e) { return e.mileage != null; }); return m.length ? m.reduce(function (s, e) { return s + e.mileage; }, 0) / m.length : null; }
+function delta(cur, prev, good) { if (prev == null || !(prev > 0) || cur == null) return ''; var p = (cur - prev) / prev * 100; if (!isFinite(p)) return ''; return '<small class="mu" style="display:block">' + (p >= 0 ? '▲ ' : '▼ ') + Math.abs(p).toFixed(1) + '% vs previous period</small>'; }
+function head(v) {
+  var right = '<div class="vx-avail ok"><div class="field a-f" data-act style="width:190px;height:38px"><input type="search" id="fQ" placeholder="Search entries..." value="' + esc(st.q) + '" aria-label="Search entries" autocomplete="off"></div><a class="btn a-btn" href="#" id="fAdd" data-act>' + DP.icon('fuel') + ' Add fuel entry</a><a class="btn btn-secondary" data-act href="' + VX.link('vehicle-maintenance.html', v.id, date) + '">' + DP.icon('wrench') + ' Maintenance</a></div>';
+  return '<div class="vx-head"><div><p>Track fuel filled, cost and mileage for this vehicle.</p></div></div>' + VX.banner(v, right);
+}
+function render() {
+  var v = VX.vehicle(id);
+  if (!v) { pg.innerHTML = '<div class="vx-head"><div>' + '<h2>Vehicle not found</h2></div></div>'; return; }
+  var all = VX.fuelAll(id), cur = inRange(all, st.from, st.to), days = Math.max(1, VX.daysBetween(st.from, st.to) + 1), pTo = VX.addDays(st.from, -1), pFrom = VX.addDays(pTo, -(days - 1)), prev = inRange(all, pFrom, pTo);
+  var L = sum(cur, 'litres'), C = sum(cur, 'total'), M = avgM(cur), R = L ? C / L : null, pL = sum(prev, 'litres'), pC = sum(prev, 'total'), pM = avgM(prev), pR = pL ? pC / pL : null;
+  function tile(ic, cls, val, lbl, dl) { return '<div class="vx-tile"><span class="chip ' + cls + '">' + DP.icon(ic) + '</span><div><b>' + val + '</b><span class="lbl">' + lbl + '</span>' + dl + '</div></div>'; }
+  var tiles = '<div class="vx-tiles">' + tile('fuel', 'c-i', VX.num(L, 1) + ' L', 'Total fuel', delta(L, pL)) + tile('chart', 'c-a', VX.money(C), 'Total cost', delta(C, pC)) + tile('gauge', 'c-s', M == null ? '-' : VX.num(M, 1) + ' km/L', 'Average mileage', delta(M, pM)) + tile('fuel', 'c-p', R == null ? '-' : '₹' + VX.num(R, 2), 'Avg cost per litre', delta(R, pR)) + '</div>';
+  var chartRows = cur.slice(-24);
+  var c1 = VX.barChart({ data: chartRows.map(function (e) { return { label: VX.date(e.date, true), full: VX.date(e.date), value: e.litres, text: VX.num(e.litres, 1) + ' L' }; }), unit: 'L', label: 'Fuel filled in litres', yName: 'litres', empty: 'No fuel entries in this period', emptySub: 'Add a fuel entry or widen the date range.' });
+  var c2 = VX.lineChart({ data: chartRows.map(function (e) { return { label: VX.date(e.date, true), full: VX.date(e.date), value: e.mileage, text: e.mileage == null ? '-' : VX.num(e.mileage, 1) + ' km/L' }; }), unit: 'km/L', label: 'Mileage in km per litre', yName: 'km per litre', empty: 'No mileage data yet', emptySub: 'Mileage needs two entries with odometer readings.' });
+  var best = cur.filter(function (e) { return e.mileage != null; }).sort(function (a, b) { return b.mileage - a.mileage; })[0];
+  var ST = {}; cur.forEach(function (e) { var k = e.station || 'Not recorded'; ST[k] = (ST[k] || 0) + e.total; });
+  var sk = Object.keys(ST).sort(function (a, b) { return ST[b] - ST[a]; }), mx = sk.length ? ST[sk[0]] : 1;
+  var stations = sk.length ? '<ul class="vx-rem">' + sk.slice(0, 6).map(function (k) { return '<li style="display:block"><div style="display:flex;justify-content:space-between"><span>' + esc(k) + '</span><b>' + VX.money(ST[k]) + '</b></div><div class="vx-prog" style="margin-top:4px"><i style="width:' + Math.max(3, ST[k] / mx * 100) + '%"></i></div></li>'; }).join('') + '</ul>' : VX.empty('No entries yet');
+  var mset = {}; all.forEach(function (e) { mset[VX.monthKey(e.date)] = 1; }); var mkeys = Object.keys(mset).sort().reverse();
+  var rows = all.slice().reverse().filter(function (e) { return (!st.month || VX.monthKey(e.date) === st.month) && (!st.q || (e.station + ' ' + e.notes + ' ' + e.date + ' ' + e.odometer).toLowerCase().indexOf(st.q.toLowerCase()) >= 0); });
+  var pages = Math.max(1, Math.ceil(rows.length / PS)); if (st.page > pages) st.page = pages;
+  var pr = rows.slice((st.page - 1) * PS, st.page * PS);
+  var table = pr.length ? '<div class="a-scroll"><table class="vx-table stack"><thead><tr><th>Date</th><th class="r">Odometer</th><th class="r">Litres</th><th class="r">Rate</th><th class="r">Total</th><th class="r">Mileage</th><th>Station</th><th></th></tr></thead><tbody>' + pr.map(function (e) { return '<tr><td data-l="Date">' + VX.date(e.date) + '</td><td class="r" data-l="Odometer">' + VX.num(e.odometer) + ' km</td><td class="r" data-l="Litres">' + VX.num(e.litres, 1) + ' L</td><td class="r" data-l="Rate">₹' + VX.num(e.rate, 2) + '</td><td class="r" data-l="Total">' + VX.money(e.total, 2) + '</td><td class="r" data-l="Mileage">' + (e.mileage == null ? '-' : VX.num(e.mileage, 1) + ' km/L') + '</td><td data-l="Station">' + esc(e.station || '-') + '</td><td style="white-space:nowrap"><button type="button" class="vx-ib" data-edit="' + e.id + '" aria-label="Edit entry" title="Edit">' + GA.icon('edit') + '</button> <button type="button" class="vx-ib d" data-del="' + e.id + '" aria-label="Delete entry" title="Delete">' + GA.icon('trash') + '</button></td></tr>'; }).join('') + '</tbody></table></div>' +
+    '<div class="vx-foot" style="align-items:center"><span class="mu" style="font-size:13px">Showing ' + ((st.page - 1) * PS + 1) + '-' + Math.min(rows.length, st.page * PS) + ' of ' + rows.length + '</span><div style="display:flex;gap:8px;align-items:center"><button type="button" class="btn btn-secondary a-btn" data-pg="-1"' + (st.page <= 1 ? ' disabled' : '') + '>Previous</button><span style="font-size:13px">Page ' + st.page + ' of ' + pages + '</span><button type="button" class="btn btn-secondary a-btn" data-pg="1"' + (st.page >= pages ? ' disabled' : '') + '>Next</button></div></div>' : VX.empty(all.length ? 'No entries match' : 'No fuel entries yet', all.length ? 'Try a different search or month.' : 'Use "Add fuel entry" to record the first fill.');
+  pg.innerHTML = head(v) + '<div class="card" style="padding:12px 16px;margin-bottom:14px"><div class="vx-tools" style="justify-content:flex-start"><div class="field a-f" style="width:auto"><span class="mu" style="padding-left:10px;font-size:12px">From</span><input type="date" id="fFrom" value="' + st.from + '" max="' + st.to + '" aria-label="From date"></div><div class="field a-f" style="width:auto"><span class="mu" style="padding-left:10px;font-size:12px">To</span><input type="date" id="fTo" value="' + st.to + '" min="' + st.from + '" aria-label="To date"></div>' + (cur.length < 1 && all.length ? '<span class="mu" style="font-size:13px">No entries in this range.</span>' : '') + '</div></div>' + tiles +
+    '<div class="vx-cols"><section class="vx-panel vx-c6"><div class="vx-ph2"><h3>Fuel filled<span class="sub">Litres per entry</span></h3></div><div class="vx-body">' + c1 + '</div></section><section class="vx-panel vx-c6"><div class="vx-ph2"><h3>Mileage<span class="sub">Kilometres per litre</span></h3></div><div class="vx-body">' + c2 + '</div></section>' +
+    '<section class="vx-panel vx-c8"><div class="vx-ph2"><h3>Fuel entries</h3><div class="vx-tools"><div class="field a-f"><select id="fMonth" aria-label="Month"><option value="">All months</option>' + mkeys.map(function (m) { return '<option value="' + m + '"' + (m === st.month ? ' selected' : '') + '>' + VX.monthName(m) + '</option>'; }).join('') + '</select></div><button type="button" class="btn btn-secondary a-btn" id="fCsv"' + (all.length ? '' : ' disabled') + '>' + DP.icon('download') + ' Export CSV</button></div></div><div class="vx-body">' + table + '</div></section>' +
+    '<div class="vx-c4" style="grid-column:span 4;display:flex;flex-direction:column;gap:14px;min-width:0"><section class="vx-panel"><div class="vx-ph2"><h3>Mileage analysis</h3></div><div class="vx-body"><div class="vx-t4"><div class="g"><b>' + (M == null ? '-' : VX.num(M, 1) + ' km/L') + '</b><span>Average</span></div><div class="i"><b>' + (best ? VX.num(best.mileage, 1) + ' km/L' : '-') + '</b><span>' + (best ? 'Best, ' + VX.date(best.date) : 'Best') + '</span></div></div></div></section>' +
+    '<section class="vx-panel"><div class="vx-ph2"><h3>Cost by station</h3></div><div class="vx-body">' + stations + '</div></section></div></div>';
+}
+function form(e) {
+  e = e || {}; var v = VX.vehicle(id), last = VX.fuelAll(id).slice(-1)[0];
+  function f(k, l, val, t, x) { return '<div class="a-fg"><label for="ff_' + k + '">' + l + '</label><div class="field a-f"><input id="ff_' + k + '" type="' + (t || 'text') + '" value="' + esc(val == null ? '' : val) + '" ' + (x || '') + ' autocomplete="off"></div></div>'; }
+  DP.dialog({ title: e.id ? 'Edit fuel entry' : 'Add fuel entry', wide: true, html: '<div class="vx-form" style="grid-template-columns:1fr 1fr">' + f('date', 'Date *', e.date || T, 'date', 'max="' + T + '"') + f('odo', 'Odometer (km) *', e.odometer != null ? e.odometer : v.lastKm, 'number', 'min="0" step="1" inputmode="numeric"') + f('lit', 'Litres *', e.litres, 'number', 'min="0" step="any" inputmode="decimal"') + f('rate', 'Cost per litre (₹) *', e.rate, 'number', 'min="0" step="any" inputmode="decimal"') +
+    '<div class="a-fg"><label>Total cost</label><div class="field a-f"><input id="ff_tot" readonly tabindex="-1" aria-live="polite" value=""></div></div>' + f('stn', 'Fuel station', e.station, 'text', 'maxlength="60"') + '<div class="a-fg w3" style="grid-column:1/-1"><label for="ff_notes">Notes</label><div class="field a-f"><input id="ff_notes" value="' + esc(e.notes || '') + '" maxlength="200"></div></div></div><div class="vx-fe" id="ff_err" role="alert"></div><div class="dp-foot"><button type="button" class="btn btn-secondary" data-no>Cancel</button><button type="button" class="btn" data-ok>' + (e.id ? 'Save changes' : 'Save entry') + '</button></div>',
+    onOpen: function (api) {
+      var q = function (s) { return api.q(s); }; function tot() { var t = (+q('#ff_lit').value) * (+q('#ff_rate').value); q('#ff_tot').value = t > 0 ? '₹' + VX.num(t, 2) : ''; }
+      ['#ff_lit', '#ff_rate'].forEach(function (s) { q(s).addEventListener('input', tot); }); tot();
+      q('[data-no]').onclick = function () { api.close(); };
+      function go(force) {
+        var rec = { id: e.id, vehicleId: id, date: q('#ff_date').value, odometerRaw: q('#ff_odo').value, odometer: Number(q('#ff_odo').value), litres: Number(q('#ff_lit').value), rate: Number(q('#ff_rate').value), station: q('#ff_stn').value, notes: q('#ff_notes').value };
+        var er = VX.checkFuel(rec, e.id); if (er) { q('#ff_err').textContent = er; return; }
+        var cur = VX.vehicle(id).lastKm;
+        if (!force && rec.odometer - cur > 5000) { q('#ff_err').innerHTML = 'This reading is ' + VX.num(rec.odometer - cur) + ' km above the current odometer (' + VX.num(cur) + ' km). <button type="button" class="btn btn-secondary a-btn" id="ff_yes" style="min-height:30px">Yes, it is correct</button>'; q('#ff_yes').onclick = function () { go(true); }; return; }
+        var r = VX.saveFuel(rec); if (!r) { q('#ff_err').textContent = 'Could not save on this computer.'; return; }
+        api.close(); DP.toast(e.id ? 'Fuel entry updated.' : 'Fuel entry added.', 'ok'); render();
+      }
+      q('[data-ok]').onclick = function () { go(false); };
+    } });
+}
+document.addEventListener('click', function (e) {
+  var t;
+  if (e.target.closest('#fAdd')) { e.preventDefault(); form(); return; }
+  if ((t = e.target.closest('[data-edit]'))) { form(VX.fuelAll(id).filter(function (x) { return x.id === t.dataset.edit; })[0]); return; }
+  if ((t = e.target.closest('[data-del]'))) { var rid = t.dataset.del; DP.dialog({ title: 'Delete this fuel entry?', html: '<p style="font-size:14px">This cannot be undone. The odometer will not change.</p><div class="dp-foot"><button type="button" class="btn btn-secondary" data-no>Keep it</button><button type="button" class="btn btn-danger" data-ok>Delete</button></div>', onOpen: function (api) { api.q('[data-no]').onclick = function () { api.close(); }; api.q('[data-ok]').onclick = function () { VX.removeFuel(rid); api.close(); DP.toast('Entry deleted.', 'ok'); render(); }; } }); return; }
+  if ((t = e.target.closest('[data-pg]'))) { st.page += +t.dataset.pg; render(); return; }
+  if (e.target.closest('#fCsv')) { var v = VX.vehicle(id); VX.csv([['Date', 'Odometer (km)', 'Litres', 'Rate (INR/L)', 'Total (INR)', 'Mileage (km/L)', 'Station', 'Notes']].concat(VX.fuelAll(id).map(function (x) { return [x.date, x.odometer, x.litres, x.rate, x.total, x.mileage == null ? '' : x.mileage.toFixed(2), x.station, x.notes]; })), 'fuel-' + v.number + '.csv'); }
+});
+document.addEventListener('change', function (e) {
+  if (e.target.id === 'fFrom') { st.from = e.target.value || st.from; if (st.from > st.to) st.to = st.from; render(); }
+  else if (e.target.id === 'fTo') { st.to = e.target.value || st.to; if (st.to < st.from) st.from = st.to; render(); }
+  else if (e.target.id === 'fMonth') { st.month = e.target.value; st.page = 1; render(); }
+});
+document.addEventListener('input', function (e) { if (e.target.id === 'fQ') { st.q = e.target.value; st.page = 1; var p = e.target.selectionStart; render(); var n = $('fQ'); n.focus(); n.setSelectionRange(p, p); } });
+render();
+</script></body>
+</html>

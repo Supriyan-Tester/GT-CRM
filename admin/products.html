@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script src="../shared/sync.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Products - General Traders Admin</title>
+<link rel="stylesheet" href="../shared/theme.css">
+<link rel="stylesheet" href="../shared/admin.css">
+<link rel="stylesheet" href="../shared/plan.css">
+<link rel="stylesheet" href="../shared/products.css">
+<script src="../shared/theme.js"></script></head>
+<body>
+<script src="../shared/mock-data.js"></script>
+<script src="../shared/admin.js"></script>
+<script src="../shared/plan-core.js"></script>
+<script src="../shared/xlsx-lite.js"></script>
+<script src="../shared/products.js"></script>
+<script>
+GA.guard();
+var $ = function (i) { return document.getElementById(i); }, esc = GA.esc, L = PR.load();
+var st = { tab: 'all', cat: '', tax: '', chk: '', sort: 'name', view: 'list', q: '', pg: 1, ps: 10, sel: {} };
+var COLS = [['category', 'Category', 1], ['unit', 'Unit', 1], ['mrp', 'MRP', 1, 1], ['price', 'Selling price', 1, 1], ['margin', 'Margin', 1, 1], ['tax', 'Tax', 1], ['cost', 'Purchase price', 1, 1], ['hsn', 'HSN', 1], ['brand', 'Brand', 0], ['pack', 'Pack size', 0], ['openQty', 'Opening qty', 0, 1], ['avg', 'Avg sales', 0, 1], ['stock', 'Stock', 0, 1], ['batch', 'Batch', 0]], showCols = {}, speed = function () { return ''; };
+COLS.forEach(function (c) { showCols[c[0]] = !!c[2]; });
+try { var sc = JSON.parse(localStorage.getItem('gm_pr_cols')); if (sc) COLS.forEach(function (c) { if (c[0] in sc) showCols[c[0]] = !!sc[c[0]]; }); } catch (e) {}
+try { st.view = localStorage.getItem('gm_pr_view') === 'grid' ? 'grid' : 'list'; } catch (e) {}
+var pg = GA.mount('products.html', 'Products');
+pg.innerHTML =
+  '<div class="pr-head"><div class="pr-title"><span class="chip c-p">' + GA.icon('box') + '</span><div><p>Manage your product catalogue, prices and stock information.</p></div></div>' +
+  '<div class="pr-tools"><div class="field a-f" data-act style="width:190px;height:38px"><input type="search" id="pQ" placeholder="Search product..." aria-label="Search product name or code" autocomplete="off"></div>' +
+  '<button class="btn btn-secondary a-btn" id="pImp" data-act type="button">' + DP.icon('upload') + ' Import</button><button class="pr-ib" data-act id="pMore" type="button" aria-label="More actions" aria-haspopup="menu">' + DP.icon('dots') + '</button>' +
+  '<a class="btn a-btn" id="pAdd" data-act href="product-edit.html">' + GA.icon('plus') + ' Add product</a></div></div>' +
+  '<div class="pr-tiles" id="pTiles"></div>' +
+  '<section class="pr-panel" aria-label="Product list"><div class="pr-bar"><div class="field"><select id="pSeg" aria-label="Filter by status"></select></div>' +
+  '<div class="field"><select id="pCat" aria-label="Filter by category"></select></div><div class="field"><select id="pTax" aria-label="Filter by tax rate"><option value="">All tax rates</option><option value="0">Exempt (0%)</option><option value="5">5%</option><option value="12">12%</option><option value="18">18%</option><option value="28">28%</option></select></div><div class="field"><select id="pChk" aria-label="Quick checks"><option value="">Quick checks: none</option><option value="hsn">Missing HSN</option><option value="mrp">Missing MRP</option><option value="cat">Missing category</option><option value="cost">Missing purchase price</option><option value="lowm">Low margin (under 5%)</option><option value="loss">Selling below cost</option><option value="lows">Low stock</option><option value="fast">Fast moving</option><option value="slow">Slow moving</option></select></div><span class="pr-sp"></span>' +
+  '<div class="field"><select id="pSort" aria-label="Sort products"><option value="name">Sort: Name (A-Z)</option><option value="namez">Sort: Name (Z-A)</option><option value="pricel">Sort: Price (low first)</option><option value="priceh">Sort: Price (high first)</option><option value="mrp">Sort: MRP (high first)</option><option value="mgh">Sort: Margin % (high first)</option><option value="mgl">Sort: Margin % (low first)</option><option value="code">Sort: Code</option><option value="new">Sort: Recently added</option></select></div>' +
+  '<div class="pr-view" role="group" aria-label="View"><button type="button" id="vList" aria-label="List view" title="List view">' + DP.icon('menu') + '</button><button type="button" id="vGrid" aria-label="Grid view" title="Grid view">' + DP.icon('grip') + '</button></div><button type="button" class="btn btn-secondary a-btn" id="pCols">' + DP.icon('filter') + ' Columns</button><button type="button" class="btn btn-secondary a-btn" id="pExp">' + DP.icon('download') + ' Export</button></div>' +
+  '<div class="pr-sel" id="pSel" hidden></div><div id="pBody"></div><div class="pr-foot" id="pFoot"></div></section>';
+
+function toast(m, k) { DP.toast(m, k); }
+function flash() { try { var f = sessionStorage.getItem('pr_flash'); if (f) { sessionStorage.removeItem('pr_flash'); toast(f); } } catch (e) {} }
+
+/* ---------- changes: always start from the newest saved list and wait for the server ---------- */
+function change(fn, okMsg, after) {
+  var cur = PR.load(), r = fn(cur);
+  if (r === false) return Promise.resolve();
+  return PR.save(cur).then(function (res) {
+    L = PR.load();
+    if (!res.ok) { toast(res.error, 'err'); render(); return; }
+    if (after) after();
+    render(); toast(okMsg, res.server === 'failed' ? 'warn' : 'ok');
+    if (res.server === 'failed') toast('Server not reachable. The change is kept on this computer and will be sent again automatically.', 'warn');
+  });
+}
+function byCode(c) { return L.filter(function (p) { return p.code === c; })[0]; }
+
+/* ---------- list ---------- */
+function mg(p) { var m = PR.margin(p); return m ? m.pct : -1e9; }
+function filtered() {
+  speed = PR.speedMap(L);
+  var q = st.q.toLowerCase().trim();
+  var l = L.filter(function (p) {
+    if (st.tab === 'active' && !PR.isOn(p)) return false;
+    if (st.tab === 'inactive' && PR.isOn(p)) return false;
+    if (st.tab === 'np' && p.price) return false;
+    if (st.cat === '__none') { if (p.category) return false; } else if (st.cat && p.category !== st.cat) return false;
+    if (st.tax !== '' && String(p.tax) !== st.tax) return false;
+    if (st.chk) { var m = PR.margin(p), c = st.chk;
+      if (c === 'hsn' && p.hsn) return false; if (c === 'mrp' && p.mrp) return false; if (c === 'cat' && p.category) return false; if (c === 'cost' && p.cost !== '' && p.cost != null && p.cost !== 0) return false;
+      if (c === 'lowm' && !(m && m.pct < PR.LOWM && m.pct >= 0)) return false; if (c === 'loss' && !PR.loss(p)) return false; if (c === 'lows' && !PR.low(p)) return false;
+      if (c === 'fast' && speed(p) !== 'fast') return false; if (c === 'slow' && speed(p) !== 'slow') return false; }
+    return !q || (p.name + ' ' + p.code + ' ' + (p.category || '') + ' ' + (p.brand || '') + ' ' + (p.alias || '') + ' ' + (p.printName || '') + ' ' + (p.hsn || '') + ' ' + (p.barcode || '')).toLowerCase().indexOf(q) > -1;
+  });
+  var S = { name: function (a, b) { return a.name.localeCompare(b.name); }, namez: function (a, b) { return b.name.localeCompare(a.name); }, pricel: function (a, b) { return (a.price || 0) - (b.price || 0); },
+    priceh: function (a, b) { return (b.price || 0) - (a.price || 0); }, mrp: function (a, b) { return (b.mrp || 0) - (a.mrp || 0); }, mgh: function (a, b) { return mg(b) - mg(a); }, mgl: function (a, b) { return mg(a) - mg(b); }, code: function (a, b) { return String(a.code).localeCompare(String(b.code), undefined, { numeric: true }); }, 'new': function (a, b) { return (b.at || 0) - (a.at || 0); } };
+  return l.sort(S[st.sort] || S.name);
+}
+function statusB(p) { return PR.isOn(p) ? '<span class="badge b-success">Active</span>' : '<span class="badge b-danger">Inactive</span>'; }
+function priceH(p) { return p.price ? PR.rupee(p.price) : '<span class="badge b-danger">No price</span>'; }
+function kebab(p) { return '<button type="button" class="pr-ib" data-k="' + esc(p.code) + '" aria-label="Actions for ' + esc(p.name) + '" aria-haspopup="menu">' + DP.icon('dots') + '</button>'; }
+function nameCell(p) {
+  var sp = speed(p), sub = [p.alias, p.brand].filter(Boolean).join(' · ');
+  return '<div class="pr-cell">' + PR.thumb(p) + '<div style="min-width:0"><b><a href="#" class="pr-nm" data-v="' + esc(p.code) + '" style="color:inherit;text-decoration:none">' + esc(p.name) + '</a>' + (sp ? '<span class="pr-tag ' + sp[0] + '">' + (sp === 'fast' ? 'Fast moving' : 'Slow moving') + '</span>' : '') + (PR.low(p) ? '<span class="pr-low" title="Stock ' + esc(p.stock) + ' is at or below the alert level ' + esc(p.low) + '">Low stock</span>' : '') + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</div></div>';
+}
+function cellH(k, p) {
+  var D = '<span class="mu">-</span>', m;
+  switch (k) {
+    case 'category': return p.category ? esc(p.category) : D;
+    case 'unit': return p.unit ? esc(p.unit) : D;
+    case 'mrp': return p.mrp ? PR.rupee(p.mrp) : D;
+    case 'price': return priceH(p);
+    case 'margin': m = PR.margin(p); return m ? '<span class="pr-mgv ' + (m.pct < PR.LOWM ? 'lo' : 'ok') + '" title="' + PR.rupee(m.amt) + ' per unit">' + m.pct + '%</span>' : D;
+    case 'tax': return PR.taxLabel(p) ? '<span class="badge b-info">' + PR.taxLabel(p) + '</span>' : D;
+    case 'cost': return p.cost ? PR.rupee(p.cost) : D;
+    case 'hsn': return p.hsn ? esc(p.hsn) : D;
+    case 'brand': return p.brand ? esc(p.brand) : D;
+    case 'pack': return PR.packText(p) ? esc(PR.packText(p)) : D;
+    case 'openQty': return p.openQty !== '' && p.openQty != null ? PR.num(p.openQty) : D;
+    case 'avg': return p.avg !== '' && p.avg != null ? PR.num(p.avg) : D;
+    case 'stock': return p.track && p.stock !== '' && p.stock != null ? PR.num(p.stock) : D;
+    case 'batch': return p.batch ? 'Yes' : D;
+  }
+  return D;
+}
+function visCols() { return COLS.filter(function (c) { return showCols[c[0]]; }); }
+function rowH(p) {
+  return '<tr><td class="ck"><input type="checkbox" class="pr-ck" data-c="' + esc(p.code) + '"' + (st.sel[p.code] ? ' checked' : '') + ' aria-label="Select ' + esc(p.name) + '"></td><td><span class="pr-code">' + esc(p.code) + '</span></td><td>' + nameCell(p) + '</td>' +
+    visCols().map(function (c) { return '<td' + (c[3] ? ' class="num"' : '') + '>' + cellH(c[0], p) + '</td>'; }).join('') + '<td>' + statusB(p) + '</td><td class="act">' + kebab(p) + '</td></tr>';
+}
+function cardH(p) {
+  return '<div class="pr-gc"><span class="ckw"><input type="checkbox" class="pr-ck" data-c="' + esc(p.code) + '"' + (st.sel[p.code] ? ' checked' : '') + ' aria-label="Select ' + esc(p.name) + '"></span><span class="k">' + kebab(p) + '</span>' + PR.thumb(p, 'lg') +
+    '<b>' + esc(p.name) + '</b><small>' + esc(p.code) + (p.category ? ' · ' + esc(p.category) : '') + (p.unit ? ' · ' + esc(p.unit) : '') + (p.mrp ? ' · MRP ' + PR.rupee(p.mrp) : '') + '</small><div class="pp"><strong>' + (p.price ? PR.rupee(p.price) : '<span class="badge b-danger">No price</span>') + '</strong>' + statusB(p) + '</div></div>';
+}
+function pageBtns(pages) {
+  var out = [], i, last = 0, want = {}; [1, 2, pages - 1, pages, st.pg - 1, st.pg, st.pg + 1].forEach(function (n) { if (n >= 1 && n <= pages) want[n] = 1; });
+  Object.keys(want).map(Number).sort(function (a, b) { return a - b; }).forEach(function (n) { if (last && n - last > 1) out.push('<button type="button" disabled>...</button>'); out.push('<button type="button" data-p="' + n + '"' + (n === st.pg ? ' class="on" aria-current="page"' : '') + '>' + n + '</button>'); last = n; });
+  return out.join('');
+}
+function render() {
+  var on = L.filter(PR.isOn).length, np = L.filter(function (p) { return !p.price; }).length;
+  function tl(key, ic, cls, n, lb) { return '<button type="button" class="pr-tile' + (st.tab === key ? ' on' : '') + '" data-t="' + key + '"><span class="chip ' + cls + '">' + DP.icon(ic) + '</span><div><b>' + PR.num(n) + '</b><span>' + lb + '</span></div></button>'; }
+  $('pTiles').innerHTML = tl('all', 'box', 'c-i', L.length, 'Total products') + tl('active', 'check', 'c-s', on, 'Active products') + tl('inactive', 'power', 'c-d', L.length - on, 'Inactive products') + tl('np', 'alert', 'c-a', np, 'Products without price');
+  $('pSeg').innerHTML = [['all', 'All products'], ['active', 'Active'], ['inactive', 'Inactive'], ['np', 'No price']].map(function (t) { return '<option value="' + t[0] + '"' + (st.tab === t[0] ? ' selected' : '') + '>' + t[1] + '</option>'; }).join('');
+  var cats = PR.cats(L), none = L.some(function (p) { return !p.category; });
+  $('pCat').innerHTML = '<option value="">All categories</option>' + cats.map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('') + (none && cats.length ? '<option value="__none">Uncategorised</option>' : '');
+  if (st.cat && st.cat !== '__none' && cats.indexOf(st.cat) < 0) st.cat = ''; $('pCat').value = st.cat; $('pSort').value = st.sort; $('pTax').value = st.tax; $('pChk').value = st.chk;
+  $('vList').classList.toggle('on', st.view === 'list'); $('vGrid').classList.toggle('on', st.view === 'grid');
+  var list = filtered(), pages = Math.max(1, Math.ceil(list.length / st.ps)); if (st.pg > pages) st.pg = pages;
+  var from = (st.pg - 1) * st.ps, part = list.slice(from, from + st.ps);
+  if (!part.length) {
+    $('pBody').innerHTML = '<div class="pr-empty"><b>' + (L.length ? 'No products match' : 'No products yet') + '</b>' + (L.length ? 'Change the search or the filters.' : 'Add your first product, or import your product list.') + (L.length ? '' : '<br><a class="btn a-btn" href="product-edit.html">' + GA.icon('plus') + ' Add product</a>') + '</div>';
+  } else if (st.view === 'grid') $('pBody').innerHTML = '<div class="pr-grid">' + part.map(cardH).join('') + '</div>';
+  else $('pBody').innerHTML = '<div class="pr-scroll"><table class="pr-table"><thead><tr><th class="ck"><input type="checkbox" class="pr-ck" id="pAll" aria-label="Select all on this page"></th><th>Code</th><th>Product</th>' + visCols().map(function (c) { return '<th' + (c[3] ? ' class="num"' : '') + '>' + c[1] + '</th>'; }).join('') + '<th>Status</th><th class="act"><span class="sr-only" style="position:absolute;left:-9999px">Actions</span></th></tr></thead><tbody>' + part.map(rowH).join('') + '</tbody></table></div>';
+  $('pFoot').innerHTML = list.length ? '<span>Showing ' + (from + 1) + '-' + (from + part.length) + ' of ' + PR.num(list.length) + ' products</span><span class="pr-sp"></span><div class="pr-pages"><button type="button" data-p="' + (st.pg - 1) + '"' + (st.pg <= 1 ? ' disabled' : '') + ' aria-label="Previous page">&lsaquo;</button>' + pageBtns(pages) + '<button type="button" data-p="' + (st.pg + 1) + '"' + (st.pg >= pages ? ' disabled' : '') + ' aria-label="Next page">&rsaquo;</button></div><div class="field"><select id="pPS" aria-label="Rows per page">' + [10, 25, 50, 100].map(function (n) { return '<option value="' + n + '"' + (n === st.ps ? ' selected' : '') + '>' + n + ' / page</option>'; }).join('') + '</select></div>' : '';
+  selBar(part);
+}
+function selBar(part) {
+  Object.keys(st.sel).forEach(function (c) { if (!byCode(c)) delete st.sel[c]; });
+  var n = Object.keys(st.sel).length, bar = $('pSel'); bar.hidden = !n;
+  if (n) bar.innerHTML = '<b>' + n + ' selected</b><button type="button" class="btn btn-secondary a-btn" data-b="on">Activate</button><button type="button" class="btn btn-secondary a-btn" data-b="off">Deactivate</button><button type="button" class="btn btn-secondary a-btn" data-b="del" style="color:var(--danger)">Delete</button><button type="button" class="btn btn-secondary a-btn" data-b="clr">Clear selection</button>';
+  var all = $('pAll'); if (all && part) { var k = part.filter(function (p) { return st.sel[p.code]; }).length; all.checked = k > 0 && k === part.length; all.indeterminate = k > 0 && k < part.length; }
+}
+
+/* ---------- events (delegated, so a redraw never loses them) ---------- */
+function setTab(t) { st.tab = t; st.pg = 1; render(); }
+$('pTiles').onclick = function (e) { var b = e.target.closest('[data-t]'); if (b) setTab(b.dataset.t); };
+$('pSeg').onchange = function () { setTab(this.value); };
+$('pQ').oninput = function () { st.q = this.value; st.pg = 1; render(); };
+$('pCat').onchange = function () { st.cat = this.value; st.pg = 1; render(); };
+$('pTax').onchange = function () { st.tax = this.value; st.pg = 1; render(); };
+$('pChk').onchange = function () { st.chk = this.value; st.pg = 1; render(); };
+$('pSort').onchange = function () { st.sort = this.value; st.pg = 1; render(); };
+function setView(v) { st.view = v; try { localStorage.setItem('gm_pr_view', v); } catch (e) {} render(); }
+$('vList').onclick = function () { setView('list'); }; $('vGrid').onclick = function () { setView('grid'); };
+$('pFoot').onclick = function (e) { var b = e.target.closest('[data-p]'); if (b && !b.disabled) { st.pg = +b.dataset.p; render(); $('pBody').scrollIntoView({ block: 'nearest' }); } };
+$('pFoot').onchange = function (e) { if (e.target.id === 'pPS') { st.ps = +e.target.value; st.pg = 1; render(); } };
+$('pBody').onchange = function (e) {
+  var t = e.target; if (!t.classList.contains('pr-ck')) return;
+  if (t.id === 'pAll') { var l = filtered(), from = (st.pg - 1) * st.ps; l.slice(from, from + st.ps).forEach(function (p) { if (t.checked) st.sel[p.code] = 1; else delete st.sel[p.code]; }); render(); return; }
+  if (t.checked) st.sel[t.dataset.c] = 1; else delete st.sel[t.dataset.c];
+  var l2 = filtered(), f2 = (st.pg - 1) * st.ps; selBar(l2.slice(f2, f2 + st.ps));
+};
+$('pBody').onclick = function (e) {
+  var nm = e.target.closest('[data-v]'); if (nm) { e.preventDefault(); var q = byCode(nm.dataset.v); if (q) details(q); return; }
+  var b = e.target.closest('[data-k]'); if (!b) return; var p = byCode(b.dataset.k); if (!p) return;
+  DP.menu(b, [{ label: 'View details', icon: 'eye', run: function () { details(p); } }, { label: 'Edit', icon: 'edit', run: function () { location.href = 'product-edit.html?code=' + encodeURIComponent(p.code); } },
+    { label: 'Duplicate', icon: 'note', run: function () { location.href = 'product-edit.html?copy=' + encodeURIComponent(p.code); } },
+    { label: PR.isOn(p) ? 'Mark inactive' : 'Mark active', icon: 'power', run: function () { setActive([p.code], !PR.isOn(p)); } }, 'hr',
+    { label: 'Delete', icon: 'trash', danger: true, run: function () { askDelete([p.code]); } }]);
+};
+$('pSel').onclick = function (e) {
+  var b = e.target.closest('[data-b]'); if (!b) return; var cs = Object.keys(st.sel), k = b.dataset.b;
+  if (k === 'clr') { st.sel = {}; render(); } else if (k === 'del') askDelete(cs); else setActive(cs, k === 'on');
+};
+
+/* ---------- details ---------- */
+function details(p) {
+  var m = PR.margin(p), D = '-';
+  function f(l, v, w) { return '<div' + (w ? ' class="w"' : '') + '><small>' + l + '</small><b>' + (v === '' || v == null ? D : v) + '</b></div>'; }
+  function r(v) { return v ? PR.rupee(v) : ''; }
+  DP.dialog({ title: 'Product details', wide: true,
+    html: '<div class="pr-dh">' + PR.thumb(p) + '<div><h4>' + esc(p.name) + '</h4><span class="pr-code">' + esc(p.code) + '</span> ' + statusB(p) + '</div></div><div class="pr-det">' +
+      f('Category', esc(p.category || '')) + f('Sub category', esc(p.sub || '')) + f('Unit', esc(p.unit || '')) + f('Pack size', esc(PR.packText(p))) + f('Brand', esc(p.brand || '')) + f('Alias', esc(p.alias || '')) + f('Print name', esc(p.printName || '')) + f('Batch tracked', p.batch ? 'Yes' : 'No') +
+      f('MRP', r(p.mrp)) + f('Selling price', r(p.price)) + f('Purchase price', r(p.cost)) + f('Margin', m ? PR.rupee(m.amt) + ' (' + m.pct + '% on cost)' : '') +
+      f('Tax rate', PR.taxLabel(p)) + f('HSN code', esc(p.hsn || '')) + f('Barcode', esc(p.barcode || '')) + f('Expiry (months)', p.expMonths) +
+      f('Current stock', p.track && p.stock !== '' ? PR.num(p.stock) : '') + f('Low stock alert', p.track && p.low !== '' ? PR.num(p.low) : '') + f('Opening qty', p.openQty !== '' && p.openQty != null ? PR.num(p.openQty) : '') + f('Opening value', r(p.openVal)) +
+      f('Average sales', p.avg !== '' && p.avg != null ? PR.num(p.avg) : '') + f('Weight', p.weight !== '' && p.weight != null ? p.weight + ' kg' : '') + f('Storage', esc(p.storage || ''), 1) + f('Description', esc(p.desc || ''), 1) + '</div>' +
+      '<div class="btn-group"><button class="btn btn-secondary a-btn" data-x2 type="button">Close</button><a class="btn a-btn" href="product-edit.html?code=' + encodeURIComponent(p.code) + '">Edit product</a></div>',
+    onOpen: function (api) { api.q('[data-x2]').onclick = function () { api.close(); }; } });
+}
+
+/* ---------- columns and export ---------- */
+$('pCols').onclick = function () {
+  DP.dialog({ title: 'Choose columns', sub: 'Code, Product and Status are always shown.', cls: 'dp-small',
+    html: '<div class="pr-cols-l">' + COLS.map(function (c) { return '<label><input type="checkbox" data-col="' + c[0] + '"' + (showCols[c[0]] ? ' checked' : '') + '> ' + c[1] + '</label>'; }).join('') + '</div><div class="btn-group"><button class="btn btn-secondary a-btn" id="cRst" type="button">Reset</button><button class="btn a-btn" id="cOk" type="button">Done</button></div>',
+    onOpen: function (api) {
+      api.qa('[data-col]').forEach(function (i) { i.onchange = function () { showCols[i.dataset.col] = i.checked; }; });
+      api.q('#cOk').onclick = function () { api.close(); };
+      api.q('#cRst').onclick = function () { COLS.forEach(function (c) { showCols[c[0]] = !!c[2]; }); api.qa('[data-col]').forEach(function (i) { i.checked = showCols[i.dataset.col]; }); };
+    }, onClose: function () { try { localStorage.setItem('gm_pr_cols', JSON.stringify(showCols)); } catch (e) {} render(); } });
+};
+$('pExp').onclick = function () {
+  var l = filtered(); if (!l.length) { toast('Nothing to export. Change the filters.', 'warn'); return; }
+  function q(v) { v = String(v == null ? '' : v); if (/^[=+\-@]/.test(v)) v = "'" + v; return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  var H = ['Code', 'Product Name', 'Print Name', 'Alias', 'Category', 'Sub Category', 'Brand', 'Unit', 'Sub Unit', 'Ratio', 'MRP', 'Selling Price', 'Purchase Price', 'Margin %', 'Tax %', 'HSN', 'Barcode', 'Opening Qty', 'Opening Value', 'Avg Sales', 'Stock', 'Low Stock Alert', 'Batch', 'Status'];
+  var rows = [H].concat(l.map(function (p) { var m = PR.margin(p); return [p.code, p.name, p.printName, p.alias, p.category, p.sub, p.brand, p.unit, p.subUnit, p.ratio, p.mrp, p.price, p.cost, m ? m.pct : '', p.tax, p.hsn, p.barcode, p.openQty, p.openVal, p.avg, p.track ? p.stock : '', p.track ? p.low : '', p.batch ? 'Yes' : 'No', PR.isOn(p) ? 'Active' : 'Inactive']; }));
+  var blob = new Blob(['﻿' + rows.map(function (r) { return r.map(q).join(','); }).join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'products-' + GA.today() + '.csv'; document.body.appendChild(a); a.click(); a.remove(); toast(l.length + ' products exported.');
+};
+
+/* ---------- active / inactive ---------- */
+function setActive(codes, on) {
+  var n = 0;
+  change(function (cur) { cur.forEach(function (p) { if (codes.indexOf(p.code) > -1 && PR.isOn(p) !== on) { p.active = on; n++; } }); if (!n) return false; },
+    n === 1 && codes.length === 1 ? (byCode(codes[0]).name + ' is now ' + (on ? 'active' : 'inactive') + '.') : n + ' products marked ' + (on ? 'active' : 'inactive') + '.', function () { st.sel = {}; });
+}
+
+/* ---------- delete ---------- */
+function askDelete(codes) {
+  var ps = codes.map(byCode).filter(Boolean); if (!ps.length) return;
+  var one = ps.length === 1;
+  DP.dialog({ title: one ? 'Delete product?' : 'Delete ' + ps.length + ' products?', cls: 'dp-small',
+    html: '<p style="margin:2px 0 14px">' + (one ? '<b>' + esc(ps[0].name) + '</b> (' + esc(ps[0].code) + ') will be removed from the catalogue and its pictures deleted.' : 'The selected products will be removed from the catalogue and their pictures deleted.') + ' Old bills and past deliveries are not changed. This cannot be undone.</p><div class="msg" id="dErr" style="margin-bottom:10px"></div><div class="btn-group"><button class="btn btn-secondary a-btn" data-x2 type="button">Keep</button><button class="btn a-btn" id="dOk" type="button" style="background:var(--danger)">Delete</button></div>',
+    onOpen: function (api) {
+      api.q('[data-x2]').onclick = function () { api.close(); };
+      api.q('#dOk').onclick = function () {
+        var btn = this; DP.setBusy(api, btn, true, 'Deleting...');
+        PR.save(PR.load().filter(function (p) { return codes.indexOf(p.code) < 0; })).then(function (res) {
+          DP.setBusy(api, btn, false);
+          if (!res.ok) { var m = api.q('#dErr'); m.textContent = res.error; m.className = 'msg'; return; }
+          Promise.all(ps.map(PR.dropAll)); st.sel = {}; L = PR.load(); api.close(); render();
+          toast(one ? ps[0].name + ' deleted.' : ps.length + ' products deleted.');
+        });
+      };
+    } });
+}
+
+/* ---------- header menu ---------- */
+function sample() {
+  function q(v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  var rows = [['Code', 'Product Name', 'Category', 'Unit', 'Price'], ['P0001', 'GM TOMATO SAUCE 1LTR', 'Sauce', 'l', '40'], ['P0002', 'GM MIXED FRUIT JAM 500G', 'Jam', 'g', '85'], ['P0003', 'GM PICKLE 200G', 'Pickle', 'g', '30']];
+  var blob = new Blob(['﻿' + rows.map(function (r) { return r.map(q).join(','); }).join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'products-sample.csv'; document.body.appendChild(a); a.click(); a.remove();
+}
+$('pMore').onclick = function () {
+  DP.menu(this, [{ label: 'Download sample CSV', icon: 'download', run: sample }, 'hr', { label: 'Delete all products', icon: 'trash', danger: true, disabled: !L.length, run: function () { askDelete(L.map(function (p) { return p.code; })); } }]);
+};
+
+/* ---------- import ---------- */
+function csvParse(t) {
+  var rows = [], row = [], cur = '', q = false, i, ch; t = t.replace(/^﻿/, '');
+  for (i = 0; i < t.length; i++) { ch = t[i];
+    if (q) { if (ch === '"') { if (t[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ',' || ch === '\t') { row.push(cur.trim()); cur = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && t[i + 1] === '\n') i++; row.push(cur.trim()); cur = ''; if (row.some(Boolean)) rows.push(row); row = []; }
+    else cur += ch; }
+  row.push(cur.trim()); if (row.some(Boolean)) rows.push(row); return rows;
+}
+function numOf(v) { var n = parseFloat(String(v).replace(/[^\d.\-]/g, '')); return isNaN(n) || n < 0 ? '' : n; }
+function taxOf(v) { v = String(v || '').trim(); if (!v) return ''; if (/exempt/i.test(v)) return '0'; var m = /(\d+(?:\.\d+)?)\s*%/.exec(v) || /^(\d+(?:\.\d+)?)$/.exec(v); return m && PR.TAX.indexOf(m[1]) > -1 ? m[1] : ''; }
+function readProducts(rows) {
+  var hi = -1, H = {}, i;
+  var NAME = /^(product name|product|item name|item|items|description|particulars|name|product description)$/, CODE = /^(code|item code|product code|sku|part no|s\.?\s?code)$/, PRICE = /^(price|rate|mrp|selling price|sale rate|sales rate|unit price|retail price|s\.?\s?rate)$/, CAT = /^(category|item group|group|product category)$/, UNIT = /^(unit|uom|pack|pack size|main unit)$/, COST = /^(purchase price|purc rate|purchase rate|cost|cost price)$/, TAXC = /^(tax rate|gst|gst-sale|gst sale|gst %|tax %)$/, HSNC = /^(hsn|hsn\/sac|hsn code|sac)$/, ALIAS = /^alias$/, PNAME = /^print name$/, MRPC = /^(mrp|m\.r\.p\.?|mrp rate)$/, SUBU = /^sub unit$/, RATIO = /^ratio$/, OQ = /^(open qty|opening qty|opening stock)$/, OV = /^(open val|opening value)$/, AVG = /^avg sales$/, BATCH = /^batch$/;
+  for (i = 0; i < Math.min(rows.length, 15) && hi < 0; i++) {
+    var h = rows[i].map(function (c) { return String(c).trim().toLowerCase(); });
+    if (h.some(function (c) { return NAME.test(c); })) { hi = i; h.forEach(function (c, n) { if (c && H[c] == null) H[c] = n; }); }
+  }
+  if (hi < 0) throw new Error('No product column found. The file needs a column named Product or Item Name.');
+  function col(re) { for (var c in H) if (re.test(c)) return H[c]; return -1; }
+  var cn = col(NAME), cc = col(CODE), cp = col(PRICE), cg = col(CAT), cu = col(UNIT), cs = col(COST), ct = col(TAXC), ch = col(HSNC), ca = col(ALIAS), cpn = col(PNAME), cm = col(MRPC), csu = col(SUBU), cr = col(RATIO), coq = col(OQ), cov = col(OV), cav = col(AVG), cb = col(BATCH), out = [], skip = [], seen = {}, dup = 0;
+  function cell(r, c) { return c > -1 ? String(r[c] == null ? '' : r[c]).trim() : ''; }
+  rows.slice(hi + 1).forEach(function (r, n) {
+    var name = cell(r, cn).replace(/^\s*-\s*/, '').replace(/\s+/g, ' ').trim(); if (!name) { if (r.some(function (c) { return String(c).trim(); })) skip.push('Row ' + (hi + n + 2) + ': no product name'); return; }
+    var code = cell(r, cc), raw = cell(r, cp).replace(/[^\d.\-]/g, ''), pr = parseFloat(raw);
+    if (cp > -1 && raw && (isNaN(pr) || pr < 0)) { skip.push('Row ' + (hi + n + 2) + ' ' + name + ': price is not a number'); return; }
+    var x = { code: code, name: name, price: isNaN(pr) ? 0 : pr, category: cell(r, cg), unit: cell(r, cu), cost: parseFloat(cell(r, cs).replace(/[^\d.]/g, '')) || '', hsn: cell(r, ch).replace(/\D/g, ''), tax: taxOf(cell(r, ct)), alias: cell(r, ca), printName: cell(r, cpn) === name ? '' : cell(r, cpn), mrp: numOf(cell(r, cm)), subUnit: cell(r, csu), ratio: numOf(cell(r, cr)), openQty: numOf(cell(r, coq)), openVal: numOf(cell(r, cov)), avg: numOf(cell(r, cav)), batch: /^(yes|y|true|1)$/i.test(cell(r, cb)) }, key = code ? 'C:' + code.toUpperCase() : 'N:' + PR.nk(name);
+    if (seen[key] != null) { dup++; out[seen[key]] = x; return; }
+    seen[key] = out.length; out.push(x);
+  });
+  return { list: out, skip: skip, dup: dup };
+}
+function findP(cur, code, name) {
+  var i, k = PR.nk(name), c = String(code || '').trim().toUpperCase();
+  if (c) for (i = 0; i < cur.length; i++) if (String(cur[i].code).toUpperCase() === c) return cur[i];
+  if (k) for (i = 0; i < cur.length; i++) if (PR.nk(cur[i].name) === k) return cur[i];
+  return null;
+}
+$('pImp').onclick = function () {
+  DP.dialog({ title: 'Import products', sub: 'Upload a .xlsx or .csv with a Product (or Item Name) column. Code, Category (or Group), Unit, Sale Rate, MRP, Purchase Rate, HSN, GST, Alias, Print Name, Sub Unit, Ratio, Open Qty, Open Val, Avg Sales and Batch columns are used if present.', cls: 'dp-small',
+    html: '<div class="a-fg"><input class="a-file" type="file" id="xFile" accept=".xlsx,.csv,.txt" aria-label="Product file"></div><div class="msg" id="xMsg" style="margin-bottom:10px"></div><div id="xRes"></div><div class="btn-group"><button class="btn btn-secondary a-btn" data-x2 type="button">Close</button></div>',
+    onOpen: function (api) {
+      var say = function (m, ok) { var e = api.q('#xMsg'); e.textContent = m; e.className = m ? (ok ? 'msg ok' : 'msg') : ''; };
+      api.q('[data-x2]').onclick = function () { api.close(); };
+      api.q('#xFile').onchange = function () {
+        var f = this.files[0], inp = this; if (!f) return; say('Reading ' + f.name + '...', true); api.q('#xRes').innerHTML = '';
+        var fr = new FileReader(), isX = /\.xlsx$/i.test(f.name);
+        fr.onerror = function () { say('Could not read that file'); };
+        fr.onload = function () {
+          (isX ? XLSXLite.parse(fr.result) : Promise.resolve(csvParse(String(fr.result)))).then(function (rows) {
+            var o = readProducts(rows); if (!o.list.length) throw new Error('No products found in this file');
+            var add = 0, upd = 0, np = 0, cur = PR.load(); o.list.forEach(function (x) { if (findP(cur, x.code, x.name)) upd++; else add++; if (!x.price) np++; });
+            say('', true);
+            api.q('#xRes').innerHTML = '<p style="margin-bottom:8px"><b>' + o.list.length + '</b> products found.</p><ul class="mu" style="margin:0 0 12px 18px;line-height:1.7"><li><b>' + add + '</b> new</li><li><b>' + upd + '</b> already in the list (name and price updated)</li>' + (np ? '<li>' + np + ' without a price</li>' : '') + (o.dup ? '<li>' + o.dup + ' repeated in the file (last one used)</li>' : '') + '</ul>' +
+              (o.skip.length ? '<div class="mu" style="font-size:12px;max-height:120px;overflow:auto;margin-bottom:10px"><b>' + o.skip.length + ' rows skipped</b><br>' + o.skip.slice(0, 30).map(esc).join('<br>') + (o.skip.length > 30 ? '<br>and ' + (o.skip.length - 30) + ' more' : '') + '</div>' : '') +
+              '<button class="btn a-btn" id="xGo" type="button" style="margin-bottom:10px">Import ' + o.list.length + ' products</button>';
+            api.q('#xGo').onclick = function () {
+              var btn = this, a = 0, u = 0; DP.setBusy(api, btn, true, 'Importing...');
+              var c2 = PR.load();
+              o.list.forEach(function (x) {
+                var p = findP(c2, x.code, x.name);
+                if (p) { p.name = x.name; if (x.price || !p.price) p.price = x.price; if (x.code) p.code = x.code; if (x.category && !p.category) p.category = x.category; if (x.unit && !p.unit) p.unit = x.unit; if (x.cost !== '' && (p.cost === '' || p.cost == null)) p.cost = x.cost; if (x.hsn && !p.hsn) p.hsn = x.hsn; ['alias', 'printName', 'subUnit'].forEach(function (k) { if (x[k] && !p[k]) p[k] = x[k]; }); ['mrp', 'ratio', 'openQty', 'openVal', 'avg'].forEach(function (k) { if (x[k] !== '' && (p[k] === '' || p[k] == null || p[k] === 0)) p[k] = x[k]; }); if (x.batch) p.batch = true; if (x.tax !== '' && !p.tax) p.tax = x.tax; u++; }
+                else { c2.push({ id: PR.uid(), code: x.code || PR.nextCode(c2), name: x.name, price: x.price, category: x.category, unit: x.unit, cost: x.cost, hsn: x.hsn, tax: x.tax, alias: x.alias, printName: x.printName, mrp: x.mrp, subUnit: x.subUnit, ratio: x.ratio, openQty: x.openQty, openVal: x.openVal, avg: x.avg, batch: x.batch, active: true, at: Date.now() }); a++; }
+              });
+              PR.save(c2).then(function (res) {
+                DP.setBusy(api, btn, false); inp.value = '';
+                if (!res.ok) { say(res.error); return; }
+                L = PR.load(); st.pg = 1; api.close(); render(); toast('Done: ' + a + ' added, ' + u + ' updated' + (o.skip.length ? ', ' + o.skip.length + ' rows skipped' : '') + '.');
+              });
+            };
+          }).catch(function (er) { say(String(er && er.message || er)); inp.value = ''; });
+        };
+        if (isX) fr.readAsArrayBuffer(f); else fr.readAsText(f);
+      };
+    } });
+};
+
+window.addEventListener('gm-sync', function () { L = PR.load(); render(); });
+render(); flash();
+</script></body>
+</html>

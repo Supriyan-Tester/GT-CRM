@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script src="../shared/sync.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Add vehicle - General Traders Admin</title>
+<link rel="stylesheet" href="../shared/theme.css">
+<link rel="stylesheet" href="../shared/admin.css">
+<link rel="stylesheet" href="../shared/plan.css">
+<link rel="stylesheet" href="../shared/vehicles.css">
+<script src="../shared/theme.js"></script></head>
+<body>
+<script src="../shared/mock-data.js"></script>
+<script src="../shared/admin.js"></script>
+<script src="../shared/plan-core.js"></script>
+<script src="../shared/vehicles.js"></script>
+<script>
+GA.guard();
+var $ = function (i) { return document.getElementById(i); }, esc = GA.esc, editId = VX.qs('id'), date = VX.viewDate();
+var pg = GA.mount('vehicles.html', editId ? 'Edit vehicle' : 'Add vehicle', { back: ['vehicles.html', 'Vehicles'] });
+var old = editId ? VX.vehicle(editId) : null;
+var VTYPES = ['Pickup', 'Mini truck', 'Truck', 'Van', 'Car', 'Bike', 'Other'], BODIES = ['Open body', 'Closed body', 'Box body', 'Tipper', 'Passenger', 'Other'],
+  FUELS = ['Diesel', 'Petrol', 'CNG', 'Electric', 'Other'], TRANS = ['Manual', 'Automatic'], OWNERS = ['Company', 'Individual', 'Leased'];
+var STEPS = ['Basic information', 'Registration & documents', 'Initial details', 'Review & save'];
+var d = {}, files = {}, errs = {}, step = 0, saving = false;
+if (old) { d = Object.assign({}, old, { odo: old.lastKm }); } else { d = { status: 'active', ownerType: 'Company', transmission: 'Manual', odo: '' }; }
+if (!editId) d.code = '';
+
+function fld(k, label, o) {
+  o = o || {}; var v = d[k] == null ? '' : d[k], e = errs[k], idk = 'f_' + k, req = o.req ? ' <b aria-hidden="true">*</b>' : (o.opt ? ' <em>(optional)</em>' : '');
+  var ctl;
+  if (o.options) ctl = '<select id="' + idk + '" data-k="' + k + '"><option value="">Select</option>' + o.options.map(function (x) { var val = Array.isArray(x) ? x[0] : x, lb = Array.isArray(x) ? x[1] : x; return '<option value="' + esc(val) + '"' + (val === v ? ' selected' : '') + '>' + esc(lb) + '</option>'; }).join('') + '</select>';
+  else if (o.area) ctl = '<textarea id="' + idk + '" data-k="' + k + '" rows="3" maxlength="500">' + esc(v) + '</textarea>';
+  else ctl = '<input id="' + idk + '" data-k="' + k + '" type="' + (o.type || 'text') + '" value="' + esc(v) + '"' + (o.ph ? ' placeholder="' + esc(o.ph) + '"' : '') + (o.max ? ' max="' + o.max + '"' : '') + (o.type === 'number' ? ' min="0" step="any" inputmode="decimal"' : '') + (o.maxlength ? ' maxlength="' + o.maxlength + '"' : '') + (o.up ? ' style="text-transform:uppercase"' : '') + ' autocomplete="off">';
+  return '<div class="a-fg ' + (o.w || '') + '"><label for="' + idk + '">' + label + req + '</label><div class="field a-f"' + (o.area ? ' style="height:auto"' : '') + (e ? ' style="border-color:var(--danger)"' : '') + '>' + ctl + '</div>' + (e ? '<div class="vx-fe" id="e_' + k + '" role="alert">' + esc(e) + '</div>' : '') + '</div>';
+}
+function upl(kind, label, hint) {
+  var f = files[kind], m = old && old.files && old.files[kind], e = errs['file_' + kind];
+  return '<div class="vx-doc"><span class="chip ' + (f || m ? 'c-s' : 'c-a') + '">' + DP.icon('doc') + '</span><div><b>' + label + '</b><small>' + (f ? esc(f.name) + ' · ' + VX.num(f.size / 1024) + ' KB (will upload on save)' : m ? esc(m.name) + ' · already uploaded' : hint) + '</small>' + (e ? '<span class="vx-fe" role="alert">' + esc(e) + '</span>' : '') + '</div><div class="acts"><button type="button" class="btn btn-secondary a-btn" style="min-height:34px" data-up="' + kind + '">' + DP.icon('upload') + ' ' + (f || m ? 'Replace' : 'Choose') + '</button>' + (f ? '<button type="button" class="vx-ib d" data-rm="' + kind + '" aria-label="Clear ' + esc(label) + '">' + GA.icon('trash') + '</button>' : '') + '</div></div>';
+}
+function stepper() {
+  return '<nav class="card vx-steps" aria-label="Progress">' + STEPS.map(function (s, i) { return (i ? '<span class="vx-step-l"></span>' : '') + '<div class="vx-step' + (i === step ? ' on' : i < step ? ' done' : '') + '"' + (i === step ? ' aria-current="step"' : '') + '><i>' + (i < step ? '✓' : i + 1) + '</i><span>' + s + '</span></div>'; }).join('') + '</nav>';
+}
+function s1() {
+  var pv = files.photo ? '<img src="' + (files.photo._u || (files.photo._u = URL.createObjectURL(files.photo))) + '" alt="Selected vehicle photo" style="width:100%;height:100%;object-fit:cover">' : old && old.files && old.files.photo ? VX.photo(old, 'xl') : '<span class="vx-ph-i" style="display:grid;place-items:center;height:100%">' + GA.icon('truck') + '</span>';
+  return '<div class="vx-form">' + fld('number', 'Vehicle number', { req: 1, ph: 'TN43X1234', up: 1, maxlength: 20 }) + fld('code', 'Internal code', { req: 1, ph: editId ? '' : 'Leave blank to use ' + nextId(), up: 1, maxlength: 20 }) + fld('status', 'Status', { req: 1, options: [['active', 'Active'], ['inactive', 'Inactive'], ['repair', 'In service / repair']] }) +
+    fld('type', 'Model / name', { req: 1, ph: 'Tata Ace', w: 'w2', maxlength: 40 }) + fld('vtype', 'Vehicle type', { req: 1, options: VTYPES }) +
+    fld('body', 'Body type', { req: 1, options: BODIES }) + fld('fuel', 'Fuel type', { req: 1, options: FUELS }) + fld('transmission', 'Transmission', { req: 1, options: TRANS }) +
+    fld('color', 'Colour', { opt: 1, maxlength: 20 }) + '</div>' +
+    '<div class="vx-sect"><div><h3>Vehicle photo <em class="mu" style="font-weight:400;font-size:13px">(optional)</em></h3><small>JPG, PNG or WEBP, up to 5 MB.</small></div></div><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><span class="vx-ph xl" style="overflow:hidden">' + pv + '</span><div><button type="button" class="btn btn-secondary a-btn" data-up="photo">' + DP.icon('upload') + ' ' + (files.photo || (old && old.files && old.files.photo) ? 'Replace photo' : 'Upload photo') + '</button>' + (files.photo ? ' <button type="button" class="btn btn-secondary a-btn" data-rm="photo">Clear</button>' : '') + (errs.file_photo ? '<div class="vx-fe" role="alert">' + esc(errs.file_photo) + '</div>' : '') + '</div></div>';
+}
+function s2() {
+  var t = GA.today();
+  return '<div class="vx-form">' + fld('regDate', 'Registration date', { type: 'date', max: t, opt: 1 }) + fld('ownerType', 'Owner type', { options: OWNERS, opt: 1 }) + fld('owner', 'Owner name', { opt: 1, maxlength: 60 }) +
+    fld('rcNo', 'RC number', { opt: 1, up: 1, maxlength: 30 }) + fld('insNo', 'Insurance number', { opt: 1, up: 1, maxlength: 30 }) + fld('insExpiry', 'Insurance expiry', { type: 'date', opt: 1 }) +
+    fld('permitNo', 'Permit number', { opt: 1, up: 1, maxlength: 30 }) + fld('permitExpiry', 'Permit expiry', { type: 'date', opt: 1 }) + fld('fitExpiry', 'Fitness expiry', { type: 'date', opt: 1 }) + '</div>' +
+    '<div class="vx-sect"><div><h3>Documents <em class="mu" style="font-weight:400;font-size:13px">(optional)</em></h3><small>JPG, PNG, WEBP or PDF, up to 5 MB each. Files upload when you save.</small></div></div><div class="vx-docs">' + VX.DOCS.map(function (x) { return upl(x[0], x[1], x[2]); }).join('') + '</div>';
+}
+function s3() {
+  return '<div class="vx-form">' + fld('odo', editId ? 'Odometer (km)' : 'Current odometer (km)', { req: 1, type: 'number', ph: '0' }) + fld('purchaseDate', 'Purchase date', { type: 'date', max: GA.today(), opt: 1 }) + fld('purchaseAmount', 'Purchase amount (₹)', { type: 'number', opt: 1 }) + fld('note', 'Notes', { area: 1, opt: 1, w: 'w3' }) + '</div>' +
+    (editId ? '<div class="vx-note">Fuel, service and trip entries raise the odometer automatically. Change it here only to correct a wrong reading.</div>' : '');
+}
+function row(l, v) { return '<dt>' + l + '</dt><dd>' + (v === '' || v == null ? '<span class="mu" style="font-weight:400">-</span>' : esc(v)) + '</dd>'; }
+function s4() {
+  var st = VX.ST[d.status] || VX.ST.active, fl = Object.keys(files).map(function (k) { return k === 'photo' ? 'Photo' : (VX.DOCS.filter(function (x) { return x[0] === k; })[0] || [0, k])[1]; });
+  return '<div class="vx-cols"><section class="vx-panel vx-c6"><div class="vx-ph2"><h3>Basic information</h3><button type="button" class="btn btn-secondary a-btn" style="min-height:34px" data-goto="0">Edit</button></div><dl class="vx-review vx-body" style="margin:0">' + row('Vehicle number', (d.number || '').toUpperCase()) + row('Internal code', d.code || (editId ? '' : nextId())) + row('Status', st[0]) + row('Model / name', d.type) + row('Vehicle type', d.vtype) + row('Body type', d.body) + row('Fuel type', d.fuel) + row('Transmission', d.transmission) + row('Colour', d.color) + '</dl></section>' +
+    '<div class="vx-c6" style="grid-column:span 6;display:flex;flex-direction:column;gap:14px;min-width:0"><section class="vx-panel"><div class="vx-ph2"><h3>Registration</h3><button type="button" class="btn btn-secondary a-btn" style="min-height:34px" data-goto="1">Edit</button></div><dl class="vx-review vx-body" style="margin:0">' + row('Registration date', d.regDate ? VX.date(d.regDate) : '') + row('Owner', [d.ownerType, d.owner].filter(Boolean).join(' · ')) + row('RC number', d.rcNo) + row('Insurance', [d.insNo, d.insExpiry ? 'expires ' + VX.date(d.insExpiry) : ''].filter(Boolean).join(' · ')) + row('Permit', [d.permitNo, d.permitExpiry ? 'expires ' + VX.date(d.permitExpiry) : ''].filter(Boolean).join(' · ')) + row('Fitness expiry', d.fitExpiry ? VX.date(d.fitExpiry) : '') + row('Files to upload', fl.join(', ')) + '</dl></section>' +
+    '<section class="vx-panel"><div class="vx-ph2"><h3>Initial details</h3><button type="button" class="btn btn-secondary a-btn" style="min-height:34px" data-goto="2">Edit</button></div><dl class="vx-review vx-body" style="margin:0">' + row('Odometer', d.odo === '' ? '' : VX.num(d.odo) + ' km') + row('Purchase date', d.purchaseDate ? VX.date(d.purchaseDate) : '') + row('Purchase amount', d.purchaseAmount === '' || d.purchaseAmount == null ? '' : VX.money(d.purchaseAmount)) + row('Notes', d.note) + '</dl></section></div></div>';
+}
+function nextId() { var n = GA.vehicles().reduce(function (m, x) { return Math.max(m, parseInt(String(x.id).slice(1), 10) || 0); }, 0) + 1; return 'V' + String(n).padStart(3, '0'); }
+
+// Required fields apply to new vehicles; an older record that lacks them can still be edited and saved.
+function validate(s) {
+  var e = {}, R = function (k, m) { if (!String(d[k] == null ? '' : d[k]).trim() && (!editId || d[k] !== undefined && d[k] !== '' ? true : false)) e[k] = m; };
+  function req(k, m) { if (!String(d[k] == null ? '' : d[k]).trim() && !(editId && !(old && old[k]))) e[k] = m; }
+  if (s === 0) {
+    var n = String(d.number || '').trim().toUpperCase();
+    if (!n) e.number = 'Enter the vehicle number.'; else if (!/^[A-Z0-9 -]{4,20}$/.test(n)) e.number = 'Use letters and numbers only (4 to 20 characters).';
+    else if (VX.vehicles().some(function (v) { return v.id !== editId && v.number.toUpperCase().replace(/[\s-]/g, '') === n.replace(/[\s-]/g, ''); })) e.number = 'This vehicle number already exists.';
+    if (editId || String(d.code || '').trim()) { var c = VX.checkCode(d.code, editId); if (c && (String(d.code || '').trim() || !editId)) e.code = c; }
+    req('type', 'Enter the model or name.'); req('vtype', 'Choose the vehicle type.'); req('body', 'Choose the body type.'); req('fuel', 'Choose the fuel type.'); req('transmission', 'Choose the transmission.');
+    if (!d.status) e.status = 'Choose the status.';
+  }
+  if (s === 1) { if (d.regDate && d.regDate > GA.today()) e.regDate = 'Registration date cannot be in the future.'; }
+  if (s === 2) {
+    if (String(d.odo).trim() === '' || !(Number(d.odo) >= 0) || Number(d.odo) > 5000000) e.odo = 'Enter the odometer reading in km (0 or more).';
+    if (d.purchaseDate && d.purchaseDate > GA.today()) e.purchaseDate = 'Purchase date cannot be in the future.';
+    if (d.purchaseAmount !== '' && d.purchaseAmount != null && !(Number(d.purchaseAmount) >= 0)) e.purchaseAmount = 'Enter a valid amount.';
+  }
+  return e;
+}
+function render() {
+  var title = editId ? 'Edit vehicle' : 'Add vehicle';
+  if (editId && !old) { pg.innerHTML = '<div class="vx-head"><div>' + '<h2>Vehicle not found</h2></div></div>'; return; }
+  var back = editId ? VX.link('vehicle.html', editId, date) : 'vehicles.html';
+  var body = [s1, s2, s3, s4][step]();
+  pg.innerHTML = '<div class="vx-head"><div><p>' + (editId ? 'Update the details of ' + esc(old.number) + '.' : 'Enter the vehicle details in four short steps.') + '</p></div></div>' + stepper() +
+    '<section class="vx-panel"><div class="vx-ph2"><h3>Step ' + (step + 1) + ' of 4 · ' + STEPS[step] + '</h3></div><div class="vx-body" id="wBody">' + body + '<input type="file" id="wFile" hidden></div></section>' +
+    '<div class="vx-foot"><div>' + (step ? '<button type="button" class="btn btn-secondary" id="wBack">' + DP.icon('left') + ' Back</button>' : '<a class="btn btn-secondary" href="' + back + '">Cancel</a>') + '</div><div style="display:flex;gap:8px">' + (step < 3 ? '<button type="button" class="btn" id="wNext">Next ' + DP.icon('right') + '</button>' : '<button type="button" class="btn" id="wSave"' + (saving ? ' disabled' : '') + '>' + (saving ? 'Saving...' : editId ? 'Save changes' : 'Save vehicle') + '</button>') + '</div></div>';
+  document.title = title + ' - General Traders Admin';
+  var first = pg.querySelector('.vx-fe'); if (first) { var f = pg.querySelector('[data-k="' + first.id.slice(2) + '"]'); if (f && f.focus) f.focus(); }
+}
+function go(n) { step = n; errs = {}; render(); window.scrollTo(0, 0); }
+var pick = null;
+document.addEventListener('input', function (e) { var k = e.target.dataset && e.target.dataset.k; if (k) { d[k] = e.target.value; if (errs[k]) { delete errs[k]; var m = $('e_' + k); if (m) m.remove(); e.target.closest('.field').style.borderColor = ''; } } });
+document.addEventListener('change', function (e) {
+  var k = e.target.dataset && e.target.dataset.k; if (k && e.target.tagName === 'SELECT') { d[k] = e.target.value; if (errs[k]) { delete errs[k]; render(); } }
+  if (e.target.id === 'wFile') { var f = e.target.files[0]; if (!f || !pick) return; var m = VX.checkFile(f, pick); if (m) { errs['file_' + pick] = m; } else { delete errs['file_' + pick]; files[pick] = f; } render(); }
+});
+document.addEventListener('click', function (e) {
+  var up = e.target.closest('[data-up]'); if (up) { pick = up.dataset.up; var fi = $('wFile'); fi.value = ''; fi.accept = pick === 'photo' ? '.jpg,.jpeg,.png,.webp,image/*' : '.jpg,.jpeg,.png,.webp,.pdf,image/*,application/pdf'; fi.click(); return; }
+  var rm = e.target.closest('[data-rm]'); if (rm) { delete files[rm.dataset.rm]; render(); return; }
+  var g = e.target.closest('[data-goto]'); if (g) { go(+g.dataset.goto); return; }
+  if (e.target.closest('#wBack')) { go(step - 1); return; }
+  if (e.target.closest('#wNext')) { var er = validate(step); if (Object.keys(er).length) { errs = er; render(); return; } go(step + 1); return; }
+  if (e.target.closest('#wSave')) save();
+});
+document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.tagName === 'INPUT' && step < 3 && e.target.type !== 'file') { e.preventDefault(); $('wNext').click(); } });
+
+function save() {
+  if (saving) return;
+  for (var s = 0; s < 3; s++) { var er = validate(s); if (Object.keys(er).length) { errs = er; step = s; render(); DP.toast('Please fix the highlighted field.', 'err'); return; } }
+  saving = true; render();
+  var data = Object.assign({}, d, { number: String(d.number).trim(), lastKm: Number(d.odo), status: d.status });
+  if (!String(data.code || '').trim()) delete data.code;
+  var r = editId ? VX.update(editId, data) : VX.add(data);
+  if (!r.ok) { saving = false; errs = {}; if (/number/i.test(r.error)) { errs.number = r.error; step = 0; } DP.toast(r.error || 'Could not save.', 'err'); render(); return; }
+  var vid = r.vehicle.id, kinds = Object.keys(files), failed = [];
+  var chain = Promise.resolve();
+  kinds.forEach(function (k) { chain = chain.then(function () { return VX.upload(vid, k, files[k]).then(function (meta) { if (!VX.saveFileMeta(vid, k, meta)) throw new Error('could not be recorded'); }).catch(function (e) { failed.push((k === 'photo' ? 'Photo' : (VX.DOCS.filter(function (x) { return x[0] === k; })[0] || [0, k])[1]) + ' (' + (e.message || 'failed') + ')'); }); }); });
+  chain.then(function () {
+    if (!failed.length) { sessionStorage.setItem('vx-flash', (editId ? 'Vehicle updated.' : 'Vehicle ' + r.vehicle.number + ' added.')); location.href = VX.link('vehicle.html', vid, date) + '#overview'; return; }
+    // The vehicle itself is saved; only some files did not make it. Say so, and send the user to the Documents tab to retry.
+    saving = false;
+    DP.dialog({ title: 'Vehicle saved, but some files did not upload', html: '<p style="font-size:14px">' + esc(r.vehicle.number) + ' was saved. These files were not uploaded:</p><ul style="margin:8px 0 0 18px;font-size:14px">' + failed.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul><p class="mu" style="font-size:13px;margin-top:8px">You can upload them again from the vehicle\'s Documents tab.</p><div class="dp-foot"><button type="button" class="btn" data-ok>Open vehicle</button></div>', onOpen: function (api) { api.q('[data-ok]').onclick = function () { location.href = VX.link('vehicle.html', vid, date) + '#docs'; }; } });
+  });
+}
+render();
+</script></body>
+</html>

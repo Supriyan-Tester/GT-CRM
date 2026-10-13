@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script src="../shared/sync.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>General Traders - Admin</title>
+<link rel="stylesheet" href="../shared/theme.css">
+<link rel="stylesheet" href="../shared/admin.css">
+<script src="../shared/theme.js"></script>
+</head>
+<body>
+<script src="../shared/mock-data.js"></script>
+<script src="../shared/admin.js"></script>
+<script>
+GA.guard();
+var $ = function (i) { return document.getElementById(i); }, esc = GA.esc, R = GA.ops.rupee, NS = "gm_crm_data_v5__", recs = {}, online = null;
+// Reads every employee record from the server (not just the one chosen on Attendance)
+function load(cb) {
+  fetch("/api/state?since=0", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (r) {
+    recs = {}; for (var k in r.items) if (k.indexOf(NS) === 0 && r.items[k].v !== null) { try { recs[k.slice(NS.length)] = JSON.parse(r.items[k].v); } catch (e) {} }
+    online = true; cb();
+  }).catch(function () { online = false; cb(); });
+}
+function nameOf(id) { var w = GA.workers().filter(function (x) { return x.id === id; })[0]; return w ? w.name : (recs[id] && recs[id].worker && recs[id].worker.name) || id; }
+function ids() { var a = GA.workers().map(function (w) { return w.id; }); Object.keys(recs).forEach(function (i) { if (a.indexOf(i) < 0 && i !== "GT-W104") a.push(i); }); return a; }
+function logOf(id, d) { var l = recs[id] && recs[id].attendanceLog || {}; return (l[d.slice(0, 7)] || {})[+d.slice(8)] || null; }
+// Today's shops for one employee; empty unless the record belongs to today's plan
+function todayShops(id) { var r = recs[id], t = GA.today(); if (!r || !r.appliedPlan || r.appliedPlan.indexOf(t + ":") !== 0) return []; return (r.shops || []).map(function (s) { return Object.assign({ wid: id, worker: nameOf(id) }, s); }); }
+function todayReturns(id) { var r = recs[id], t = GA.today(); if (!r || !r.appliedPlan || r.appliedPlan.indexOf(t + ":") !== 0) return []; return (r.returns || []).map(function (x) { return Object.assign({ worker: nameOf(id) }, x); }); }
+function banner() { return online === false ? "<div class=\"a-warn\" style=\"margin:0 0 12px\">Server not reachable. Nothing is shown until it is back.</div>" : ""; }
+var date = GA.today(), who = "all", pg = GA.mount("summary.html", "Daily summary");
+var SB = { delivered: ["b-success", "Delivered"], pending: ["b-muted", "Pending"], retry: ["b-accent", "Retry later"], cancelled: ["b-danger", "Cancelled"] };
+var ST = { present: ["b-success", "Present"], late: ["b-accent", "Late"], absent: ["b-danger", "Absent"], leave: ["b-info", "On leave"], off: ["b-muted", "Day off"] };
+pg.innerHTML = "<div class=\"a-bar no-print\"><label class=\"mu\" for=\"dt\">Date</label><div class=\"field a-f\" style=\"width:auto\"><input type=\"date\" id=\"dt\" max=\"" + GA.today() + "\" value=\"" + date + "\"></div><label class=\"mu\" for=\"wk\">Employee</label><div class=\"field a-f\" style=\"width:210px\"><select id=\"wk\"></select></div><button class=\"btn btn-secondary a-btn\" id=\"pr\" data-act>Print</button></div><div id=\"out\"></div>";
+function fillWorkers() { var cur = $("wk").value || who; $("wk").innerHTML = "<option value=\"all\">All employees</option>" + ids().map(function (i) { return "<option value=\"" + esc(i) + "\">" + esc(nameOf(i)) + " (" + esc(GA.empCode(i)) + ")</option>"; }).join(""); $("wk").value = cur; who = $("wk").value || "all"; }
+function pick() { return who === "all" ? ids() : [who]; }
+// Time spent at each shop. Written by the employee app (visitLog in the employee's record): arrived -> delivered -> left.
+function dur(ms) { if (ms == null || isNaN(ms) || ms < 0) return "-"; var m = Math.round(ms / 60000); if (m < 1) return ms < 1000 ? "0 min" : "<1 min"; return m >= 60 ? Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0") + " min" : m + " min"; }
+function clk(ts) { return ts ? new Date(ts).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }) : "-"; }
+function visitsOf(ids, d) { var out = []; ids.forEach(function (i) { var day = recs[i] && recs[i].visitLog && recs[i].visitLog[d]; if (!day) return; Object.keys(day).forEach(function (k) { out.push(Object.assign({ wid: i, worker: nameOf(i) }, day[k])); }); }); return out.sort(function (a, b) { return (a.arrivedAt || a.doneAt || a.openedAt || 0) - (b.arrivedAt || b.doneAt || b.openedAt || 0); }); }
+function visitsHtml(L, isToday) {
+  var V = visitsOf(L, date), now = Date.now(), tot = 0, cnt = 0, big = null;
+  var rows = V.map(function (v) {
+    var live = v.arrivedAt && !v.closed && !v.doneAt, end = v.leftAt || v.doneAt || (live && isToday ? now : null);
+    var before = v.arrivedAt && v.doneAt ? v.doneAt - v.arrivedAt : (live && isToday ? now - v.arrivedAt : null), after = v.doneAt && v.leftAt ? v.leftAt - v.doneAt : null;
+    var total = v.arrivedAt && end ? end - v.arrivedAt : null;
+    if (total != null && !live) { tot += total; cnt++; if (!big || total > big.t) big = { t: total, n: v.shopName }; }
+    var oc = { delivered: ["b-success", "Delivered"], retry: ["b-accent", "Retry later"], cancelled: ["b-danger", "Cancelled"] }[v.outcome] || (live ? ["b-info", "At shop now"] : ["b-muted", "Open"]);
+    var how = v.arrivedAt ? (v.arriveHow === "gps" ? "GPS" : "Tapped") : "Not noted";
+    var left = v.leftAt ? clk(v.leftAt) + (v.leaveHow === "gps" ? " (GPS)" : " (tapped)") : (v.doneAt ? (isToday && !v.closed ? "Still there" : "Not noted") : "-");
+    return "<tr><td>" + esc(v.worker) + "</td><td><b>" + esc(v.shopName || "-") + "</b><div class=\"mu\">" + esc(v.billNo || "") + "</div></td><td>" + clk(v.arrivedAt) + "<div class=\"mu\">" + how + "</div></td><td>" + clk(v.doneAt) + "</td><td>" + left + "</td><td>" + dur(before) + "</td><td>" + dur(after) + "</td><td><b>" + dur(total) + "</b></td><td><span class=\"badge " + oc[0] + "\">" + oc[1] + "</span></td></tr>";
+  }).join("");
+  var sum = cnt ? "<p class=\"mu\" style=\"margin-bottom:10px\">" + cnt + " shop visit(s) timed · total <b>" + dur(tot) + "</b> · average <b>" + dur(tot / cnt) + "</b> per shop · longest: <b>" + esc(big.n) + "</b> (" + dur(big.t) + ")</p>" : "";
+  return "<div class=\"card\"><div class=\"card-title\">Time at shops</div>" + sum + "<div class=\"a-scroll\"><table class=\"a-table\"><thead><tr><th>Employee</th><th>Shop</th><th>Arrived</th><th>Delivered</th><th>Left</th><th>Before delivery</th><th>After delivery</th><th>Total at shop</th><th>Result</th></tr></thead><tbody>" +
+    (V.length ? rows : "<tr><td colspan=\"9\"><div class=\"a-empty\"><b>No shop timings for this day</b>They appear once the employee reaches a shop in the app.</div></td></tr>") + "</tbody></table></div><p class=\"mu\" style=\"margin-top:10px\">Arrived = GPS found the employee at the shop, or they tapped “I’ve reached”. Left = GPS saw them leave, or they tapped “I’ve left”. If neither happened, the time after delivery is shown as not noted.</p></div>";
+}
+function draw() {
+  var nice = new Date(date + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" }), L = pick(), isToday = date === GA.today(), h = banner();
+  var adv = GA.entries(who === "all" ? null : who, date.slice(0, 7)).filter(function (e) { return e.date === date; });
+  var feed = GA.notifs.list({ date: date });
+  var advHtml = adv.length ? "<div class=\"card\"><div class=\"card-title\">Advances and deductions entered</div>" + adv.map(function (e) { return "<p>" + esc(nameOf(e.workerId)) + " \u00b7 " + esc(e.title) + " \u00b7 <b>" + R(e.amount) + "</b> <span class=\"badge " + (e.type === "deduction" ? "b-danger" : "b-info") + "\">" + esc(e.type) + "</span></p>"; }).join("") + "</div>" : "";
+  var feedHtml = feed.length ? "<div class=\"card a-feed\"><div class=\"card-title\">Activity</div>" + feed.map(function (x) { var m = GA.notifs.meta(x.type); return "<div class=\"a-n\"><span class=\"chip c-" + m[1] + "\">" + GA.icon(m[0]) + "</span><div><b>" + esc(x.title) + "</b><span>" + esc(x.text) + "</span><small>" + new Date(x.ts).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) + "</small></div></div>"; }).join("") + "</div>" : "";
+  if (!isToday) {
+    var rows = L.map(function (i) { return [i, logOf(i, date)]; }).filter(function (x) { return x[1]; });
+    $("out").innerHTML = h + "<div class=\"hero a-hero\"><h2>" + esc(nice) + "</h2><p>" + rows.length + " worker(s) with a record</p></div><div class=\"card\"><div class=\"card-title\">Attendance</div><div class=\"a-scroll\"><table class=\"a-table\"><thead><tr><th>Employee</th><th>Status</th><th>In</th><th>Out</th><th>Hours</th><th>Km</th><th>Vehicle</th></tr></thead><tbody>" +
+      (rows.length ? rows.map(function (x) { var d = x[1], s = ST[d.status] || ["b-muted", d.status]; return "<tr><td><b>" + esc(nameOf(x[0])) + "</b></td><td><span class=\"badge " + s[0] + "\">" + s[1] + "</span></td><td>" + esc(d.inTime || "-") + "</td><td>" + esc(d.outTime || "-") + "</td><td>" + esc(d.hours || "-") + "</td><td>" + (d.km || 0) + "</td><td>" + esc(d.vehicle || "-") + "</td></tr>"; }).join("") : "<tr><td colspan=\"7\"><div class=\"a-empty\"><b>No record for this day</b>Nobody punched in.</div></td></tr>") +
+      "</tbody></table></div><p class=\"mu\" style=\"margin-top:10px\">Shop-by-shop details are only kept for the current day.</p></div>" + visitsHtml(L, false) + advHtml + feedHtml;
+    return;
+  }
+  var shops = [], rets = [], km = 0, started = 0;
+  L.forEach(function (i) { shops = shops.concat(todayShops(i)); rets = rets.concat(todayReturns(i)); var lg = logOf(i, date); if (lg) { started++; km += lg.km || 0; } });
+  var n = shops.length, c = function (s) { return shops.filter(function (x) { return x.status === s; }); }, del = c("delivered"), pct = n ? Math.round(del.length * 100 / n) : 0;
+  var billed = del.reduce(function (a, s) { return a + (Number(s.billAmount) || 0); }, 0), ded = rets.reduce(function (a, r) { return a + (Number(r.deductionAmount) || 0); }, 0);
+  var boxes = del.reduce(function (a, s) { return a + (Number(s.boxes) || 0); }, 0);
+  $("out").innerHTML = h + "<div class=\"hero a-hero\"><h2>" + esc(nice) + "</h2><p>" + (who === "all" ? "All employees" : esc(nameOf(who))) + " \u00b7 " + started + " punched in</p></div>" +
+    "<div class=\"a-stats\">" + GA.tile("s-s", "store", del.length + " of " + n, "Shops delivered") + GA.tile("s-a", "alert", c("cancelled").length + c("retry").length, "Not delivered") + GA.tile("s-i", "map", c("pending").length, "Still pending") + GA.tile("s-p", "coin", R(billed), "Bills delivered") + GA.tile("s-a", "trash", R(ded), "Return deductions") + GA.tile("s-i", "truck", km + " km", "Km driven") + "</div>" +
+    "<div class=\"card\"><div class=\"card-title\">Progress \u00b7 " + pct + "%</div><div class=\"a-prog\"><i style=\"width:" + pct + "%\"></i></div><p class=\"mu\" style=\"margin-top:10px\">" + boxes + " box(es) delivered</p></div>" +
+    "<div class=\"card\"><div class=\"card-title\">Shops</div><div class=\"a-scroll\"><table class=\"a-table\"><thead><tr><th>Employee</th><th>Shop</th><th>Bill</th><th>Boxes</th><th>Amount</th><th>Result</th><th>Time</th><th>Reason</th></tr></thead><tbody>" +
+    (n ? shops.map(function (s) { var b = SB[s.status] || SB.pending; return "<tr><td>" + esc(s.worker) + "</td><td><b>" + esc(s.name) + "</b></td><td>" + esc(s.billNo || "-") + "</td><td>" + esc(s.boxes) + "</td><td>" + R(s.billAmount) + "</td><td><span class=\"badge " + b[0] + "\">" + b[1] + "</span></td><td>" + esc(s.deliveredAt || s.cancelledAt || s.reportedAt || "-") + "</td><td>" + esc(s.problemReason || "-") + "</td></tr>"; }).join("") : "<tr><td colspan=\"8\"><div class=\"a-empty\"><b>No deliveries planned</b>Build today\u2019s list on the Daily plan page, then the employee opens the app.</div></td></tr>") + "</tbody></table></div></div>" +
+    "<div class=\"card\"><div class=\"card-title\">Returns</div><div class=\"a-scroll\"><table class=\"a-table\"><thead><tr><th>Employee</th><th>Shop</th><th>Item</th><th>Qty</th><th>Deduction</th><th>Reason</th><th>Time</th></tr></thead><tbody>" +
+    (rets.length ? rets.map(function (r) { return "<tr><td>" + esc(r.worker) + "</td><td><b>" + esc(r.shopName) + "</b></td><td>" + esc(r.productName) + "</td><td>" + esc(r.quantity) + "</td><td>" + R(r.deductionAmount) + "</td><td>" + esc(r.reason || "-") + "</td><td>" + esc(r.time || "-") + "</td></tr>"; }).join("") : "<tr><td colspan=\"7\"><div class=\"a-empty\"><b>No returns</b></div></td></tr>") + "</tbody></table></div></div>" + visitsHtml(L, true) + advHtml + feedHtml;
+}
+$("dt").onchange = function () { date = this.value || GA.today(); draw(); };
+$("wk").onchange = function () { who = this.value; draw(); };
+$("pr").onclick = function () { window.print(); };
+function refresh() { load(function () { fillWorkers(); draw(); }); }
+fillWorkers(); draw(); refresh(); setInterval(function () { if (date === GA.today()) refresh(); }, 5000);
+</script>
+
+</body>
+</html>

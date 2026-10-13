@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script src="../shared/sync.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Add product - General Traders Admin</title>
+<link rel="stylesheet" href="../shared/theme.css">
+<link rel="stylesheet" href="../shared/admin.css">
+<link rel="stylesheet" href="../shared/plan.css">
+<link rel="stylesheet" href="../shared/products.css">
+<script src="../shared/theme.js"></script></head>
+<body>
+<script src="../shared/mock-data.js"></script>
+<script src="../shared/admin.js"></script>
+<script src="../shared/plan-core.js"></script>
+<script src="../shared/products.js"></script>
+<script>
+GA.guard();
+var $ = function (i) { return document.getElementById(i); }, esc = GA.esc, editCode = PR.qs('code'), copyCode = PR.qs('copy'), L = PR.load();
+var src = copyCode ? L.filter(function (p) { return p.code === copyCode; })[0] : null;
+var orig = editCode ? L.filter(function (p) { return p.code === editCode; })[0] : null;
+var pg = GA.mount('products.html', editCode ? 'Edit product' : 'Add product', { back: ['products.html', 'Products'] });
+document.title = (editCode ? 'Edit product' : 'Add product') + ' - General Traders Admin';
+if (editCode && !orig) {
+  pg.innerHTML = '<div class="pr-panel"><div class="pr-empty"><b>Product not found</b>It may have been deleted on another screen.</div></div>';
+  throw new Error('stop');
+}
+var STEPS = [['Basic Information', 'Enter the product name, code and category.'], ['Pricing & Stock', 'Set the price and stock details.'], ['Category & Details', 'Provide more information about the product.'], ['Images', 'Upload product images (optional, up to ' + PR.MAXIMG + ').']];
+var d = orig ? JSON.parse(JSON.stringify(orig)) : { code: '', name: '', category: '', sub: '', unit: '', brand: '', desc: '', price: '', cost: '', stock: '', low: '', track: false, expTrack: false, hsn: '', barcode: '', expMonths: '', tax: '', weight: '', storage: '', active: true, alias: '', printName: '', mrp: '', subUnit: '', ratio: '', openQty: '', openVal: '', avg: '', batch: false };
+if (src) { d = JSON.parse(JSON.stringify(src)); d.code = ''; d.name = src.name + ' (copy)'; delete d.id; delete d.imgs; delete d.at; delete d.upd; }
+['price', 'cost', 'stock', 'low', 'expMonths', 'weight', 'mrp', 'ratio', 'openQty', 'openVal', 'avg'].forEach(function (k) { if (d[k] == null) d[k] = ''; });
+['alias', 'printName', 'subUnit', 'sub', 'brand', 'desc', 'hsn', 'barcode', 'tax', 'storage', 'category', 'unit'].forEach(function (k) { if (d[k] == null) d[k] = ''; });
+var step = 0, errs = {}, saving = false, dirty = false, pid = (orig && orig.id) || PR.uid(), nextC = PR.nextCode(L);
+var imgs = (orig && orig.imgs ? orig.imgs : []).map(function (m) { return { i: m.i, at: m.at, name: m.name, old: true }; }), removed = [];
+if (d.mrp === 0) d.mrp = '';
+if (!editCode) d.code = '';
+function mgnText() { var m = PR.margin(d); return m ? 'Margin: <b>' + PR.rupee(m.amt) + '</b> per unit (' + m.pct + '% on cost)' + (m.pct < PR.LOWM ? ' - low' : '') : 'Enter selling and purchase price to see the margin.'; }
+
+function fld(k, label, o) {
+  o = o || {}; var v = d[k] == null ? '' : d[k], e = errs[k], id = 'f_' + k, req = o.req ? ' <b aria-hidden="true">*</b>' : (o.opt ? ' <em>(Optional)</em>' : ''), ctl;
+  if (o.options) ctl = '<select id="' + id + '" data-k="' + k + '"><option value="">' + (o.ph || 'Select') + '</option>' + o.options.map(function (x) { return '<option value="' + esc(x) + '"' + (String(v) === String(x) ? ' selected' : '') + '>' + esc(x) + (o.fmt ? o.fmt : '') + '</option>'; }).join('') + '</select>';
+  else if (o.area) ctl = '<textarea id="' + id + '" data-k="' + k + '" maxlength="' + (o.max || 300) + '" placeholder="' + esc(o.ph || '') + '">' + esc(v) + '</textarea>';
+  else ctl = '<input id="' + id + '" data-k="' + k + '" type="' + (o.type || 'text') + '" value="' + esc(v) + '"' + (o.ph ? ' placeholder="' + esc(o.ph) + '"' : '') + (o.list ? ' list="' + id + 'L" autocomplete="off"' : '') + (o.type === 'number' ? ' min="0" step="any" inputmode="decimal"' : '') + (o.max ? ' maxlength="' + o.max + '"' : '') + (o.ro ? ' disabled' : '') + ' aria-invalid="' + (e ? 'true' : 'false') + '"' + (e ? ' aria-describedby="' + id + 'E"' : '') + '>' +
+    (o.list ? '<datalist id="' + id + 'L">' + o.list.map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>' : '') + (o.sfx ? '<span class="sfx">' + o.sfx + '</span>' : '');
+  return '<div class="a-fg ' + (o.w || '') + '"><label for="' + id + '">' + label + req + '</label><div class="field a-f"' + (o.area ? ' style="height:auto"' : '') + (e ? ' style="border-color:var(--danger)"' : '') + '>' + ctl + '</div>' + (e ? '<span class="pr-err" id="' + id + 'E" role="alert">' + esc(e) + '</span>' : '') + (o.area && o.cnt ? '<span class="pr-cnt" id="' + id + 'C">' + String(v).length + '/' + (o.max || 300) + '</span>' : '') + (o.extra || '') + '</div>';
+}
+function chk(k, label) { return '<label class="pr-chk"><input type="checkbox" data-k="' + k + '"' + (d[k] ? ' checked' : '') + '> ' + label + '</label>'; }
+function mainPv() {
+  var m = imgs[0]; return m ? '<img src="' + (m.url || '/api/pfile?p=' + encodeURIComponent(pid) + '&i=' + m.i + '&t=' + (m.at || 0)) + '" alt="Main product picture">' : DP.icon('box');
+}
+function s0() {
+  var cats = PR.cats(L), subs = PR.subs(L, d.category);
+  return '<div class="pr-sec"><h3>Basic Information</h3><small>Enter the product name, code and category.</small></div><div class="pr-cols"><div class="pr-form">' +
+    fld('code', 'Product Code', { req: 1, ph: editCode ? '' : nextC, max: 30 }) + fld('name', 'Product Name', { req: 1, ph: 'e.g. Mango Sauce', max: 80 }) +
+    fld('category', 'Category', { req: 1, list: cats, ph: cats.length ? 'Choose or type' : 'e.g. Sauce', max: 40 }) + fld('sub', 'Sub Category', { opt: 1, list: subs, max: 40 }) +
+    fld('unit', 'Unit', { req: 1, list: PR.UNITS, ph: 'e.g. 200 ml', max: 20 }) + fld('brand', 'Brand', { opt: 1, list: PR.brands(L), ph: 'General Traders', max: 40 }) +
+    fld('alias', 'Alias / Short name', { opt: 1, ph: 'Used when searching', max: 60 }) + fld('printName', 'Print name', { opt: 1, ph: 'Name shown on bills', max: 80 }) +
+    fld('desc', 'Description', { opt: 1, area: 1, cnt: 1, w: 'w2', ph: 'Short description of the product' }) + '</div>' +
+    '<div class="pr-photo"><div class="pv" id="pvMain">' + mainPv() + '</div><button class="btn btn-secondary a-btn" type="button" id="pvBtn">' + DP.icon('upload') + ' ' + (imgs.length ? 'Change image' : 'Add image') + '</button><small class="mu" style="display:block;margin-top:6px;font-size:12px">JPG, PNG or WEBP, up to 5 MB</small></div></div>';
+}
+function s1() {
+  return '<div class="pr-box"><div class="pr-sec"><h3>Pricing</h3><small>Set the MRP, selling price and cost (if you track it).</small></div><div class="pr-form">' +
+    fld('mrp', 'MRP (\u20b9)', { opt: 1, type: 'number', ph: '0' }) + fld('price', 'Selling Price (\u20b9)', { req: 1, type: 'number', ph: '0', extra: PR.loss(d) ? '<span class="pr-warn">Purchase price is higher than the selling price.</span>' : '' }) +
+    fld('cost', 'Purchase Price (\u20b9)', { opt: 1, type: 'number', ph: '0' }) + '<div class="a-fg"><label>Margin</label><div class="pr-mg" id="mgn">' + mgnText() + '</div></div></div></div>' +
+    '<div class="pr-box"><div class="pr-sec"><h3>Pack Sizes</h3><small>Optional. For example 1 box = 12 pcs.</small></div><div class="pr-form">' +
+    fld('subUnit', 'Sub Unit', { opt: 1, list: PR.UNITS, ph: 'e.g. pcs', max: 20 }) + fld('ratio', 'Ratio', { opt: 1, type: 'number', ph: '1', extra: '<span class="mu" style="font-size:12px;display:block;margin-top:4px">How many sub units in 1 main unit</span>' }) + '</div></div>' +
+    '<div class="pr-box"><div class="pr-sec"><h3>Stock Information</h3><small>Track current stock quantity and low stock alert.</small></div><div class="pr-form">' +
+    fld('stock', 'Current Stock', { type: 'number', ph: '0', opt: 1 }) + fld('low', 'Low Stock Alert', { type: 'number', ph: '0', opt: 1 }) +
+    fld('openQty', 'Opening Qty', { type: 'number', ph: '0', opt: 1 }) + fld('openVal', 'Opening Value (\u20b9)', { type: 'number', ph: '0', opt: 1 }) + fld('avg', 'Average Sales', { type: 'number', ph: '0', opt: 1 }) +
+    '<div class="a-fg w2">' + chk('track', 'Track stock for this product') + chk('expTrack', 'Set expiry date (if required)') + chk('batch', 'Batch tracked') +
+    '<small class="mu" style="font-size:12px;display:block;margin-top:6px">Stock, opening quantity and average sales are numbers you enter or import. Deliveries and bills do not change them automatically.</small></div></div></div>' +
+    '<div class="pr-box"><div class="pr-sec"><h3>Availability</h3><small>Inactive products are hidden when employees add items to a bill.</small></div>' + chk('active', 'Product is active') + '</div>';
+}
+function s2() {
+  return '<div class="pr-box"><div class="pr-sec"><h3>Additional Details</h3><small>Provide more information about the product.</small></div><div class="pr-form">' +
+    fld('hsn', 'HSN Code', { opt: 1, ph: '21039090', max: 8 }) + fld('barcode', 'Barcode', { opt: 1, ph: '8901234567890', max: 20 }) +
+    fld('expMonths', 'Expiry (Months)', { opt: 1, type: 'number', ph: '12' }) + fld('tax', 'Tax Rate (%)', { opt: 1, options: PR.TAX, ph: 'Select', fmt: '%' }) +
+    fld('weight', 'Weight', { opt: 1, type: 'number', ph: '0.25', sfx: 'kg' }) + fld('storage', 'Storage Info', { opt: 1, area: 1, max: 120, ph: 'Store in cool and dry place.' }) + '</div></div>';
+}
+function s3() {
+  var tiles = imgs.map(function (m, n) { return '<div class="pr-im"><img src="' + (m.url || '/api/pfile?p=' + encodeURIComponent(pid) + '&i=' + m.i + '&t=' + (m.at || 0)) + '" alt="Product picture ' + (n + 1) + '">' + (n === 0 ? '<span class="main">Main</span>' : '') + '<button type="button" class="rm" data-rm="' + n + '" aria-label="Remove picture ' + (n + 1) + '">' + DP.icon('x') + '</button></div>'; }).join('');
+  return '<div class="pr-sec"><h3>Product Images</h3><small>The first picture is shown in the product list.</small></div>' +
+    '<div class="pr-drop" id="pDrop"><span class="chip c-p">' + DP.icon('upload') + '</span><b>Upload product image</b><small>Drag and drop or click to browse. JPG, PNG or WEBP, up to 5 MB each.</small><button class="btn btn-secondary a-btn" type="button" id="pPick"' + (imgs.length >= PR.MAXIMG ? ' disabled' : '') + '>' + DP.icon('doc') + ' Choose File</button></div>' +
+    '<div class="msg" id="imgErr" style="margin-top:10px"></div><div class="pr-imgs">' + tiles + (imgs.length && imgs.length < PR.MAXIMG ? '<button type="button" class="pr-add" id="pPlus" aria-label="Add another picture">' + DP.icon('plus') + '</button>' : '') + '</div>' +
+    '<div class="pr-banner" id="saveErr" hidden role="alert"></div>';
+}
+var TIPS = [['Add product details', 'Keep your product information accurate for easy management.'], ['Set price and stock', 'Keep your price and stock up to date and get alerts when stock is low.'], ['Add important details', 'This information helps with billing, inventory and reporting.'], ['Add product images', 'A clear image helps employees identify the product easily.']];
+function side() {
+  return '<aside class="card pr-side" aria-label="Progress">' + STEPS.map(function (s, i) {
+    var cls = i === step ? ' on' : i < step ? ' done' : '';
+    return '<button type="button" class="pr-st' + cls + '" data-s="' + i + '"' + (i === step ? ' aria-current="step"' : '') + (i > step ? ' tabindex="-1" aria-disabled="true"' : '') + '><i>' + (i < step ? DP.icon('check') : i + 1) + '</i><span>' + s[0] + '</span></button>';
+  }).join('') + '<div class="pr-tip"><svg viewBox="0 0 96 96" fill="none" aria-hidden="true"><path d="M48 14l32 17v34L48 82 16 65V31z" fill="var(--t-primary)" stroke="var(--primary)" stroke-width="3" stroke-linejoin="round"/><path d="M16 31l32 17 32-17M48 48v34" stroke="var(--primary)" stroke-width="3" stroke-linejoin="round"/><circle cx="72" cy="70" r="14" fill="var(--primary)"/><path d="M72 63v14M65 70h14" stroke="var(--on-primary)" stroke-width="3" stroke-linecap="round"/></svg><b>' + TIPS[step][0] + '</b><small>' + TIPS[step][1] + '</small></div></aside>';
+}
+function draw() {
+  var body = [s0, s1, s2, s3][step]();
+  pg.innerHTML = '<div class="pr-crumb"><a href="products.html">Products</a> &rsaquo; ' + (editCode ? 'Edit Product' : 'Add Product') + '</div><div class="pr-wiz">' + side() +
+    '<section class="card pr-main"><div class="pr-mh"><div><p>' + (editCode ? 'Update this product.' : src ? 'Copied from ' + esc(src.name) + '. Give it a new code and name.' : 'Add a new product to your catalogue.') + '</p></div><a class="btn btn-secondary a-btn" href="products.html" id="pCancel">Cancel</a></div>' + body +
+    '<div class="pr-foot2">' + (step ? '<button class="btn btn-secondary a-btn" type="button" id="pBack">' + DP.icon('x').replace(/.*/, '') + '&lsaquo; Back</button>' : '<span></span>') +
+    (step < 3 ? '<button class="btn a-btn" type="button" id="pNext">Next &rarr;</button>' : '<button class="btn a-btn" type="button" id="pSave">' + (editCode ? 'Save changes' : 'Create Product') + ' &#10003;</button>') + '</div></section></div>';
+  bind();
+}
+function bind() {
+  [].forEach.call(pg.querySelectorAll('[data-k]'), function (el) {
+    var k = el.dataset.k;
+    var h = function () {
+      d[k] = el.type === 'checkbox' ? el.checked : el.value; dirty = true;
+      if (errs[k]) { delete errs[k]; var e = $('f_' + k + 'E'); if (e) e.remove(); el.parentNode.style.borderColor = ''; el.setAttribute('aria-invalid', 'false'); }
+      if (k === 'desc') $('f_descC').textContent = el.value.length + '/300';
+      if (k === 'category') { var dl = $('f_subL'); if (dl) dl.innerHTML = PR.subs(L, d.category).map(function (x) { return '<option value="' + esc(x) + '">'; }).join(''); }
+      if (k === 'price' || k === 'cost') { var mg = $('mgn'); if (mg) mg.innerHTML = mgnText(); var f = $('f_price'); if (f) { var w = f.parentNode.parentNode.querySelector('.pr-warn'); if (PR.loss(d) && !w) { w = document.createElement('span'); w.className = 'pr-warn'; w.textContent = 'Purchase price is higher than the selling price.'; f.parentNode.parentNode.appendChild(w); } else if (!PR.loss(d) && w) w.remove(); } }
+    };
+    el.addEventListener(el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input', h);
+  });
+  var nx = $('pNext'), bk = $('pBack'), sv = $('pSave');
+  if (nx) nx.onclick = function () { if (validate(step)) { step++; draw(); window.scrollTo(0, 0); } };
+  if (bk) bk.onclick = function () { step--; draw(); window.scrollTo(0, 0); };
+  if (sv) sv.onclick = save;
+  [].forEach.call(pg.querySelectorAll('.pr-st.done'), function (b) { b.onclick = function () { step = +b.dataset.s; draw(); }; });
+  var open = function () { pickFiles(); };
+  ['pvBtn', 'pPick', 'pPlus'].forEach(function (id) { if ($(id)) $(id).onclick = open; });
+  var dz = $('pDrop');
+  if (dz) { ['dragenter', 'dragover'].forEach(function (ev) { dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.add('hov'); }); }); ['dragleave', 'drop'].forEach(function (ev) { dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.remove('hov'); }); }); dz.addEventListener('drop', function (e) { addFiles([].slice.call(e.dataTransfer.files)); }); dz.addEventListener('click', function (e) { if (e.target === dz) pickFiles(); }); }
+  [].forEach.call(pg.querySelectorAll('[data-rm]'), function (b) { b.onclick = function () { var m = imgs.splice(+b.dataset.rm, 1)[0]; if (m.old) removed.push(m.i); else if (m.url) URL.revokeObjectURL(m.url); dirty = true; draw(); }; });
+  var first = pg.querySelector('[aria-invalid="true"]'); if (first && !first._f) { first._f = 1; first.focus(); }
+}
+
+/* ---------- pictures ---------- */
+function pickFiles() {
+  var f = document.createElement('input'); f.type = 'file'; f.accept = 'image/jpeg,image/png,image/webp'; f.multiple = true; f.style.display = 'none'; document.body.appendChild(f);
+  f.onchange = function () { addFiles([].slice.call(f.files)); f.remove(); }; f.click();
+}
+function freeSlot() {
+  var used = imgs.map(function (m) { return m.i; }), n;
+  for (n = 0; n < 6; n++) if (used.indexOf(n) < 0 && removed.indexOf(n) < 0) return n;
+  for (n = 0; n < 6; n++) if (used.indexOf(n) < 0) { removed.splice(removed.indexOf(n), 1); return n; }
+  return -1;
+}
+function addFiles(fs) {
+  var msg = '', single = step === 0;
+  fs.forEach(function (f) {
+    if (single && imgs.length >= PR.MAXIMG) return;
+    var er = PR.checkImg(f); if (er) { msg = f.name + ': ' + er; return; }
+    if (imgs.length >= PR.MAXIMG) { msg = 'You can add up to ' + PR.MAXIMG + ' pictures.'; return; }
+    var s = freeSlot(); if (s < 0) { msg = 'No free picture slot.'; return; }
+    var m = { i: s, file: f, url: URL.createObjectURL(f), name: f.name };
+    if (single) { imgs.unshift(m); } else imgs.push(m);
+  });
+  if (single && fs.length > 1) fs = fs.slice(0, 1);
+  dirty = true; draw(); if (msg && $('imgErr')) { $('imgErr').textContent = msg; $('imgErr').className = 'msg'; }
+}
+
+/* ---------- checks and save ---------- */
+function validate(s) { errs = PR.check(d, PR.load(), orig, s); if (PR.hasErr(errs)) { draw(); return false; } return true; }
+function num(v) { return v === '' || v == null ? '' : Math.round(Number(String(v).replace(/,/g, '')) * 1000) / 1000; }
+function bannerErr(m) { var b = $('saveErr'); if (b) { b.hidden = false; b.textContent = m; } else DP.toast(m, 'err'); }
+function save() {
+  if (saving) return;
+  for (var s = 0; s < 3; s++) { var e = PR.check(d, PR.load(), orig, s); if (PR.hasErr(e)) { errs = e; step = s; draw(); DP.toast('Please fix the highlighted fields.', 'err'); return; } }
+  saving = true; var btn = $('pSave'); btn.disabled = true; btn.textContent = 'Saving...';
+  var pending = imgs.filter(function (m) { return m.file; }), metas = {};
+  function fail(m) { saving = false; var b = $('pSave'); if (b) { b.disabled = false; b.innerHTML = (editCode ? 'Save changes' : 'Create Product') + ' &#10003;'; } bannerErr(m); }
+  pending.reduce(function (p, m) { return p.then(function () { return PR.upload(pid, m.i, m.file).then(function (r) { metas[m.i] = r; }); }); }, Promise.resolve()).then(function () {
+    var cur = PR.load(), key = orig ? orig.code : null;
+    var chk = PR.check(d, cur, cur.filter(function (p) { return p.code === key; })[0], 0);
+    if (PR.hasErr(chk)) { errs = chk; step = 0; saving = false; draw(); DP.toast('Please fix the highlighted fields.', 'err'); return; }
+    var rec = {
+      id: pid, code: d.code.trim(), name: d.name.trim().replace(/\s+/g, ' '), category: d.category.trim(), sub: d.sub.trim(), unit: d.unit.trim(), brand: d.brand.trim(), desc: d.desc.trim(),
+      price: num(d.price) || 0, cost: num(d.cost), stock: num(d.stock), low: num(d.low), track: !!d.track, expTrack: !!d.expTrack, hsn: String(d.hsn).trim(), barcode: String(d.barcode).trim(),
+      expMonths: num(d.expMonths), tax: d.tax, alias: d.alias.trim(), printName: d.printName.trim(), mrp: num(d.mrp), subUnit: d.subUnit.trim(), ratio: num(d.ratio), openQty: num(d.openQty), openVal: num(d.openVal), avg: num(d.avg), batch: !!d.batch, weight: num(d.weight), storage: d.storage.trim(), active: d.active !== false,
+      imgs: imgs.map(function (m) { return m.file ? { i: m.i, name: metas[m.i].name, size: metas[m.i].size, at: metas[m.i].at } : { i: m.i, name: m.name, at: m.at }; }), at: (orig && orig.at) || Date.now(), upd: Date.now()
+    };
+    var at = key ? cur.map(function (p) { return p.code; }).indexOf(key) : -1;
+    if (key && at < 0) { saving = false; fail('This product was deleted on another screen. Go back to the list.'); return; }
+    if (at > -1) cur[at] = Object.assign({}, cur[at], rec); else cur.push(rec);
+    return PR.save(cur).then(function (res) {
+      if (!res.ok) { fail(res.error); return; }
+      removed.forEach(function (sl) { PR.dropImg(pid, sl).catch(function () {}); });
+      dirty = false;
+      try { sessionStorage.setItem('pr_flash', rec.name + (editCode ? ' updated.' : ' added to your catalogue.') + (res.server === 'failed' ? ' (Server not reachable: kept on this computer and will be sent again.)' : '')); } catch (x) {}
+      location.href = 'products.html';
+    });
+  }).catch(function (er) { fail((er && er.message) || 'Could not save.'); });
+}
+window.addEventListener('beforeunload', function (e) { if (dirty && !saving) { e.preventDefault(); e.returnValue = ''; } });
+draw();
+</script></body>
+</html>

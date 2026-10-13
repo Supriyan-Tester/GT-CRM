@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script src="../shared/sync.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>General Traders - Admin</title>
+<link rel="stylesheet" href="../shared/theme.css">
+<link rel="stylesheet" href="../shared/admin.css">
+<link rel="stylesheet" href="../shared/customers.css">
+<link rel="stylesheet" href="../shared/customers-plus.css?v=7">
+<script src="../shared/theme.js"></script></head>
+<body>
+<script src="../shared/admin.js"></script>
+<script src="../shared/xlsx-lite.js"></script>
+<script>
+GA.guard();
+var O = GA.ops, S = O.get(), esc = GA.esc, tile = GA.tile;
+function $(i) { return document.getElementById(i); }
+function cust(c) { return O.cust(S, c); }
+function routeOf(c) { return O.routeOf(S, c); }
+function save() { O.save(S); }
+function routeOptions(sel, blank) { var v = sel.value; sel.innerHTML = (blank ? "<option value=\"\">No route</option>" : "") + S.routes.map(function (r) { return "<option value=\"" + r.id + "\">" + esc(r.name) + " (" + r.codes.length + ")</option>"; }).join(""); sel.value = v; }
+
+var pg = GA.mount('customers.html', 'Customers');
+/* GM CUSTOMERS PRODUCTION REDESIGN v1 */
+pg.innerHTML =
+'<section class="gtc-page" id="gtCustomersPage">' +
+  '<div class="gtc-head">' +
+    '<div class="gtc-head-copy"><p>Manage shops, customer information and delivery routes</p></div>' +
+    '<div class="gtc-head-actions">' +
+      '<div class="field a-f" data-act style="width:190px;height:38px"><input type="search" id="cSearch" placeholder="Search customer..." aria-label="Search customers, shops or phone numbers" autocomplete="off"></div>' +
+      '<button class="btn btn-secondary a-btn" id="demo" data-act>Load demo data</button>' +
+      '<button class="btn btn-secondary a-btn" id="imp" data-act>' + GA.icon('plus') + ' Import</button>' +
+      '<button class="btn btn-secondary a-btn" id="exp" data-act>Export</button>' +
+      '<button class="btn btn-secondary a-btn" id="shopLoc" data-act>Shop locations</button>' +
+      '<button class="btn a-btn" id="add" data-act>' + GA.icon('plus') + ' Add customer</button>' +
+    '</div>' +
+  '</div>' +
+
+  '<div class="gtc-stats" id="stats"></div>' +
+  '<div class="msg" id="xPageMsg" style="margin:0 0 12px"></div>' +
+
+  '<section class="gtc-toolbar card">' +
+    '<div class="gtc-filters">' +
+      '<div class="gtc-filter field a-f"><select id="cArea"><option value="">All areas</option></select></div>' +
+      '<div class="gtc-filter field a-f"><select id="cRoute"><option value="">All routes</option></select></div>' +
+      '<div class="gtc-filter field a-f"><select id="cSt"><option value="active">Active</option><option value="inactive">Inactive</option><option value="all">All status</option></select></div>' +
+      '<div class="gtc-filter field a-f"><select id="cPin"><option value="">All locations</option><option value="yes">Located</option><option value="no">Missing location</option></select></div>' +
+      '<div class="gtc-filter field a-f"><select id="cVisit"><option value="">Last visit</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="never">No visit recorded</option></select></div>' +
+      '<button class="gtc-clear" id="clearFilters" type="button">Clear filters</button>' +
+    '</div>' +
+  '</section>' +
+
+  '<section class="gtc-list-card card">' +
+    '<div class="gtc-list-head"><div><b>Customer list</b><span id="cCount" class="gtc-count"></span></div><div class="gtc-view-switch" role="group" aria-label="Customer view"><button class="on" type="button" data-view="list">List</button><button type="button" data-view="cards">Cards</button><button type="button" data-view="map">Map</button></div></div>' +
+    '<div id="cBulk"></div>' +
+    '<div id="cListView" class="gtc-list-view">' +
+      '<div class="a-scroll"><table class="a-table gtc-table"><thead><tr><th style="width:38px"><input type="checkbox" id="cAll" title="Select visible customers"></th><th>Customer</th><th>Phone</th><th>Area</th><th>Route</th><th>Address</th><th>Location</th><th>Status</th><th>Last visit</th><th class="gtc-actions-th"></th></tr></thead><tbody id="cBody"></tbody></table></div>' +
+    '</div>' +
+    '<div id="cCardsView" class="gtc-cards-view" hidden></div>' +
+    '<div id="cMapView" class="gtc-map-view" hidden><div id="gtcMapHost"></div></div>' +
+    '<div class="gtc-pager" id="cPager"></div>' +
+  '</section>' +
+
+  '<aside class="gtc-quick" id="gtcQuick" aria-hidden="true"><div class="gtc-quick-head"><div><span class="gtc-eyebrow">QUICK VIEW</span><h3 id="gtcQuickTitle">Customer</h3></div><button class="gtc-close" id="gtcQuickClose" type="button" aria-label="Close">\u00D7</button></div><div id="gtcQuickBody"></div></aside>' +
+  '<div class="gtc-scrim" id="gtcScrim"></div>' +
+
+  '<div class="modal-overlay a-c" id="mo"><div class="modal-sheet" id="mc"></div></div>' +
+  '<div class="gtc-detail-overlay" id="gtcDetail"><div class="gtc-detail" id="gtcDetailBody"></div></div>' +
+'</section>';
+function show(html) { $('mc').innerHTML = '<div class="modal-handle"></div>' + html; $('mo').classList.add('active'); }
+function closeM() { $('mo').classList.remove('active'); $('mc').innerHTML = ''; }
+$('mo').onclick = function (e) { if (e.target === this) closeM(); };
+function fg(label, id, val, extra) { return '<div class="a-fg"><label for="' + id + '">' + label + '</label><div class="field a-f"><input id="' + id + '" value="' + esc(val == null || val === false ? '' : String(val)) + '" ' + (extra || '') + '></div></div>'; }
+function err(m, ok) { var e = $('mm'); e.textContent = m; e.className = ok ? 'msg ok' : 'msg'; }
+function nextCode() { var m = 0; S.customers.forEach(function (c) { var x = /^C(\d+)$/i.exec(c.code); if (x) m = Math.max(m, +x[1]); }); return 'C' + String(m + 1).padStart(3, '0'); }
+function mapLink(la, lo) { return 'https://www.google.com/maps?q=' + encodeURIComponent(la + ',' + lo); }
+function parseGeo(t) {
+  t = String(t || '').trim(); if (!t) return { empty: true };
+  var m = /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/.exec(t) || /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/.exec(t) || /[?&](?:q|query|ll|destination)=(-?\d+(?:\.\d+)?)(?:,|%2C)\s*(-?\d+(?:\.\d+)?)/i.exec(t) || /^\(?\s*(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)\s*\)?$/.exec(t);
+  if (!m) return { bad: true };
+  var la = parseFloat(m[1]), lo = parseFloat(m[2]);
+  if (isNaN(la) || isNaN(lo) || Math.abs(la) > 90 || Math.abs(lo) > 180) return { bad: true };
+  return { lat: la, lng: lo };
+}
+function coords() { return parseGeo($('fGeo').value); }
+function viewLink() { var c = coords(), a = $('fView'); if (window.gcePrev) window.gcePrev(c); if (c.lat == null) { a.style.display = 'none'; return; } a.href = mapLink(c.lat, c.lng); a.style.display = 'inline-block'; }
+function geoCheck() { var c = coords(); viewLink(); if (c.bad) err('Not a valid pin. Paste it like: 10.807993, 76.841984'); else if (c.empty) err(''); else err('Pin accepted. Use the map link to check it.', true); }
+function setPos(la, lo) { $('fGeo').value = la.toFixed(6) + ', ' + lo.toFixed(6); viewLink(); $('fGeo').dispatchEvent(new Event('change', { bubbles: true })); }
+
+function gceF(label, id, val, extra, req) { return '<div class="gce-fg"><label for="' + id + '">' + label + (req ? ' <i>*</i>' : '') + '</label><div class="gce-in"><input id="' + id + '" value="' + esc(val == null || val === false ? '' : String(val)) + '" ' + (extra || '') + '></div></div>'; }
+window.gcePrev = function (k) {
+  var b = $('fMap'); if (!b) return;
+  if (!k || k.lat == null) { if (b.getAttribute('data-k')) { b.setAttribute('data-k', ''); b.innerHTML = '<div class="gce-map-ph">Pin not set yet.<br>Use "Find from address" or paste the pin below.</div>'; } return; }
+  var key = k.lat.toFixed(5) + ',' + k.lng.toFixed(5); if (b.getAttribute('data-k') === key) return; b.setAttribute('data-k', key);
+  b.innerHTML = '<iframe loading="lazy" title="Map" src="https://www.openstreetmap.org/export/embed.html?bbox=' + (k.lng - 0.004) + ',' + (k.lat - 0.003) + ',' + (k.lng + 0.004) + ',' + (k.lat + 0.003) + '&layer=mapnik&marker=' + k.lat + ',' + k.lng + '"></iframe>';
+};
+function form(c) {
+  var e = !!c, r = e && routeOf(c.code), off = e && !!c.inactive;
+  show('<div class="gce">' +
+    '<div class="gce-head"><div class="gce-hico"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9l1.5-5h13L20 9"/><path d="M4 9v11h16V9"/><path d="M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0A2.7 2.7 0 0 0 20 9"/><path d="M10 20v-5h4v5"/></svg></div><div class="gce-ht"><h3>' + (e ? 'Edit Customer' : 'Add Customer') + '</h3><p>' + (e ? 'Update customer information and delivery details' : 'Enter the shop details and delivery location') + '</p></div><button type="button" class="gce-x" id="no" aria-label="Close">&times;</button></div>' +
+    '<div class="gce-band"><div><span>Customer ID</span><b class="gce-id" id="fCode">' + (e ? esc(c.code) : 'Auto') + '</b></div><div><span>Current status</span><div class="gce-st"><i class="gce-dot"></i><select id="fSt"><option value="a"' + (off ? '' : ' selected') + '>Active</option><option value="i"' + (off ? ' selected' : '') + '>Inactive</option></select></div></div></div>' +
+    '<div class="gce-cols"><div class="gce-col">' +
+      '<section class="gce-card"><h4>Basic Information<small>Shop details and contact information</small></h4>' +
+        gceF('Shop name', 'fN', e && c.name, '', 1) +
+        '<div class="gce-two">' + gceF('Phone number', 'fP', e && c.phone, 'inputmode="tel"') + gceF('Alternate phone', 'fP2', e && c.phone2, 'inputmode="tel" placeholder="Alternate phone"') + '</div>' +
+        gceF('Area', 'fAr', e && c.area) +
+        '<div class="gce-fg"><label for="fA">Address</label><div class="gce-in"><textarea id="fA" rows="3">' + esc(e && c.address ? c.address : '') + '</textarea></div></div>' +
+        gceF('GST number', 'fGst', e && c.gstin, 'placeholder="Enter GST number"') +
+      '</section>' +
+    '</div><div class="gce-col">' +
+      '<section class="gce-card"><h4>Location<small>Set shop location on map</small></h4>' +
+        '<div class="gce-map" id="fMap" data-k=""><div class="gce-map-ph">Pin not set yet.<br>Use "Find from address" or paste the pin below.</div></div>' +
+        '<div class="gce-btns"><button class="gce-btn" id="fFind" type="button">Find from address</button><button class="gce-btn" id="fMe" type="button">Use my location</button></div>' +
+        gceF('Location pin (latitude, longitude)', 'fGeo', e && c.lat != null && c.lng != null ? c.lat + ', ' + c.lng : '', 'inputmode="text" autocomplete="off" placeholder="10.807993, 76.841984"') +
+        '<a class="gce-link" id="fView" href="#" target="_blank" rel="noopener" style="display:none">Open in Google Maps</a>' +
+        gceF('Location place (landmark or area)', 'fL', e && c.place, 'placeholder="Enter landmark or nearby area"') +
+      '</section>' +
+      '<section class="gce-card"><h4>Route<small>Delivery route for this shop</small></h4><div class="gce-fg"><label for="fR">Route</label><div class="gce-in"><select id="fR"></select></div></div></section>' +
+      '<section class="gce-card"><div id="fPhoto"></div></section>' +
+    '</div></div>' +
+    '<div class="gce-msg msg" id="mm"></div>' +
+    '<div class="gce-foot"><span></span><button class="gce-btn soft" id="fSave" type="button" disabled>Save Changes</button><button class="gce-btn pri" id="ok" type="button">Close</button></div>' +
+  '</div>');
+  routeOptions($('fR'), true); $('fR').value = r ? r.id : '';
+  if (window.gpFormPhoto) window.gpFormPhoto(c, $('fPhoto'));
+  $('fGeo').oninput = geoCheck; viewLink();
+  var FIDS = ['fN', 'fP', 'fP2', 'fAr', 'fA', 'fGst', 'fL', 'fGeo', 'fR', 'fSt'];
+  function snap() { return FIDS.map(function (i) { return $(i).value; }).join('\u0001'); }
+  var base = snap();
+  function dirty() { return snap() !== base; }
+  function sync() { var d = dirty(); $('fSave').disabled = !d; $('ok').textContent = d ? 'Cancel' : 'Close'; }
+  var gceBox = document.querySelector('.gce'); gceBox.addEventListener('input', sync); gceBox.addEventListener('change', sync);
+  $('ok').onclick = closeM;
+  $('no').onclick = function () { if (dirty() && !confirm('Discard your unsaved changes?')) return; closeM(); };
+  $('fFind').onclick = function () {
+    var q = [$('fL').value.trim(), $('fA').value.trim(), $('fAr').value.trim()].filter(Boolean).join(', ');
+    if (!q) { err('Enter an address or a place first'); return; }
+    if (coords().lat != null && !confirm('Replace the pin already entered?')) return;
+    err('Searching...', true);
+    fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q)).then(function (x) { return x.json(); }).then(function (d) {
+      if (!d.length) { err('No match found. Try a nearby landmark, or type the coordinates.'); return; }
+      setPos(parseFloat(d[0].lat), parseFloat(d[0].lon));
+      if (!$('fL').value.trim()) $('fL').value = String(d[0].display_name).split(',').slice(0, 2).join(',').trim(); $('fL').dispatchEvent(new Event('change', { bubbles: true }));
+      err('Location found. Check it on the map.', true);
+    }).catch(function () { err('Could not search (no internet?). Type the coordinates instead.'); });
+  };
+  $('fMe').onclick = function () {
+    if (!navigator.geolocation) { err('This browser cannot give your location'); return; }
+    err('Getting your location...', true);
+    navigator.geolocation.getCurrentPosition(function (p) { setPos(p.coords.latitude, p.coords.longitude); err('Location set from this device.', true); }, function () { err('Location was blocked. Allow it in the browser, or type the coordinates.'); }, { enableHighAccuracy: true, timeout: 10000 });
+  };
+  function doSave() {
+    var name = $('fN').value.trim(); if (!name) { err('Shop name is required'); return; }
+    var k = coords(); if (k.bad) { err('Location pin is not valid. Paste it like: 10.807993, 76.841984, or leave it empty'); return; }
+    var x = c, oldArea = c ? String(c.area || '') : '', before = c ? routeOf(c.code) : null, isNew = !x;
+    if (!x) { x = { code: nextCode() }; S.customers.push(x); }
+    x.name = name; x.area = $('fAr').value.trim(); x.address = $('fA').value.trim(); x.phone = $('fP').value.trim(); x.phone2 = $('fP2').value.trim(); x.gstin = $('fGst').value.trim().toUpperCase(); x.place = $('fL').value.trim();
+    x.lat = k.empty ? null : k.lat; x.lng = k.empty ? null : k.lng;
+    if ($('fSt').value === 'i') x.inactive = true; else delete x.inactive;
+    var rv = $('fR').value, follow = before && rv === before.id && oldArea && before.name.toLowerCase() === oldArea.toLowerCase() && x.area && x.area.toLowerCase() !== oldArea.toLowerCase();
+    if (follow) { O.assign(S, x.code, O.areaRoute(S, x.area).id); delete x.noRoute; }
+    else { O.assign(S, x.code, rv); if (rv) delete x.noRoute; else if (before) x.noRoute = true; }
+    O.syncRoutes(S); save(); areaOptions(); render();
+    c = x; base = snap(); sync(); $('fCode').textContent = x.code; if (window.gpFormPhoto) window.gpFormPhoto(c, $('fPhoto'));
+    err(isNew ? 'Customer added (' + x.code + ').' : 'Changes saved.', true);
+  }
+  $('fSave').onclick = doSave;
+}
+
+$('add').onclick = function () { form(null); };
+$('shopLoc').onclick = openShopLoc;
+function xmsg(m, ok) { var e = $('xMsg') || $('xPageMsg'); e.textContent = m; e.className = ok ? 'msg ok' : 'msg'; }
+function normKey(n) { return String(n || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+function plan_import(list) {
+  var idx = {}, seen = {};
+  S.customers.forEach(function (c) { var k = normKey(c.name); if (seen[k]) { seen[k]++; k += '#' + seen[k]; } else seen[k] = 1; idx[k] = c; });
+  function find(r) { var c = r.code ? (cust(r.code) || cust(String(r.code).toUpperCase())) : null; return c || idx[r.key] || null; }
+  var add = 0, upd = 0; list.forEach(function (r) { if (find(r)) upd++; else add++; });
+  return { idx: idx, find: find, add: add, upd: upd };
+}
+function geoOf(r) {
+  var la = String(r.rawLat || '').trim(), lo = String(r.rawLng || '').trim(), lk = String(r.rawLink || '').trim();
+  if (la && lo) return parseGeo(la + ', ' + lo);
+  if (lk) { if (/goo\.gl|maps\.app|bit\.ly/i.test(lk) && !/[@!=]/.test(lk)) return { short: true }; return parseGeo(lk); }
+  return { empty: true };
+}
+function apply_import(list, mkRoutes, repPins) {
+  var P = plan_import(list), pins = 0;
+  list.forEach(function (r) {
+    var c = P.find(r), isNew = !c, oldArea = isNew ? '' : String(c.area || '');
+    if (isNew) { c = { code: (r.code && String(r.code).trim() && !cust(String(r.code).trim())) ? String(r.code).trim() : nextCode() }; S.customers.push(c); c.address = ''; }
+    c.name = r.name; if (r.area || isNew) c.area = r.area; if (r.phone) c.phone = r.phone; else if (isNew) c.phone = '';
+    if (r.address && (isNew || !String(c.address || '').trim())) c.address = r.address;
+    if (r.phone2) c.phone2 = r.phone2; if (r.gstin) c.gstin = r.gstin; if (r.regn) c.regn = r.regn;
+    if (r.geo && r.geo.lat != null && (repPins || c.lat == null || c.lng == null)) { c.lat = r.geo.lat; c.lng = r.geo.lng; pins++; }
+    if (!isNew && r.area && oldArea && r.area.toLowerCase() !== oldArea.toLowerCase()) { var cr = routeOf(c.code); if (cr && cr.name.toLowerCase() === oldArea.toLowerCase()) O.assign(S, c.code, ''); }
+  });
+  var sr = O.syncRoutes(S);
+  save(); return { added: P.add, updated: P.upd, routes: sr.made, pins: pins };
+}
+function onXFile() {
+  var f = this.files[0], inp = this; if (!f) return;
+  xmsg('Reading ' + f.name + '...', true);
+  var fr = new FileReader(), isX = /\.xlsx$/i.test(f.name);
+  fr.onerror = function () { xmsg('Could not read that file'); };
+  fr.onload = function () {
+    (isX ? XLSXLite.parse(fr.result) : Promise.resolve(csvParse(String(fr.result)))).then(function (rows) {
+      if (XLSXLite.bill(rows)) return billShops(rows, f, inp);
+      var full = rows.slice(0, 15).some(function (r) { return r.some(function (c) { return /^ledger name$/i.test(String(c).trim()); }); });
+      if (!full) return pinOnly(rows, f, inp);
+      var o = XLSXLite.optech(rows), list = o.customers; if (!list.length) throw new Error('No customers found in this file');
+      var P = plan_import(list), ar = {}, locSkip = [], withPin = 0, hasPin = 0, hasCols = false;
+      list.forEach(function (r) {
+        if (r.area) ar[r.area] = 1;
+        var g = geoOf(r);
+        if (g.empty) return; hasCols = true;
+        if (g.short) { locSkip.push('Row ' + r.line + ' ' + r.name + ': short Google link cannot be read, paste the coordinates'); return; }
+        if (g.bad) { locSkip.push('Row ' + r.line + ' ' + r.name + ': location is not valid'); return; }
+        r.geo = g; withPin++;
+        var ex = P.find(r); if (ex && ex.lat != null && ex.lng != null) hasPin++;
+      });
+      var withPhone = list.filter(function (r) { return r.phone; }).length, withGst = list.filter(function (r) { return r.gstin; }).length;
+      xmsg('');
+      show('<div class="card-title">Import customers</div>' +
+        '<p style="margin-bottom:8px"><b>' + list.length + '</b> customers found in <b>' + esc(f.name) + '</b>.</p>' +
+        '<ul class="mu" style="margin:0 0 12px 18px;line-height:1.7"><li><b>' + P.add + '</b> new shops will be added</li><li><b>' + P.upd + '</b> shops already here will be updated</li><li>' + Object.keys(ar).length + ' areas (each area becomes a route), ' + withPhone + ' with a phone number, ' + withGst + ' with a GST number</li>' +
+        (hasCols ? '<li><b>' + withPin + '</b> shops have a map location in the file' + (hasPin ? ' (' + hasPin + ' of them already have a pin)' : '') + '</li>' : '<li>No location columns in this file, so no pins will change</li>') +
+        (o.skipped ? '<li>' + o.skipped + ' extra lines in the file were skipped</li>' : '') + '</ul>' +
+        (hasPin ? '<label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:10px"><input type="checkbox" id="xRep" style="margin-top:3px"><span>Replace the ' + hasPin + ' existing pins. Left unticked, they are kept.</span></label>' : '') +
+        (locSkip.length ? '<div class="mu" style="font-size:12px;max-height:130px;overflow:auto;margin-bottom:10px"><b>' + locSkip.length + ' locations skipped</b> (the shops themselves are still imported):<br>' + locSkip.slice(0, 30).map(esc).join('<br>') + (locSkip.length > 30 ? '<br>and ' + (locSkip.length - 30) + ' more' : '') + '</div>' : '') +
+        '<div class="msg" id="mm" style="margin-bottom:10px"></div><div class="btn-group"><button class="btn btn-secondary a-btn" id="no">Cancel</button><button class="btn a-btn" id="ok">Import ' + list.length + ' customers</button></div>');
+      $('no').onclick = function () { closeM(); inp.value = ''; };
+      $('ok').onclick = function () {
+        var r = apply_import(list, true, $('xRep') && $('xRep').checked); inp.value = ''; areaOptions(); refilter();
+        importDone('Done: ' + r.added + ' added, ' + r.updated + ' updated' + (hasCols ? ', ' + r.pins + ' pins saved' : '') + (r.routes ? ', ' + r.routes + ' routes created' : '') + (locSkip.length ? ', ' + locSkip.length + ' locations skipped' : '') + '.');
+      };
+    }).catch(function (e) { xmsg(String(e && e.message || e)); inp.value = ''; });
+  };
+  if (isX) fr.readAsArrayBuffer(f); else fr.readAsText(f);
+}
+function billShops(rows, f, inp) {
+  var B = XLSXLite.bill(rows), seen = {}, have = {}, add = [], known = 0;
+  S.customers.forEach(function (c) { have[normKey(c.name)] = 1; });
+  B.bills.forEach(function (b) { var k = normKey(b.party); if (seen[k]) return; seen[k] = 1; if (have[k]) known++; else add.push(b); });
+  xmsg('');
+  show('<div class="card-title">Daily bill</div>' +
+    '<p style="margin-bottom:8px"><b>' + B.bills.length + '</b> bills from <b>' + (known + add.length) + '</b> shops.</p>' +
+    '<ul class="mu" style="margin:0 0 12px 18px;line-height:1.7"><li>' + known + ' shops are already in Customers</li><li><b>' + add.length + '</b> new shops will be added' + (add.length ? ': ' + esc(add.slice(0, 5).map(function (b) { return b.party; }).join(', ')) + (add.length > 5 ? ' and ' + (add.length - 5) + ' more' : '') : '') + '</li></ul>' +
+    '<p class="mu" style="font-size:12px;margin-bottom:12px">To plan these bills, use Add plan on the Daily plan page.</p>' +
+    '<div class="msg" id="mm" style="margin-bottom:10px"></div><div class="btn-group"><button class="btn btn-secondary a-btn" id="no">Cancel</button><button class="btn a-btn" id="ok"' + (add.length ? '' : ' disabled') + '>Add ' + add.length + ' shops</button></div>');
+  $('no').onclick = function () { closeM(); inp.value = ''; };
+  $('ok').onclick = function () {
+    add.forEach(function (b) { S.customers.push({ code: nextCode(), name: b.party, address: '', phone: '', gstin: b.gstin || '' }); });
+    save(); inp.value = ''; areaOptions(); render(); importDone(add.length + ' new shops added from the bill.');
+  };
+}
+function pinOnly(rows, f, inp) {
+  var o = pinRows(rows), seen = {}, dup = 0, uniq = [];
+  o.good.forEach(function (x) { if (seen[x.c.code]) { dup++; seen[x.c.code].lat = x.lat; seen[x.c.code].lng = x.lng; } else { seen[x.c.code] = x; uniq.push(x); } });
+  var has = uniq.filter(function (x) { return x.c.lat != null && x.c.lng != null; }).length;
+  if (!uniq.length && !o.skip.length) throw new Error('The file has no rows');
+  xmsg('');
+  show('<div class="card-title">Add map pins</div><p style="margin-bottom:8px">This file has no Optech columns, so only map pins are added (no new shops). <b>' + uniq.length + '</b> shops have a usable location' + (o.skip.length ? ', <b>' + o.skip.length + '</b> rows will be skipped' : '') + '.</p>' +
+    '<ul class="mu" style="margin:0 0 10px 18px;line-height:1.7"><li>' + (uniq.length - has) + ' shops get a pin for the first time</li><li>' + has + ' shops already have a pin</li>' + (dup ? '<li>' + dup + ' shops appear twice, the last row is used</li>' : '') + '</ul>' +
+    (has ? '<label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:10px"><input type="checkbox" id="pRep" style="margin-top:3px"><span>Replace the ' + has + ' existing pins. Left unticked, they are kept.</span></label>' : '') +
+    (o.skip.length ? '<div class="mu" style="font-size:12px;max-height:150px;overflow:auto;margin-bottom:10px">' + o.skip.slice(0, 40).map(esc).join('<br>') + (o.skip.length > 40 ? '<br>and ' + (o.skip.length - 40) + ' more' : '') + '</div>' : '') +
+    '<div class="msg" id="mm" style="margin-bottom:10px"></div><div class="btn-group"><button class="btn btn-secondary a-btn" id="no">Cancel</button><button class="btn a-btn" id="ok"' + (uniq.length ? '' : ' disabled') + '>Add ' + uniq.length + ' pins</button></div>');
+  $('no').onclick = function () { closeM(); inp.value = ''; };
+  $('ok').onclick = function () {
+    var rep = $('pRep') && $('pRep').checked, n = 0;
+    uniq.forEach(function (x) { if (x.c.lat != null && x.c.lng != null && !rep) return; x.c.lat = x.lat; x.c.lng = x.lng; n++; });
+    save(); inp.value = ''; render(); importDone(n + ' map pins added' + (o.skip.length ? ', ' + o.skip.length + ' rows skipped.' : '.'));
+  };
+}
+function pmsg(m, ok) { xmsg(m, ok); }
+function mergeWorkerPins() {
+  // Employees save into gm_pins_v1_<their id> (the old shared gm_pins_v1 is read too). Everything is added to Customers once, then removed from there.
+  var n = 0, keys = [], i;
+  for (i = 0; i < localStorage.length; i++) { var kk = localStorage.key(i); if (kk === 'gm_pins_v1' || kk.indexOf('gm_pins_v1_') === 0) keys.push(kk); }
+  keys.forEach(function (sk) {
+    var P = {}; try { P = JSON.parse(localStorage.getItem(sk)) || {}; } catch (e) {}
+    var left = {}, touched = Object.keys(P).length;
+    Object.keys(P).forEach(function (k) {
+      var c = k.indexOf('N:') === 0 ? S.customers.filter(function (x) { return 'N:' + String(x.name).toUpperCase() === k; })[0] : cust(k);
+      if (!c) { left[k] = P[k]; return; }
+      var e = P[k], did = false;
+      if (typeof e.lat === 'number' && typeof e.lng === 'number' && (c.lat == null || c.lng == null)) { c.lat = e.lat; c.lng = e.lng; c.pinBy = e.by || 'worker'; did = true; }
+      if (e.phone && !c.phone) { c.phone = e.phone; did = true; }
+      if (e.address && !String(c.address || '').trim()) { c.address = e.address; did = true; }
+      if (did) n++;
+    });
+    if (touched) { try { if (Object.keys(left).length) localStorage.setItem(sk, JSON.stringify(left)); else localStorage.removeItem(sk); } catch (e) {} }
+  });
+  if (n) { save(); pmsg(n + ' shop' + (n > 1 ? 's were' : ' was') + ' updated with location, phone or address saved by employees.', true); }
+}
+function csvParse(t) {
+  var rows = [], row = [], cur = '', q = false, i, ch; t = t.replace(/^\uFEFF/, '');
+  for (i = 0; i < t.length; i++) { ch = t[i];
+    if (q) { if (ch === '"') { if (t[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ',' || ch === '\t') { row.push(cur.trim()); cur = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && t[i + 1] === '\n') i++; row.push(cur.trim()); cur = ''; if (row.some(Boolean)) rows.push(row); row = []; }
+    else cur += ch; }
+  row.push(cur.trim()); if (row.some(Boolean)) rows.push(row); return rows;
+}
+function pinRows(rows) {
+  var hi = -1, H = {}, i;
+  for (i = 0; i < Math.min(rows.length, 15) && hi < 0; i++) {
+    var h = rows[i].map(function (c) { return String(c).trim().toLowerCase(); });
+    if (h.some(function (c) { return /^(code|customer code|ledger name|shop|shop name|name|customer|customer name)$/.test(c); })) { hi = i; H = {}; h.forEach(function (c, k) { if (c && H[c] == null) H[c] = k; }); }
+  }
+  if (hi < 0) throw new Error('No shop column found. The file needs a column named Code, Ledger Name, Shop or Name.');
+  function col(names) { for (var k = 0; k < names.length; k++) if (H[names[k]] != null) return H[names[k]]; return -1; }
+  var cc = col(['code', 'customer code']), cn = col(['ledger name', 'shop name', 'shop', 'customer name', 'customer', 'name']);
+  var cla = col(['latitude', 'lat']), clo = col(['longitude', 'lng', 'long', 'lon']), cm = col(['map link', 'maplink', 'map', 'location', 'pin', 'link', 'google map', 'google maps']);
+  if ((cla < 0 || clo < 0) && cm < 0) throw new Error('No location column found. Add Latitude and Longitude columns, or one Map link column.');
+  var idxN = {}; S.customers.forEach(function (c) { var k = normKey(c.name); (idxN[k] = idxN[k] || []).push(c); });
+  var good = [], skip = [];
+  rows.slice(hi + 1).forEach(function (r, n) {
+    var ln = hi + n + 2, code = cc > -1 ? String(r[cc] || '').trim() : '', nm = cn > -1 ? String(r[cn] || '').replace(/^\s*-\s*/, '').trim() : '';
+    if (!code && !nm) return;
+    var label = nm || code, c = null;
+    if (code) c = cust(code) || cust(code.toUpperCase());
+    if (!c && nm) { var m = idxN[normKey(nm)] || []; if (m.length > 1) { skip.push('Row ' + ln + ' ' + label + ': name matches ' + m.length + ' shops, add the Code column'); return; } c = m[0]; }
+    if (!c) { skip.push('Row ' + ln + ' ' + label + ': shop not found in Customers'); return; }
+    var g = null, la = cla > -1 ? String(r[cla] == null ? '' : r[cla]).trim() : '', lo = clo > -1 ? String(r[clo] == null ? '' : r[clo]).trim() : '', lk = cm > -1 ? String(r[cm] || '').trim() : '';
+    if (la && lo) g = parseGeo(la + ', ' + lo); else if (lk) { if (/goo\.gl|maps\.app|bit\.ly/i.test(lk) && !/[@!=]/.test(lk)) { skip.push('Row ' + ln + ' ' + label + ': short Google link cannot be read, paste the coordinates instead'); return; } g = parseGeo(lk); }
+    if (!g || g.empty) { skip.push('Row ' + ln + ' ' + label + ': no location given'); return; }
+    if (g.bad) { skip.push('Row ' + ln + ' ' + label + ': location is not valid'); return; }
+    good.push({ c: c, lat: g.lat, lng: g.lng });
+  });
+  return { good: good, skip: skip };
+}
+function missingPins() { return S.customers.filter(function (c) { return c.lat == null || c.lng == null; }).sort(function (a, b) { return String(a.area || '~').localeCompare(String(b.area || '~')) || String(a.name).localeCompare(String(b.name)); }); }
+// Excel file of the shops that still have no map location, in the same layout as the Optech list plus Latitude, Longitude and Map Link.
+function balanceFile() {
+  var l = missingPins(); if (!l.length) return 0;
+  var rows = [['S.No', 'Code', 'Ledger Name', 'Area Name', 'Cell', 'Cell2', 'GSTIN', 'Latitude', 'Longitude', 'Map Link']].concat(l.map(function (c, i) { return [i + 1, c.code, c.name, c.area || '', c.phone || '', c.phone2 || '', c.gstin || '', null, null, c.mapLink || '']; }));
+  var help = [['How to fill this file'], ['1. Fill Latitude and Longitude (for example 10.807993 and 76.841984), or paste a Google Maps link in Map Link. In Google Maps, right-click the shop and click the numbers to copy them.'], ['2. Fill only the shops you know. Leave the others empty, they stay in the list for next time.'], ['3. Do not change Code or Ledger Name, and do not add new rows.'], ['4. Upload this file on the Customers page with Import customers. Shops are found by Code, so nothing is added twice and nothing else changes.'], ['5. Short links like maps.app.goo.gl cannot be read. Paste the coordinates instead.']];
+  var blob = XLSXLite.build([{ name: 'Shops without map', rows: rows, widths: [7, 9, 48, 20, 14, 14, 18, 14, 14, 40], fillCols: [7, 8, 9], filter: true }, { name: 'How to fill', rows: help, widths: [120], freeze: false, wrap: true }]);
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'shops-without-map-location-' + GA.today() + '.xlsx'; document.body.appendChild(a); a.click(); a.remove();
+  return l.length;
+}
+// After any upload: the Import pop-up shows the result, how many shops still need a location, and a button to get just those.
+function importDone(msg) {
+  var n = missingPins().length;
+  show('<div class="card-title">Import finished</div><p style="margin-bottom:12px">' + esc(msg) + '</p>' +
+    (n ? '<button class="btn a-btn" id="xBal" type="button">Download the ' + n + ' shops still without a map location (Excel)</button><p class="mu" style="font-size:12px;margin:6px 0 12px">Fill in what you know and import it again. Nothing is added twice.</p>' : '<p class="mu" style="margin-bottom:12px">&#10003; Every shop has a map location.</p>') +
+    '<div class="msg" id="mm" style="margin-bottom:10px"></div><div class="btn-group"><button class="btn btn-secondary a-btn" id="no">Close</button><button class="btn a-btn" id="again" type="button">Import another file</button></div>');
+  $('no').onclick = closeM; $('again').onclick = openImport;
+  if (n) $('xBal').onclick = function () { var k = balanceFile(); err(k + ' shops saved to the Excel file. Fill Latitude and Longitude, then upload it back with Import.', true); };
+}
+/* ---- Shop locations: download what is missing as Excel, or send those shops to an employee to fill in at the shop ---- */
+var PTK = 'gm_pintasks_v1', GF = { pin: true, phone: true, address: true }, GR = '', GW = [];
+function jlGet(k, d) { try { var r = JSON.parse(localStorage.getItem(k)); return r == null ? d : r; } catch (e) { return d; } }
+function needOf(c, f) { var n = []; if (f.pin && (c.lat == null || c.lng == null)) n.push('pin'); if (f.phone && !String(c.phone || '').trim()) n.push('phone'); if (f.address && !String(c.address || '').trim()) n.push('address'); return n; }
+function gapList(f, routeId) {
+  return S.customers.filter(function (c) {
+    if (c.inactive || !needOf(c, f).length) return false;
+    if (!routeId) return true;
+    var r = routeOf(c.code); return routeId === '__none' ? !r : (r && r.id === routeId);
+  }).sort(function (a, b) { return String(a.area || '~').localeCompare(String(b.area || '~')) || String(a.name).localeCompare(String(b.name)); });
+}
+function gapFile(list, f) {
+  var rows = [['S.No', 'Code', 'Ledger Name', 'Area Name', 'Address', 'Cell', 'Cell2', 'GSTIN', 'Latitude', 'Longitude', 'Map Link']].concat(list.map(function (c, i) {
+    return [i + 1, c.code, c.name, c.area || '', c.address || '', c.phone || '', c.phone2 || '', c.gstin || '', c.lat != null ? c.lat : null, c.lng != null ? c.lng : null, c.mapLink || ''];
+  }));
+  var fill = []; if (f.address) fill.push(4); if (f.phone) fill.push(5); if (f.pin) fill.push(8, 9, 10);
+  var help = [['How to fill this file'], ['1. Everything we already know is filled in. Fill only the yellow columns that are empty: Address, Cell (phone), Latitude and Longitude, or a Google Maps link in Map Link.'], ['2. Fill only the shops you know. Leave the others empty, they stay on the list for next time.'], ['3. Do not change Code or Ledger Name, and do not add new rows.'], ['4. Upload this file on the Customers page with Import. Shops are found by Code, so nothing is added twice. Details already saved in the app are never replaced by blanks.'], ['5. Short links like maps.app.goo.gl cannot be read. Paste the coordinates instead.']];
+  var blob = XLSXLite.build([{ name: 'Shop details to fill', rows: rows, widths: [7, 9, 44, 20, 38, 14, 14, 18, 13, 13, 36], fillCols: fill, filter: true }, { name: 'How to fill', rows: help, widths: [120], freeze: false, wrap: true }]);
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'shop-details-to-fill-' + GA.today() + '.xlsx'; document.body.appendChild(a); a.click(); a.remove();
+}
+function taskStats() {
+  var T = (jlGet(PTK, {}).tasks) || {}, sent = 0, fin = 0;
+  Object.keys(T).forEach(function (k) {
+    var t = T[k], c = cust(t.code); sent++;
+    var left = (t.need || []).filter(function (n) { return !c ? true : (n === 'pin' ? (c.lat == null || c.lng == null) : (n === 'phone' ? !String(c.phone || '').trim() : !String(c.address || '').trim())); });
+    if (!left.length) fin++;
+  });
+  return { sent: sent, fin: fin };
+}
+function openShopLoc() {
+  mergeWorkerPins();
+  var ws = GA.workers().filter(function (w) { return w.active !== false; });
+  function ro() { return '<option value="">All routes</option><option value="__none"' + (GR === '__none' ? ' selected' : '') + '>Shops with no route</option>' + S.routes.map(function (r) { return '<option value="' + esc(r.id) + '"' + (GR === r.id ? ' selected' : '') + '>' + esc(r.name) + ' (' + r.codes.length + ')</option>'; }).join(''); }
+  function chk(k, t) { return '<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-f="' + k + '"' + (GF[k] ? ' checked' : '') + '> ' + t + '</label>'; }
+  function draw() {
+    var l = gapList(GF, GR), st = taskStats(), n = l.length, anyF = GF.pin || GF.phone || GF.address;
+    show('<div class="card-title">Shop locations</div>' +
+      '<p class="mu" style="margin-bottom:10px">Find the shops that are missing details. Download them as Excel with everything you already know filled in, or send them to an employee who saves the missing details standing at the shop.</p>' +
+      '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px"><b>Missing:</b>' + chk('pin', 'Map location') + chk('phone', 'Phone number') + chk('address', 'Address') + '</div>' +
+      '<div class="a-fg"><label for="slRoute">Route</label><div class="field a-f"><select id="slRoute">' + ro() + '</select></div></div>' +
+      '<p style="margin:4px 0 12px"><b>' + n + '</b> shop' + (n === 1 ? '' : 's') + ' ' + (anyF ? 'need something' : 'selected (tick what to look for)') + '.</p>' +
+      '<button class="btn a-btn" id="slXls" type="button"' + (n ? '' : ' disabled') + '>Download Excel (' + n + ' shops)</button>' +
+      '<hr style="border:0;border-top:1px solid var(--border);margin:16px 0">' +
+      '<div class="a-fg"><label>Send these shops to (tick one or more employees)</label><div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">' + (ws.length ? ws.map(function (w) { return '<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-w="' + esc(w.id) + '"' + (GW.indexOf(w.id) > -1 ? ' checked' : '') + '> ' + esc(w.name) + '</label>'; }).join('') : '<span class="mu">No employees yet.</span>') + '</div></div>' +
+      '<button class="btn a-btn" id="slSend" type="button"' + (n ? '' : ' disabled') + '>Send ' + n + ' shops' + (GW.length ? ' to ' + GW.length + ' employee' + (GW.length > 1 ? 's' : '') : '') + '</button>' +
+      '<p class="mu" style="font-size:12px;margin:6px 0 0">Each employee sees them on the Home screen. When one employee saves a shop, it disappears from the other employees\' lists.</p>' +
+      (st.sent ? '<p style="margin:14px 0 0"><b>Already sent:</b> ' + st.sent + ' shops, ' + st.fin + ' saved by employees. <button class="btn btn-secondary a-btn" id="slClear" type="button" style="margin-left:6px">Clear finished</button></p>' : '') +
+      '<div class="msg" id="mm" style="margin:10px 0"></div><div class="btn-group"><button class="btn btn-secondary a-btn" id="no">Close</button></div>');
+    $('no').onclick = closeM;
+    [].forEach.call($('mc').querySelectorAll('[data-f]'), function (b) { b.onchange = function () { GF[b.getAttribute('data-f')] = b.checked; draw(); }; });
+    $('slRoute').onchange = function () { GR = this.value; draw(); };
+    [].forEach.call($('mc').querySelectorAll('[data-w]'), function (b) { b.onchange = function () { var id = b.getAttribute('data-w'), i = GW.indexOf(id); if (b.checked && i < 0) GW.push(id); if (!b.checked && i > -1) GW.splice(i, 1); draw(); }; });
+    $('slXls').onclick = function () { gapFile(l, GF); err(n + ' shops saved to the Excel file. Fill the yellow columns, then upload it back with Import.', true); };
+    $('slSend').onclick = function () {
+      var who = ws.filter(function (x) { return GW.indexOf(x.id) > -1; }); if (!who.length) { err('Tick at least one employee first.'); return; }
+      var names = who.map(function (x) { return x.name; }).join(', ');
+      if (n > 150 && !confirm('Send ' + n + ' shops to ' + names + '? That is a long list. Choosing a route first keeps it short.')) return;
+      var T = jlGet(PTK, {}); if (!T.tasks || typeof T.tasks !== 'object') T.tasks = {}; var ts = Date.now();
+      l.forEach(function (c) {
+        var old = T.tasks[c.code], to = old && old.to != null && old.to !== '' ? [].concat(old.to) : [];
+        who.forEach(function (x) { if (to.indexOf(x.id) < 0) to.push(x.id); });
+        T.tasks[c.code] = { code: c.code, name: c.name, area: c.area || '', address: c.address || '', phone: c.phone || '', need: needOf(c, GF), to: to, ts: ts };
+      });
+      try { localStorage.setItem(PTK, JSON.stringify(T)); } catch (e) { err('Could not save. Try again.'); return; }
+      draw(); err(n + ' shops sent to ' + names + '. They show on each employee\'s Home screen.', true);
+    };
+    if ($('slClear')) $('slClear').onclick = function () {
+      var T = jlGet(PTK, {}), keep = {};
+      Object.keys(T.tasks || {}).forEach(function (k) { var t = T.tasks[k], c = cust(t.code); var left = (t.need || []).filter(function (x) { return !c ? true : (x === 'pin' ? (c.lat == null || c.lng == null) : (x === 'phone' ? !String(c.phone || '').trim() : !String(c.address || '').trim())); }); if (left.length) keep[k] = t; });
+      T.tasks = keep; try { localStorage.setItem(PTK, JSON.stringify(T)); } catch (e) {} draw();
+    };
+  }
+  draw();
+}
+function onSample() {
+  function q(v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  var rows = [
+    ['Ledger Name', 'Area Name', 'Cell', 'Cell2', 'GSTIN', 'Latitude', 'Longitude', 'Map Link'],
+    ['SAMPLE SHOP ONE', 'Ukkadam', '9876543210', '', '', '10.807993', '76.841984', ''],
+    ['SAMPLE SHOP TWO', 'Annur', '9876543211', '9876543212', '33ABCDE1234F1Z5', '', '', 'https://www.google.com/maps/place/Shop/@11.016844,76.955832,17z'],
+    ['SAMPLE SHOP THREE', 'Pollachi', '', '', '', '', '', '']
+  ];
+  var blob = new Blob(['\uFEFF' + rows.map(function (r) { return r.map(q).join(','); }).join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'customers-sample.csv'; document.body.appendChild(a); a.click(); a.remove();
+  xmsg('Sample saved. Fill it in and choose it above.', true);
+}
+function openImport() {
+  show('<div class="card-title">Import customers</div>' +
+    '<div class="a-fg"><label for="xFile">Choose your file (.xlsx or .csv)</label><input class="a-file" type="file" id="xFile" accept=".xlsx,.csv,.txt"></div>' +
+    '<div class="a-fg"><button class="btn btn-secondary a-btn" id="sSample" type="button">Download sample CSV</button></div>' +
+    '<div class="msg" id="xMsg" style="margin-bottom:10px"></div><div class="btn-group"><button class="btn btn-secondary a-btn" id="no">Close</button></div>');
+  $('xFile').onchange = onXFile; $('sSample').onclick = onSample; $('no').onclick = closeM;
+}
+$('imp').onclick = openImport;
+$('demo').onclick = function () { if (S.customers.length && !confirm('Replace current data with demo data?')) return; S = O.demo(); render(); };
+function areaOptions() {
+  var sel = $('cArea'), v = sel.value, a = {}; S.customers.forEach(function (c) { if (c.area) a[c.area] = (a[c.area] || 0) + 1; });
+  sel.innerHTML = '<option value="">All areas</option>' + Object.keys(a).sort().map(function (k) { return '<option value="' + esc(k) + '">' + esc(k) + ' (' + a[k] + ')</option>'; }).join('');
+  sel.value = a[v] ? v : '';
+}
+var PG = 1, PS = 50, SEL = {};
+function refilter() { PG = 1; render(); }
+function delCustomer(c) {
+  if (!confirm('Delete ' + c.name + '? This cannot be undone.\nTo keep its history, choose Set inactive instead.')) return;
+  O.assign(S, c.code, ''); S.customers = S.customers.filter(function (x) { return x !== c; }); delete SEL[c.code];
+  save(); areaOptions(); render(); pmsg(c.name + ' deleted.', true);
+}
+function toggleActive(c) {
+  if (c.inactive) { delete c.inactive; pmsg(c.name + ' is active again.', true); }
+  else { c.inactive = true; pmsg(c.name + ' is now inactive. It will not appear in Daily plan.', true); }
+  save(); render();
+}
+function selCodes() { return Object.keys(SEL).filter(function (k) { return cust(k); }); }
+function bulkRoute(v) {
+  var codes = selCodes(), id = '', nm = 'No route'; if (!codes.length || !v) return;
+  if (v === '__new') { var n = (prompt('Name of the new route') || '').trim(); if (!n) { render(); return; } var rt = O.areaRoute(S, n); id = rt.id; nm = rt.name; }
+  else if (v !== '__none') { var r0 = S.routes.filter(function (x) { return x.id === v; })[0]; if (!r0) { render(); return; } id = r0.id; nm = r0.name; }
+  if (!confirm((id ? 'Move ' : 'Take ') + codes.length + ' shops ' + (id ? 'to the route ' + nm : 'off their routes') + '?')) { render(); return; }
+  codes.forEach(function (code) { O.assign(S, code, id); var c = cust(code); if (id) delete c.noRoute; else c.noRoute = true; });
+  SEL = {}; save(); render(); pmsg(codes.length + ' shops ' + (id ? 'moved to ' + nm : 'taken off their routes') + '.', true);
+}
+function bulkStatus() {
+  var codes = selCodes(), anyAct = codes.some(function (k) { return !cust(k).inactive; });
+  if (!confirm((anyAct ? 'Set ' + codes.length + ' shops inactive?' : 'Set ' + codes.length + ' shops active?'))) return;
+  codes.forEach(function (k) { if (anyAct) cust(k).inactive = true; else delete cust(k).inactive; });
+  SEL = {}; save(); render(); pmsg(codes.length + ' shops are now ' + (anyAct ? 'inactive' : 'active') + '.', true);
+}
+function bulkDelete() {
+  var codes = selCodes(); if (!codes.length) return;
+  if (!confirm('Delete ' + codes.length + ' shops? This cannot be undone.\nTo keep their history, choose Set inactive instead.')) return;
+  codes.forEach(function (k) { O.assign(S, k, ''); }); var gone = {}; codes.forEach(function (k) { gone[k] = 1; });
+  S.customers = S.customers.filter(function (x) { return !gone[x.code]; });
+  SEL = {}; save(); areaOptions(); render(); pmsg(codes.length + ' shops deleted.', true);
+}
+var WA = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.1-1.3A10 10 0 1 0 12 2zm5.2 13.9c-.2.6-1.300 1.200-1.800 1.200-.5.1-1 .2-3.300-.7-2.800-1.100-4.600-4-4.700-4.200-.1-.2-1.100-1.500-1.100-2.800s.7-2 1-2.300c.2-.3.500-.3.700-.3h.5c.2 0 .4 0 .6.500l.8 2c.1.200.1.400 0 .5l-.4.600c-.1.200-.3.300-.1.600.2.300.8 1.300 1.700 2.100 1.200 1 2.100 1.300 2.400 1.500.3.100.5.100.6-.1l.9-1c.2-.3.400-.2.600-.1l1.900.9c.3.100.5.200.5.300.1.200.1.800-.1 1.300z"/></svg>';
+function waLink(p) { var d = String(p || '').replace(/\D/g, ''); if (d.length === 10) d = '91' + d; return d.length >= 11 ? 'https://wa.me/' + d : ''; }
+function pal(t, n) { var h = 0; String(t).split('').forEach(function (ch) { h = (h * 31 + ch.charCodeAt(0)) % 997; }); return h % n; }
+function ini(n) { var w = String(n || '?').replace(/[^A-Za-z0-9 ]/g, '').trim().split(/\s+/); return ((w[0] || '?').charAt(0) + (w[1] ? w[1].charAt(0) : '')).toUpperCase(); }
+function fmtD(d) { if (!d) return '-'; var m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], p = d.split('-'); return +p[2] + ' ' + m[+p[1] - 1] + ' ' + p[0]; }
+function cut(n) { var d = new Date(); d.setDate(d.getDate() - n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function lastVisits() { var o = {}, t = GA.today(); Object.keys(S.plans || {}).forEach(function (d) { if (d > t) return; O.activePlansOn(S, d).forEach(function (p) { (p.stops || []).forEach(function (x) { if (!o[x.code] || o[x.code] < d) o[x.code] = d; }); }); }); return o; }
+function fillRt() { var s = $('cRt'), v = s.value; s.innerHTML = '<option value="">All routes</option><option value="__none">No route</option>' + S.routes.map(function (r) { return '<option value="' + esc(r.id) + '">' + esc(r.name) + '</option>'; }).join(''); s.value = v; }
+var CU_LIST = [];
+function qvClose() { $('qv').className = 'cu-drawer'; $('qv').innerHTML = ''; }
+function qvOpen(code) {
+  var c = cust(code); if (!c) return; var r = routeOf(code), pin = c.lat != null && c.lng != null, lv = lastVisits()[code], w = waLink(c.phone);
+  function kv(k, v) { return '<div class="cu-kv"><span>' + k + '</span><b>' + (v || '-') + '</b></div>'; }
+  $('qv').innerHTML = '<div class="cu-dr-bg" id="qvBg"></div><aside class="cu-dr"><div class="cu-dr-h"><span class="cu-av cu-a' + pal(c.name, 6) + '">' + esc(ini(c.name)) + '</span><div><b>' + esc(c.name) + '</b><small>ID: ' + esc(c.code) + '</small></div><span class="cu-st ' + (c.inactive ? 'off' : 'on') + '">' + (c.inactive ? 'Inactive' : 'Active') + '</span><button class="a-ib" id="qvX" title="Close">' + GA.icon('x') + '</button></div>' +
+    '<h4>Basic information</h4>' + kv('Shop name', esc(c.name)) + kv('Phone', c.phone ? esc(c.phone) + (w ? ' <a class="cu-wa" target="_blank" rel="noopener" href="' + w + '">' + WA + '</a>' : '') : '') + kv('Alternate phone', esc(c.phone2 || '')) + kv('GST', esc(c.gstin || '')) +
+    '<h4>Route</h4>' + kv('Area', esc(c.area || '')) + kv('Route', r ? esc(r.name) : '') + kv('Last visit', fmtD(lv) === '-' ? '' : fmtD(lv)) +
+    '<h4>Address</h4><p class="mu" style="font-size:13px">' + esc(c.address || '-') + '</p>' +
+    '<h4>Location</h4>' + kv('Status', '<span class="cu-loc ' + (pin ? 'ok' : 'no') + '">' + (pin ? 'Located' : 'Missing') + '</span>') + (pin ? kv('Latitude', c.lat.toFixed(6)) + kv('Longitude', c.lng.toFixed(6)) + '<p style="margin-top:10px"><a class="link" target="_blank" rel="noopener" style="color:var(--primary);font-weight:600" href="' + mapLink(c.lat, c.lng) + '">Open in Maps</a></p>' : '') +
+    '<div class="btn-group" style="margin-top:18px"><button class="btn btn-secondary a-btn" id="qvSt">' + (c.inactive ? 'Set active' : 'Set inactive') + '</button><button class="btn a-btn" id="qvEdit">Edit</button></div></aside>';
+  $('qv').className = 'cu-drawer open';
+  $('qvBg').onclick = qvClose; $('qvX').onclick = qvClose;
+  $('qvEdit').onclick = function () { qvClose(); form(c); }; $('qvSt').onclick = function () { qvClose(); toggleActive(c); };
+}
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') qvClose(); });
+function qvBind() { document.querySelectorAll('#cBody tr[data-open]').forEach(function (t) { t.onclick = function (e) { if (e.target.closest('input,button,a')) return; qvOpen(t.dataset.open); }; }); }
+$('exp').onclick = function () {
+  function q(v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  var lv = lastVisits(), rows = [['Code', 'Shop', 'Phone', 'Area', 'Route', 'Address', 'Latitude', 'Longitude', 'Status', 'Last visit']].concat(CU_LIST.map(function (c) { var r = routeOf(c.code); return [c.code, c.name, c.phone || '', c.area || '', r ? r.name : '', c.address || '', c.lat == null ? '' : c.lat, c.lng == null ? '' : c.lng, c.inactive ? 'Inactive' : 'Active', lv[c.code] || '']; }));
+  var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\uFEFF' + rows.map(function (r) { return r.map(q).join(','); }).join('\r\n')], { type: 'text/csv;charset=utf-8' })); a.download = 'customers-' + GA.today() + '.csv'; document.body.appendChild(a); a.click(); a.remove();
+};
+function mapLink(lat,lng) { return 'https://www.google.com/maps?q=' + encodeURIComponent(String(lat) + ',' + String(lng)); }
+function installCustomerBindings() {
+  $('cSearch').oninput = function(){PG=1;render();};
+  $('cArea').onchange = function(){PG=1;render();};
+  $('cRoute').onchange = function(){PG=1;render();};
+  $('cPin').onchange = function(){PG=1;render();};
+  $('cSt').onchange = function(){PG=1;render();};
+  $('cVisit').onchange = function(){PG=1;render();};
+  $('clearFilters').onclick = function(){ $('cSearch').value=''; $('cArea').value=''; $('cRoute').value=''; $('cPin').value=''; $('cSt').value='active'; $('cVisit').value=''; PG=1; render(); };
+}
+function handleCustomerDeepLink() {
+  if (window.__gtcDeepLinkHandled) return;
+  var p = new URLSearchParams(location.search), code = p.get('code'), edit = p.get('edit') === '1';
+  if (!code) return;
+  var c = cust(code); if (!c) return;
+  window.__gtcDeepLinkHandled = true;
+  setTimeout(function(){ openQuick(c); if(edit){ closeQuick(); form(c); } }, 60);
+}
+function routeMap() {
+  var m = {};
+  (S.routes || []).forEach(function (r) { (r.codes || []).forEach(function (code) { m[code] = r; }); });
+  return m;
+}
+function fmtLastVisit(c) {
+  var v = c.lastVisit || c.last_visit || c.lastVisitDate || c.last_visit_date || c.lastDelivery || c.last_delivery;
+  if (!v) return '\u2014';
+  var d = new Date(v); if (isNaN(d.getTime())) return esc(String(v));
+  return esc(d.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }));
+}
+function visitMatch(c, days) {
+  if (!days) return true;
+  var v = c.lastVisit || c.last_visit || c.lastVisitDate || c.last_visit_date || c.lastDelivery || c.last_delivery;
+  if (days === 'never') return !v;
+  if (!v) return false;
+  var d = new Date(v); if (isNaN(d.getTime())) return false;
+  return (Date.now() - d.getTime()) <= (+days * 86400000);
+}
+function hasPin(c) { return c && c.lat != null && c.lng != null && !isNaN(+c.lat) && !isNaN(+c.lng); }
+function routeFor(code, rm) { return (rm || routeMap())[code] || null; }
+function customerMatches(c, rm) {
+  var q = $('cSearch').value.trim().toLowerCase(), ar = $('cArea').value, rt = $('cRoute').value, pn = $('cPin').value, st = $('cSt').value, vi = $('cVisit').value;
+  var r = routeFor(c.code, rm), routeName = r ? r.name : '';
+  if (st === 'active' && c.inactive) return false;
+  if (st === 'inactive' && !c.inactive) return false;
+  if (ar && c.area !== ar) return false;
+  if (rt && (!r || r.id !== rt)) return false;
+  var pin = hasPin(c); if (pn === 'yes' && !pin) return false; if (pn === 'no' && pin) return false;
+  if (!visitMatch(c, vi)) return false;
+  if (!q) return true;
+  return [c.name,c.code,c.phone,c.phone2,c.area,c.address,c.gstin,routeName,c.place].join(' ').toLowerCase().indexOf(q) > -1;
+}
+function customerList() { var rm = routeMap(); return S.customers.filter(function (c) { return customerMatches(c, rm); }); }
+function openQuick(c) {
+  if (!c) return;
+  var r = routeFor(c.code), pin = hasPin(c);
+  $('gtcQuickTitle').textContent = c.name || 'Customer';
+  $('gtcQuickBody').innerHTML =
+    '<div class="gtc-q-id">ID: <b>' + esc(c.code || '') + '</b></div>' +
+    '<div class="gtc-q-status"><span class="gtc-status ' + (c.inactive ? 'off' : 'on') + '">' + (c.inactive ? 'Inactive' : 'Active') + '</span>' + (r ? '<span class="gtc-route-pill">' + esc(r.name) + '</span>' : '<span class="gtc-muted-pill">No route</span>') + '</div>' +
+    '<div class="gtc-q-grid">' +
+      qItem('Phone', c.phone) + qItem('Alternate phone', c.phone2) + qItem('Contact person', c.contactPerson || c.contact || '') + qItem('Customer type', c.customerType || c.type || '') +
+      qItem('Area', c.area) + qItem('Route', r ? r.name : 'No route') + qItem('Address', c.address) + qItem('Location', pin ? ((+c.lat).toFixed(6) + ', ' + (+c.lng).toFixed(6)) : (c.place || 'Missing')) +
+    '</div>' +
+    '<div class="gtc-q-map">' + (pin ? '<a class="btn btn-secondary a-btn" target="_blank" rel="noopener" href="' + mapLink(c.lat,c.lng) + '">Open in Maps</a>' : '<span class="gtc-muted">No stored coordinates for this customer.</span>') + '</div>' +
+    '<div class="gtc-q-actions"><button class="btn btn-secondary a-btn" id="gtcFull">View Full Details</button><button class="btn btn-secondary a-btn" id="gtcEdit">Edit</button></div>';
+  $('gtcQuick').classList.add('open'); $('gtcScrim').classList.add('show'); $('gtcQuick').setAttribute('aria-hidden','false');
+  $('gtcFull').onclick = function () { openDetails(c); };
+  $('gtcEdit').onclick = function () { closeQuick(); form(c); };
+}
+function qItem(label, value) { return '<div class="gtc-q-item"><span>' + label + '</span><b>' + (value ? esc(String(value)) : '\u2014') + '</b></div>'; }
+function closeQuick() { $('gtcQuick').classList.remove('open'); $('gtcScrim').classList.remove('show'); $('gtcQuick').setAttribute('aria-hidden','true'); }
+$('gtcQuickClose').onclick = closeQuick; $('gtcScrim').onclick = closeQuick;
+function openDetails(c) {
+  if (!c) return;
+  var r = routeFor(c.code), pin = hasPin(c);
+  $('gtcDetailBody').innerHTML =
+    '<div class="gtc-detail-top"><div><span class="gtc-eyebrow">CUSTOMER DETAILS</span><h2>' + esc(c.name || 'Customer') + '</h2><div class="gtc-detail-id">' + esc(c.code || '') + '</div></div><div class="gtc-detail-actions"><button class="btn btn-secondary a-btn" id="gtcDetailEdit">Edit customer</button><button class="gtc-close" id="gtcDetailClose" type="button">\u00D7</button></div></div>' +
+    '<div class="gtc-detail-tabs"><button class="on" data-tab="overview">Overview</button><button data-tab="route">Route & Location</button><button data-tab="payments">Payments</button><button data-tab="history">History & Activity</button><button data-tab="notes">Notes</button><button data-tab="attachments">Attachments</button></div>' +
+    '<div class="gtc-detail-panel" data-panel="overview"><div class="gtc-detail-grid">' + qItem('Phone',c.phone) + qItem('Alternate phone',c.phone2) + qItem('Contact person',c.contactPerson || c.contact) + qItem('Customer type',c.customerType || c.type) + qItem('Area',c.area) + qItem('Route',r ? r.name : 'No route') + qItem('Address',c.address) + qItem('GST number',c.gstin) + qItem('Status',c.inactive ? 'Inactive' : 'Active') + qItem('Last visit',fmtLastVisit(c)) + '</div></div>' +
+    '<div class="gtc-detail-panel" data-panel="route" hidden><div class="gtc-detail-grid">' + qItem('Route',r ? r.name : 'No route') + qItem('Location',c.place) + qItem('Latitude',pin ? c.lat : '') + qItem('Longitude',pin ? c.lng : '') + '</div><div class="gtc-map-note">' + (pin ? '<a class="btn btn-secondary a-btn" target="_blank" rel="noopener" href="' + mapLink(c.lat,c.lng) + '">Open stored location</a>' : 'No stored latitude/longitude. The page will not invent a location.') + '</div></div>' +
+    '<div class="gtc-detail-panel" data-panel="payments" hidden><div class="gtc-empty-detail">No customer payment records are exposed by the current Customers data model.</div></div>' +
+    '<div class="gtc-detail-panel" data-panel="history" hidden><div class="gtc-empty-detail">No customer activity history is exposed by the current Customers data model.</div></div>' +
+    '<div class="gtc-detail-panel" data-panel="notes" hidden><div class="gtc-empty-detail">No customer notes are stored in the current Customers data model.</div></div>' +
+    '<div class="gtc-detail-panel" data-panel="attachments" hidden><div class="gtc-empty-detail">No customer attachments are stored in the current Customers data model.</div></div>';
+  $('gtcDetail').classList.add('open');
+  $('gtcDetailClose').onclick = function () { $('gtcDetail').classList.remove('open'); };
+  $('gtcDetailEdit').onclick = function () { $('gtcDetail').classList.remove('open'); closeQuick(); form(c); };
+  document.querySelectorAll('.gtc-detail-tabs button').forEach(function (b) { b.onclick = function () { document.querySelectorAll('.gtc-detail-tabs button').forEach(function(x){x.classList.remove('on');}); document.querySelectorAll('.gtc-detail-panel').forEach(function(x){x.hidden=true;}); b.classList.add('on'); document.querySelector('.gtc-detail-panel[data-panel="'+b.dataset.tab+'"]').hidden=false; }; });
+}
+function exportCustomers() {
+  var rows = customerList();
+  var headers = ['Customer ID','Shop Name','Phone','Alternate Phone','Area','Route','Address','Location','Latitude','Longitude','Map Link','Status','Last Visit','GST'];
+  var rm = routeMap();
+  var out = [headers].concat(rows.map(function(c){ var r=routeFor(c.code,rm); return [c.code,c.name,c.phone,c.phone2,c.area,r?r.name:'',c.address,c.place,c.lat,c.lng,(c.lat!=null&&c.lng!=null?mapLink(c.lat,c.lng):''),c.inactive?'Inactive':'Active',c.lastVisit||c.last_visit||c.lastVisitDate||c.last_visit_date||'',c.gstin]; }));
+  var csv = out.map(function(row){ return row.map(function(v){ v = v == null ? '' : String(v); return '"' + v.replace(/"/g,'""') + '"'; }).join(','); }).join('\r\n');
+  var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'})); a.download='customers-export.csv'; document.body.appendChild(a); a.click(); a.remove();
+}
+$('exp').onclick = exportCustomers;
+function setupViewSwitch() {
+  document.querySelectorAll('.gtc-view-switch button').forEach(function(b){ b.onclick=function(){ var v=b.dataset.view; document.querySelectorAll('.gtc-view-switch button').forEach(function(x){x.classList.toggle('on',x===b);}); $('cListView').hidden=v!=='list'; $('cCardsView').hidden=v!=='cards'; $('cMapView').hidden=v!=='map'; if(v==='map') renderCustomerMap(customerList()); }; });
+}
+setupViewSwitch();
+function renderCustomerMap(list) {
+  var host=$('gtcMapHost');
+  if(!list.length){host.innerHTML='<div class="gtc-map-empty">No customers match the current filters.</div>';return;}
+  var pin=list.filter(hasPin);
+  if(!pin.length){host.innerHTML='<div class="gtc-map-empty"><b>No stored locations</b><span>Map view only uses real latitude/longitude saved on customer records.</span></div>';return;}
+  host.innerHTML='<div class="gtc-map-fallback"><div><b>'+pin.length+' customers with stored coordinates</b><span>The project will not invent map coordinates.</span></div>'+pin.map(function(c){return '<div class="gtc-map-row"><div><b>'+esc(c.name)+'</b><span>'+esc(c.code)+' \u00B7 '+esc(c.area||'')+'</span></div><a class="btn btn-secondary a-btn" target="_blank" rel="noopener" href="'+mapLink(c.lat,c.lng)+'">Open map</a></div>';}).join('')+'</div>';
+}
+function render() {
+  installCustomerBindings();
+  var rm=routeMap(), total=S.customers.length, active=S.customers.filter(function(c){return !c.inactive;}).length, inactive=total-active, pinned=S.customers.filter(hasPin).length, noPin=total-pinned;
+  $('stats').innerHTML='<div class="gtc-stat"><span class="gtc-stat-icon">\u2301</span><div><b>'+total+'</b><span>Total customers</span></div></div><div class="gtc-stat"><span class="gtc-stat-icon success">\u2713</span><div><b>'+active+'</b><span>Active</span></div></div><div class="gtc-stat"><span class="gtc-stat-icon danger">\u00D7</span><div><b>'+inactive+'</b><span>Inactive</span></div></div><div class="gtc-stat"><span class="gtc-stat-icon info">\u2316</span><div><b>'+pinned+'</b><span>With location</span></div></div><div class="gtc-stat"><span class="gtc-stat-icon muted">\u25CB</span><div><b>'+noPin+'</b><span>Without location</span></div></div>';
+  areaOptions();
+  var rv=$('cRoute').value; $('cRoute').innerHTML='<option value="">All routes</option>'+(S.routes||[]).slice().sort(function(a,b){return String(a.name).localeCompare(String(b.name));}).map(function(r){return '<option value="'+esc(r.id)+'">'+esc(r.name)+' ('+r.codes.length+')</option>';}).join(''); $('cRoute').value=rv;
+  var list=customerList();
+  var pages=Math.max(1,Math.ceil(list.length/PS)); if(PG>pages)PG=pages; if(PG<1)PG=1; var from=(PG-1)*PS,part=list.slice(from,from+PS),sc=selCodes();
+  $('cCount').textContent=list.length+' '+(list.length===1?'customer':'customers');
+  handleCustomerDeepLink();
+  $('cBody').innerHTML=part.map(function(c){var r=routeFor(c.code,rm),pin=hasPin(c);return '<tr class="'+(c.inactive?'is-inactive':'')+'"><td><input type="checkbox" data-sel="'+esc(c.code)+'" '+(SEL[c.code]?'checked':'')+'></td><td><button class="gtc-name" data-open="'+esc(c.code)+'" type="button"><b>'+esc(c.name||'Unnamed')+'</b><span>ID: '+esc(c.code||'')+'</span></button></td><td><a class="gtc-phone" href="tel:'+esc(c.phone||'')+'">'+esc(c.phone||'\u2014')+'</a></td><td>'+esc(c.area||'\u2014')+'</td><td>'+(r?'<span class="gtc-route-pill">'+esc(r.name)+'</span>':'<span class="gtc-muted-pill">No route</span>')+'</td><td class="gtc-address">'+esc(c.address||'\u2014')+'</td><td>'+(pin?'<a class="gtc-location yes" target="_blank" rel="noopener" href="'+mapLink(c.lat,c.lng)+'">Located</a>':'<span class="gtc-location no">Missing</span>')+'</td><td><span class="gtc-status '+(c.inactive?'off':'on')+'">'+(c.inactive?'Inactive':'Active')+'</span></td><td>'+fmtLastVisit(c)+'</td><td class="a-act"><button class="gtc-more" data-menu="'+esc(c.code)+'" type="button" aria-label="Customer actions">\u2022\u2022\u2022</button></td></tr>';}).join('') || '<tr><td colspan="10"><div class="a-empty"><b>'+(S.customers.length?'No customers match':'No customers yet')+'</b><span>'+(S.customers.length?'Change the search or filters.':'Use Add customer or Import.')+'</span></div></td></tr>';
+  var allOn=part.length&&part.every(function(c){return SEL[c.code];}); $('cAll').checked=!!allOn;
+  $('cBulk').innerHTML=sc.length?'<div class="gtc-bulk"><b>'+sc.length+' selected</b>'+(sc.length<list.length?'<button id="bAll" type="button">Select all '+list.length+'</button>':'')+'<span class="grow"></span><div class="field a-f"><select id="bRoute"><option value="">Assign route\u2026</option>'+(S.routes||[]).map(function(x){return '<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>';}).join('')+'<option value="__new">+ New route\u2026</option><option value="__none">No route</option></select></div><button class="btn btn-secondary a-btn" id="bSt" type="button">'+(sc.some(function(k){return !cust(k).inactive;})?'Deactivate':'Activate')+'</button><button class="btn btn-secondary a-btn" id="bDel" type="button">Delete</button><button class="btn btn-secondary a-btn" id="bClr" type="button">Clear</button></div>':'';
+  if(sc.length){$('bRoute').onchange=function(){bulkRoute(this.value);};$('bSt').onclick=bulkStatus;$('bDel').onclick=bulkDelete;$('bClr').onclick=function(){SEL={};render();};if($('bAll'))$('bAll').onclick=function(){list.forEach(function(c){SEL[c.code]=1;});render();};}
+  $('cAll').onchange=function(){var on=this.checked;part.forEach(function(c){if(on)SEL[c.code]=1;else delete SEL[c.code];});render();};
+  document.querySelectorAll('#cBody [data-sel]').forEach(function(b){b.onchange=function(){if(b.checked)SEL[b.dataset.sel]=1;else delete SEL[b.dataset.sel];render();};});
+  document.querySelectorAll('#cBody [data-open]').forEach(function(b){b.onclick=function(){openQuick(cust(b.dataset.open));};});
+  document.querySelectorAll('#cBody [data-menu]').forEach(function(b){b.onclick=function(){var c=cust(b.dataset.menu); if(!c)return; openQuick(c);};});
+  $('cCardsView').innerHTML=part.map(function(c){var r=routeFor(c.code,rm),pin=hasPin(c);return '<article class="gtc-customer-card"><div class="gtc-card-top"><input type="checkbox" data-card-sel="'+esc(c.code)+'" '+(SEL[c.code]?'checked':'')+'><span class="gtc-status '+(c.inactive?'off':'on')+'">'+(c.inactive?'Inactive':'Active')+'</span></div><button class="gtc-card-main" data-card-open="'+esc(c.code)+'" type="button"><b>'+esc(c.name||'Unnamed')+'</b><span>ID: '+esc(c.code||'')+'</span><span>'+esc(c.phone||'No phone')+' \u00B7 '+esc(c.area||'No area')+'</span><span>'+(r?esc(r.name):'No route')+' \u00B7 '+(pin?'Located':'Missing location')+'</span></button><div class="gtc-card-actions"><button class="btn btn-secondary a-btn" data-card-edit="'+esc(c.code)+'" type="button">Edit</button><button class="btn btn-secondary a-btn" data-card-menu="'+esc(c.code)+'" type="button">\u2022\u2022\u2022</button></div></article>';}).join('') || '<div class="a-empty"><b>No customers match</b><span>Change the search or filters.</span></div>';
+  document.querySelectorAll('[data-card-sel]').forEach(function(b){b.onchange=function(){if(b.checked)SEL[b.dataset.cardSel]=1;else delete SEL[b.dataset.cardSel];render();};});
+  document.querySelectorAll('[data-card-open]').forEach(function(b){b.onclick=function(){openQuick(cust(b.dataset.cardOpen));};});
+  document.querySelectorAll('[data-card-edit]').forEach(function(b){b.onclick=function(){form(cust(b.dataset.cardEdit));};});
+  document.querySelectorAll('[data-card-menu]').forEach(function(b){b.onclick=function(){openQuick(cust(b.dataset.cardMenu));};});
+  $('cPager').innerHTML=list.length?'<span>Showing '+(from+1)+'\u2013'+(from+part.length)+' of '+list.length+' customers</span><span class="grow"></span><label>Rows <select id="cPS">'+[25,50,100,200].map(function(n){return '<option value="'+n+'" '+(n===PS?'selected':'')+'>'+n+'</option>';}).join('')+'</select></label><button class="btn btn-secondary a-btn" id="cPrev" '+(PG<=1?'disabled':'')+'>Previous</button><span>Page '+PG+' of '+pages+'</span><button class="btn btn-secondary a-btn" id="cNext" '+(PG>=pages?'disabled':'')+'>Next</button></label>':'<span></span>';
+  if(list.length){$('cPrev').onclick=function(){PG--;render();};$('cNext').onclick=function(){PG++;render();};$('cPS').onchange=function(){PS=+this.value;PG=1;render();};}
+}
+function areaOptions() {
+  var sel=$('cArea'),v=sel.value,a={}; S.customers.forEach(function(c){if(c.area)a[c.area]=(a[c.area]||0)+1;});
+  sel.innerHTML='<option value="">All areas</option>'+Object.keys(a).sort().map(function(k){return '<option value="'+esc(k)+'">'+esc(k)+' ('+a[k]+')</option>';}).join(''); sel.value=a[v]?v:'';
+}function autoRoutes() { var r = O.syncRoutes(S); if (r.moved) { save(); pmsg(r.moved + ' shops were put on routes by their area' + (r.made ? ' (' + r.made + ' new routes)' : '') + '.', true); } }
+(function(){
+  var p=new URLSearchParams(location.search), code=p.get('code'), edit=p.get('edit')==='1';
+  if(code){ setTimeout(function(){ var c=cust(code); if(c){ openQuick(c); if(edit){ closeQuick(); form(c); } } }, 80); }
+})();
+autoRoutes();
+mergeWorkerPins(); areaOptions(); render();
+/* GM routes deep link: customers.html?code=C001 shows that shop; add &edit=1 to open its Edit form (used by the Routes page) */
+(function () {
+  try {
+    var qp = new URLSearchParams(location.search), dl = qp.get('code'); if (!dl) return;
+    var dc = cust(dl); if (!dc) return;
+    $('cSearch').value = dl; if (dc.inactive) $('cSt').value = 'all'; render();
+    if (qp.get('edit') === '1') form(dc);
+  } catch (e) {}
+})();
+</script>
+<script src="../shared/customers-plus.js?v=7"></script></body>
+</html>

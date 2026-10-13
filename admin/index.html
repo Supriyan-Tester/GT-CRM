@@ -1,0 +1,176 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head><script src="../shared/sync.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>General Traders - Admin</title>
+<link rel="stylesheet" href="../shared/theme.css">
+<link rel="stylesheet" href="../shared/admin.css">
+<script src="../shared/theme.js"></script>
+<style>
+.d-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px}
+.d-grid2{display:grid;grid-template-columns:1fr 1.4fr;gap:16px;margin-bottom:16px}
+.d-grid>.card,.d-grid2>.card{margin:0;min-width:0}
+@media(max-width:900px){.d-grid,.d-grid2{grid-template-columns:1fr}}
+.d-live{display:inline-flex;align-items:center;gap:6px;font-size:12px;opacity:.9}
+.d-live i{width:8px;height:8px;border-radius:50%;background:var(--success);animation:dp 2s infinite}
+.d-live.off i{background:var(--danger);animation:none}
+@keyframes dp{50%{opacity:.35}}
+.d-mini{height:6px;border-radius:3px;background:var(--border);overflow:hidden;min-width:70px}
+.d-mini i{display:block;height:100%;background:var(--success)}
+.d-att{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border);text-decoration:none;color:var(--text);font-size:14px}
+.d-att:last-child{border:0}.d-att .chip{flex:none}.d-att span{color:var(--muted);display:block;font-size:12px}
+.d-ok{padding:18px 8px;text-align:center;color:var(--success);font-weight:600}
+.d-bars{display:flex;align-items:flex-end;gap:10px;height:150px;padding-top:8px}
+.d-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;min-width:0}
+.d-stack{width:100%;max-width:38px;display:flex;flex-direction:column-reverse;border-radius:6px;overflow:hidden;background:var(--border);min-height:4px}
+.d-col small{color:var(--muted);font-size:11px}.d-col b{font-size:12px}
+.d-leg{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
+.d-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.d-donut{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.d-donut svg{width:130px;height:130px;flex:none}
+.d-glance{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.d-glance a{display:block;padding:12px;border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--text)}
+.d-glance a:hover{border-color:var(--primary)}.d-glance b{display:block;font-size:20px}.d-glance span{font-size:12px;color:var(--muted)}
+
+/* Employees right now */
+.d-emp-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}.d-emp-h .card-title{margin:0}
+.d-chipn{white-space:nowrap;flex:none;display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--primary);background:var(--t-primary);padding:5px 12px;border-radius:999px}
+.d-chipn i{width:8px;height:8px;border-radius:50%;background:var(--success);animation:dp 2s infinite}
+.d-list{display:flex;flex-direction:column;gap:8px}
+.d-lh,.d-row{display:grid;grid-template-columns:minmax(0,2.4fr) 142px minmax(0,1fr) 100px;gap:12px;align-items:center}
+.d-lh{font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding:6px 16px 0}
+.d-row{cursor:pointer;padding:12px 16px;border:1px solid var(--border);border-radius:14px;background:var(--card);color:var(--text);text-decoration:none;position:relative;overflow:hidden;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease,background-color .2s}
+.d-row::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--primary);opacity:0;transform:scaleY(.4);transition:opacity .2s,transform .2s}
+.d-row:hover{transform:translateY(-2px);border-color:var(--primary);background:var(--t-primary);box-shadow:0 10px 22px -14px rgba(15,118,110,.55)}
+.d-row:hover::before{opacity:1;transform:scaleY(1)}
+.d-who{display:flex;align-items:center;gap:12px;min-width:0}
+.d-av{flex:none;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:17px;box-shadow:0 0 0 3px var(--card),0 0 0 4px var(--border)}
+.d-nm{min-width:0;line-height:1.4}.d-nm b{font-size:15px}
+.d-n1{display:flex;align-items:center;flex-wrap:wrap;gap:2px 8px}.d-code{white-space:nowrap;font-size:11.5px;font-weight:700;letter-spacing:.02em;color:var(--primary);background:var(--t-primary);padding:2px 8px;border-radius:999px}
+.d-row:hover .d-code{background:var(--card)}
+.d-veh{display:flex;align-items:center;gap:6px;margin-top:2px;font-size:12.5px;color:var(--muted)}.d-veh svg.icon{width:14px;height:14px;flex:none}.d-veh a{color:inherit;text-decoration:none}
+.d-pill{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;padding:5px 12px;border-radius:999px;white-space:nowrap}
+.d-pill i{width:7px;height:7px;border-radius:50%;background:currentColor}
+.d-pill.b-success{background:var(--t-success);color:#15803D}.d-pill.b-accent{background:var(--t-accent);color:#B45309}.d-pill.b-danger{background:rgba(220,38,38,.12);color:#DC2626}.d-pill.b-info{background:rgba(37,99,235,.12);color:#2563EB}.d-pill.b-muted{background:var(--t-primary);color:var(--muted)}
+.d-pill.b-muted i{opacity:.6}.d-pill.b-success i{animation:dp 2s infinite}
+[data-theme="dark"] .d-pill.b-success{color:#4ADE80}[data-theme="dark"] .d-pill.b-accent{color:#FBBF24}[data-theme="dark"] .d-pill.b-danger{color:#F87171}[data-theme="dark"] .d-pill.b-info{color:#60A5FA}
+.d-prog{display:flex;align-items:baseline;gap:5px;margin-bottom:5px}.d-prog b{font-size:16px}.d-prog small{color:var(--muted);font-size:12px}
+.d-mini{height:7px;border-radius:4px;background:var(--border);overflow:hidden;min-width:70px}.d-mini i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#16A34A,#4ADE80)}
+.d-in{white-space:nowrap;display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600}.d-in svg.icon{width:15px;height:15px;color:var(--muted)}
+@media(max-width:700px){.d-lh{display:none}.d-row{grid-template-columns:auto 1fr auto;row-gap:10px}.d-who{grid-column:1/-1}.d-c::before{content:attr(data-label);display:block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}.d-in{display:block}.d-in svg.icon{display:inline;vertical-align:-2px;margin-right:5px}}
+</style></head>
+<body>
+<script src="../shared/mock-data.js"></script>
+<script src="../shared/admin.js"></script>
+<script>
+GA.guard();
+var esc = GA.esc, R = GA.ops.rupee, NS = 'gm_crm_data_v5__', WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+var pg = GA.mount('index.html', 'Home'), s = GA.session(), recs = {}, online = null, stamp = null;
+
+function ds(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function mins(t) { var m = /(\d{1,2}):(\d{2})\s*([ap]m)?/i.exec(String(t || '')); if (!m) return null; var h = +m[1]; if (m[3]) { h = h % 12; if (/p/i.test(m[3])) h += 12; } return h * 60 + (+m[2]); }
+function logOf(rec, date) { var l = rec && rec.attendanceLog || {}; return (l[date.slice(0, 7)] || {})[+date.slice(8)] || null; }
+
+function load(cb) {
+  fetch('/api/state?since=0', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (r) {
+    recs = {}; for (var k in r.items) if (k.indexOf(NS) === 0 && r.items[k].v !== null) { try { recs[k.slice(NS.length)] = JSON.parse(r.items[k].v); } catch (e) {} }
+    online = true; stamp = new Date(); cb();
+  }).catch(function () { online = false; cb(); });
+}
+
+// One row of facts per active employee, for today
+function facts() {
+  var t = GA.today(), S = GA.ops.get(), PL = GA.ops.activePlansOn(S, t), sun = new Date().getDay() === 0, late = mins(GM.LATE_AFTER || '08:30');
+  return GA.workers().filter(function (w) { return w.active; }).map(function (w) {
+    var rec = recs[w.id], lg = logOf(rec, t), plan = PL.filter(function (p) { return p.workerId === w.id; })[0], planned = !!plan;
+    var shops = planned ? (rec && rec.appliedPlan && rec.appliedPlan.indexOf(t) === 0 ? rec.shops : plan.stops.map(function () { return { status: 'pending' }; })) : [];
+    var c = function (x) { return shops.filter(function (q) { return q.status === x; }).length; };
+    var st, tone;
+    if (w.onLeave) { st = 'On leave'; tone = 'b-info'; }
+    else if (lg && lg.outTime && lg.outTime !== '-') { st = 'Day closed'; tone = 'b-muted'; }
+    else if (lg) { st = lg.status === 'late' ? 'On route (late)' : 'On route'; tone = lg.status === 'late' ? 'b-accent' : 'b-success'; }
+    else if (sun) { st = 'Day off'; tone = 'b-muted'; }
+    else if (!rec) { st = 'Not signed in yet'; tone = 'b-muted'; }
+    else if (new Date().getHours() * 60 + new Date().getMinutes() > late) { st = 'No punch-in'; tone = 'b-danger'; }
+    else { st = 'Not started'; tone = 'b-muted'; }
+    return { w: w, rec: rec, lg: lg, st: st, tone: tone, shops: shops, done: c('delivered'), retry: c('retry'), canc: c('cancelled'), pend: c('pending'), km: lg ? (lg.km || 0) : 0, veh: (rec && rec.shift && rec.shift.assignedVehicle) || (planned ? plan.vehicleLabel : ''), returns: lg || planned ? ((rec && rec.returns) || []) : [] };
+  });
+}
+
+function days7() {
+  var out = [], now = new Date();
+  for (var i = 6; i >= 0; i--) {
+    var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i), k = ds(d), o = { label: WD[d.getDay()], p: 0, l: 0, a: 0, today: i === 0 };
+    GA.workers().filter(function (w) { return w.active; }).forEach(function (w) {
+      var lg = logOf(recs[w.id], k);
+      if (lg) { if (lg.status === 'late') o.l++; else if (lg.status === 'present') o.p++; return; }
+      if (d.getDay() === 0 || GA.onLeaveOn(w.id, k) || (w.created && k < w.created) || i === 0) return;
+      o.a++;
+    });
+    out.push(o);
+  }
+  return out;
+}
+
+function draw() {
+  var F = facts(), t = GA.today(), S = GA.ops.get(), plan = GA.ops.activePlansOn(S, t), sun = new Date().getDay() === 0;
+  var tot = function (f) { return F.reduce(function (a, x) { return a + f(x); }, 0); };
+  var onDuty = F.filter(function (x) { return x.st.indexOf('On route') === 0; }).length, planned = tot(function (x) { return x.shops.length; }), done = tot(function (x) { return x.done; });
+  var retry = tot(function (x) { return x.retry; }), canc = tot(function (x) { return x.canc; }), pend = tot(function (x) { return x.pend; }), km = tot(function (x) { return x.km; });
+  var retAmt = tot(function (x) { return x.returns.reduce(function (a, r) { return a + (Number(r.deductionAmount) || 0); }, 0); }), retN = tot(function (x) { return x.returns.length; });
+  var noPin = (S.customers || []).filter(function (c) { return typeof c.lat !== 'number'; }).length, vehicles = GA.vehicles().filter(function (v) { return v.active !== false; });
+  var adv = GA.entries(null, t.slice(0, 7)), advAmt = adv.filter(function (e) { return e.type === 'advance'; }).reduce(function (a, e) { return a + e.amount; }, 0);
+  var problems = retry + canc;
+
+  var att = [];
+  F.filter(function (x) { return x.st === 'No punch-in'; }).forEach(function (x) { att.push(['clock', 'a', esc(x.w.name) + ' has not punched in', 'After ' + (GM.LATE_AFTER || '08:30'), 'attendance.html']); });
+  if (problems) att.push(['alert', 'd', problems + ' shop' + (problems > 1 ? 's' : '') + ' not delivered', retry + ' retry later, ' + canc + ' cancelled', 'problems.html']);
+  if (retN) att.push(['trash', 'a', retN + ' return' + (retN > 1 ? 's' : '') + ' today', R(retAmt) + ' deducted', 'summary.html']);
+  if (!plan.length && !sun && GA.workers().length) att.push(['cal', 'a', 'No plan for today', 'Build the delivery list', 'plan.html']);
+  if (noPin) att.push(['map', 'i', noPin + ' customer' + (noPin > 1 ? 's' : '') + ' without a map pin', 'Directions fall back to name search', 'customers.html']);
+  var unsigned = F.filter(function (x) { return !x.rec; }).length; if (unsigned) att.push(['users', 'i', unsigned + ' employee' + (unsigned > 1 ? 's' : '') + ' never signed in on a phone', 'Their data appears after first sign-in', 'workers.html']);
+  if (!GA.workers().length) att.push(['users', 'p', 'Add your first employee', '', 'workers.html']);
+  if (!vehicles.length) att.push(['truck', 'p', 'Add a vehicle', '', 'vehicles.html']);
+  if (!(S.customers || []).length) att.push(['store', 'p', 'Add customers and routes', '', 'customers.html']);
+
+  var AVC = ['#0F766E', '#2563EB', '#D97706', '#7C3AED', '#DB2777', '#059669', '#DC2626', '#0891B2'];
+  function avc(id) { var h = 0; String(id).split('').forEach(function (c) { h += c.charCodeAt(0); }); return AVC[h % AVC.length]; }
+  var rows = F.length ? F.map(function (x) {
+    var n = x.shops.length, p = n ? Math.round(x.done * 100 / n) : 0;
+    return '<div class="d-row" role="link" tabindex="0" data-href="workers.html#w/' + encodeURIComponent(x.w.id) + '" title="Open ' + esc(x.w.name) + '\'s details">' +
+      '<div class="d-who"><span class="d-av" style="background:' + avc(x.w.id) + '">' + esc((x.w.name || '?').charAt(0).toUpperCase()) + '</span><div class="d-nm"><div class="d-n1"><b>' + esc(x.w.name) + '</b><span class="d-code">' + esc(GA.empCode(x.w.id)) + '</span></div><div class="d-veh">' + GA.icon('truck') + '<span>' + (x.veh ? GA.vehLink(x.veh) : 'No vehicle') + '</span></div></div></div>' +
+      '<div class="d-c" data-label="Status"><span class="d-pill ' + x.tone + '"><i></i>' + x.st + '</span></div>' +
+      '<div class="d-c" data-label="Shops">' + (n ? '<div class="d-prog"><b>' + x.done + '</b><small>of ' + n + '</small></div><div class="d-mini"><i style="width:' + p + '%"></i></div>' : '<span class="mu">-</span>') + '</div>' +
+      '<div class="d-c d-in" data-label="In">' + (x.lg && x.lg.inTime ? GA.icon('clock') + esc(x.lg.inTime) : '<span class="mu">-</span>') + '</div></div>';
+  }).join('') : '<div class="a-empty"><b>No employees yet</b>Add one on the Employees page.</div>';
+
+  var C = 2 * Math.PI * 48, seg = [[done, 'var(--success)', 'Delivered'], [pend, 'var(--border)', 'Pending'], [retry, 'var(--accent)', 'Retry later'], [canc, 'var(--danger)', 'Cancelled']], off = 0;
+  var arcs = planned ? seg.map(function (g) { var len = g[0] / planned * C, e = '<circle cx="65" cy="65" r="48" fill="none" stroke="' + g[1] + '" stroke-width="16" stroke-dasharray="' + len + ' ' + (C - len) + '" stroke-dashoffset="' + (-off) + '" transform="rotate(-90 65 65)"/>'; off += len; return len ? e : ''; }).join('') : '<circle cx="65" cy="65" r="48" fill="none" stroke="var(--border)" stroke-width="16"/>';
+  var donut = '<div class="d-donut"><svg viewBox="0 0 130 130">' + arcs + '<text x="65" y="63" text-anchor="middle" font-size="24" font-weight="700" fill="var(--text)">' + (planned ? Math.round(done * 100 / planned) + '%' : '-') + '</text><text x="65" y="82" text-anchor="middle" font-size="11" fill="var(--muted)">delivered</text></svg><div class="d-leg" style="flex-direction:column;gap:6px;margin:0">' +
+    seg.map(function (g) { return '<span><i style="background:' + g[1] + '"></i>' + g[2] + ' <b style="color:var(--text)">' + g[0] + '</b></span>'; }).join('') + '</div></div>';
+
+  var D7 = days7(), mx = Math.max(1, Math.max.apply(null, D7.map(function (d) { return d.p + d.l + d.a; })));
+  var bars = '<div class="d-bars">' + D7.map(function (d) { var n = d.p + d.l + d.a, h = function (v) { return v / mx * 100 + '%'; };
+    return '<div class="d-col"><b>' + (d.today ? '' : n) + '</b><div class="d-stack" style="height:' + (n ? n / mx * 100 : 3) + '%">' + (d.p ? '<i style="height:' + d.p / n * 100 + '%;background:var(--success)"></i>' : '') + (d.l ? '<i style="height:' + d.l / n * 100 + '%;background:var(--accent)"></i>' : '') + (d.a ? '<i style="height:' + d.a / n * 100 + '%;background:var(--danger)"></i>' : '') + '</div><small>' + (d.today ? 'Today' : d.label) + '</small></div>'; }).join('') + '</div>' +
+    '<div class="d-leg"><span><i style="background:var(--success)"></i>Present</span><span><i style="background:var(--accent)"></i>Late</span><span><i style="background:var(--danger)"></i>Absent</span><span>Sundays and leave not counted. Today fills in as employees punch in.</span></div>';
+
+  var feed = GA.notifs.list({ date: t }).slice(0, 7).map(function (x) { var m = GA.notifs.meta(x.type); return '<div class="a-n"><span class="chip c-' + m[1] + '">' + GA.icon(m[0]) + '</span><div><b>' + esc(x.title) + '</b><span>' + esc(x.text) + '</span><small>' + new Date(x.ts).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) + '</small></div></div>'; }).join('') || '<div class="a-empty"><b>Quiet so far</b>Punch-ins, deliveries, problems and returns show up here as they happen.</div>';
+
+  var G = function (h, n, l) { return '<a href="' + h + '"><b>' + n + '</b><span>' + l + '</span></a>'; };
+  pg.innerHTML =
+    '<div class="hero a-hero"><h2>Welcome, ' + esc(s.name) + '</h2><p>' + new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ' &middot; <span class="d-live' + (online === false ? ' off' : '') + '"><i></i>' + (online === false ? 'Server not reachable, showing saved data' : online ? 'Live, updated ' + stamp.toLocaleTimeString('en-IN') : 'Connecting') + '</span></p></div>' +
+    '<div class="a-stats">' + GA.tile('s-p', 'users', onDuty + ' of ' + F.length, 'On duty now') + GA.tile('s-s', 'store', done + ' of ' + planned, 'Deliveries done') + GA.tile('s-i', 'truck', km + ' km', 'Driven today') + GA.tile(att.length ? 's-a' : 's-s', 'alert', att.length, 'Need attention') + '</div>' +
+    '<div class="d-grid"><div class="card d-emp"><div class="d-emp-h"><div class="card-title">Employees right now</div><span class="d-chipn"><i></i>' + onDuty + ' of ' + F.length + ' on duty</span></div><div class="d-list"><div class="d-lh"><span>Employee</span><span>Status</span><span>Shops</span><span>In</span></div>' + rows + '</div></div>' +
+    '<div class="card"><div class="card-title">Needs attention</div>' + (att.length ? att.map(function (a) { return '<a class="d-att" href="' + a[4] + '"><span class="chip c-' + a[1] + '">' + GA.icon(a[0]) + '</span><div>' + a[2] + (a[3] ? '<span>' + esc(a[3]) + '</span>' : '') + '</div></a>'; }).join('') : '<div class="d-ok">All clear</div>') + '</div></div>' +
+    '<div class="d-grid2"><div class="card"><div class="card-title">Today\'s deliveries</div>' + donut + '</div><div class="card"><div class="card-title">Attendance, last 7 days</div>' + bars + '</div></div>' +
+    '<div class="d-grid"><div class="card a-feed"><div class="card-title">Happening today</div>' + feed + '</div>' +
+    '<div class="card"><div class="card-title">At a glance</div><div class="d-glance">' + G('customers.html', (S.customers || []).length, 'Customers (' + ((S.customers || []).length - noPin) + ' with pin)') + G('routes.html', (S.routes || []).length, 'Routes') + G('vehicles.html', vehicles.length, 'Active vehicles') + G('workers.html', GA.workers().length, 'Employees') + G('advances.html', R(advAmt), 'Advances this month') + G('summary.html', R(retAmt), 'Returns today') + '</div></div></div>';
+}
+document.addEventListener('click', function (e) { var r = e.target.closest('.d-row[data-href]'); if (r && !e.target.closest('a')) location.href = r.getAttribute('data-href'); });
+document.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('d-row')) { e.preventDefault(); location.href = e.target.getAttribute('data-href'); } });
+draw(); load(draw);
+setInterval(function () { load(draw); }, 5000);
+window.addEventListener('gm-sync', draw);
+</script></body>
+</html>

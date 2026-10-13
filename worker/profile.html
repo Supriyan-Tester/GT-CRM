@@ -1,0 +1,328 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head><script src="../shared/sync.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>General Traders - My Profile</title>
+<link rel="stylesheet" href="../shared/theme.css">
+<style>
+  main.app svg, .pf-ov svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .pf-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+  .pf-head h1 { font-size: 22px; font-weight: 700; line-height: 1.2; }
+  .pf-head p { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  .pf-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow); padding: 16px; margin-bottom: 14px; }
+  .pf-hero { background: linear-gradient(135deg, var(--t-primary), var(--card) 85%); display: grid; grid-template-columns: auto 1fr auto; gap: 8px 16px; align-items: center; }
+  .pf-avw { position: relative; width: 84px; height: 84px; grid-row: span 2; }
+  .pf-av { width: 84px; height: 84px; border-radius: 50%; overflow: hidden; background: linear-gradient(135deg, var(--hero1), var(--hero2)); color: var(--on-hero); font-size: 32px; font-weight: 800; display: flex; align-items: center; justify-content: center; position: relative; }
+  .pf-av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .pf-cam { position: absolute; right: -2px; bottom: -2px; width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--card); background: var(--primary); color: var(--on-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+  .pf-cam svg { width: 14px; height: 14px; }
+  .pf-nm { font-size: 22px; font-weight: 800; line-height: 1.2; }
+  .pf-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13.5px; color: var(--muted); margin-top: 3px; }
+  .pf-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 42px; padding: 0 16px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--card); color: var(--text); font-weight: 700; font-size: 14px; cursor: pointer; font-family: inherit; white-space: nowrap; box-shadow: var(--shadow); }
+  .pf-btn svg { width: 17px; height: 17px; color: var(--primary); }
+  .pf-btn.sm { height: 36px; padding: 0 12px; font-size: 13px; }
+  .pf-meta { grid-column: 2 / 4; display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 13.5px; }
+  .pf-meta span { display: inline-flex; align-items: center; gap: 7px; }
+  .pf-meta svg { width: 17px; height: 17px; color: var(--primary); }
+  @media (max-width: 640px) {
+    .pf-hero { grid-template-columns: auto 1fr; }
+    .pf-hero .pf-btn.edit { grid-column: 1 / 3; width: 100%; }
+    .pf-meta { grid-column: 1 / 3; }
+    .pf-nm { font-size: 19px; }
+  }
+  .pf-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+  .pf-tab { height: 46px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); color: var(--muted); font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; font-family: inherit; min-width: 0; }
+  .pf-tab svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .pf-tab.on { background: var(--primary); color: var(--on-primary); border-color: var(--primary); box-shadow: 0 4px 10px rgba(15,118,110,.2); }
+  @media (max-width: 640px) { .pf-tab { font-size: 12px; gap: 5px; padding: 0 4px; } .pf-tab svg { width: 15px; height: 15px; } .pf-tab span.long { display: none; } }
+  .pf-h { display: flex; align-items: center; gap: 10px; font-size: 16.5px; font-weight: 800; margin-bottom: 12px; }
+  .pf-h .hi { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .pf-h .hi svg { width: 20px; height: 20px; }
+  .pf-h .grow { flex: 1; }
+  .hi.g { background: var(--t-success); color: var(--success); } .hi.r { background: var(--t-danger); color: var(--danger); } .hi.t { background: var(--t-primary); color: var(--primary); } .hi.b { background: var(--t-info); color: var(--info); } .hi.a { background: var(--t-accent); color: var(--accent); }
+  .pf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pf-f { display: flex; align-items: center; gap: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 11px 12px; min-width: 0; }
+  .pf-f.wide { grid-column: 1 / 3; }
+  .pf-f .ic { width: 22px; height: 22px; color: var(--primary); flex-shrink: 0; }
+  .pf-f .t { min-width: 0; flex: 1; }
+  .pf-f small { display: block; font-size: 12px; color: var(--muted); }
+  .pf-f b { display: block; font-size: 14.5px; font-weight: 700; margin-top: 1px; overflow-wrap: anywhere; }
+  @media (max-width: 640px) {
+    .pf-grid { grid-template-columns: 1fr; }
+    .pf-f.wide { grid-column: auto; }
+    .pf-f { padding: 10px 12px; }
+    .pf-f .t { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .pf-f small { flex-shrink: 0; } .pf-f b { text-align: right; font-size: 13.5px; margin: 0; }
+  }
+  .pf-two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+  @media (max-width: 900px) { .pf-two { grid-template-columns: 1fr; } }
+  .pf-list { display: flex; flex-direction: column; }
+  .pf-act { display: flex; align-items: center; gap: 12px; padding: 13px 4px; border: 0; border-top: 1px solid var(--border); background: none; color: var(--text); font-family: inherit; font-size: 14.5px; font-weight: 600; width: 100%; text-align: left; cursor: pointer; }
+  .pf-act:first-child { border-top: 0; }
+  .pf-act .ic { width: 22px; height: 22px; color: var(--info); flex-shrink: 0; }
+  .pf-act.out .ic { color: var(--danger); }
+  .pf-act .go { width: 18px; height: 18px; color: var(--muted); margin-left: auto; }
+  .pf-act small { display: block; font-size: 12px; font-weight: 500; color: var(--muted); }
+  .pf-help { display: none; gap: 10px; flex-direction: column; padding: 4px 0 12px; }
+  .pf-help.open { display: flex; }
+  .pf-help a { display: flex; align-items: center; justify-content: center; height: 44px; border-radius: 12px; font-weight: 700; font-size: 14px; text-decoration: none; }
+  .pf-help .call { border: 1.5px solid var(--primary); color: var(--primary); background: var(--card); }
+  .pf-help .wa { background: #25D366; color: #fff; }
+  .pf-doc { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); margin-bottom: 10px; }
+  .pf-doc .ic { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .pf-doc .ic svg { width: 20px; height: 20px; }
+  .pf-doc .t { flex: 1; min-width: 0; } .pf-doc b { display: block; font-size: 14px; } .pf-doc small { display: block; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pf-doc a { font-size: 13px; font-weight: 700; color: var(--primary); text-decoration: none; padding: 8px 12px; border: 1.5px solid var(--primary); border-radius: 10px; }
+  .pf-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pf-seg button { height: 46px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--card); color: var(--text); font-weight: 700; font-family: inherit; font-size: 14px; cursor: pointer; }
+  .pf-seg button.on { border-color: var(--primary); background: var(--t-primary); color: var(--primary); }
+  .pf-note { font-size: 12.5px; color: var(--muted); margin-top: 10px; }
+  .pf-ov { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: flex-end; justify-content: center; z-index: 200; }
+  .pf-ov.open { display: flex; }
+  .pf-sheet { background: var(--card); width: 100%; max-width: 480px; max-height: 92vh; overflow-y: auto; border-radius: 20px 20px 0 0; padding: 20px 18px calc(20px + env(safe-area-inset-bottom)); }
+  @media (min-width: 640px) { .pf-ov { align-items: center; } .pf-sheet { border-radius: 20px; } }
+  .pf-sheet h3 { font-size: 17px; margin-bottom: 4px; } .pf-sheet > p { font-size: 12.5px; color: var(--muted); margin-bottom: 12px; }
+  .pf-sheet label { display: block; font-size: 12.5px; color: var(--muted); margin: 10px 0 4px; }
+  .pf-sheet input, .pf-sheet select, .pf-sheet textarea { width: 100%; border: 1.5px solid var(--border); border-radius: 12px; padding: 0 14px; font-size: 15px; background: var(--bg); color: var(--text); font-family: inherit; height: 46px; }
+  .pf-sheet textarea { height: 76px; padding: 10px 14px; resize: none; }
+  .pf-sheet .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+  .pf-sheet .btns button { height: 46px; border-radius: 12px; font-weight: 700; font-size: 14px; cursor: pointer; font-family: inherit; border: 1.5px solid var(--border); background: var(--card); color: var(--text); }
+  .pf-sheet .btns .save { border: 0; background: var(--primary); color: var(--on-primary); }
+  .pf-toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); background: #0F172A; color: #fff; padding: 10px 16px; border-radius: 12px; font-size: 13.5px; z-index: 300; display: none; }
+</style></head>
+<body>
+<main class="app">
+  <header class="pf-head">
+    <div><h1>My Profile</h1><p>View and update your profile information.</p></div>
+    <button class="icon-btn" id="themeToggle" aria-label="Switch light or dark theme">
+      <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    </button>
+  </header>
+
+  <section class="pf-card pf-hero">
+    <div class="pf-avw">
+      <div class="pf-av" id="avatar"></div>
+      <button type="button" class="pf-cam" id="camBtn" aria-label="Change photo"><svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
+      <input type="file" id="photoIn" accept="image/*" style="display:none">
+    </div>
+    <div>
+      <div class="pf-nm" id="hName">--</div>
+      <div class="pf-sub"><span id="hRole">--</span><span>&bull;</span><span id="hCode">--</span><span class="badge b-success" id="hStatus">Active</span></div>
+    </div>
+    <button type="button" class="pf-btn edit" id="editBtn"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg> Edit Profile</button>
+    <div class="pf-meta">
+      <span><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg><b id="hPhone">--</b></span>
+      <span id="hLocWrap"><svg viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg><span id="hLoc">--</span></span>
+    </div>
+  </section>
+
+  <div class="pf-tabs" id="tabs">
+    <button class="pf-tab on" data-t="personal"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Personal<span class="long"> Info</span></span></button>
+    <button class="pf-tab" data-t="work"><svg viewBox="0 0 24 24"><path d="M1 3h15v13H1zM16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2"/><circle cx="18.5" cy="18.5" r="2"/></svg><span>Work<span class="long"> Info</span></span></button>
+    <button class="pf-tab" data-t="docs"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h5"/></svg><span>Docs<span class="long">uments</span></span></button>
+    <button class="pf-tab" data-t="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></button>
+  </div>
+
+  <div id="panel"></div>
+</main>
+
+<div class="pf-ov" id="ov"><div class="pf-sheet" id="sheet"></div></div>
+<div class="pf-toast" id="toast"></div>
+
+<!-- Bottom Navigation Bar -->
+<nav class="nav" aria-label="Main Navigation">
+  <div>
+    <a href="home.html">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>
+      Home
+    </a>
+    <a href="route.html">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M9 20l-6-2V4l6 2 6-2 6 2v14l-6-2-6 2zM9 6v14M15 4v14"/></svg>
+      Route
+    </a>
+    <a href="advances.html">
+      <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14.8 9A2 2 0 0 0 13 8h-2a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4h-2a2 2 0 0 1-1.8-1M12 6v12"/></svg>
+      Account
+    </a>
+    <a href="attendance.html">
+      <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      Attendance
+    </a>
+    <a href="profile.html" aria-current="page">
+      <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+      Profile
+    </a>
+  </div>
+</nav>
+
+<script src="../shared/theme.js"></script>
+<script src="../shared/mock-data.js"></script>
+<script>
+  if (!localStorage.getItem('gm_logged_in')) { window.location.href = 'login.html'; }
+  GM.applyTodayPlan();
+  var $ = function (id) { return document.getElementById(id); };
+  var MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  var DOCS = [['aadhaar', 'Aadhaar Card'], ['license', 'Driving License'], ['addrproof', 'Address Proof'], ['idother', 'Other document']];
+  var tab = 'personal', photoBust = 0;
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function jl(k, d) { try { var r = JSON.parse(localStorage.getItem(k)); return r == null ? d : r; } catch (e) { return d; } }
+  function toast(t) { var e = $('toast'); e.textContent = t; e.style.display = 'block'; setTimeout(function () { e.style.display = 'none'; }, 2400); }
+  function dfmt(s) { return s && /^\d{4}-\d{2}-\d{2}$/.test(s) ? +s.slice(8) + ' ' + MN[+s.slice(5, 7) - 1] + ' ' + s.slice(0, 4) : ''; }
+  function tel(s) { s = String(s || '').trim(); return /^\d{10}$/.test(s.replace(/\D/g, '')) && s.replace(/\D/g, '').length === 10 ? '+91 ' + s.replace(/\D/g, '').replace(/(\d{5})(\d{5})/, '$1 $2') : s; }
+
+  // Data: the office's employee profile (read) + this employee's own edits (saved under their own key)
+  function me() { return GM.getWorker() || {}; }
+  function adminRec() { var w = jl('gm_admin_workers_v1', {}).workers || []; return w.filter(function (x) { return x.id === me().id; })[0] || {}; }
+  function prof() { return (jl('gm_admin_wprofile_v1', {}) || {})[me().id] || {}; }
+  function roleName() { var r = prof().role; return !r || r === 'Delivery' ? 'Delivery / Driver' : r; }
+  function selfKey() { return 'gm_wself_' + me().id; }
+  function self() { return jl(selfKey(), {}) || {}; }
+  function val(k) { var s = self(); return s[k] !== undefined ? s[k] : (prof()[k] || ''); }
+  function saveSelf(patch) { var s = self(); Object.keys(patch).forEach(function (k) { s[k] = patch[k]; }); localStorage.setItem(selfKey(), JSON.stringify(s)); }
+  function route() { var shops = GM.getShops() || []; if (shops[0] && shops[0].owner) return shops[0].owner; var a = (prof().assign || []).filter(function (x) { return !x.to; }); return a.length ? a[a.length - 1].route : ''; }
+  function vehicle() { var sh = GM.getShift() || {}; if (sh.assignedVehicle) return sh.assignedVehicle; var a = (prof().assign || []).filter(function (x) { return !x.to; }); return a.length ? a[a.length - 1].vehicle : ''; }
+  function status() { var r = adminRec(), w = me(); if (r.active === false) return ['Inactive', 'b-muted']; if (r.onLeave || w.onLeaveToday) return ['On leave', 'b-accent']; return ['Active', 'b-success']; }
+
+  var IC = {
+    user: '<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+    code: '<svg class="ic" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>',
+    phone: '<svg class="ic" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+    cal: '<svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+    pin: '<svg class="ic" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+    van: '<svg class="ic" viewBox="0 0 24 24"><path d="M1 3h15v13H1zM16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2"/><circle cx="18.5" cy="18.5" r="2"/></svg>',
+    users: '<svg class="ic" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 21a7 7 0 0 1 14 0M17 4.5a3.5 3.5 0 0 1 0 7M22 21a7 7 0 0 0-4-6.3"/></svg>',
+    lock: '<svg class="ic" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+    cog: '<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg>',
+    help: '<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg>',
+    out: '<svg class="ic" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
+    go: '<svg class="go" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
+    doc: '<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6"/></svg>'
+  };
+  function f(ic, label, v, wide) { return '<div class="pf-f' + (wide ? ' wide' : '') + '">' + IC[ic] + '<div class="t"><small>' + label + '</small><b>' + (v ? esc(v) : '-') + '</b></div></div>'; }
+
+  function renderHero() {
+    var w = me(), id = w.id, ph = (prof().files || {}).photo, at = Math.max(self().photoAt || 0, ph ? ph.at || 0 : 0);
+    $('avatar').innerHTML = esc(String(w.name || '?').trim().charAt(0).toUpperCase()) + (at ? '<img src="/api/vfile?v=' + encodeURIComponent(id) + '&k=photo&t=' + at + (photoBust || '') + '" alt="" onerror="this.remove()">' : '');
+    $('hName').textContent = w.name || '--';
+    $('hRole').textContent = roleName();
+    $('hCode').textContent = prof().empCode || id || '';
+    var st = status(); $('hStatus').textContent = st[0]; $('hStatus').className = 'badge ' + st[1];
+    $('hPhone').textContent = tel(w.phone) ? tel(w.phone) : '--';
+    var loc = route() || String(val('address')).split(',').slice(0, 2).join(',').trim();
+    $('hLocWrap').style.display = loc ? '' : 'none'; $('hLoc').textContent = loc;
+  }
+
+  function actions() {
+    return '<div class="pf-card"><div class="pf-h"><span class="hi g"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg></span>Account Actions</div><div class="pf-list">' +
+      '<a class="pf-act" id="pwBtn" href="#" target="_blank" rel="noopener" style="text-decoration:none">' + IC.lock + '<span>Change Password<small>Ask the office to reset your PIN</small></span>' + IC.go + '</a>' +
+      '<button type="button" class="pf-act" id="setBtn">' + IC.cog + '<span>App Settings</span>' + IC.go + '</button>' +
+      '<button type="button" class="pf-act" id="helpBtn">' + IC.help + '<span>Help &amp; Support</span>' + IC.go + '</button>' +
+      '<div class="pf-help" id="helpBox"><a class="call" href="#" data-admin-call>Call Office (<span data-admin-phone></span>)</a><a class="wa" id="waHelp" href="#" target="_blank" rel="noopener">WhatsApp the Office</a></div>' +
+      '<button type="button" class="pf-act out" id="logoutBtn">' + IC.out + '<span>Logout</span>' + IC.go + '</button></div></div>';
+  }
+
+  function render() {
+    renderHero();
+    var w = me(), p = prof(), h = '';
+    if (tab === 'personal') {
+      h = '<div class="pf-card"><div class="pf-h"><span class="hi g"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>Personal Information</div><div class="pf-grid">' +
+        f('user', 'Full Name', w.name) + f('code', 'Employee ID', prof().empCode || w.id) + f('phone', 'Phone Number', tel(w.phone)) + f('phone', 'Alternate Phone', tel(val('altPhone'))) +
+        f('cal', 'Date of Birth', dfmt(val('dob'))) + f('user', 'Gender', val('gender')) + f('pin', 'Address', val('address'), true) + '</div></div>' +
+        '<div class="pf-two"><div class="pf-card"><div class="pf-h"><span class="hi r"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 9v6M9 12h6"/></svg></span><span class="grow">Emergency Contact</span><button type="button" class="pf-btn sm" id="emEdit"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg> Edit</button></div><div class="pf-list" style="gap:10px">' +
+        f('user', 'Contact Name', val('emName')) + f('phone', 'Phone Number', tel(val('emPhone') || adminRec().emergency)) + f('users', 'Relationship', val('emRel')) + '</div></div>' + actions() + '</div>';
+    } else if (tab === 'work') {
+      var st = status(), join = dfmt(p.joinDate || adminRec().created);
+      h = '<div class="pf-card"><div class="pf-h"><span class="hi b"><svg viewBox="0 0 24 24"><path d="M1 3h15v13H1zM16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2"/><circle cx="18.5" cy="18.5" r="2"/></svg></span>Work Information</div><div class="pf-grid">' +
+        f('user', 'Role', roleName()) + f('code', 'Employee ID', prof().empCode || w.id) + f('pin', 'Assigned Route', route() || 'No route today') + f('van', 'Vehicle', vehicle() || 'Assigned at punch-in') +
+        f('cal', 'Joining Date', join) + f('user', 'Status', st[0]) + '</div><p class="pf-note">Work details are set by the office.</p></div>';
+    } else if (tab === 'docs') {
+      var files = p.files || {};
+      h = '<div class="pf-card"><div class="pf-h"><span class="hi a"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6"/></svg></span>Documents</div>' +
+        DOCS.map(function (d) {
+          var fl = files[d[0]];
+          return '<div class="pf-doc"><span class="ic ' + (fl ? 'hi g' : 'hi t') + '" style="width:38px;height:38px;border-radius:10px">' + IC.doc + '</span><div class="t"><b>' + d[1] + '</b><small>' + (fl ? esc(fl.name) : 'Not uploaded') + '</small></div>' +
+            (fl ? '<a href="/api/vfile?v=' + encodeURIComponent(w.id) + '&k=' + d[0] + '&t=' + (fl.at || 0) + '" target="_blank" rel="noopener">View</a>' : '') + '</div>';
+        }).join('') + '<p class="pf-note">Documents are uploaded by the office.</p></div>';
+    } else {
+      var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+      h = '<div class="pf-card"><div class="pf-h"><span class="hi t"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></span>Appearance</div>' +
+        '<div class="pf-seg"><button type="button" data-th="light" class="' + (dark ? '' : 'on') + '">Light</button><button type="button" data-th="dark" class="' + (dark ? 'on' : '') + '">Dark</button></div>' +
+        (GM.DEMO_MODE ? '<p class="pf-note"><a href="#" id="resetDemoBtn" style="color:var(--muted)">Reset demo data</a></p>' : '') + '</div>' + actions();
+    }
+    $('panel').innerHTML = h;
+    var msg = 'Hi, please reset my GM-CRM PIN.\nName: ' + (w.name || '') + '\nWorker ID: ' + (w.id || '') + '\nPhone: ' + (w.phone || '');
+    var pw = $('pwBtn'); if (pw) pw.href = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(msg);
+    var wa = $('waHelp'); if (wa) wa.href = 'https://api.whatsapp.com/send?text=' + encodeURIComponent('Hi, I need help.\nName: ' + (w.name || '') + '\nWorker ID: ' + (w.id || ''));
+    var ap = me().adminPhone || '';
+    document.querySelectorAll('[data-admin-phone]').forEach(function (e) { e.textContent = ap; });
+    document.querySelectorAll('[data-admin-call]').forEach(function (e) { e.setAttribute('href', 'tel:' + ap); e.style.display = ap ? '' : 'none'; });
+    var hb = $('helpBtn'); if (hb) hb.onclick = function () { $('helpBox').classList.toggle('open'); };
+    var sb = $('setBtn'); if (sb) sb.onclick = function () { setTab('settings'); };
+    var lo = $('logoutBtn'); if (lo) lo.onclick = function () { localStorage.removeItem('gm_logged_in'); window.location.href = 'login.html'; };
+    var ee = $('emEdit'); if (ee) ee.onclick = openEmergency;
+    var rd = $('resetDemoBtn'); if (rd) rd.onclick = function (e) { e.preventDefault(); if (confirm("Reset today's demo data back to morning start?")) { GM.resetData(); window.location.href = 'home.html'; } };
+    document.querySelectorAll('[data-th]').forEach(function (b) { b.onclick = function () { if ((document.documentElement.getAttribute('data-theme') === 'dark') !== (b.getAttribute('data-th') === 'dark')) $('themeToggle').click(); setTimeout(render, 60); }; });
+  }
+  function setTab(t) { tab = t; document.querySelectorAll('.pf-tab').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-t') === t); }); render(); }
+  document.querySelectorAll('.pf-tab').forEach(function (b) { b.onclick = function () { setTab(b.getAttribute('data-t')); }; });
+
+  // Edit sheets
+  function openSheet(html) { $('sheet').innerHTML = html; $('ov').classList.add('open'); }
+  function closeSheet() { $('ov').classList.remove('open'); }
+  $('ov').onclick = function (e) { if (e.target === this) closeSheet(); };
+  function openProfile() {
+    openSheet('<h3>Edit Profile</h3><p>Name, phone and employee code are changed by the office.</p>' +
+      '<label for="eAlt">Alternate phone (10 digits)</label><input id="eAlt" inputmode="numeric" maxlength="10" value="' + esc(val('altPhone')) + '">' +
+      '<label for="eDob">Date of birth</label><input id="eDob" type="date" max="' + new Date().toISOString().slice(0, 10) + '" value="' + esc(val('dob')) + '">' +
+      '<label for="eG">Gender</label><select id="eG"><option value="">Select</option>' + ['Male', 'Female', 'Other'].map(function (g) { return '<option' + (val('gender') === g ? ' selected' : '') + '>' + g + '</option>'; }).join('') + '</select>' +
+      '<label for="eAd">Address</label><textarea id="eAd" maxlength="200">' + esc(val('address')) + '</textarea>' +
+      '<div class="msg" id="eErr" style="margin-top:6px"></div><div class="btns"><button type="button" id="eCancel">Cancel</button><button type="button" class="save" id="eSave">Save</button></div>');
+    $('eCancel').onclick = closeSheet;
+    $('eSave').onclick = function () {
+      var alt = $('eAlt').value.replace(/\D/g, '');
+      if (alt && alt.length !== 10) { $('eErr').textContent = 'Alternate phone must be 10 digits.'; return; }
+      saveSelf({ altPhone: alt, dob: $('eDob').value, gender: $('eG').value, address: $('eAd').value.trim() }); closeSheet(); render(); toast('Profile saved');
+    };
+  }
+  function openEmergency() {
+    openSheet('<h3>Emergency Contact</h3><p>Someone the office can call if needed.</p>' +
+      '<label for="eN">Contact name</label><input id="eN" maxlength="60" value="' + esc(val('emName')) + '">' +
+      '<label for="eP">Phone number (10 digits)</label><input id="eP" inputmode="numeric" maxlength="10" value="' + esc(val('emPhone')) + '">' +
+      '<label for="eR">Relationship</label><input id="eR" maxlength="30" placeholder="e.g. Brother" value="' + esc(val('emRel')) + '">' +
+      '<div class="msg" id="eErr" style="margin-top:6px"></div><div class="btns"><button type="button" id="eCancel">Cancel</button><button type="button" class="save" id="eSave">Save</button></div>');
+    $('eCancel').onclick = closeSheet;
+    $('eSave').onclick = function () {
+      var p = $('eP').value.replace(/\D/g, '');
+      if (p && p.length !== 10) { $('eErr').textContent = 'Phone must be 10 digits.'; return; }
+      saveSelf({ emName: $('eN').value.trim(), emPhone: p, emRel: $('eR').value.trim() }); closeSheet(); render(); toast('Emergency contact saved');
+    };
+  }
+  $('editBtn').onclick = openProfile;
+
+  // Photo: shrink on the phone, then send to the server (same place the office keeps employee photos)
+  $('camBtn').onclick = function () { $('photoIn').click(); };
+  $('photoIn').onchange = function () {
+    var file = this.files[0]; this.value = ''; if (!file) return;
+    if (!/^image\//.test(file.type)) { toast('Choose a picture'); return; }
+    var fr = new FileReader();
+    fr.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        var s = Math.min(1, 800 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        fetch('/api/vfile?v=' + encodeURIComponent(me().id) + '&k=photo', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: c.toDataURL('image/jpeg', 0.85) }) })
+          .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(j.error || 'Upload failed'); return j; }); })
+          .then(function (j) { saveSelf({ photoAt: j.at || Date.now() }); photoBust = '&r=' + Date.now(); render(); toast('Photo updated'); },
+                function (e) { toast('Could not save photo: ' + (e.message || 'server not reachable')); });
+      };
+      img.onerror = function () { toast('That picture could not be read'); };
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  };
+
+  window.addEventListener('gm-sync', render);
+  render();
+</script></body>
+</html>

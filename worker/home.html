@@ -1,0 +1,405 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head><script src="../shared/sync.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>General Traders - Home</title>
+<link rel="stylesheet" href="../shared/theme.css">
+<style>
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .worker-info h1 {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .worker-info p {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+  .header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  /* Next Stop Card embedded inside hero or route card */
+  .stop-highlight {
+    background: var(--card);
+    color: var(--text);
+    border-radius: var(--radius-card);
+    padding: 14px;
+    margin-top: 14px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+  }
+  .stop-header {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .stop-thumb {
+    width: 52px;
+    height: 52px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+  .stop-title {
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+  .stop-meta {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .stop-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .stop-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 40px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .stop-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* Notice from office */
+  .gm-notice { background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: var(--radius-card); padding: 14px; margin-bottom: 14px; box-shadow: var(--shadow); }
+  .gm-notice-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .gm-notice p { font-size: 14px; margin: 4px 0; color: var(--muted); }
+
+  /* Quick tiles */
+  .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  @media (min-width: 640px) { .menu-grid { grid-template-columns: repeat(4, 1fr); } }
+  .menu-card { border-radius: var(--radius-card); padding: 14px; text-decoration: none; color: var(--text); display: flex; flex-direction: column; gap: 12px; border: 1px solid var(--border); box-shadow: var(--shadow); transition: transform .1s; }
+  .menu-card:active { transform: scale(.98); }
+  .mc-p { background: linear-gradient(160deg, var(--t-primary), var(--card) 75%); }
+  .mc-a { background: linear-gradient(160deg, var(--t-accent), var(--card) 75%); }
+  .mc-s { background: linear-gradient(160deg, var(--t-success), var(--card) 75%); }
+  .mc-i { background: linear-gradient(160deg, var(--t-info), var(--card) 75%); }
+  .menu-card-title { font-size: 14px; font-weight: 700; line-height: 1.2; }
+  .menu-card-sub { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+  /* Today's progress */
+  .progress-bar-wrap { background: var(--border); height: 8px; border-radius: 999px; overflow: hidden; margin: 10px 0 6px; }
+  .progress-fill { background: linear-gradient(90deg, var(--primary), var(--success)); height: 100%; width: 0%; transition: width .3s ease; }
+  .progress-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+
+  /* ===== Home redesign ===== */
+  .brand { display:flex; align-items:center; gap:12px; text-decoration:none; color:var(--text); }
+  .brand-logo { width:52px; height:44px; border-radius:12px; background:#fff; border:1px solid var(--border); display:grid; place-items:center; flex-shrink:0; overflow:hidden; }
+  .brand-logo img { width:46px; height:auto; display:block; }
+  .brand-txt { display:flex; flex-direction:column; min-width:0; }
+  .brand-name { display:block; font-size:17px; font-weight:800; line-height:1.15; font-family:'Plus Jakarta Sans','Inter',Arial,sans-serif; }
+  .brand-sub { display:block; font-size:12px; color:var(--muted); margin-top:2px; }
+  .brand-top { margin-bottom:18px; }
+  .nav a.brand-side { display:none; }
+  .app-header { align-items:flex-start; margin-bottom:18px; }
+  .worker-info h1 { font-size:24px; font-weight:800; font-family:'Plus Jakarta Sans','Inter',Arial,sans-serif; }
+  .worker-info p { font-size:13.5px; margin-top:4px; }
+  .header-actions .icon-btn { width:44px; height:44px; border-radius:14px; }
+  .header-actions .icon-btn.is-p { color:var(--primary); background:var(--t-primary); border-color:transparent; }
+  .hero { border-radius:22px; padding:22px; }
+  .hero .hero-title { font-size:32px; font-weight:800; line-height:1.15; margin:16px 0 8px; font-family:'Plus Jakarta Sans','Inter',Arial,sans-serif; }
+  .hero .hero-text { opacity:.92; font-size:14.5px; line-height:1.5; margin-bottom:18px; max-width:46ch; }
+  .hero .btn-hero { width:100%; height:52px; border-radius:14px; font-size:15px; font-weight:700; }
+  .menu-card { position:relative; border-radius:18px; padding:16px; gap:14px; }
+  .mc-top { display:flex; align-items:flex-start; justify-content:space-between; }
+  .mc-top .chip { width:44px; height:44px; border-radius:12px; }
+  .mc-go { width:22px; height:22px; color:var(--muted); opacity:.7; transition:transform .2s ease, color .2s ease; }
+  .menu-card-title { font-size:15px; }
+  .menu-card-sub { font-size:12px; margin-top:3px; }
+  @media (hover:hover){ .menu-card:hover .mc-go { transform:translateX(3px); color:var(--primary); opacity:1; } }
+  .prog-card { border-radius:18px; padding:18px; }
+  .prog-card .card-title { align-items:center; margin-bottom:6px; }
+  .prog-card .card-title > span { font-size:17px; font-weight:800; }
+  .prog-link { display:inline-flex; align-items:center; gap:4px; font-size:13px; font-weight:600; color:var(--primary); text-decoration:none; }
+  .prog-link svg { width:15px; height:15px; }
+  .progress-bar-wrap { height:12px; margin:14px 0 10px; }
+  .progress-row { font-size:13px; }
+  .progress-row span:last-child { font-weight:700; color:var(--text); }
+
+  @media (min-width:900px){
+    .brand-top { display:none; }
+    .nav a.brand-side { display:flex; flex-direction:row; align-items:center; gap:12px; min-height:0; padding:4px 8px 20px; margin-bottom:12px; border-radius:0; border-bottom:1px solid var(--border); color:var(--text); background:none; }
+    .nav a.brand-side:hover { background:none; }
+    .nav a.brand-side .brand-name { font-size:16px; color:var(--text); }
+    .nav a.brand-side .brand-sub { color:var(--muted); font-size:11.5px; font-weight:500; }
+    .nav a { font-weight:600; }
+    .app-header { margin-bottom:24px; }
+    .worker-info h1 { font-size:30px; }
+    .hero { padding:30px 32px; }
+    .hero .hero-title { font-size:40px; }
+    .hero .btn-hero { width:auto; min-width:340px; padding:0 28px; }
+    .menu-card { padding:20px; min-height:150px; justify-content:space-between; }
+    .menu-card-title { font-size:16px; }
+    .prog-card { padding:22px 24px; }
+  }
+</style></head>
+<body>
+<main class="app">
+  <!-- Brand -->
+  <a href="home.html" class="brand brand-top" aria-label="General Traders">
+    <span class="brand-logo"><img src="../assets/logo.png" alt=""></span>
+    <span class="brand-txt"><b class="brand-name">General Traders</b><small class="brand-sub">Distribution &amp; Delivery</small></span>
+  </a>
+  <!-- Top Bar -->
+  <header class="app-header">
+    <div class="worker-info">
+      <h1 id="greeting">Hello</h1>
+      <p id="todayDate">Loading date...</p>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="themeToggle" aria-label="Switch light or dark theme">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+      <a href="profile.html" class="icon-btn is-p" aria-label="Employee Profile">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+      </a>
+    </div>
+  </header>
+
+  <!-- Dynamic Hero Card -->
+  <div id="gmNotices"></div>
+  <div id="gmPins"></div>
+  <div id="heroCardWrap">
+    <!-- Populated dynamically via JS based on Shift State -->
+  </div>
+
+<!-- Quick tiles -->
+  <div class="menu-grid">
+    <a href="route.html" class="menu-card mc-p">
+      <span class="mc-top"><span class="chip c-p"><svg class="icon" viewBox="0 0 24 24"><path d="M9 20l-6-2V4l6 2 6-2 6 2v14l-6-2-6 2zM9 6v14M15 4v14"/></svg></span><svg class="icon mc-go" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+      <div><div class="menu-card-title">Today's Route</div><div class="menu-card-sub" id="routeShopsCount">&nbsp;</div></div>
+    </a>
+    <a href="advances.html" class="menu-card mc-a">
+      <span class="mc-top"><span class="chip c-a"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14.8 9A2 2 0 0 0 13 8h-2a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4h-2a2 2 0 0 1-1.8-1M12 6v12"/></svg></span><svg class="icon mc-go" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+      <div><div class="menu-card-title">Account</div><div class="menu-card-sub">Advances &amp; deductions</div></div>
+    </a>
+    <a href="attendance.html" class="menu-card mc-s">
+      <span class="mc-top"><span class="chip c-s"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span><svg class="icon mc-go" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+      <div><div class="menu-card-title">Attendance</div><div class="menu-card-sub" id="attendanceSummary">&nbsp;</div></div>
+    </a>
+    <a href="profile.html" class="menu-card mc-i">
+      <span class="mc-top"><span class="chip c-i"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span><svg class="icon mc-go" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+      <div><div class="menu-card-title">My Profile</div><div class="menu-card-sub">Password &amp; help</div></div>
+    </a>
+  </div>
+
+  <!-- Today's progress -->
+  <section class="card prog-card" aria-label="Today's Progress">
+    <div class="card-title">
+      <span>Today's Progress</span>
+      <a href="route.html" class="prog-link">View Details <svg class="icon" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></a>
+    </div>
+    <div class="progress-bar-wrap"><div class="progress-fill" id="routeProgressFill"></div></div>
+    <div class="progress-row"><span id="routeProgressText">0 / 0 done</span><span id="routeProgressPct">0%</span></div>
+  </section>
+</main>
+
+<!-- Bottom Navigation Bar -->
+<nav class="nav" aria-label="Main Navigation">
+  <a href="home.html" class="brand brand-side" aria-label="General Traders">
+    <span class="brand-logo"><img src="../assets/logo.png" alt=""></span>
+    <span class="brand-txt"><b class="brand-name">General Traders</b><small class="brand-sub">Distribution &amp; Delivery</small></span>
+  </a>
+  <div>
+    <a href="home.html" aria-current="page">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>
+      Home
+    </a>
+    <a href="route.html">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M9 20l-6-2V4l6 2 6-2 6 2v14l-6-2-6 2zM9 6v14M15 4v14"/></svg>
+      Route
+    </a>
+    <a href="advances.html">
+      <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14.8 9A2 2 0 0 0 13 8h-2a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4h-2a2 2 0 0 1-1.8-1M12 6v12"/></svg>
+      Account
+    </a>
+    <a href="attendance.html">
+      <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      Attendance
+    </a>
+    <a href="profile.html">
+      <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+      Profile
+    </a>
+  </div>
+</nav>
+
+<script src="../shared/theme.js"></script>
+<script src="../shared/mock-data.js"></script>
+<script src="../shared/punch-modal.js"></script>
+<script>
+  // Ensure session is active
+  if (!localStorage.getItem('gm_logged_in')) {
+    // If not logged in, redirect to login
+    window.location.href = 'login.html';
+  }
+
+  GM.applyTodayPlan();
+  window.addEventListener('gm-sync', function () { if (GM.applyTodayPlan()) location.reload(); });
+  var worker = GM.getWorker();
+  var shift = GM.getShift();
+  var shops = GM.getShops();
+  var nextShop = GM.getNextShop();
+
+  // Messages from the admin about today's plan (priority shop added, new order, employee or vehicle change, cancellation)
+  (function () {
+    var box = document.getElementById('gmNotices'), L = GM.getNotices ? GM.getNotices() : [];
+    function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    if (!box || !L.length) return;
+    box.innerHTML = '<section class="gm-notice" role="status">' +
+      '<div class="gm-notice-head"><b>Update from the office</b><button type="button" id="gmNoticeOk" class="btn btn-secondary" style="width:auto;min-height:34px;padding:0 12px;font-size:13px">Got it</button></div>' +
+      L.slice(0, 5).map(function (n) { return '<p>' + esc(n.text) + '</p>'; }).join('') + '</section>';
+    document.getElementById('gmNoticeOk').onclick = function () { GM.markNoticesRead(); box.innerHTML = ''; };
+  })();
+
+  // Shops the office asked this employee to save (location, phone, address)
+  (function () {
+    var box = document.getElementById('gmPins'); if (!box || !GM.pinTasks) return;
+    var ALL = GM.pinTasks(), L = ALL.filter(function (s) { return !s.done; }); if (!L.length) return;
+    box.innerHTML = '<section class="gm-notice" role="status"><div class="gm-notice-head"><b>Shop locations to save</b></div>' +
+      '<p><b>' + L.length + ' left</b> \u00b7 ' + (ALL.length - L.length) + ' completed (of ' + ALL.length + ')</p><p>Tap the button at each shop to save its location.</p>' +
+      '<a class="btn" href="shop-pins.html" style="margin-top:8px;text-decoration:none;display:flex;align-items:center;justify-content:center">Open shop list</a></section>';
+  })();
+
+  // Date and greeting
+  function updateTime() {
+    var now = new Date();
+    var h = now.getHours();
+    var greeting = (h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening') + (worker ? ', ' + worker.name.split(' ')[0] : '');
+    document.getElementById('greeting').textContent = greeting;
+    document.getElementById('todayDate').textContent = now.toLocaleDateString('en-IN', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    });
+  }
+  updateTime();
+
+  // Render Dynamic Hero Card
+  var heroWrap = document.getElementById('heroCardWrap');
+
+  if (!shift.punchedIn && !GM.hasPlanToday()) {
+    // STATE 0: NO PLAN ASSIGNED TODAY - nothing to punch in for
+    heroWrap.innerHTML = [
+      '<section class="hero" style="background:linear-gradient(135deg, #334155, #1E293B);" aria-label="No plan today">',
+      '  <span class="pill"><i></i> No Plan Today</span>',
+      '  <div class="hero-title">No route assigned yet</div>',
+      '  <p class="hero-text" style="margin-bottom:0">Fleet Admin has not assigned you a plan for today. Contact Fleet Admin if you think this is a mistake.</p>',
+      '</section>'
+    ].join('');
+  } else if (!shift.punchedIn) {
+    // STATE 1: MORNING - NOT PUNCHED IN
+    heroWrap.innerHTML = [
+      '<section class="hero" aria-label="Punch Status">',
+      '  <span class="pill"><i></i> Ready for Shift</span>',
+      '  <div class="hero-title">Start Your Day</div>',
+      '  <p class="hero-text">Assigned: <strong>' + (shift.assignedVehicle || '--') + '</strong>. Warehouse GPS check required.</p>',
+      '  <a class="btn btn-hero" href="punch-in.html">',
+      '    <svg class="icon" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>',
+      '    Punch In &amp; Unlock Route',
+      '  </a>',
+      '</section>'
+    ].join('');
+  } else if (shift.punchedIn && !shift.punchedOut) {
+    // STATE 2: ON DUTY (DELIVERING)
+    if (nextShop) {
+      heroWrap.innerHTML = [
+        '<section class="hero" style="background:linear-gradient(135deg, #0F766E, #115E59);" aria-label="Current Delivery">',
+        '  <div style="display:flex; justify-content:space-between; align-items:center;">',
+        '    <span class="pill green"><i></i> On Duty &bull; ' + (shift.assignedVehicle || '--') + '</span>',
+        '    <span style="font-size:12px; opacity:0.85;">Start KM: ' + (shift.startKm || '--') + '</span>',
+        '  </div>',
+        '  <div class="stop-highlight">',
+        '    <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--primary); margin-bottom:4px;">NEXT RECOMMENDED STOP</div>',
+        '    <div class="stop-header">',
+        '      <img class="stop-thumb" src="' + nextShop.img + '" alt="Shop Photo" onerror="this.src=\'../assets/logo.png\'">',
+        '      <div>',
+        '        <div class="stop-title">' + nextShop.name + '</div>',
+        '        <div class="stop-meta">' + nextShop.distance + ' &bull; ' + GM.qtyLabel(nextShop) + '</div>',
+        '      </div>',
+        '    </div>',
+        '    <div class="stop-actions">',
+        '      <a class="stop-btn" href="' + GM.mapsUrl(nextShop) + '" target="_blank">',
+        '        <svg viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg> Directions',
+        '      </a>',
+        '      <a class="stop-btn" href="tel:' + nextShop.phone + '">',
+        '        <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Call',
+        '      </a>',
+        '    </div>',
+        '    <a class="btn" style="margin-top:12px; height:46px; font-size:15px;" href="delivery.html?id=' + nextShop.id + '">',
+        '      I Have Arrived &bull; Deliver',
+        '    </a>',
+        '  </div>',
+        '</section>'
+      ].join('');
+    } else {
+      // ALL SHOPS HANDLED
+      heroWrap.innerHTML = [
+        '<section class="hero" style="background:linear-gradient(135deg, #16A34A, #15803D);" aria-label="Route Complete">',
+        '  <span class="pill green"><i></i> All Stops Handled</span>',
+        '  <div class="hero-title">Ready to Return Depot</div>',
+        '  <p class="hero-text">Drive back to warehouse to log Ending KM and hand over returned items.</p>',
+        '  <a class="btn btn-hero" href="punch-out.html">',
+        '    End Day &amp; Punch Out',
+        '  </a>',
+        '</section>'
+      ].join('');
+    }
+  } else {
+    // STATE 3: PUNCHED OUT FOR THE DAY
+    heroWrap.innerHTML = [
+      '<section class="hero" style="background:linear-gradient(135deg, #334155, #1E293B);" aria-label="Shift Finished">',
+      '  <span class="pill green"><i></i> Day Finished</span>',
+      '  <div class="hero-title">Good Job, ' + worker.name.split(' ')[0] + '!</div>',
+      '  <p style="opacity:0.85; font-size:13px; margin-bottom:14px;">Total distance driven: <strong>' + (shift.drivenKm || 0) + ' km</strong> today. Summary recorded with Fleet Admin.</p>',
+      '  <div class="btn-group">',
+      '    <a class="btn btn-secondary" style="font-size:14px; height:44px;" href="attendance.html">View Attendance</a>',
+      '    <a class="btn btn-secondary" style="font-size:14px; height:44px;" href="advances.html">View Account</a>',
+      '  </div>',
+      '</section>'
+    ].join('');
+  }
+
+  // Populate Shop count
+  var pendingCount = shops.filter(function(s){ return s.status === 'pending'; }).length;
+  document.getElementById('routeShopsCount').textContent = pendingCount + ' remaining of ' + shops.length;
+
+  // Today's progress (works in every shift state)
+  var doneCount = shops.filter(function(s){ return s.status === 'delivered'; }).length;
+  var pct = shops.length ? Math.round(doneCount / shops.length * 100) : 0;
+  document.getElementById('routeProgressFill').style.width = pct + '%';
+  document.getElementById('routeProgressText').textContent = doneCount + ' / ' + shops.length + ' done';
+  document.getElementById('routeProgressPct').textContent = pct + '%';
+
+  // Attendance tile: real counts for this month
+  var nowD = new Date();
+  var att = GM.getMonthlyAttendance(nowD.getFullYear() + '-' + String(nowD.getMonth() + 1).padStart(2, '0')) || [];
+  var nPresent = att.filter(function(d){ return d.status === 'present'; }).length;
+  var nLate = att.filter(function(d){ return d.status === 'late'; }).length;
+  document.getElementById('attendanceSummary').innerHTML = nPresent + ' Present &bull; ' + nLate + ' Late';
+</script></body>
+</html>

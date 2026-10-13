@@ -1,0 +1,665 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head><script src="../shared/sync.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>General Traders - Monthly Attendance</title>
+<link rel="stylesheet" href="../shared/theme.css">
+<style>
+  /* Month & Year Navigator */
+  .month-picker-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 10px 14px;
+    margin-bottom: 14px;
+  }
+  .picker-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .picker-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  .current-month-label {
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  /* 3 Pillar Summary */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+    text-align: center;
+  }
+  .stat-card {
+    border-radius: var(--radius-card);
+    padding: 12px 6px;
+    border: 1px solid var(--border);
+  }
+  .stat-card b {
+    display: block;
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1.1;
+  }
+  .stat-card span {
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 4px;
+    display: block;
+  }
+  .stat-card.present {
+    background: var(--t-success);
+    border-color: rgba(22, 163, 74, 0.2);
+  }
+  .stat-card.present b, .stat-card.present span { color: var(--success); }
+
+  .stat-card.late {
+    background: var(--t-accent);
+    border-color: rgba(245, 158, 11, 0.2);
+  }
+  .stat-card.late b, .stat-card.late span { color: var(--accent); }
+
+  .stat-card.absent {
+    background: var(--t-danger);
+    border-color: rgba(220, 38, 38, 0.2);
+  }
+  .stat-card.absent b, .stat-card.absent span { color: var(--danger); }
+
+  /* Full Visual Calendar Grid */
+  .cal-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+  }
+  .cal-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+  .cal-day-cell {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    transition: transform 0.1s, border-color 0.15s;
+  }
+  .cal-day-cell:active {
+    transform: scale(0.92);
+  }
+  .cal-day-cell.selected {
+    outline: 2.5px solid var(--primary);
+    outline-offset: 1px;
+  }
+  .cal-day-cell.d-present {
+    background: var(--t-success);
+    color: var(--success);
+    border-color: rgba(22, 163, 74, 0.3);
+  }
+  .cal-day-cell.d-late {
+    background: var(--t-accent);
+    color: var(--accent);
+    border-color: rgba(245, 158, 11, 0.3);
+  }
+  .cal-day-cell.d-absent {
+    background: var(--t-danger);
+    color: var(--danger);
+    border-color: rgba(220, 38, 38, 0.3);
+  }
+  .cal-day-cell.d-off {
+    background: var(--card);
+    color: var(--muted);
+    opacity: 0.6;
+  }
+  .cal-day-cell.d-upcoming {
+    background: var(--bg);
+    color: var(--muted);
+    opacity: 0.45;
+    border-style: dashed;
+  }
+  .cal-day-cell small {
+    font-size: 8px;
+    font-weight: 600;
+    margin-top: 1px;
+    text-transform: uppercase;
+  }
+
+  /* Selected Day Highlight Card */
+  .focus-day-card {
+    background: linear-gradient(135deg, var(--hero1), var(--hero2));
+    color: var(--on-hero);
+    border-radius: var(--radius-card);
+    padding: 16px;
+    margin-bottom: 16px;
+    cursor: pointer;
+  }
+  .focus-times-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .time-bubble {
+    background: rgba(255, 255, 255, 0.16);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .time-bubble small {
+    display: block;
+    font-size: 11px;
+    opacity: 0.85;
+  }
+  .time-bubble strong {
+    font-size: 17px;
+    font-weight: 700;
+  }
+
+  /* Clickable Daily List Rows */
+  .log-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: transform 0.1s, border-color 0.15s;
+  }
+  .log-item:active {
+    transform: scale(0.985);
+    border-color: var(--primary);
+  }
+  .in-out-pill {
+    display: flex;
+    gap: 8px;
+    font-size: 12px;
+    margin-top: 3px;
+    color: var(--muted);
+  }
+  .in-out-pill span strong {
+    color: var(--text);
+  }
+  .log-chevron {
+    color: var(--muted);
+    font-size: 20px;
+    font-weight: 700;
+    margin-left: 10px;
+  }
+
+  /* Modal Sheet for Day Details */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .modal-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .modal-sheet {
+    background: var(--card);
+    width: 100%;
+    max-width: 480px;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    padding: 20px;
+    max-height: 88vh;
+    overflow-y: auto;
+    transform: translateY(100%);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .modal-overlay.active .modal-sheet {
+    transform: translateY(0);
+  }
+  .modal-top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .modal-close-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    display: grid;
+    place-items: center;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .hist-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+  }
+  .hist-shop-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .hist-shop-item:last-child {
+    border-bottom: 0;
+  }
+
+  /* ---- Attendance (new design) ---- */
+  .at-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .at-head h1 { font-size: 22px; font-weight: 700; line-height: 1.2; }
+  .at-head p { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  .at-right { display: flex; align-items: center; gap: 8px; }
+  .at-month { display: flex; align-items: center; gap: 4px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 4px; box-shadow: var(--shadow); }
+  .at-month b { font-size: 13.5px; min-width: 84px; text-align: center; }
+  .at-month button, .at-wk button { width: 32px; height: 32px; border: 0; border-radius: 9px; background: var(--t-primary); color: var(--primary); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .at-month button:disabled, .at-wk button:disabled { opacity: .35; cursor: default; }
+  .at-month svg, .at-wk svg { width: 16px; height: 16px; }
+  .at-wk { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+  .at-week { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .at-day { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 0; width: 100%; border: 1.5px solid var(--border); background: var(--card); border-radius: 12px; padding: 10px 2px; text-align: center; cursor: pointer; font-family: inherit; color: var(--text); }
+  .at-day small { display: block; font-size: 11px; color: var(--muted); }
+  .at-day b { display: block; font-size: 17px; line-height: 1.1; color: var(--text); }
+  .at-day i { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; font-style: normal; font-size: 11px; font-weight: 800; background: var(--border); color: var(--muted); flex-shrink: 0; }
+  .at-day.P i { background: var(--t-success); color: var(--success); }
+  .at-day.L i { background: var(--t-accent); color: var(--accent); }
+  .at-day.A i { background: var(--t-danger); color: var(--danger); }
+  .at-day.sel { border-color: var(--primary); background: var(--t-primary); box-shadow: 0 0 0 2px var(--t-primary); }
+  .at-day.out { opacity: .35; cursor: default; }
+  .at-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+  .at-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .at-legend i { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-style: normal; font-size: 10px; font-weight: 800; }
+  .at-state { text-align: center; border-radius: var(--radius-card); padding: 22px 16px; margin-bottom: 14px; background: linear-gradient(160deg, var(--t-info), var(--card) 90%); border: 1px solid var(--border); box-shadow: var(--shadow); }
+  .at-state .ico { width: 54px; height: 54px; margin: 0 auto 10px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--card); color: var(--info); }
+  .at-state .ico svg { width: 30px; height: 30px; }
+  .at-state h2 { font-size: 18px; font-weight: 800; }
+  .at-state p { font-size: 13px; color: var(--muted); margin: 4px 0 14px; }
+  .at-state.ok { background: linear-gradient(160deg, var(--t-success), var(--card) 90%); } .at-state.ok .ico { color: var(--success); }
+  .at-state.late { background: linear-gradient(160deg, var(--t-accent), var(--card) 90%); } .at-state.late .ico { color: var(--accent); }
+  .at-state.bad { background: linear-gradient(160deg, var(--t-danger), var(--card) 90%); } .at-state.bad .ico { color: var(--danger); }
+  .at-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 220px; height: 50px; padding: 0 22px; border-radius: var(--radius-btn); border: 0; font-size: 15px; font-weight: 700; text-decoration: none; cursor: pointer; font-family: inherit; color: var(--on-hero); background: linear-gradient(135deg, var(--hero1), var(--hero2)); box-shadow: 0 4px 12px rgba(15,118,110,.2); }
+  .at-btn.red { background: var(--danger); color: #fff; box-shadow: none; }
+  .at-btn.ghost { background: var(--card); color: var(--primary); border: 1.5px solid var(--primary); box-shadow: none; }
+  .at-btn svg { width: 18px; height: 18px; }
+  .at-sec { font-size: 15px; font-weight: 700; margin: 0 0 8px; }
+  .at-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .at-tile { border-radius: var(--radius-card); padding: 12px 10px; border: 1px solid var(--border); box-shadow: var(--shadow); text-align: left; display: flex; flex-direction: column; gap: 6px; }
+  .at-tile.t1 { background: linear-gradient(160deg, var(--t-accent), var(--card) 85%); }
+  .at-tile.t2 { background: linear-gradient(160deg, var(--t-primary), var(--card) 85%); }
+  .at-tile.t3 { background: linear-gradient(160deg, var(--t-info), var(--card) 85%); }
+  .at-tile .chip { width: 34px; height: 34px; }
+  .at-tile strong { font-size: 17px; font-weight: 800; line-height: 1.1; }
+  .at-tile small { font-size: 11.5px; color: var(--muted); }
+  .at-month-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .at-ms { border-radius: 12px; padding: 10px; text-align: center; border: 1px solid var(--border); }
+  .at-ms b { display: block; font-size: 20px; } .at-ms span { font-size: 12px; color: var(--muted); }
+  .at-ms.p { background: var(--t-success); } .at-ms.p b { color: var(--success); }
+  .at-ms.l { background: var(--t-accent); } .at-ms.l b { color: var(--accent); }
+  .at-ms.a { background: var(--t-danger); } .at-ms.a b { color: var(--danger); }
+</style></head>
+<body>
+<main class="app">
+  <header class="at-head">
+    <div><h1>Attendance</h1><p>View your attendance and working hours.</p></div>
+    <div class="at-right">
+      <div class="at-month">
+        <button type="button" id="prevMonthBtn" aria-label="Previous month"><svg class="icon" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <b id="monthYearLabel">&nbsp;</b>
+        <button type="button" id="nextMonthBtn" aria-label="Next month"><svg class="icon" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+      </div>
+      <button class="icon-btn" id="themeToggle" aria-label="Switch light or dark theme">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="at-wk">
+    <button type="button" id="prevWk" aria-label="Previous week"><svg class="icon" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <div class="at-week" id="weekStrip"></div>
+    <button type="button" id="nextWk" aria-label="Next week"><svg class="icon" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+  </div>
+  <div class="at-legend">
+    <span><i style="background:var(--t-success);color:var(--success)">P</i>Present</span>
+    <span><i style="background:var(--t-accent);color:var(--accent)">L</i>Late</span>
+    <span><i style="background:var(--t-danger);color:var(--danger)">A</i>Absent</span>
+    <span><i style="background:var(--border);color:var(--muted)">-</i>Not marked</span>
+  </div>
+
+  <section class="at-state" id="stateCard"></section>
+
+  <h2 class="at-sec" id="hoursTitle">Today's Working Hours</h2>
+  <div class="at-tiles">
+    <div class="at-tile t1"><span class="chip c-a"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><strong id="tHours">--</strong><small>Total Hours</small></div>
+    <div class="at-tile t2"><span class="chip c-p"><svg class="icon" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg></span><strong id="tKm">--</strong><small>Distance</small></div>
+    <div class="at-tile t3"><span class="chip c-i"><svg class="icon" viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5M4 9v11h16V9M9 20v-6h6v6"/></svg></span><strong id="tStops">--</strong><small>Stops Visited</small></div>
+  </div>
+
+  <h2 class="at-sec">This Month</h2>
+  <div class="at-month-stats">
+    <div class="at-ms p"><b id="pCount">0</b><span>Present</span></div>
+    <div class="at-ms l"><b id="lCount">0</b><span>Late</span></div>
+    <div class="at-ms a"><b id="aCount">0</b><span>Absent</span></div>
+  </div>
+
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+    <h2 class="at-sec" style="margin:0">Daily Shift Records</h2>
+    <span style="font-size:11px; color:var(--muted);">Tap a day for history</span>
+  </div>
+  <div id="allDaysList" style="padding-bottom:20px;"></div>
+</main>
+
+<!-- MODAL: FULL DAY DELIVERY & SHIFT BREAKDOWN -->
+<div class="modal-overlay" id="dayDetailModal">
+  <div class="modal-sheet">
+    <div class="modal-top-bar">
+      <div>
+        <div style="font-size:17px; font-weight:700;" id="modalDayTitle">Shift Breakdown</div>
+        <div style="font-size:12px; color:var(--muted);" id="modalDaySub">October 2026</div>
+      </div>
+      <button type="button" class="modal-close-btn" id="closeDayModalBtn">✕</button>
+    </div>
+
+    <!-- Vehicle & Odometer Info -->
+    <div class="hist-box">
+      <div style="font-size:11px; font-weight:700; color:var(--primary); text-transform:uppercase; margin-bottom:6px;">Vehicle &amp; Distance</div>
+      <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;">
+        <span>Assigned Vehicle:</span>
+        <strong id="modalVehicleName">--</strong>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--muted);" id="modalKmRow">
+        <span>Odometer:</span>
+        <span id="modalKmText">45,162 km ➔ 45,210 km (48 km)</span>
+      </div>
+    </div>
+
+    <!-- Timings Info -->
+    <div class="hist-box">
+      <div style="font-size:11px; font-weight:700; color:var(--primary); text-transform:uppercase; margin-bottom:6px;">Duty Timings</div>
+      <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;">
+        <span>Punch In / Punch Out:</span>
+        <strong id="modalTimesText">--</strong>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--muted);">
+        <span>Total Shift Duration:</span>
+        <span id="modalHoursText">9h 15m</span>
+      </div>
+    </div>
+
+    <!-- Shops Visited on this Day -->
+    <div style="margin-top:14px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+      <strong style="font-size:14px;">Shops Delivered on This Day</strong>
+      <span class="badge b-info" id="modalShopsCountBadge">5 Visited</span>
+    </div>
+
+    <div class="hist-box" id="modalShopsListContainer">
+      <!-- Populated via JS -->
+    </div>
+
+    <!-- Returns on this day -->
+    <div style="margin-top:10px; margin-bottom:6px;">
+      <strong style="font-size:14px;">Returns &amp; Deductions Handover</strong>
+    </div>
+    <div class="hist-box" id="modalReturnsContainer">
+      <!-- Populated via JS -->
+    </div>
+
+    <button type="button" class="btn btn-secondary" id="dismissDayModalBtn" style="height:48px; width:100%; margin-top:12px;">
+      Close History
+    </button>
+  </div>
+</div>
+
+<!-- Bottom Navigation Bar -->
+<nav class="nav" aria-label="Main Navigation">
+  <div>
+    <a href="home.html">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>
+      Home
+    </a>
+    <a href="route.html">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M9 20l-6-2V4l6 2 6-2 6 2v14l-6-2-6 2zM9 6v14M15 4v14"/></svg>
+      Route
+    </a>
+    <a href="advances.html">
+      <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14.8 9A2 2 0 0 0 13 8h-2a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4h-2a2 2 0 0 1-1.8-1M12 6v12"/></svg>
+      Account
+    </a>
+    <a href="attendance.html" aria-current="page">
+      <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      Attendance
+    </a>
+    <a href="profile.html">
+      <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+      Profile
+    </a>
+  </div>
+</nav>
+
+<script src="../shared/theme.js"></script>
+<script src="../shared/mock-data.js"></script>
+<script src="../shared/punch-modal.js"></script>
+<script>
+  if (!localStorage.getItem('gm_logged_in')) { window.location.href = 'login.html'; }
+  GM.applyTodayPlan();
+  var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  var WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var NOW = new Date(), TY = NOW.getFullYear(), TM = NOW.getMonth(), TD = NOW.getDate();
+  var activeYear = TY, activeMonthIdx = TM, currentMonthData = [], selectedDay = TD;
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function mkey(y, m) { return y + '-' + String(m + 1).padStart(2, '0'); }
+  function isTodayView() { return activeYear === TY && activeMonthIdx === TM && selectedDay === TD; }
+  function dayRec(d) { return currentMonthData.find(function (x) { return x.day === d; }); }
+  function mins(t) { var m = /(\d{1,2}):(\d{2})\s*([ap]m)?/i.exec(String(t || '')); if (!m) return null; var h = +m[1] % 12; if (m[3] ? m[3].toLowerCase() === 'pm' : +m[1] === 12) h += 12; if (!m[3]) h = +m[1]; return h * 60 + (+m[2]); }
+  function hm(total) { total = Math.max(0, Math.round(total)); return Math.floor(total / 60) + 'h ' + String(total % 60).padStart(2, '0') + 'm'; }
+  function letter(d) { return !d ? '-' : d.status === 'present' ? 'P' : d.status === 'late' ? 'L' : d.status === 'absent' ? 'A' : '-'; }
+
+  var ICON = {
+    clock: '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    ok: '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>',
+    x: '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg>',
+    login: '<svg class="icon" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>',
+    logout: '<svg class="icon" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>'
+  };
+
+  function renderWeek() {
+    var d0 = new Date(activeYear, activeMonthIdx, selectedDay), dow = (d0.getDay() + 6) % 7;
+    var mon = new Date(activeYear, activeMonthIdx, selectedDay - dow), html = '';
+    for (var i = 0; i < 7; i++) {
+      var dt = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i), inMonth = dt.getMonth() === activeMonthIdx && dt.getFullYear() === activeYear;
+      var rec = inMonth ? dayRec(dt.getDate()) : null, L = letter(rec);
+      html += '<button type="button" class="at-day ' + L + (inMonth && dt.getDate() === selectedDay ? ' sel' : '') + (inMonth ? '' : ' out') + '" data-d="' + (inMonth ? dt.getDate() : '') + '"><small>' + WD[dt.getDay()] + '</small><b>' + dt.getDate() + '</b><i>' + L + '</i></button>';
+    }
+    $('weekStrip').innerHTML = html;
+    $('weekStrip').querySelectorAll('.at-day').forEach(function (b) {
+      b.onclick = function () { var d = +b.getAttribute('data-d'); if (d) { selectedDay = d; renderDay(); } };
+    });
+    var past = new Date(activeYear, activeMonthIdx, selectedDay - 7), fut = new Date(activeYear, activeMonthIdx, selectedDay + 7);
+    $('nextWk').disabled = fut > NOW && new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 7) > NOW;
+  }
+
+  function renderState() {
+    var d = dayRec(selectedDay) || { status: 'upcoming', inTime: '-', outTime: '-', hours: '-', km: 0 }, el = $('stateCard'), cls = 'at-state', ico = ICON.clock, h = '', p = '', btn = '';
+    if (isTodayView()) {
+      var sh = GM.getShift();
+      if (!sh.punchedIn && !GM.hasPlanToday()) { h = 'No Plan Today'; p = 'Fleet Admin has not assigned you a plan for today, so there is nothing to check in for yet.'; }
+      else if (!sh.punchedIn) { h = 'Not Checked In Yet'; p = 'Tap below to check in and start your work for today.'; btn = '<a class="at-btn" href="punch-in.html">' + ICON.login + ' Check In Now</a>'; }
+      else if (!sh.punchedOut) { cls += d.status === 'late' ? ' late' : ' ok'; ico = ICON.ok; h = (d.status === 'late' ? 'Checked in late' : 'Checked in') + ' at ' + esc(sh.punchInTime || d.inTime); p = 'You are on duty' + (sh.assignedVehicle ? ' with ' + esc(sh.assignedVehicle) : '') + '.'; btn = '<a class="at-btn red" href="punch-out.html">' + ICON.logout + ' Punch Out</a>'; }
+      else { cls += ' ok'; ico = ICON.ok; h = 'Day Complete'; p = 'In ' + esc(sh.punchInTime || d.inTime) + ' \u00b7 Out ' + esc(sh.punchOutTime || d.outTime); btn = '<button type="button" class="at-btn ghost" data-more>View Shop Deliveries</button>'; }
+    } else if (d.status === 'present' || d.status === 'late') {
+      cls += d.status === 'late' ? ' late' : ' ok'; ico = ICON.ok; h = d.status === 'late' ? 'Late' : 'Present'; p = 'In ' + esc(d.inTime) + ' \u00b7 Out ' + esc(d.outTime); btn = '<button type="button" class="at-btn ghost" data-more>View Shop Deliveries</button>';
+    } else if (d.status === 'absent') { cls += ' bad'; ico = ICON.x; h = 'Absent'; p = 'No shift was recorded for this day.'; }
+    else if (d.status === 'off') { h = 'Weekly Off'; p = 'No shift on this day.'; }
+    else { var future = new Date(activeYear, activeMonthIdx, selectedDay) > NOW; h = future ? 'Upcoming Day' : 'Not Marked'; p = future ? 'Shift details will appear once the day is done.' : 'No attendance was recorded for this day.'; }
+    el.className = cls;
+    el.innerHTML = '<div class="ico">' + ico + '</div><h2>' + h + '</h2><p>' + p + '</p>' + btn;
+    var more = el.querySelector('[data-more]'); if (more) more.onclick = function () { openDayModal(selectedDay); };
+  }
+
+  function renderHours() {
+    var d = dayRec(selectedDay) || {}, hrs = '0h 00m', km = '0 km', stops = 0;
+    if (isTodayView()) {
+      var sh = GM.getShift(), shops = GM.getShops() || [];
+      stops = shops.filter(function (s) { return s.status === 'delivered'; }).length;
+      var a = mins(sh.punchInTime);
+      if (sh.punchedIn && !sh.punchedOut) { var n = new Date(); hrs = a == null ? '--' : hm(n.getHours() * 60 + n.getMinutes() - a); km = '--'; }
+      else if (sh.punchedOut) { var b = mins(sh.punchOutTime); hrs = a != null && b != null ? hm(b - a) : (d.hours || '--'); km = (sh.drivenKm || 0) + ' km'; }
+      $('hoursTitle').textContent = "Today's Working Hours";
+    } else {
+      var det = GM.getDayDetail(selectedDay, mkey(activeYear, activeMonthIdx));
+      hrs = d.hours && d.hours !== '-' ? d.hours : '0h 00m'; km = (d.km || 0) + ' km'; stops = (det && det.shops ? det.shops.length : 0);
+      $('hoursTitle').textContent = 'Working Hours \u00b7 ' + selectedDay + ' ' + months[activeMonthIdx].slice(0, 3);
+    }
+    $('tHours').textContent = hrs; $('tKm').textContent = km; $('tStops').textContent = stops;
+  }
+
+  function renderList() {
+    var isCur = activeYear === TY && activeMonthIdx === TM;
+    var list = isCur ? currentMonthData.filter(function (d) { return d.status !== 'upcoming'; }) : currentMonthData;
+    $('allDaysList').innerHTML = list.length ? list.slice().reverse().map(function (d) {
+      var bc = 'b-success', bt = 'Present';
+      if (d.status === 'late') { bc = 'b-accent'; bt = 'Late'; } else if (d.status === 'absent') { bc = 'b-danger'; bt = 'Absent'; } else if (d.status === 'off') { bc = 'b-muted'; bt = 'Sunday Off'; }
+      return '<div class="log-item" data-day="' + d.day + '"><div style="flex:1;"><strong>' + (d.day < 10 ? '0' : '') + d.day + ' ' + months[activeMonthIdx].slice(0, 3) + ' ' + activeYear + ' (' + esc(d.weekday) + ')</strong>' +
+        '<div class="in-out-pill"><span>In: <strong>' + esc(d.inTime) + '</strong></span><span>&bull;</span><span>Out: <strong>' + esc(d.outTime) + '</strong></span></div></div>' +
+        '<div style="text-align:right;"><span class="badge ' + bc + '">' + bt + '</span><div style="font-size:11px; color:var(--muted); margin-top:3px;">' + (d.status !== 'absent' && d.status !== 'off' ? esc(d.hours) + ' &bull; ' + (d.km || 0) + ' km' : '--') + '</div></div><div class="log-chevron">&rsaquo;</div></div>';
+    }).join('') : '<div style="text-align:center; padding:20px; color:var(--muted); font-size:13px;">No shifts recorded yet.</div>';
+    $('allDaysList').querySelectorAll('.log-item').forEach(function (it) {
+      it.onclick = function () { selectedDay = +it.getAttribute('data-day'); renderDay(); openDayModal(selectedDay); };
+    });
+  }
+
+  function renderDay() { renderWeek(); renderState(); renderHours(); }
+
+  function renderMonth(keepDay) {
+    var isCur = activeYear === TY && activeMonthIdx === TM;
+    $('nextMonthBtn').disabled = isCur;
+    $('monthYearLabel').textContent = months[activeMonthIdx].slice(0, 3) + ' ' + activeYear;
+    currentMonthData = GM.getMonthlyAttendance(mkey(activeYear, activeMonthIdx)) || [];
+    var c = function (s) { return currentMonthData.filter(function (d) { return d.status === s; }).length; };
+    $('pCount').textContent = c('present'); $('lCount').textContent = c('late'); $('aCount').textContent = c('absent');
+    if (!keepDay) {
+      if (isCur) selectedDay = TD;
+      else { var done = currentMonthData.filter(function (d) { return d.status !== 'upcoming'; }); selectedDay = done.length ? done[done.length - 1].day : 1; }
+    }
+    renderDay(); renderList();
+  }
+
+  $('prevMonthBtn').onclick = function () { if (activeMonthIdx === 0) { activeMonthIdx = 11; activeYear--; } else activeMonthIdx--; renderMonth(); };
+  $('nextMonthBtn').onclick = function () { if (activeYear === TY && activeMonthIdx >= TM) return; if (activeMonthIdx === 11) { activeMonthIdx = 0; activeYear++; } else activeMonthIdx++; renderMonth(); };
+  function moveWeek(dir) {
+    var t = new Date(activeYear, activeMonthIdx, selectedDay + 7 * dir); if (t > NOW) t = new Date(TY, TM, TD);
+    var changed = t.getMonth() !== activeMonthIdx || t.getFullYear() !== activeYear;
+    activeYear = t.getFullYear(); activeMonthIdx = t.getMonth(); selectedDay = t.getDate();
+    if (changed) renderMonth(true); else renderDay();
+  }
+  $('prevWk').onclick = function () { moveWeek(-1); };
+  $('nextWk').onclick = function () { moveWeek(1); };
+
+  // Modal logic
+  var dayModal = document.getElementById('dayDetailModal');
+  function closeDayModal() {
+    dayModal.classList.remove('active');
+  }
+  document.getElementById('closeDayModalBtn').addEventListener('click', closeDayModal);
+  document.getElementById('dismissDayModalBtn').addEventListener('click', closeDayModal);
+
+  function openDayModal(dayNum) {
+    var monthKey = activeYear + '-' + (activeMonthIdx < 9 ? '0' : '') + (activeMonthIdx + 1);
+    var detail = GM.getDayDetail(dayNum, monthKey);
+    var d = detail.day;
+
+    document.getElementById('modalDayTitle').textContent = d.weekday + ', ' + (d.day < 10 ? '0' : '') + d.day + ' ' + months[activeMonthIdx] + ' ' + activeYear;
+    document.getElementById('modalDaySub').textContent = 'Status: ' + d.status.toUpperCase();
+
+    if (d.status === 'upcoming') {
+      document.getElementById('modalVehicleName').textContent = 'Not yet assigned';
+      document.getElementById('modalKmText').textContent = 'Future shift';
+      document.getElementById('modalTimesText').textContent = '-- to --';
+      document.getElementById('modalHoursText').textContent = '--';
+      document.getElementById('modalShopsCountBadge').textContent = '0 Visited';
+      document.getElementById('modalShopsListContainer').innerHTML = '<div style="font-size:13px; color:var(--muted); padding:6px 0;">This date is in the future. Shift details will appear once completed.</div>';
+      document.getElementById('modalReturnsContainer').innerHTML = '<div style="font-size:13px; color:var(--muted); padding:6px 0;">None</div>';
+    } else if (d.status === 'absent' || d.status === 'off') {
+      document.getElementById('modalVehicleName').textContent = 'None';
+      document.getElementById('modalKmText').textContent = '0 km driven';
+      document.getElementById('modalTimesText').textContent = 'No shift logged';
+      document.getElementById('modalHoursText').textContent = '0 hours';
+      document.getElementById('modalShopsCountBadge').textContent = '0 Visited';
+      document.getElementById('modalShopsListContainer').innerHTML = '<div style="font-size:13px; color:var(--muted); padding:6px 0;">' + (d.status === 'absent' ? 'Marked on approved casual leave by Fleet Admin.' : 'Weekly Sunday off.') + '</div>';
+      document.getElementById('modalReturnsContainer').innerHTML = '<div style="font-size:13px; color:var(--muted); padding:6px 0;">None</div>';
+    } else {
+      document.getElementById('modalVehicleName').textContent = detail.vehicle;
+      document.getElementById('modalKmText').textContent = detail.endKm ? detail.startKm.toLocaleString('en-IN') + ' km ➔ ' + detail.endKm.toLocaleString('en-IN') + ' km (' + d.km + ' km driven)' : d.km + ' km driven';
+      document.getElementById('modalTimesText').textContent = d.inTime + ' to ' + d.outTime;
+      document.getElementById('modalHoursText').textContent = d.hours;
+      var shops = detail.shops || [], rets = detail.returns || [];
+      document.getElementById('modalShopsCountBadge').textContent = shops.length + ' Visited';
+      document.getElementById('modalShopsListContainer').innerHTML = shops.length ? shops.map(function (x) {
+        var ok = x.status === 'delivered';
+        return '<div class="hist-shop-item"><div><strong>' + (ok ? '✓ ' : '🔄 ') + x.name + '</strong><div style="font-size:11px; color:var(--muted);">' + x.boxes + ' Boxes • ' + x.billNo + ' • ' + x.address + '</div></div><span class="badge ' + (ok ? 'b-success' : 'b-accent') + '">' + x.time + '</span></div>';
+      }).join('') : '<div style="font-size:13px; color:var(--muted); padding:6px 0;">No delivery details recorded for this day.</div>';
+      document.getElementById('modalReturnsContainer').innerHTML = rets.length ? rets.map(function (x) {
+        return '<div style="font-size:13px; padding:6px 0;">📦 <strong>' + x.item + '</strong> (' + x.qty + ' units)<div style="font-size:11px; color:var(--danger);">Reason: ' + x.reason + '</div></div>';
+      }).join('') : '<div style="font-size:13px; color:var(--muted); padding:6px 0;">No returns recorded.</div>';
+    }
+
+    dayModal.classList.add('active');
+  }
+
+
+  window.addEventListener('gm-sync', function () { renderMonth(true); });
+  setInterval(function () { if (isTodayView()) renderHours(); }, 60000);
+  renderMonth();
+</script></body>
+</html>

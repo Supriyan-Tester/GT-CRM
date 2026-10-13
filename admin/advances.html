@@ -1,0 +1,52 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head><script src="../shared/sync.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>General Traders - Admin</title>
+<link rel="stylesheet" href="../shared/theme.css">
+<link rel="stylesheet" href="../shared/admin.css">
+<script src="../shared/theme.js"></script></head>
+<body>
+<script src="../shared/mock-data.js"></script>
+<script src="../shared/admin.js"></script>
+<script>
+GA.guard();
+var $ = function (i) { return document.getElementById(i); }, esc = GA.esc;
+var pg = GA.mount('advances.html', 'Advances');
+var workers = GA.workers();
+function wopts(all) { return (all ? '<option value="">All employees</option>' : '') + workers.map(function (w) { return '<option value="' + w.id + '">' + esc(GA.empLabel(w)) + '</option>'; }).join(''); }
+function fg(label, id, val, extra) { return '<div class="a-fg"><label for="' + id + '">' + label + '</label><div class="field a-f"><input id="' + id + '" value="' + esc(val || '') + '" ' + (extra || '') + '></div></div>'; }
+pg.innerHTML =
+  '<div class="a-bar"><div class="field a-f" style="width:200px"><select id="fw"></select></div><div class="field a-f" style="width:180px"><input type="month" id="fm"></div><span class="grow"></span><button class="btn a-btn" id="add" data-act>' + GA.icon('plus') + ' Add entry</button></div>' +
+  '<div id="sum"></div><div class="card"><div class="a-scroll"><table class="a-table"><thead><tr><th>Date</th><th>Employee</th><th>Title</th><th>Type</th><th>Amount</th><th></th></tr></thead><tbody id="body"></tbody></table></div></div>' +
+  '<div class="modal-overlay a-c" id="mo"><div class="modal-sheet" id="mc"></div></div>';
+$('fw').innerHTML = wopts(true); $('fm').value = GA.today().slice(0, 7);
+function render() {
+  var list = GA.entries($('fw').value, $('fm').value), tot = function (t) { return list.filter(function (e) { return e.type === t; }).reduce(function (a, e) { return a + e.amount; }, 0); };
+  $('sum').innerHTML = '<div class="a-stats">' + GA.tile('s-a', 'coin', GA.ops.rupee(tot('advance')), 'Advances given') + GA.tile('s-i', 'alert', GA.ops.rupee(tot('deduction')), 'Deductions') + GA.tile('s-p', 'cal', list.length, 'Entries') + '</div>';
+  var nm = {}; workers.forEach(function (w) { nm[w.id] = w.name; });
+  $('body').innerHTML = list.length ? list.map(function (e) {
+    return '<tr><td>' + esc(e.date) + '</td><td><b>' + esc(nm[e.workerId] || e.workerId) + '</b></td><td>' + esc(e.title) + (e.note ? '<div class="mu">' + esc(e.note) + '</div>' : '') + '</td><td><span class="badge ' + (e.type === 'advance' ? 'b-accent' : 'b-info') + '">' + (e.type === 'advance' ? 'Advance' : 'Deduction') + '</span></td><td><b>' + GA.ops.rupee(e.amount) + '</b></td><td class="a-act"><button class="a-ib d" data-id="' + e.id + '" title="Delete entry">' + GA.icon('trash') + '</button></td></tr>';
+  }).join('') : '<tr><td colspan="6"><div class="a-empty"><b>No entries</b>' + (workers.length ? 'Add an advance or a deduction. The employee sees it in the app under Account.' : 'Add an employee first on the Employees page.') + '</div></td></tr>';
+}
+function show(h) { $('mc').innerHTML = '<div class="modal-handle"></div>' + h; $('mo').classList.add('active'); }
+function close() { $('mo').classList.remove('active'); render(); }
+$('add').onclick = function () {
+  if (!workers.length) { alert('Add an employee first on the Employees page.'); return; }
+  show('<div class="card-title">Add entry</div><div class="a-fg"><label for="eW">Employee</label><div class="field a-f"><select id="eW">' + wopts(false) + '</select></div></div>' +
+    '<div class="a-fg"><label for="eT">Type</label><div class="field a-f"><select id="eT"><option value="advance">Advance (money given)</option><option value="deduction">Deduction (money cut)</option></select></div></div>' +
+    fg('Title', 'eN', '', 'placeholder="e.g. Festival advance"') + fg('Amount (\u20b9)', 'eA', '', 'inputmode="numeric"') + fg('Date', 'eD', GA.today(), 'type="date"') + fg('Note (optional)', 'eO', '') +
+    '<div class="msg" id="mm"></div><div class="btn-group"><button class="btn btn-secondary a-btn" id="no">Close</button><button class="btn a-btn" id="ok">Save entry</button></div>');
+  $('no').onclick = close;
+  $('ok').onclick = function () {
+    var r = GA.addEntry({ workerId: $('eW').value, type: $('eT').value, title: $('eN').value, amount: $('eA').value, date: $('eD').value, note: $('eO').value });
+    if (!r.ok) { $('mm').textContent = r.error; return; }
+    close();
+  };
+};
+$('body').onclick = function (e) { var b = e.target.closest('[data-id]'); if (b && confirm('Delete this entry? The employee will no longer see it.')) { GA.removeEntry(b.dataset.id); render(); } };
+$('mo').onclick = function (e) { if (e.target === this) close(); };
+$('fw').onchange = render; $('fm').onchange = render; render();
+</script></body>
+</html>

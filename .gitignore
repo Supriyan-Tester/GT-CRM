@@ -1,0 +1,8 @@
+# Never upload customer data, passwords, sessions, backups or photos
+data/
+Test Files/
+backup-before-backend/
+node_modules/
+*.bak
+*.corrupt-*
+.env

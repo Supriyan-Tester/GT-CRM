@@ -1,0 +1,443 @@
+/* General Traders (GM-CRM) - Admin data layer + page shell.
+   ALL admin screens read/write through window.GA only. When the backend arrives,
+   replace the load()/save() internals and keep the GA function names. */
+(function () {
+  var WK = 'gm_admin_workers_v1', SK = 'gm_admin_session', OLD = 'gm_admin_v1';
+  var DEF = { admins: [{ id: 'A1', phone: '8489600833', name: 'Bala', role: 'Admin' }], workers: [], leaves: [] };
+
+  // Admin accounts: the built-in one, unless it was edited on the Profile page (kept in gm_admin_account_v1, which sync.js shares with the server).
+  var AK = 'gm_admin_account_v1';
+  function admins() { try { var a = JSON.parse(localStorage.getItem(AK)); if (Array.isArray(a) && a.length && a[0].phone) return a; } catch (e) {} return JSON.parse(JSON.stringify(DEF.admins)); }
+  function load() { try { var r = localStorage.getItem(WK); if (r) { var d = JSON.parse(r); d.admins = admins(); d.workers.forEach(function (w) { if (!w.password && w.pin) { w.password = w.pin; delete w.pin; } }); return d; } } catch (e) {} var f = JSON.parse(JSON.stringify(DEF)); f.admins = admins(); return f; }
+  function save(d) { try { localStorage.setItem(WK, JSON.stringify(d)); } catch (e) {} }
+  var VK = 'gm_admin_vehicles_v1';
+  function loadV() { try { var r = JSON.parse(localStorage.getItem(VK)); if (Array.isArray(r)) return r; } catch (e) {} return []; }
+  function saveV(l) { try { localStorage.setItem(VK, JSON.stringify(l)); } catch (e) {} }
+  function checkV(list, v, selfId) {
+    if (!v.number || !v.number.trim()) return 'Enter the vehicle number.';
+    var key = v.number.replace(/\s+/g, '').toUpperCase();
+    if (list.some(function (x) { return x.id !== selfId && x.number.replace(/\s+/g, '') === key; })) return 'Another vehicle already has this number.';
+    if (v.lastKm !== '' && v.lastKm != null && !(Number(v.lastKm) >= 0)) return 'Last recorded km must be a number.';
+    return '';
+  }
+  var LK = 'gm_admin_ledger_v1';
+  function loadL() { try { var r = JSON.parse(localStorage.getItem(LK)); if (Array.isArray(r)) return r; } catch (e) {} return []; }
+  function saveL(l) { try { localStorage.setItem(LK, JSON.stringify(l)); } catch (e) {} }
+  function p(n) { return String(n).padStart(2, '0'); }
+  function today() { var d = new Date(); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function onLeave(d, id, date) { return d.leaves.some(function (l) { return l.workerId === id && l.from <= date && date <= l.to; }); }
+  function check(d, w, selfId) {
+    if (!w.name || !w.name.trim()) return 'Enter the employee\'s name.';
+    if (!/^\d{10}$/.test(w.phone || '')) return 'Mobile number must be 10 digits.';
+    if (d.workers.some(function (x) { return x.phone === w.phone && x.id !== selfId; })) return 'Another employee already uses this mobile number.';
+    return '';
+  }
+
+  var ICONS = {
+    home: '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
+    users: '<circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/><path d="M17 4a4 4 0 0 1 0 8"/><path d="M22 21v-1a6 6 0 0 0-4-5.6"/>',
+    map: '<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
+    store: '<path d="M3 9l1-5h16l1 5"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/>',
+    moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+    logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
+    coin: '<circle cx="12" cy="12" r="9"/><path d="M14.8 9A2 2 0 0 0 13 8h-2a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4h-2a2 2 0 0 1-1.8-1M12 6v12"/>',
+    alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+    truck: '<path d="M1 6h13v10H1zM14 10h4l3 3v3h-7"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
+    menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+    back: '<path d="M15 6l-6 6 6 6"/>',
+    panel: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    key: '<circle cx="8" cy="15" r="4"/><path d="M10.8 12.2L21 2M17 6l3 3"/>',
+    cal: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+    power: '<path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/>',
+    edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+    x: '<path d="M18 6L6 18M6 6l12 12"/>',
+    bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+    report: '<path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h8M9 17h8"/>',
+    check: '<path d="M20 6L9 17l-5-5"/>',
+    box: '<path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>'
+  };
+
+  window.GA = {
+    DEMO_MODE: false, // demo logins and demo data are switched off
+    esc: esc, today: today,
+    icon: function (n) { return '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">' + ICONS[n] + '</svg>'; },
+    randomPassword: function () { var c = 'abcdefghjkmnpqrstuvwxyz23456789', o = ''; for (var i = 0; i < 8; i++) o += c[Math.floor(Math.random() * c.length)]; return o; },
+
+    /* ---- Session ---- */
+    // Returns the admin session if this mobile number + password belongs to an admin, otherwise null.
+    // The server checks the password (POST /api/login). The sign-in page then calls this to remember who is signed in for this tab.
+    setSession: function (s) { try { sessionStorage.setItem(SK, JSON.stringify({ id: s.id, name: s.name, role: s.role })); } catch (e) {} },
+    session: function () { try { return JSON.parse(sessionStorage.getItem(SK)); } catch (e) { return null; } },
+    // The signed-in admin's own account (name, mobile, role). The password is never returned.
+    account: function () { var s = GA.session() || {}, a = admins().filter(function (x) { return x.id === s.id; })[0] || admins()[0] || {}; return { id: a.id, name: a.name, phone: a.phone, role: a.role }; },
+    // Change name and mobile number. Returns { ok:true } or { ok:false, error }.
+    updateAccount: function (id, name, phone) {
+      name = String(name || '').trim(); phone = String(phone || '').replace(/\D/g, '').slice(-10);
+      if (name.length < 2) return { ok: false, error: 'Enter your name (at least 2 letters).' };
+      if (!/^[6-9]\d{9}$/.test(phone)) return { ok: false, error: 'Enter a valid 10-digit mobile number.' };
+      var L = admins(), a = L.filter(function (x) { return x.id === id; })[0]; if (!a) return { ok: false, error: 'Account not found.' };
+      if (load().workers.some(function (w) { return w.phone === phone; })) return { ok: false, error: 'This mobile number is already used by an employee.' };
+      a.name = name; a.phone = phone;
+      try { localStorage.setItem(AK, JSON.stringify(L)); var s = GA.session(); if (s && s.id === id) { s.name = name; sessionStorage.setItem(SK, JSON.stringify(s)); } } catch (e) { return { ok: false, error: 'Could not save in this browser.' }; }
+      return { ok: true };
+    },
+    // Change password: needs the current one. Returns { ok:true } or { ok:false, error }.
+    changePassword: function (id, current, next) {
+      if (String(next || '').length < 8) return { ok: false, error: 'The new password must be at least 8 characters.' };
+      if (next === current) return { ok: false, error: 'Choose a password different from the current one.' };
+      try {
+        var x = new XMLHttpRequest(); x.open('POST', '/api/change-password', false); x.setRequestHeader('Content-Type', 'application/json');
+        x.send(JSON.stringify({ current: current, next: next }));
+        var j = {}; try { j = JSON.parse(x.responseText); } catch (e) {}
+        return x.status === 200 ? { ok: true } : { ok: false, error: j.error || 'Could not change the password.' };
+      } catch (e) { return { ok: false, error: 'Could not reach the server.' }; }
+    },
+    logout: function () { try { sessionStorage.removeItem(SK); } catch (e) {} try { var x = new XMLHttpRequest(); x.open('POST', '/api/logout', false); x.send(); } catch (e) {} location.href = '../login.html'; },
+    guard: function () { if (!GA.session()) { location.replace('../login.html'); throw new Error('Not signed in'); } },
+
+    /* ---- Employees ---- */
+    workers: function () {
+      var d = load(), t = today();
+      return d.workers.map(function (w) { return Object.assign({}, w, { onLeave: onLeave(d, w.id, t) }); });
+    },
+    addWorker: function (w) {
+      var d = load(), err = check(d, w);
+      if ((w.password || '').length < 6) err = err || 'Password must be at least 6 characters.';
+      if (err) return { ok: false, error: err };
+      var n = d.workers.reduce(function (m, x) { return Math.max(m, parseInt(x.id.slice(1), 10) || 0); }, 0) + 1;
+      var rec = { id: 'W' + String(n).padStart(3, '0'), name: w.name.trim(), phone: w.phone, password: w.password, emergency: (w.emergency || '').trim(), active: true, created: today() };
+      d.workers.push(rec); save(d); return { ok: true, worker: rec };
+    },
+    updateWorker: function (id, w) {
+      var d = load(), err = check(d, w, id);
+      if (err) return { ok: false, error: err };
+      d.workers.forEach(function (x) { if (x.id === id) { x.name = w.name.trim(); x.phone = w.phone; x.emergency = (w.emergency || '').trim(); } });
+      save(d); return { ok: true };
+    },
+    setPassword: function (id, password) {
+      if ((password || '').length < 6) return { ok: false, error: 'Password must be at least 6 characters.' };
+      var d = load(); d.workers.forEach(function (x) { if (x.id === id) x.password = password; }); save(d); return { ok: true };
+    },
+    // Employee code (GTD-202610001): GT + role letter + joining year/month + 3-digit running number for that month.
+    // Stored in the employee profile (gm_admin_wprofile_v1). The internal id (W001) never changes, so all records stay linked.
+    roleLetter: function (role) {
+      var r = String(role || 'Delivery').toLowerCase(), L = { 'delivery / driver': 'D', 'helper': 'H', 'sales': 'S', 'inventory': 'I', 'billing': 'B', 'loading': 'L' };
+      if (L[r]) return L[r]; if (/^deliv|driver/.test(r)) return 'D'; return 'D';
+    },
+    empCode: function (id) { try { var P = JSON.parse(localStorage.getItem('gm_admin_wprofile_v1')) || {}; return (P[id] && P[id].empCode) || id; } catch (e) { return id; } },
+    ensureCodes: function () {
+      var P, ch = false; try { P = JSON.parse(localStorage.getItem('gm_admin_wprofile_v1')) || {}; } catch (e) { return; }
+      var ws = load().workers.filter(function (w) { return !(P[w.id] && P[w.id].empCode); });
+      if (!ws.length) return;
+      function jd(w) { return (P[w.id] && P[w.id].joinDate) || w.created || today(); }
+      ws.sort(function (a, b) { return jd(a) < jd(b) ? -1 : jd(a) > jd(b) ? 1 : a.id < b.id ? -1 : 1; });
+      ws.forEach(function (w) {
+        var ds = jd(w), m = ds.slice(0, 4) + ds.slice(5, 7), n = 0, p = P[w.id] || (P[w.id] = {});
+        Object.keys(P).forEach(function (k) { var c = P[k].empCode; if (c && c.slice(4, 10) === m) n = Math.max(n, parseInt(c.slice(10), 10) || 0); });
+        p.empCode = 'GT' + GA.roleLetter(p.role) + '-' + m + String(n + 1).padStart(3, '0'); ch = true;
+      });
+      if (ch) try { localStorage.setItem('gm_admin_wprofile_v1', JSON.stringify(P)); } catch (e) {}
+    },
+    // "Name (CODE)" for lists and pickers.
+    empLabel: function (w) { return (w.name || '') + ' (' + GA.empCode(w.id) + ')'; },
+    setActive: function (id, on) { var d = load(); d.workers.forEach(function (x) { if (x.id === id) x.active = !!on; }); save(d); },
+
+    /* ---- Leave ---- */
+    leavesOf: function (id) { return load().leaves.filter(function (l) { return l.workerId === id; }).sort(function (a, b) { return a.from < b.from ? 1 : -1; }); },
+    addLeave: function (id, from, to, reason) {
+      if (!from || !to) return { ok: false, error: 'Choose the first and last day of leave.' };
+      if (to < from) return { ok: false, error: 'The last day cannot be before the first day.' };
+      var d = load(); d.leaves.push({ id: 'L' + Date.now(), workerId: id, from: from, to: to, reason: (reason || '').trim() }); save(d); return { ok: true };
+    },
+    removeLeave: function (lid) { var d = load(); d.leaves = d.leaves.filter(function (l) { return l.id !== lid; }); save(d); },
+
+    /* ---- Employee sign-in (used by the shared login page) ---- */
+    // Returns { worker, onLeave } for an admin-created employee whose mobile + password match, else null.
+    onLeaveOn: function (id, date) { return onLeave(load(), id, date); },
+    findWorker: function (phone, password) {
+      var d = load(), t = today();
+      var w = d.workers.filter(function (x) { return x.phone === phone && x.password === password; })[0];
+      return w ? { worker: w, onLeave: onLeave(d, w.id, t) } : null;
+    },
+
+    /* ---- Vehicles ---- */
+    vehicles: function () { return loadV(); },
+    // A vehicle name or number as a link to its full details page (falls back to plain text when the vehicle is not in the list).
+    vehLink: function (label, id) {
+      var t = String(label == null ? '' : label), L = loadV(), v = null, i;
+      if (id) for (i = 0; i < L.length; i++) if (L[i].id === id) v = L[i];
+      if (!v && t) for (i = 0; i < L.length; i++) if (L[i].number && t.toUpperCase().indexOf(String(L[i].number).toUpperCase()) > -1) { v = L[i]; break; }
+      return v ? '<a class="a-vl" href="vehicle.html?id=' + encodeURIComponent(v.id) + '" title="Open vehicle details">' + esc(t) + '</a>' : esc(t);
+    },
+    addVehicle: function (v) {
+      var list = loadV(), err = checkV(list, v);
+      if (err) return { ok: false, error: err };
+      var n = list.reduce(function (m, x) { return Math.max(m, parseInt(x.id.slice(1), 10) || 0); }, 0) + 1;
+      var rec = { id: 'V' + String(n).padStart(3, '0'), number: v.number.trim().toUpperCase(), type: (v.type || '').trim(), lastKm: Math.round(Number(v.lastKm) || 0), note: (v.note || '').trim(), active: true };
+      list.push(rec); saveV(list); return { ok: true, vehicle: rec };
+    },
+    updateVehicle: function (id, v) {
+      var list = loadV(), err = checkV(list, v, id);
+      if (err) return { ok: false, error: err };
+      list.forEach(function (x) { if (x.id === id) { x.number = v.number.trim().toUpperCase(); x.type = (v.type || '').trim(); x.lastKm = Math.round(Number(v.lastKm) || 0); x.note = (v.note || '').trim(); } });
+      saveV(list); return { ok: true };
+    },
+    setVehicleActive: function (id, on) { var list = loadV(); list.forEach(function (x) { if (x.id === id) x.active = !!on; }); saveV(list); },
+
+    /* ---- Advances and deductions (shown to the employee in the app's Account screen) ---- */
+    entries: function (workerId, month) {
+      return loadL().filter(function (e) { return (!workerId || e.workerId === workerId) && (!month || e.date.slice(0, 7) === month); })
+        .sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : (a.id < b.id ? 1 : -1); });
+    },
+    addEntry: function (e) {
+      var amt = Number(e.amount);
+      if (!e.workerId) return { ok: false, error: 'Choose an employee.' };
+      if (!e.title || !e.title.trim()) return { ok: false, error: 'Enter a title, for example "Festival advance".' };
+      if (!(amt > 0)) return { ok: false, error: 'Enter an amount above zero.' };
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(e.date || '')) return { ok: false, error: 'Choose the date.' };
+      var l = loadL(); l.push({ id: 'E' + Date.now() + Math.random().toString(36).slice(2, 6), workerId: e.workerId, type: e.type === 'deduction' ? 'deduction' : 'advance', title: e.title.trim(), amount: Math.round(amt), date: e.date, note: (e.note || '').trim() });
+      saveL(l); return { ok: true };
+    },
+    removeEntry: function (id) { saveL(loadL().filter(function (e) { return e.id !== id; })); },
+
+    /* ---- After an employee punches out, the vehicle's last recorded km moves up to the closing km ---- */
+    syncVehicleKm: function () {
+      try {
+        if (!window.GM) return;
+        var sh = GM.getShift(), w = GM.getWorker();
+        if (!sh.punchedOut || !(sh.endKm > 0)) return;
+        var plan = (GA.ops.get().plans || {})[today()];
+        if (!plan || plan.workerId !== w.id || !plan.vehicleId) return;
+        var list = loadV(), changed = false;
+        list.forEach(function (v) { if (v.id === plan.vehicleId && sh.endKm > v.lastKm) { v.lastKm = sh.endKm; changed = true; } });
+        if (changed) saveV(list);
+      } catch (e) {}
+    },
+
+    /* ---- Notifications (written by the employee app in mock-data.js, read here) ---- */
+    notifs: {
+      list: function (o) {
+        var l = []; try { l = JSON.parse(localStorage.getItem('gm_admin_notifs_v1')) || []; } catch (e) {}
+        o = o || {};
+        return l.filter(function (n) { return (!o.date || n.date === o.date) && (!o.type || n.type === o.type) && (!o.unread || !n.read); });
+      },
+      unread: function () { return GA.notifs.list({ unread: true }).length; },
+      save: function (l) { try { localStorage.setItem('gm_admin_notifs_v1', JSON.stringify(l)); } catch (e) {} },
+      markAll: function () { var l = GA.notifs.list(); l.forEach(function (n) { n.read = true; }); GA.notifs.save(l); },
+      markRead: function (id) { var l = GA.notifs.list(); l.forEach(function (n) { if (n.id === id) n.read = true; }); GA.notifs.save(l); },
+      clear: function () { GA.notifs.save([]); },
+      ago: function (ts) { var m = Math.round((Date.now() - ts) / 60000); if (m < 1) return 'just now'; if (m < 60) return m + ' min ago'; var h = Math.round(m / 60); if (h < 24) return h + ' h ago'; return new Date(ts).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }); },
+      meta: function (t) { return ({ delivered: ['store', 's', 'Delivered'], problem: ['alert', 'a', 'Problem'], cancelled: ['x', 'd', 'Cancelled'], 'return': ['trash', 'i', 'Return'], route: ['check', 's', 'Route done'], punchin: ['clock', 'p', 'Punch in'], punchout: ['power', 'p', 'Punch out'], pin: ['store', 's', 'Shop location'] })[t] || ['bell', 'p', 'Update']; }
+    },
+    // Runs cb when the employee app (same browser, other tab) writes new data, and every 5 s as a fallback.
+    onChange: function (cb) {
+      function sig() { try { return localStorage.getItem('gm_admin_notifs_v1') + '|' + localStorage.getItem('gm_crm_data_v5'); } catch (e) { return ''; } }
+      var last = sig();
+      function chk() { var n = sig(); if (n !== last) { last = n; cb(); } }
+      window.addEventListener('storage', chk); setInterval(chk, 5000);
+    },
+
+    /* ---- Overview numbers (customers and routes still live in the Routes & Customers page store) ---- */
+    counts: function () {
+      var w = GA.workers(), o = {};
+      try { o = JSON.parse(localStorage.getItem(OLD)) || {}; } catch (e) {}
+      return {
+        workers: w.length, active: w.filter(function (x) { return x.active; }).length,
+        onLeave: w.filter(function (x) { return x.active && x.onLeave; }).length,
+        customers: (o.customers || []).length, routes: (o.routes || []).length
+      };
+    },
+
+    /* ---- Page shell: sidebar + top bar. Returns the element to render the page into. ---- */
+    mount: function (page, title, opts) {
+      opts = opts || {};
+      GA.syncVehicleKm(); GA.ensureCodes();
+      var s = GA.session() || {}, nav = [['index.html', 'Home', 'home'], ['summary.html', 'Daily summary', 'report'], ['workers.html', 'Employees', 'users'], ['vehicles.html', 'Vehicles', 'truck'], ['plan.html', 'Daily plan', 'cal'], ['routes.html', 'Routes', 'map'], ['customers.html', 'Customers', 'store'], ['products.html', 'Products', 'box'], ['attendance.html', 'Attendance', 'clock'], ['advances.html', 'Advances', 'coin'], ['problems.html', 'Problems', 'alert']];
+      var links = nav.map(function (n) { return '<a href="' + n[0] + '" title="' + n[1] + '"' + (n[0] === page ? ' aria-current="page"' : '') + '>' + GA.icon(n[2]) + '<span>' + n[1] + '</span></a>'; }).join('');
+      document.body.innerHTML = '<div class="a-wrap"><aside class="a-side" id="aSide"><div class="a-brand"><img src="../assets/logo.png" alt=""><span>General Traders</span><button class="a-ib a-col" id="aCol" type="button" title="Collapse menu" aria-label="Collapse menu">' + GA.icon('panel') + '</button></div>' + links +
+        '<div class="a-user"><a class="a-me" href="profile.html" title="My profile and depot location"' + (page === 'profile.html' ? ' aria-current="page"' : '') + '><span class="chip c-p">' + esc((s.name || 'A').charAt(0).toUpperCase()) + '</span><div style="flex:1"><b>' + esc(s.name) + '</b><span>' + esc(s.role) + '</span></div></a><button class="a-ib d" id="aOut" title="Sign out">' + GA.icon('logout') + '</button></div></aside>' +
+        '<div class="a-main"><div class="a-top"><button class="a-ib a-menu" id="aMenu" title="Menu" aria-label="Open menu">' + GA.icon('menu') + '</button>' + (opts.back ? '<a class="a-bk" id="aBack" href="' + opts.back[0] + '" title="Back to ' + esc(opts.back[1]) + '">' + GA.icon('back') + '<span>' + esc(opts.back[1]) + '</span></a>' : '') + '<h1>' + esc(title) + '</h1><div class="a-acts" id="aActs"></div><span class="a-bellwrap"><button class="a-ib" id="aBell" title="Notifications">' + GA.icon('bell') + '<i class="a-dot" id="aDot"></i></button><div class="a-pop" id="aPop"></div></span><button class="a-ib" id="themeToggle" title="Light or dark theme">' + GA.icon('moon') + '</button></div><div id="aPage"></div></div></div>';
+      document.getElementById('aOut').onclick = GA.logout;
+      var side = document.getElementById('aSide'), back = document.createElement('div');
+      back.className = 'a-back'; document.body.appendChild(back);
+      function setMenu(on) { side.classList.toggle('open', on); back.classList.toggle('show', on); }
+      document.getElementById('aMenu').onclick = function () { setMenu(!side.classList.contains('open')); };
+      back.onclick = function () { setMenu(false); };
+      // Inside the menu: collapses it on a computer, closes it on a phone.
+      var wrap = document.querySelector('.a-wrap'), col = document.getElementById('aCol');
+      function wide() { return window.innerWidth > 900; }
+      function setCol(on) { wrap.classList.toggle('col', on && wide()); col.title = col.ariaLabel = (on && wide()) ? 'Expand menu' : (wide() ? 'Collapse menu' : 'Close menu'); }
+      var isCol = false; try { isCol = localStorage.getItem('gm_side_col') === '1'; } catch (e) {}
+      setCol(isCol);
+      col.onclick = function () { if (wide()) { isCol = !wrap.classList.contains('col'); try { localStorage.setItem('gm_side_col', isCol ? '1' : '0'); } catch (e) {} setCol(isCol); } else setMenu(false); };
+      window.addEventListener('resize', function () { setCol(isCol); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setMenu(false); });
+      // Tables become stacked cards on phones: copy each column heading onto its cells.
+      function labelTables() {
+        [].forEach.call(document.querySelectorAll('.a-table'), function (t) {
+          var h = [].map.call(t.querySelectorAll('thead th'), function (x) { return x.textContent; });
+          [].forEach.call(t.querySelectorAll('tbody tr'), function (r) {
+            [].forEach.call(r.children, function (c, i) { if (h[i] && c.getAttribute('data-label') !== h[i]) c.setAttribute('data-label', h[i]); });
+          });
+        });
+      }
+      new MutationObserver(labelTables).observe(document.getElementById('aPage'), { childList: true, subtree: true });
+      // Bell: unread badge, dropdown with latest alerts, and a small pop-up when a new alert arrives.
+      var dot = document.getElementById('aDot'), pop = document.getElementById('aPop'), seen = {}, first = true;
+      GA.notifs.list().forEach(function (n) { seen[n.id] = 1; });
+      function bellDraw() {
+        var u = GA.notifs.unread(), l = GA.notifs.list().slice(0, 8);
+        dot.textContent = u > 99 ? '99+' : u; dot.style.display = u ? 'grid' : 'none';
+        var navA = document.querySelector('.a-side a[href="notifications.html"]');
+        if (navA) { var b = navA.querySelector('.a-nb'); if (!b) { b = document.createElement('em'); b.className = 'a-nb'; navA.appendChild(b); } b.textContent = u; b.style.display = u ? 'inline-block' : 'none'; }
+        pop.innerHTML = '<div class="a-pop-h"><b>Notifications</b><button id="aAll">Mark all read</button></div>' + (l.length ? l.map(function (n) {
+          var m = GA.notifs.meta(n.type);
+          return '<a class="a-n' + (n.read ? '' : ' un') + '" href="notifications.html"><span class="chip c-' + m[1] + '">' + GA.icon(m[0]) + '</span><div><b>' + esc(n.title) + '</b><span>' + esc(n.text) + '</span><small>' + GA.notifs.ago(n.ts) + '</small></div></a>';
+        }).join('') : '<div class="a-empty"><b>Nothing yet</b>When an employee finishes a shop, reports a problem or returns items, it shows up here.</div>') + '<a class="a-pop-f" href="notifications.html">See all</a>';
+        var all = document.getElementById('aAll'); if (all) all.onclick = function (e) { e.stopPropagation(); GA.notifs.markAll(); bellDraw(); };
+      }
+      function toast(n) {
+        var m = GA.notifs.meta(n.type), t = document.createElement('div');
+        t.className = 'a-toast'; t.innerHTML = '<span class="chip c-' + m[1] + '">' + GA.icon(m[0]) + '</span><div><b>' + esc(n.title) + '</b><span>' + esc(n.text) + '</span></div>';
+        t.onclick = function () { location.href = 'notifications.html'; };
+        document.body.appendChild(t); setTimeout(function () { t.classList.add('out'); setTimeout(function () { t.remove(); }, 400); }, 6000);
+      }
+      function bellCheck() {
+        GA.notifs.list().slice().reverse().forEach(function (n) { if (!seen[n.id]) { seen[n.id] = 1; if (!first) toast(n); } });
+        first = false; bellDraw();
+      }
+      bellCheck();
+      document.getElementById('aBell').onclick = function (e) { e.stopPropagation(); pop.classList.toggle('show'); };
+      document.addEventListener('click', function (e) { if (!pop.contains(e.target)) pop.classList.remove('show'); });
+      GA.onChange(bellCheck);
+      document.title = title + ' - General Traders Admin';
+      // Motion layer: entrance flag, cursor spotlight, button ripple, smooth theme switch (CSS lives in admin.css)
+      (function () {
+        var b = document.body, h = document.documentElement;
+        if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        b.classList.add('a-enter'); setTimeout(function () { b.classList.remove('a-enter'); }, 1200);
+        var FX = '.gtc-stat,.at-tile,.wk-tile,.vx-tile,.pr-tile,.dp-stat,.a-stat,.dp-plan,.vx-card,.wk-wc,.pr-gc,.gtc-customer-card';
+        document.addEventListener('pointermove', function (e) {
+          var t = e.target.closest && e.target.closest(FX); if (!t) return;
+          var r = t.getBoundingClientRect(); t.style.setProperty('--mx', (e.clientX - r.left) + 'px'); t.style.setProperty('--my', (e.clientY - r.top) + 'px');
+        }, { passive: true });
+        document.addEventListener('pointerdown', function (e) {
+          var btn = e.target.closest && e.target.closest('.btn'); if (!btn || btn.disabled) return;
+          var r = btn.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2, s = document.createElement('span');
+          s.className = 'fx-ripple'; s.style.cssText = 'width:' + d + 'px;height:' + d + 'px;left:' + (e.clientX - r.left - d / 2) + 'px;top:' + (e.clientY - r.top - d / 2) + 'px';
+          btn.appendChild(s); setTimeout(function () { if (s.parentNode) s.parentNode.removeChild(s); }, 650);
+        });
+        document.addEventListener('click', function (e) {
+          if (e.target.closest && e.target.closest('#themeToggle')) { h.classList.add('fx-theming'); setTimeout(function () { h.classList.remove('fx-theming'); }, 500); }
+        });
+      })();
+      var page = document.getElementById('aPage');
+      // Any element marked data-act inside the page is lifted into the top bar (right side, beside the bell).
+      // Done right after every render, so getElementById / onclick bindings keep working on the lifted buttons.
+      var desc = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+      GA.hoist = function (root) {
+        var slot = document.getElementById('aActs'); if (!slot) return;
+        [].slice.call((root || page).querySelectorAll('[data-act]')).forEach(function (el) { slot.appendChild(el); });
+      };
+      GA.dateNav = function (prevId, inputId, nextId, value, max, label) {
+        return '<div class="a-dn" data-act><button type="button" class="a-dnb" id="' + prevId + '" title="Previous day" aria-label="Previous day">&lsaquo;</button>' +
+          '<div class="field vx-datebox"><span aria-hidden="true">' + GA.icon('cal') + '</span><input type="date" id="' + inputId + '" value="' + (value || '') + '"' + (max ? ' max="' + max + '"' : '') + ' aria-label="' + (label || 'Date') + '"></div>' +
+          '<button type="button" class="a-dnb" id="' + nextId + '" title="Next day" aria-label="Next day">&rsaquo;</button></div>';
+      };
+      GA.clearActs = function () { var slot = document.getElementById('aActs'); if (slot) slot.innerHTML = ''; };
+      Object.defineProperty(page, 'innerHTML', {
+        configurable: true,
+        get: function () { return desc.get.call(this); },
+        set: function (v) { GA.clearActs(); desc.set.call(this, v); GA.hoist(page); }
+      });
+      return page;
+    }
+  };
+})();
+
+/* ---- Routes, customers and daily plans (shared by plan.html, routes.html, customers.html) ---- */
+GA.ops = (function () {
+  var KEY = 'gm_admin_v1';
+  function get() { var s = null; try { s = JSON.parse(localStorage.getItem(KEY)); } catch (e) {} return s || { customers: [], routes: [], plans: {} }; }
+  function save(S) { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+  return {
+    get: get, save: save,
+    // All plans for a date. Older data stored one plan object per date; newer data stores a list.
+    plansOn: function (S, d) { var p = S && S.plans && S.plans[d]; return Array.isArray(p) ? p : (p ? [p] : []); },
+    // Same as plansOn, without cancelled plans (those stay in the data as history only).
+    activePlansOn: function (S, d) { return GA.ops.plansOn(S, d).filter(function (p) { return p && p.status !== 'cancelled'; }); },
+    cust: function (S, c) { return S.customers.filter(function (x) { return x.code === c; })[0]; },
+    routeOf: function (S, c) { return S.routes.filter(function (r) { return r.codes.indexOf(c) > -1; })[0]; },
+    rid: function (S, n) { return S.routes.filter(function (r) { return r.name.toLowerCase() === n.toLowerCase(); })[0]; },
+    assign: function (S, code, id) {
+      S.routes.forEach(function (r) { r.codes = r.codes.filter(function (x) { return x !== code; }); });
+      var r = S.routes.filter(function (x) { return x.id === id; })[0]; if (r) r.codes.push(code);
+    },
+    // The route for an area: found by name (any capitals), or created.
+    areaRoute: function (S, area) {
+      area = String(area || '').trim(); if (!area) return null; S.routes = S.routes || [];
+      var r = S.routes.filter(function (x) { return x.name.toLowerCase() === area.toLowerCase(); })[0];
+      if (!r) { r = { id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: area, codes: [] }; S.routes.push(r); }
+      return r;
+    },
+    // Every active shop that has an Area but no route goes on the route named after its Area (made if missing).
+    // Shops that were moved or set to "No route" by hand (noRoute) are left alone.
+    syncRoutes: function (S) {
+      S.routes = S.routes || []; S.customers = S.customers || [];
+      var have = {}, before = S.routes.length, moved = 0;
+      S.routes.forEach(function (r) { r.codes.forEach(function (c) { have[c] = 1; }); });
+      S.customers.forEach(function (c) {
+        if (!c.area || c.inactive || c.noRoute || have[c.code]) return;
+        var r = GA.ops.areaRoute(S, c.area); if (!r) return;
+        r.codes.push(c.code); have[c.code] = 1; moved++;
+      });
+      return { moved: moved, made: S.routes.length - before };
+    },
+    rows: function (t) {
+      var r = t.trim().split(/\r?\n/).map(function (l) { return l.split(',').map(function (c) { return c.trim().replace(/^"|"$/g, ''); }); }).filter(function (r) { return r.some(Boolean); });
+      if (r.length && /code|invoice|name/i.test(r[0].join())) r.shift(); return r;
+    },
+    readFile: function (inp, cb) { var f = inp.files[0]; if (!f) return; var fr = new FileReader(); fr.onload = function () { cb(fr.result); }; fr.readAsText(f); },
+    rupee: function (n) { return '\u20b9' + Number(n || 0).toLocaleString('en-IN'); },
+    demo: function () {
+      var n = ['Sri Murugan Stores', 'Lakshmi Traders', 'Annapoorna Provision', 'Kumar Super Market', 'Balaji General Store', 'Selvam Mart', 'Ganesh Traders', 'Devi Departmental', 'Raja Stores', 'Meenakshi Provision', 'Arun Super Bazaar', 'Vel Murugan Mart', 'Sakthi Stores', 'Vignesh Traders', 'Anbu Provision', 'Murali Stores'];
+      var S = { customers: [], routes: [{ id: 'r1', name: 'Ukkadam', codes: [] }, { id: 'r2', name: 'Saravanampatti', codes: [] }], plans: {} };
+      n.forEach(function (x, i) { var c = 'C' + String(i + 1).padStart(3, '0'); S.customers.push({ code: c, name: x, address: (i < 8 ? 'Ukkadam' : 'Saravanampatti') + ' area, shop ' + (i % 8 + 1), phone: '98765' + String(50000 + i) }); S.routes[i < 8 ? 0 : 1].codes.push(c); });
+      save(S); return S;
+    },
+    demoInvoices: 'INV-2041,C001,4250,3\nINV-2042,C003,7890,5\nINV-2043,C004,2310,2\nINV-2044,C007,5120,4\nINV-2045,C012,1450,1'
+  };
+})();
+GA.tile = function (cls, icon, n, label) { return '<div class="a-stat ' + cls + '">' + (icon ? '<span class="chip">' + GA.icon(icon) + '</span>' : '') + '<div><b>' + n + '</b><span>' + label + '</span></div></div>'; };
+
+/* GT FINAL HIDE SIDEBAR AVATAR */
+(function(){
+  function hideGTAvatar(){
+    var el = document.getElementById("header-dot");
+    if(el){
+      el.style.display = "none";
+      el.setAttribute("aria-hidden","true");
+    }
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener(
+      "DOMContentLoaded",
+      hideGTAvatar
+    );
+  }else{
+    hideGTAvatar();
+  }
+
+  new MutationObserver(hideGTAvatar).observe(
+    document.documentElement,
+    {
+      childList:true,
+      subtree:true
+    }
+  );
+})();
