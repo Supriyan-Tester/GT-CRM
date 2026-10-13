@@ -211,7 +211,7 @@ function viewFor(s, key, raw) {
   }
   if (key === 'gm_admin_workers_v1') return JSON.stringify({ workers: (d.workers || []).filter(w => w && w.id === s.id).map(w => ({ id: w.id, name: w.name, phone: w.phone, emergency: w.emergency, active: w.active, created: w.created })), leaves: (d.leaves || []).filter(l => l && l.workerId === s.id) });
   if (key === 'gm_admin_wprofile_v1') { const o = {}; if (d[s.id]) o[s.id] = d[s.id]; return JSON.stringify(o); }
-  if (key === 'gm_pintasks_v1') { const o = Object.assign({}, d, { tasks: {} }); Object.keys(d.tasks || {}).forEach(c => { if (d.tasks[c] && d.tasks[c].to === s.id) o.tasks[c] = d.tasks[c]; }); return JSON.stringify(o); }
+  if (key === 'gm_pintasks_v1') { const o = Object.assign({}, d, { tasks: {} }); Object.keys(d.tasks || {}).forEach(c => { { const t = d.tasks[c]; if (!t) return; const to = (t.to == null || t.to === '') ? ['all'] : [].concat(t.to); if (to.indexOf('all') > -1 || to.indexOf(s.id) > -1) o.tasks[c] = t; } }); return JSON.stringify(o); }
   return raw;
 }
 // Employees can only ADD notifications for the admin; they cannot change or delete the admin's list.
