@@ -19,10 +19,10 @@
   function dshort(ds) { return ds ? +ds.slice(8) + ' ' + MN[+ds.slice(5, 7) - 1] + ' ' + ds.slice(0, 4) : '-'; }
   function addDays(ds, n) { var d = new Date(ds + 'T00:00:00'); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function workers() { return GA.workers(); }
-  // Employee code: GT + role letter + joining year and month + 3-digit running number for that month (GTD-202610001).
+  // Employee code: GT + role letter + joining year and month + one running number for all employees (GTD-202610003).
   // The internal id (W001) never changes, so attendance, plans and logins keep working; the code is for people to read and track.
   function ym(ds) { ds = ds || GA.today(); return ds.slice(0, 4) + ds.slice(5, 7); }
-  function nextSeq(month, skipId) { var n = 0; Object.keys(P).forEach(function (k) { var c = P[k].empCode; if (k !== skipId && c && c.slice(4, 10) === month) n = Math.max(n, parseInt(c.slice(10), 10) || 0); }); return n + 1; }
+  function nextSeq(month, skipId) { var n = 0; Object.keys(P).forEach(function (k) { var c = P[k].empCode, x = /^GT[A-Z]-\d{6}(\d+)$/.exec(c || ''); if (k !== skipId && x) n = Math.max(n, parseInt(x[1], 10) || 0); }); return n + 1; }   // one running number for everyone: 001, 002, 003 ... whatever the role or joining month
   function makeCode(role, join, skipId) { var m = ym(join); return 'GT' + rlet(role) + '-' + m + String(nextSeq(m, skipId)).padStart(3, '0'); }
   function ensureCodes() {
     var ch = false, miss = workers().filter(function (w) { return !prof(w.id).empCode; });

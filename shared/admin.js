@@ -137,7 +137,7 @@
       ws.sort(function (a, b) { return jd(a) < jd(b) ? -1 : jd(a) > jd(b) ? 1 : a.id < b.id ? -1 : 1; });
       ws.forEach(function (w) {
         var ds = jd(w), m = ds.slice(0, 4) + ds.slice(5, 7), n = 0, p = P[w.id] || (P[w.id] = {});
-        Object.keys(P).forEach(function (k) { var c = P[k].empCode; if (c && c.slice(4, 10) === m) n = Math.max(n, parseInt(c.slice(10), 10) || 0); });
+        Object.keys(P).forEach(function (k) { var c = P[k].empCode, x = /^GT[A-Z]-\d{6}(\d+)$/.exec(c || ''); if (x) n = Math.max(n, parseInt(x[1], 10) || 0); });
         p.empCode = 'GT' + GA.roleLetter(p.role) + '-' + m + String(n + 1).padStart(3, '0'); ch = true;
       });
       if (ch) try { localStorage.setItem('gm_admin_wprofile_v1', JSON.stringify(P)); } catch (e) {}
