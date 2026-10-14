@@ -231,7 +231,6 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=u
 const BLOCKED = ['data', 'node_modules', 'backup-before-backend', 'test files'];
 const KEY_RE = /^gm_[A-Za-z0-9_\-]{1,80}$/;
 
-const BOOT = Date.now().toString(36);   // changes on every restart, so a cached copy from before a restart is never reused
 function send(res, code, obj, hdr) {
   const b = JSON.stringify(obj), h = Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }, hdr || {});
   const ae = res.req ? String(res.req.headers['accept-encoding'] || '') : '';
@@ -330,11 +329,8 @@ function api(req, res, url) {
 
   if (p === '/api/state' && req.method === 'GET') {
     const since = parseInt(url.searchParams.get('since'), 10) || 0, out = {};
-    // Nothing changed since this browser last loaded it for this same person: answer "not modified" without building or sending the data.
-    const tag = 'W/"' + BOOT + ':' + db.rev + ':' + s.role + ':' + (s.id || '') + ':' + since + '"';
-    if (req.headers['if-none-match'] === tag) { res.writeHead(304, { 'ETag': tag, 'Cache-Control': 'private, no-cache', 'Vary': 'Accept-Encoding, Cookie' }); return res.end(); }
     for (const k in db.items) if (db.items[k].rev > since && canRead(s, k)) out[k] = { v: viewFor(s, k, db.items[k].v), rev: db.items[k].rev };
-    return send(res, 200, { rev: db.rev, items: out }, { 'ETag': tag, 'Cache-Control': 'private, no-cache', 'Vary': 'Accept-Encoding, Cookie' });
+    return send(res, 200, { rev: db.rev, items: out });   // always fresh (never cached); only compressed
   }
   if (p === '/api/export' && req.method === 'GET') {
     if (s.role !== 'admin') return send(res, 403, { error: 'Admin only' });
