@@ -223,12 +223,38 @@
 
   }
 
+  /* Month + year dropdowns in the calendar header (jump straight to e.g. 2001) */
+  function yearRange(input,viewYear){
+    var lo=1900,hi=new Date().getFullYear()+10;
+    var mn=/^(\d{4})/.exec(input.getAttribute("min")||"");
+    var mx=/^(\d{4})/.exec(input.getAttribute("max")||"");
+    if(mn) lo=+mn[1];
+    if(mx) hi=+mx[1];
+    if(hi<lo) hi=lo;
+    if(viewYear<lo) lo=viewYear;
+    if(viewYear>hi) hi=viewYear;
+    return [lo,hi];
+  }
+
+  function syncTitle(instance){
+    var vy=instance.view.getFullYear();
+    var r=yearRange(instance.input,vy);
+    var key=r[0]+"-"+r[1];
+    if(instance.yearKey!==key){
+      var h="";
+      for(var y=r[1];y>=r[0];y--){ h+='<option value="'+y+'">'+y+'</option>'; }
+      instance.yearSel.innerHTML=h;
+      instance.yearKey=key;
+    }
+    instance.monthSel.value=String(instance.view.getMonth());
+    instance.yearSel.value=String(vy);
+  }
+
   function render(instance){
 
     var view=instance.view;
 
-    instance.title.textContent=
-      months[view.getMonth()]+" "+view.getFullYear();
+    syncTitle(instance);
 
     instance.days.innerHTML="";
 
@@ -422,6 +448,24 @@
     next.textContent="›";
     next.setAttribute("aria-label","Next month");
 
+    var monthSel=document.createElement("select");
+    monthSel.className="gt-cal-sel gt-cal-sel-m";
+    monthSel.setAttribute("aria-label","Month");
+    monthSel.setAttribute("data-gt-dropdown-ready","1");
+    months.forEach(function(nm,i){
+      var o=document.createElement("option");
+      o.value=String(i); o.textContent=nm;
+      monthSel.appendChild(o);
+    });
+
+    var yearSel=document.createElement("select");
+    yearSel.className="gt-cal-sel gt-cal-sel-y";
+    yearSel.setAttribute("aria-label","Year");
+    yearSel.setAttribute("data-gt-dropdown-ready","1");
+
+    title.appendChild(monthSel);
+    title.appendChild(yearSel);
+
     head.appendChild(prev);
     head.appendChild(title);
     head.appendChild(next);
@@ -479,6 +523,8 @@
       label:label,
       pop:pop,
       title:title,
+      monthSel:monthSel,
+      yearSel:yearSel,
       days:days,
 
       view:new Date(
@@ -517,6 +563,16 @@
 
       render(instance);
 
+    });
+
+    monthSel.addEventListener("change",function(){
+      instance.view=new Date(instance.view.getFullYear(),+monthSel.value,1);
+      render(instance);
+    });
+
+    yearSel.addEventListener("change",function(){
+      instance.view=new Date(+yearSel.value,instance.view.getMonth(),1);
+      render(instance);
     });
 
     todayBtn.addEventListener("click",function(){
@@ -1927,7 +1983,9 @@
   }
   function refresh(inst) { inst.label.textContent = label(inst.input.value); }
   function draw(inst) {
-    var sel = parse(inst.input.value), n = nowM(); inst.title.textContent = inst.year;
+    var sel = parse(inst.input.value), n = nowM(); var mn = (/^(\d{4})/.exec(inst.input.getAttribute('min') || '') || [])[1], mx = (/^(\d{4})/.exec(inst.input.getAttribute('max') || '') || [])[1], lo = mn ? +mn : 1900, hi = mx ? +mx : new Date().getFullYear() + 10; if (inst.year < lo) lo = inst.year; if (inst.year > hi) hi = inst.year;
+    if (inst.yKey !== lo + '-' + hi) { var h = ''; for (var yy = hi; yy >= lo; yy--) h += '<option value="' + yy + '">' + yy + '</option>'; inst.ySel.innerHTML = h; inst.yKey = lo + '-' + hi; }
+    inst.ySel.value = String(inst.year);
     inst.grid.innerHTML = NAMES.map(function (nm, i) {
       var dis = out(inst, inst.year, i), on = sel && sel.y === inst.year && sel.m === i, td = n.y === inst.year && n.m === i;
       return '<button type="button" class="gt-mo' + (on ? ' selected' : '') + (td ? ' today' : '') + '" data-m="' + i + '"' + (dis ? ' disabled' : '') + (on ? ' aria-pressed="true"' : '') + '>' + nm + '</button>';
@@ -1944,6 +2002,8 @@
     input.parentNode.insertBefore(wrap, input); wrap.appendChild(input); wrap.appendChild(trigger); input.classList.add('gt-cal-native'); document.body.appendChild(pop);
     var p = parse(input.value) || nowM(), inst = { input: input, wrap: wrap, trigger: trigger, label: lab, pop: pop, title: pop.querySelector('.gt-cal-title'), grid: pop.querySelector('.gt-mo-grid'), year: p.y };
     refresh(inst);
+    inst.ySel = document.createElement('select'); inst.ySel.className = 'gt-cal-sel gt-cal-sel-y'; inst.ySel.setAttribute('aria-label', 'Year'); inst.ySel.setAttribute('data-gt-dropdown-ready', '1'); inst.title.appendChild(inst.ySel);
+    inst.ySel.addEventListener('change', function () { inst.year = +inst.ySel.value; draw(inst); });
     trigger.addEventListener('click', function () {
       if (wrap.classList.contains('open')) { closeAll(); return; }
       if (input.disabled) return; closeAll(); cur = inst; var q = parse(input.value) || nowM(); inst.year = q.y; wrap.classList.add('open'); pop.classList.add('open'); trigger.setAttribute('aria-expanded', 'true'); pos(inst); draw(inst);

@@ -2376,3 +2376,10 @@ body:not(:has(.a-main)) :is(.btn,.btn-hero,.btn-success,.btn-danger,.btn-seconda
   body:not(:has(.a-main)) .menu-card:hover{transform:translateY(-4px);box-shadow:0 2px 4px rgba(15,23,42,.05),0 18px 34px -14px rgba(15,118,110,.30)}
 }
 @media (prefers-reduced-motion:reduce){body:not(:has(.a-main)) *{animation:none!important;transition:none!important}}
+/* Calendar header: month + year dropdowns */
+.gt-cal-title{display:flex;align-items:center;justify-content:center;gap:6px;min-width:0}
+.gt-cal-sel{appearance:auto;-webkit-appearance:menulist;height:34px;min-width:0;padding:0 6px;border:1px solid var(--border,#dbe3ea);border-radius:9px;background:var(--card,#fff);color:var(--text,#172033);font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.gt-cal-sel-m{flex:1 1 auto}
+.gt-cal-sel-y{flex:0 0 76px;width:76px}
+.gt-cal-sel:focus-visible{outline:2px solid var(--primary,#087f78);outline-offset:1px}
+html[data-theme="dark"] .gt-cal-sel{background:#111827;color:#f8fafc;border-color:rgba(255,255,255,.16)}
