@@ -1,4 +1,4 @@
-const http = require('http'), fs = require('fs'), path = require('path'), os = require('os'), crypto = require('crypto');
+const http = require('http'), fs = require('fs'), path = require('path'), os = require('os'), crypto = require('crypto'), zlib = require('zlib');
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), DB = path.join(DATA, 'db.json');
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 const MAX_BODY = 5 * 1024 * 1024;
@@ -231,7 +231,18 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=u
 const BLOCKED = ['data', 'node_modules', 'backup-before-backend', 'test files'];
 const KEY_RE = /^gm_[A-Za-z0-9_\-]{1,80}$/;
 
-function send(res, code, obj) { const b = JSON.stringify(obj); res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(b); }
+const BOOT = Date.now().toString(36);   // changes on every restart, so a cached copy from before a restart is never reused
+function send(res, code, obj, hdr) {
+  const b = JSON.stringify(obj), h = Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }, hdr || {});
+  const ae = res.req ? String(res.req.headers['accept-encoding'] || '') : '';
+  if (b.length > 1024 && /\bgzip\b/.test(ae)) {   // big answers (the full data load) go out compressed: about 5 to 10 times smaller
+    return zlib.gzip(b, { level: 5 }, (e, z) => {
+      if (e) { res.writeHead(code, h); return res.end(b); }
+      h['Content-Encoding'] = 'gzip'; h['Vary'] = 'Accept-Encoding'; res.writeHead(code, h); res.end(z);
+    });
+  }
+  res.writeHead(code, h); res.end(b);
+}
 function body(req, cb, limit) {
   let n = 0; const parts = [], max = limit || MAX_BODY;
   req.on('data', c => { n += c.length; if (n > max) { req.destroy(); } else parts.push(c); });
@@ -319,8 +330,11 @@ function api(req, res, url) {
 
   if (p === '/api/state' && req.method === 'GET') {
     const since = parseInt(url.searchParams.get('since'), 10) || 0, out = {};
+    // Nothing changed since this browser last loaded it for this same person: answer "not modified" without building or sending the data.
+    const tag = 'W/"' + BOOT + ':' + db.rev + ':' + s.role + ':' + (s.id || '') + ':' + since + '"';
+    if (req.headers['if-none-match'] === tag) { res.writeHead(304, { 'ETag': tag, 'Cache-Control': 'private, no-cache', 'Vary': 'Accept-Encoding, Cookie' }); return res.end(); }
     for (const k in db.items) if (db.items[k].rev > since && canRead(s, k)) out[k] = { v: viewFor(s, k, db.items[k].v), rev: db.items[k].rev };
-    return send(res, 200, { rev: db.rev, items: out });
+    return send(res, 200, { rev: db.rev, items: out }, { 'ETag': tag, 'Cache-Control': 'private, no-cache', 'Vary': 'Accept-Encoding, Cookie' });
   }
   if (p === '/api/export' && req.method === 'GET') {
     if (s.role !== 'admin') return send(res, 403, { error: 'Admin only' });
@@ -410,6 +424,7 @@ function api(req, res, url) {
   send(res, 404, { error: 'not found' });
 }
 
+const ZIPPABLE = new Set(['.html', '.css', '.js', '.svg', '.webmanifest', '.ico']), ZC = new Map();
 function serveStatic(req, res, url) {
   let rel;
   try { rel = decodeURIComponent(url.pathname); } catch (e) { res.writeHead(400); return res.end(); }
@@ -421,9 +436,28 @@ function serveStatic(req, res, url) {
     if (!e && st.isDirectory()) file = path.join(file, 'index.html');
     const ext = path.extname(file).toLowerCase();
     if (!MIME[ext] || path.basename(file).toLowerCase() === 'server.js') { res.writeHead(404); return res.end('Not found'); }
-    fs.readFile(file, (err, data) => {
-      if (err) { res.writeHead(404); return res.end('Not found'); }
-      res.writeHead(200, { 'Content-Type': MIME[ext], 'Cache-Control': 'no-cache' }); res.end(data);
+    fs.stat(file, (e2, st2) => {
+      if (e2 || !st2.isFile()) { res.writeHead(404); return res.end('Not found'); }
+      // "no-cache" means: ask the server every time, but the answer is a tiny "not modified" while the file is unchanged. A new deploy changes the tag, so updates still show at once.
+      const tag = 'W/"' + st2.size.toString(36) + '-' + Math.floor(st2.mtimeMs).toString(36) + '"';
+      const hdr = { 'Content-Type': MIME[ext], 'Cache-Control': 'no-cache', 'ETag': tag, 'Vary': 'Accept-Encoding' };
+      const inm = String(req.headers['if-none-match'] || '').split(',').map(x => x.trim());
+      if (inm.indexOf(tag) > -1) { res.writeHead(304, hdr); return res.end(); }
+      const ae = String(req.headers['accept-encoding'] || ''), enc = !ZIPPABLE.has(ext) ? '' : (/\bbr\b/.test(ae) ? 'br' : (/\bgzip\b/.test(ae) ? 'gzip' : ''));
+      const ck = file + '|' + enc, hit = ZC.get(ck);
+      if (hit && hit.tag === tag) { if (enc) hdr['Content-Encoding'] = enc; hdr['Content-Length'] = hit.buf.length; res.writeHead(200, hdr); return res.end(hit.buf); }
+      fs.readFile(file, (err, data) => {
+        if (err) { res.writeHead(404); return res.end('Not found'); }
+        const done = (buf, used) => {
+          if (used) hdr['Content-Encoding'] = used;
+          if (ZIPPABLE.has(ext)) { if (ZC.size > 300) ZC.clear(); ZC.set(ck, { tag, buf }); }
+          hdr['Content-Length'] = buf.length; res.writeHead(200, hdr); res.end(buf);
+        };
+        if (!enc || data.length < 600) return done(data, '');
+        const cb = (er, z) => er ? done(data, '') : done(z, enc);
+        if (enc === 'br') zlib.brotliCompress(data, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: data.length } }, cb);
+        else zlib.gzip(data, { level: 6 }, cb);
+      });
     });
   });
 }
