@@ -28,7 +28,21 @@
     var ch = false, miss = workers().filter(function (w) { return !prof(w.id).empCode; });
     miss.sort(function (a, b) { var ja = prof(a.id).joinDate || a.created || '', jb = prof(b.id).joinDate || b.created || ''; return ja < jb ? -1 : ja > jb ? 1 : a.id < b.id ? -1 : 1; });
     miss.forEach(function (w) { var p = prof(w.id); p.empCode = makeCode(p.role, p.joinDate || w.created, w.id); ch = true; });
+    if (fixDuplicateNumbers()) ch = true;
     if (ch) saveP();
+  }
+  // Two employees must never share the same running number. If they do (older IDs restarted at 001 every month), the one who joined first
+  // keeps the number and each later one gets the smallest unused number. Numbers that are already unique are never changed.
+  function fixDuplicateNumbers() {
+    var re = /^(GT[A-Z]-\d{6})(\d+)$/, ws = workers().slice(), taken = {}, seen = {}, ch = false;
+    ws.sort(function (a, b) { var ja = prof(a.id).joinDate || a.created || '', jb = prof(b.id).joinDate || b.created || ''; return ja < jb ? -1 : ja > jb ? 1 : a.id < b.id ? -1 : 1; });
+    ws.forEach(function (w) { var x = re.exec(prof(w.id).empCode || ''); if (x) taken[parseInt(x[2], 10)] = 1; });
+    ws.forEach(function (w) {
+      var p = prof(w.id), x = re.exec(p.empCode || ''); if (!x) return;
+      var n = parseInt(x[2], 10); if (!seen[n]) { seen[n] = 1; return; }
+      var k = 1; while (taken[k]) k++; taken[k] = 1; seen[k] = 1; p.empCode = x[1] + String(k).padStart(3, '0'); ch = true;
+    });
+    return ch;
   }
   function code(w) { return prof(w.id).empCode || w.id; }
   function isRel(w) { return !!prof(w.id).relieved; }
