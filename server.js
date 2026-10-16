@@ -14,10 +14,11 @@ const VMAX = 5 * 1024 * 1024;
 function pfind(p, i) { for (const e of ['jpg', 'png', 'webp']) { const f = 'p/' + p + '__' + i + '.' + e; if (Files.has(f)) return { path: f, ext: e }; } return null; }
 function vfind(v, k) { for (const e of Object.keys(VMIME)) { const f = 'v/' + v + '__' + k + '.' + e; if (Files.has(f)) return { path: f, ext: e }; } return null; }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-let db = { rev: 0, items: {} };
+const activity = require('./activity');
+let db = { rev: 0, items: {}, activity: {} };
 function readLocalDb() {
   try { db = JSON.parse(fs.readFileSync(DB, 'utf8')); } catch (e) { if (fs.existsSync(DB)) { fs.copyFileSync(DB, DB + '.corrupt-' + Date.now()); console.log('db.json was unreadable, copy kept. Starting empty.'); } }
-  if (!db.items) db.items = {}; if (!db.rev) db.rev = 0;
+  if (!db.items) db.items = {}; if (!db.rev) db.rev = 0; if (!db.activity) db.activity = {};
 }
 // Loads saved data at start-up (from the data folder, or from Supabase).
 async function loadDb() {
@@ -25,6 +26,7 @@ async function loadDb() {
   const rows = await storage.kv.loadAll();
   rows.forEach(r => {
     if (r.key === '_auth') { try { auth = JSON.parse(r.v); if (!auth.admins) auth.admins = {}; if (!auth.workers) auth.workers = {}; } catch (e) {} }
+    else if (r.key.indexOf('_activity_') === 0) { try { db.activity[r.key.slice(10)] = JSON.parse(r.v) || []; } catch (e) {} }
     else if (r.key === '_sessions') { try { sessions = JSON.parse(r.v) || {}; } catch (e) {} }
     else { db.items[r.key] = { v: r.v, rev: Number(r.rev) || 0 }; db.rev = Math.max(db.rev, Number(r.rev) || 0); }
   });
@@ -35,6 +37,29 @@ const dirty = new Set();
 function persist() { clearTimeout(timer); timer = setTimeout(flush, 200); }
 function touch(key) { dirty.add(key); }
 function setItem(key, v) { db.items[key] = { v, rev: ++db.rev }; touch(key); persist(); }
+/* ---- Activity log: who changed what (kept per month, newest last; never sent to the browsers' storage) ---- */
+const ACT_MAX = 3000;
+function istMonth(t) { return new Date(t + 5.5 * 3600e3).toISOString().slice(0, 7).replace('-', ''); }
+function actorOf(s) {
+  try {
+    if (!s) return { role: 'system', name: 'System' };
+    if (s.role === 'admin') { const a = adminList().filter(x => x && x.id === s.id)[0]; return { role: 'admin', id: s.id, name: (a && a.name) || 'Admin' }; }
+    const w = (workerData().workers || []).filter(x => x && x.id === s.id)[0]; return { role: 'worker', id: s.id, name: (w && w.name) || 'Employee' };
+  } catch (e) { return { role: s ? s.role : 'system', name: 'Unknown' }; }
+}
+function logEvents(s, evs) {
+  try {
+    if (!evs || !evs.length) return;
+    const a = actorOf(s), now = Date.now(), m = istMonth(now), list = db.activity[m] || (db.activity[m] = []);
+    evs.forEach(e => {
+      if (e.dedupe && list.slice(-30).some(x => x.dedupe === e.dedupe && now - x.t < 120000)) return;
+      const rec = { t: now, by: a.name, role: a.role, type: e.type, text: e.text }; if (e.dedupe) rec.dedupe = e.dedupe;
+      list.push(rec);
+    });
+    if (list.length > ACT_MAX) list.splice(0, list.length - ACT_MAX);
+    touch('_activity_' + m); persist();
+  } catch (e) { console.error('Activity log skipped:', e && e.message); }
+}
 async function cloudBackup() {
   const day = new Date().toISOString().slice(0, 10); if (lastBackup === day) return;
   await Files.put('backups/db-' + day + '.json', Buffer.from(JSON.stringify(db)), 'application/json'); lastBackup = day;
@@ -55,7 +80,7 @@ async function flush() {
   if (!dirty.size) return;
   flushing = true; const keys = Array.from(dirty); dirty.clear();
   try {
-    await storage.kv.save(keys.map(k => k === '_auth' ? { key: k, v: JSON.stringify(auth), rev: 0 } : k === '_sessions' ? { key: k, v: JSON.stringify(sessions), rev: 0 } : { key: k, v: db.items[k] ? db.items[k].v : null, rev: db.items[k] ? db.items[k].rev : 0 }));
+    await storage.kv.save(keys.map(k => k === '_auth' ? { key: k, v: JSON.stringify(auth), rev: 0 } : k === '_sessions' ? { key: k, v: JSON.stringify(sessions), rev: 0 } : k.indexOf('_activity_') === 0 ? { key: k, v: JSON.stringify(db.activity[k.slice(10)] || []), rev: 0 } : { key: k, v: db.items[k] ? db.items[k].v : null, rev: db.items[k] ? db.items[k].rev : 0 }));
     try { await cloudBackup(); } catch (e) { console.error('Daily backup failed:', e.message); }
   } catch (e) { console.error('Save to Supabase failed, will retry:', e.message); keys.forEach(k => dirty.add(k)); setTimeout(persist, 5000); }
   finally { flushing = false; }
@@ -230,6 +255,7 @@ function workerFileOk(s, v, k, method) {   // photos and documents saved under a
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' };
 const BLOCKED = ['data', 'node_modules', 'backup-before-backend', 'test files'];
 const KEY_RE = /^gm_[A-Za-z0-9_\-]{1,80}$/;
+const PROTECTED = new Set(['gm_admin_v1', 'gm_admin_workers_v1', 'gm_admin_wprofile_v1', 'gm_pintasks_v1', 'gm_depot_v1', 'gm_admin_account_v1']);
 
 function send(res, code, obj, hdr) {
   const b = JSON.stringify(obj), h = Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }, hdr || {});
@@ -301,7 +327,7 @@ function api(req, res, url) {
     const good = checkPw(pw, hash) && !!(a || wk);
     if (!good) { noteFail(kp, 5); noteFail(ki, 25); return send(res, 401, { error: 'Incorrect mobile number or password.' }); }
     delete fails[kp];
-    if (a) { startSession(res, req, 'admin', a.id); return send(res, 200, { ok: true, role: 'admin', id: a.id, name: a.name, adminRole: a.role || 'Admin', must: !!auth.admins[a.id].must }); }
+    if (a) { startSession(res, req, 'admin', a.id); logEvents({ role: 'admin', id: a.id }, [{ type: 'login', text: 'Signed in' }]); return send(res, 200, { ok: true, role: 'admin', id: a.id, name: a.name, adminRole: a.role || 'Admin', must: !!auth.admins[a.id].must }); }
     if (!wk.active) return send(res, 403, { code: 'inactive', error: 'This account is inactive. Contact Fleet Admin.' });
     const t = localDate();
     if ((workerData().leaves || []).some(l => l && l.workerId === wk.id && l.from <= t && t <= l.to)) return send(res, 403, { code: 'leave', error: 'On leave today.' });
@@ -323,6 +349,7 @@ function api(req, res, url) {
     if (b.next === b.current) return send(res, 400, { error: 'Choose a password different from the current one.' });
     (s.role === 'admin' ? auth.admins : auth.workers)[s.id] = { h: hashPw(b.next), must: false }; saveAuth();
     Object.keys(sessions).forEach(h => { if (sessions[h].role === s.role && sessions[h].id === s.id && h !== s.hash) delete sessions[h]; }); saveSessions();
+    logEvents(s, [{ type: 'password', text: 'Changed own password' }]);
     send(res, 200, { ok: true });
   }, 4096);
   if (mustChange) return send(res, 403, { error: 'Choose a new password first.', must: true });
@@ -332,10 +359,41 @@ function api(req, res, url) {
     for (const k in db.items) if (db.items[k].rev > since && canRead(s, k)) out[k] = { v: viewFor(s, k, db.items[k].v), rev: db.items[k].rev };
     return send(res, 200, { rev: db.rev, items: out });   // always fresh (never cached); only compressed
   }
+  if (p === '/api/activity' && req.method === 'GET') {
+    if (s.role !== 'admin') return send(res, 403, { error: 'Admin only' });
+    const months = Object.keys(db.activity).filter(k => /^\d{6}$/.test(k)).sort().reverse();
+    let mo = String(url.searchParams.get('month') || ''); if (!/^\d{6}$/.test(mo)) mo = months[0] || istMonth(Date.now());
+    const events = (db.activity[mo] || []).slice().reverse().map(e => ({ t: e.t, by: e.by, role: e.role, type: e.type, text: e.text }));
+    return send(res, 200, { month: mo, months, events });
+  }
+  if (p === '/api/delete-employee' && req.method === 'POST') return body(req, (err, b) => {
+    if (s.role !== 'admin') return send(res, 403, { error: 'Admin only' });
+    const id = b && typeof b.id === 'string' ? b.id : '';
+    if (!/^[A-Za-z0-9_-]{1,40}$/.test(id)) return send(res, 400, { error: 'bad employee id' });
+    const wd = workerData(), w = (wd.workers || []).filter(x => x && x.id === id)[0];
+    if (!w) return send(res, 404, { error: 'Employee not found. Reload the page.' });
+    // An employee who has worked (attendance, deliveries, plans, advances) must not be deleted: their history would lose its name.
+    const reasons = [], has = (k, needle) => !!(db.items[k] && typeof db.items[k].v === 'string' && db.items[k].v.indexOf(needle) >= 0);
+    const rec = stored('gm_crm_data_v5__' + id);
+    if (rec && rec.attendanceLog && Object.keys(rec.attendanceLog).some(m => rec.attendanceLog[m] && Object.keys(rec.attendanceLog[m]).length)) reasons.push('has attendance records');
+    if (rec && Array.isArray(rec.shops) && rec.shops.some(x => x && x.status && x.status !== 'pending')) reasons.push('has delivery records');
+    if (has('gm_admin_v1', '"workerId":"' + id + '"')) reasons.push('is on one or more daily plans');
+    if (has('gm_admin_ledger_v1', '"workerId":"' + id + '"')) reasons.push('has advances or deductions');
+    if (reasons.length && !b.force) return send(res, 409, { code: 'history', error: w.name + ' ' + reasons.join(', ') + '. Mark them as relieved instead, so the history stays.', reasons });
+    const nd = Object.assign({}, wd, { workers: wd.workers.filter(x => x && x.id !== id), leaves: (wd.leaves || []).filter(l => l && l.workerId !== id) });
+    setItem('gm_admin_workers_v1', JSON.stringify(nd));
+    const pr = stored('gm_admin_wprofile_v1'); if (pr && typeof pr === 'object' && pr[id]) { delete pr[id]; setItem('gm_admin_wprofile_v1', JSON.stringify(pr)); }
+    ['gm_crm_data_v5__' + id, 'gm_pins_v1_' + id, 'gm_wself_' + id].forEach(k => { if (db.items[k] && db.items[k].v != null) setItem(k, null); });
+    delete auth.workers[id]; saveAuth();
+    Object.keys(sessions).forEach(h => { if (sessions[h].role === 'worker' && sessions[h].id === id) delete sessions[h]; }); saveSessions();
+    logEvents(s, [{ type: 'employee', text: 'Employee deleted: ' + w.name + ' (' + id + ')' }]);
+    send(res, 200, { ok: true });
+  }, 1024);
   if (p === '/api/export' && req.method === 'GET') {
     if (s.role !== 'admin') return send(res, 403, { error: 'Admin only' });
-    res.writeHead(200, { 'Content-Type': 'application/json', 'Content-Disposition': 'attachment; filename="gm-crm-export.json"' });
-    return res.end(JSON.stringify(db, null, 2));
+    const ist = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Disposition': 'attachment; filename="gm-crm-backup-' + ist + '.json"' });
+    return res.end(JSON.stringify(Object.assign({ app: 'GM-CRM backup', exportedAt: new Date().toISOString() }, db), null, 2));
   }
   const m = /^\/api\/kv\/([^/]+)$/.exec(p);
   if (m) {
@@ -348,12 +406,19 @@ function api(req, res, url) {
       if (!db.items[key] && Object.keys(db.items).length >= MAX_KEYS) return send(res, 507, { error: 'Storage limit reached' });
       let val = b.v;
       if (key === 'gm_admin_notifs_v1' && s.role !== 'admin') { val = mergeNotifs(db.items[key] && db.items[key].v, val, s); if (val == null) return send(res, 400, { error: 'bad list' }); }
+      // Stale-save protection: the page says which version it was based on. If someone else saved a newer one since, refuse (unless it is the very same data, e.g. a retry of a save that did go through).
+      if (PROTECTED.has(key) && Number.isFinite(b.base) && db.items[key] && db.items[key].rev > b.base) {
+        if (db.items[key].v === b.v) return send(res, 200, { ok: true, rev: db.items[key].rev });
+        return send(res, 409, { error: 'Someone else changed this data while you were editing. Reload the page and try again.', code: 'stale', rev: db.items[key].rev });
+      }
       if (key === 'gm_admin_v1') {
         const bad = planConflict(db.items[key] && db.items[key].v, val);
         if (bad) return send(res, 409, { error: bad });
       }
       val = cleanValue(key, val);
-      setItem(key, val); send(res, 200, { ok: true, rev: db.rev });
+      const oldV = db.items[key] ? db.items[key].v : null;
+      setItem(key, val);
+      try { logEvents(s, activity.diff(key, oldV, val, b.v, { workerName: id => { const w = (workerData().workers || []).filter(x => x && x.id === id)[0]; return w ? w.name : id; } })); } catch (e) { console.error('Activity diff skipped:', e && e.message); } send(res, 200, { ok: true, rev: db.rev });
     });
     if (req.method === 'DELETE') { setItem(key, null); return send(res, 200, { ok: true, rev: db.rev }); }
   }
@@ -439,14 +504,14 @@ function serveStatic(req, res, url) {
       const hdr = { 'Content-Type': MIME[ext], 'Cache-Control': 'no-cache', 'ETag': tag, 'Vary': 'Accept-Encoding' };
       const inm = String(req.headers['if-none-match'] || '').split(',').map(x => x.trim());
       if (inm.indexOf(tag) > -1) { res.writeHead(304, hdr); return res.end(); }
-      const ae = String(req.headers['accept-encoding'] || ''), enc = !ZIPPABLE.has(ext) ? '' : (/\bbr\b/.test(ae) ? 'br' : (/\bgzip\b/.test(ae) ? 'gzip' : ''));
+      const ae = String(req.headers['accept-encoding'] || ''), enc = (!ZIPPABLE.has(ext) || st2.size < 600) ? '' : (/\bbr\b/.test(ae) ? 'br' : (/\bgzip\b/.test(ae) ? 'gzip' : ''));   // tiny files are sent as they are, so the cache key always matches what is stored
       const ck = file + '|' + enc, hit = ZC.get(ck);
       if (hit && hit.tag === tag) { if (enc) hdr['Content-Encoding'] = enc; hdr['Content-Length'] = hit.buf.length; res.writeHead(200, hdr); return res.end(hit.buf); }
       fs.readFile(file, (err, data) => {
         if (err) { res.writeHead(404); return res.end('Not found'); }
         const done = (buf, used) => {
           if (used) hdr['Content-Encoding'] = used;
-          if (ZIPPABLE.has(ext)) { if (ZC.size > 300) ZC.clear(); ZC.set(ck, { tag, buf }); }
+          if (ZIPPABLE.has(ext)) { if (ZC.size > 300) ZC.clear(); ZC.set(file + '|' + (used || ''), { tag, buf }); }   // stored under the encoding that was REALLY used
           hdr['Content-Length'] = buf.length; res.writeHead(200, hdr); res.end(buf);
         };
         if (!enc || data.length < 600) return done(data, '');
@@ -468,6 +533,7 @@ async function migrateToCloud() {
   SETUP_NOTICE = migrateAuth();
   const rows = Object.keys(db.items).map(k => ({ key: k, v: db.items[k].v, rev: db.items[k].rev }));
   rows.push({ key: '_auth', v: JSON.stringify(auth), rev: 0 });
+  Object.keys(db.activity || {}).forEach(m => rows.push({ key: '_activity_' + m, v: JSON.stringify(db.activity[m]), rev: 0 }));
   await storage.kv.save(rows);
   console.log('Saved ' + (rows.length - 1) + ' records and the login accounts to Supabase.');
   const list = storage.files.localScan(); let n = 0;

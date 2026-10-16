@@ -96,6 +96,34 @@
         return x.status === 200 ? { ok: true } : { ok: false, error: j.error || 'Could not change the password.' };
       } catch (e) { return { ok: false, error: 'Could not reach the server.' }; }
     },
+    // ---- Backup: downloads a full copy of the data as one file (admin only) ----
+    backupCard: function () {
+      return '<div class="card" id="bkCard"><div class="card-title">Backup</div>' +
+        '<p class="pf2-hint">Download a full copy of your data: customers, routes, plans, employees, attendance and settings. Keep the file somewhere safe, for example email it to yourself or save it in Google Drive. Photos and documents are not included.</p>' +
+        '<div class="pf2-acts"><button class="btn a-btn" id="bkGo" type="button">Download backup</button></div>' +
+        '<div class="pf2-msg" id="bkMsg" role="status"></div></div>';
+    },
+    bindBackup: function () {
+      var go = document.getElementById('bkGo'), m = document.getElementById('bkMsg'); if (!go || !m) return;
+      function say(t, kind) { m.textContent = t; m.className = 'pf2-msg' + (kind ? ' ' + kind : ''); }
+      function shown() { try { var t = localStorage.getItem('gt_last_backup'); if (t) { var d = new Date(t); say('Last backup downloaded on this device: ' + d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) + ' at ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) + '.'); } } catch (e) {} }
+      shown();
+      go.onclick = function () {
+        go.disabled = true; say('Preparing your backup...');
+        fetch('/api/export', { cache: 'no-store', credentials: 'same-origin' }).then(function (r) {
+          if (r.status === 401) throw new Error('Your sign-in expired. Sign in again and retry.');
+          if (r.status === 403) throw new Error('Only an admin can download a backup.');
+          if (!r.ok) throw new Error('The server could not make the backup. Try again.');
+          return r.blob();
+        }).then(function (b) {
+          var n = new Date(), hm = String(n.getHours()).padStart(2, '0') + String(n.getMinutes()).padStart(2, '0'), a = document.createElement('a');
+          a.href = URL.createObjectURL(b); a.download = 'gm-crm-backup-' + today() + '-' + hm + '.json'; document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+          try { localStorage.setItem('gt_last_backup', n.toISOString()); } catch (e) {}
+          say('Backup downloaded (' + Math.max(1, Math.round(b.size / 1024)) + ' KB). Keep the file safe.', 'ok');
+        }).catch(function (e) { say(e && e.message ? e.message : 'Could not download the backup. Check your connection.', 'err'); }).then(function () { go.disabled = false; });
+      };
+    },
     logout: function () { try { sessionStorage.removeItem(SK); } catch (e) {} try { var x = new XMLHttpRequest(); x.open('POST', '/api/logout', false); x.send(); } catch (e) {} location.href = '../login.html'; },
     guard: function () { if (!GA.session()) { location.replace('../login.html'); throw new Error('Not signed in'); } },
 
@@ -256,7 +284,7 @@
     mount: function (page, title, opts) {
       opts = opts || {};
       GA.syncVehicleKm(); GA.ensureCodes();
-      var s = GA.session() || {}, nav = [['index.html', 'Home', 'home'], ['summary.html', 'Daily summary', 'report'], ['workers.html', 'Employees', 'users'], ['vehicles.html', 'Vehicles', 'truck'], ['plan.html', 'Daily plan', 'cal'], ['routes.html', 'Routes', 'map'], ['customers.html', 'Customers', 'store'], ['products.html', 'Products', 'box'], ['attendance.html', 'Attendance', 'clock'], ['advances.html', 'Advances', 'coin'], ['problems.html', 'Problems', 'alert']];
+      var s = GA.session() || {}, nav = [['index.html', 'Home', 'home'], ['summary.html', 'Daily summary', 'report'], ['workers.html', 'Employees', 'users'], ['vehicles.html', 'Vehicles', 'truck'], ['plan.html', 'Daily plan', 'cal'], ['routes.html', 'Routes', 'map'], ['customers.html', 'Customers', 'store'], ['products.html', 'Products', 'box'], ['attendance.html', 'Attendance', 'clock'], ['advances.html', 'Advances', 'coin'], ['problems.html', 'Problems', 'alert'], ['activity.html', 'Activity log', 'check']];
       var links = nav.map(function (n) { return '<a href="' + n[0] + '" title="' + n[1] + '"' + (n[0] === page ? ' aria-current="page"' : '') + '>' + GA.icon(n[2]) + '<span>' + n[1] + '</span></a>'; }).join('');
       document.body.innerHTML = '<div class="a-wrap"><aside class="a-side" id="aSide"><div class="a-brand"><img src="../assets/logo.png" alt=""><span>General Traders</span><button class="a-ib a-col" id="aCol" type="button" title="Collapse menu" aria-label="Collapse menu">' + GA.icon('panel') + '</button></div>' + links +
         '<div class="a-user"><a class="a-me" href="profile.html" title="My profile and depot location"' + (page === 'profile.html' ? ' aria-current="page"' : '') + '><span class="chip c-p">' + esc((s.name || 'A').charAt(0).toUpperCase()) + '</span><div style="flex:1"><b>' + esc(s.name) + '</b><span>' + esc(s.role) + '</span></div></a><button class="a-ib d" id="aOut" title="Sign out">' + GA.icon('logout') + '</button></div></aside>' +

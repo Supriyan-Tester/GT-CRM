@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script src="../shared/sync.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>General Traders - Admin</title>
+<link rel="stylesheet" href="../shared/theme.css">
+<link rel="stylesheet" href="../shared/admin.css">
+<script src="../shared/theme.js"></script></head>
+<body>
+<script src="../shared/mock-data.js"></script>
+<script src="../shared/admin.js"></script>
+<script>
+GA.guard();
+var $ = function (i) { return document.getElementById(i); }, esc = GA.esc, data = { month: "", months: [], events: [] }, shown = 50, err = "";
+var TYPES = { all: "All", customer: "Customers", route: "Routes", plan: "Daily plan", employee: "Employees", shop: "Shop pins", vehicle: "Vehicles", product: "Products", settings: "Settings", login: "Sign-ins", password: "Passwords" };
+var pg = GA.mount("activity.html", "Activity log");
+pg.innerHTML = "<div class=\"a-bar\"><label class=\"mu\" for=\"mo\">Month</label><div class=\"field a-f\" style=\"width:170px\"><select id=\"mo\" data-gt-dropdown-ready=\"1\"></select></div>" +
+  "<label class=\"mu\" for=\"ty\">Type</label><div class=\"field a-f\" style=\"width:170px\"><select id=\"ty\" data-gt-dropdown-ready=\"1\"></select></div>" +
+  "<div class=\"field a-f\" style=\"width:230px\"><input id=\"q\" type=\"search\" placeholder=\"Search name or words\"></div><button class=\"btn\" id=\"rf\" type=\"button\">Refresh</button></div><div id=\"out\"></div>";
+$("ty").innerHTML = Object.keys(TYPES).map(function (k) { return "<option value=\"" + k + "\">" + TYPES[k] + "</option>"; }).join("");
+function monthName(m) { var n = ["January","February","March","April","May","June","July","August","September","October","November","December"]; return n[+m.slice(4) - 1] + " " + m.slice(0, 4); }
+function when(t) { var d = new Date(t + 5.5 * 3600e3), p = function (x) { return (x < 10 ? "0" : "") + x; }; return p(d.getUTCDate()) + "/" + p(d.getUTCMonth() + 1) + " " + p(d.getUTCHours()) + ":" + p(d.getUTCMinutes()); }
+function draw() {
+  var ty = $("ty").value, q = $("q").value.trim().toLowerCase();
+  if (err) { $("out").innerHTML = "<div class=\"a-warn\">" + esc(err) + "</div>"; return; }
+  var list = data.events.filter(function (e) { return (ty === "all" || e.type === ty) && (!q || (e.text + " " + e.by).toLowerCase().indexOf(q) >= 0); });
+  var rows = list.slice(0, shown).map(function (e) { return "<tr><td style=\"white-space:nowrap\">" + when(e.t) + "</td><td>" + esc(e.by) + "</td><td><span class=\"chip c-p\">" + esc(TYPES[e.type] || e.type) + "</span></td><td>" + esc(e.text) + "</td></tr>"; }).join("");
+  $("out").innerHTML = "<p class=\"mu\" style=\"margin-bottom:12px\">" + list.length + " change" + (list.length === 1 ? "" : "s") + " in " + monthName(data.month) + ". Changes made before this feature was added are not listed.</p>" +
+    "<div class=\"card\"><div class=\"a-scroll\"><table class=\"a-table\"><thead><tr><th>When</th><th>Who</th><th>Type</th><th>What changed</th></tr></thead><tbody>" + (rows || "<tr><td colspan=\"4\" class=\"mu\">Nothing recorded yet.</td></tr>") + "</tbody></table></div></div>" +
+    (list.length > shown ? "<p style=\"margin-top:12px\"><button class=\"btn\" id=\"more\" type=\"button\">Show more</button></p>" : "");
+  if ($("more")) $("more").onclick = function () { shown += 50; draw(); };
+}
+function load(m) {
+  fetch("/api/activity" + (m ? "?month=" + m : ""), { cache: "no-store", credentials: "same-origin" }).then(function (r) { if (!r.ok) throw new Error(r.status === 403 ? "Only an admin can see the activity log." : "Could not load the log. Try Refresh."); return r.json(); }).then(function (d) {
+    data = d; err = ""; var ms = d.months.indexOf(d.month) < 0 ? [d.month].concat(d.months) : d.months;
+    $("mo").innerHTML = ms.map(function (x) { return "<option value=\"" + x + "\">" + monthName(x) + "</option>"; }).join(""); $("mo").value = d.month; draw();
+  }).catch(function (e) { err = e.message || "Could not load the log."; draw(); });
+}
+$("mo").onchange = function () { shown = 50; load($("mo").value); };
+$("ty").onchange = function () { shown = 50; draw(); }; $("q").oninput = function () { shown = 50; draw(); };
+$("rf").onclick = function () { load($("mo").value); };
+load("");
+</script>
+</body>
+</html>

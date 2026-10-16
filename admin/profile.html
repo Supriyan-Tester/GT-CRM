@@ -42,10 +42,11 @@ var PIN = L.divIcon({ className: 'pf2-pin', iconSize: [30, 40], iconAnchor: [15,
 
 pg.innerHTML =
   '<div class="pf2-grid">' +
-  '<div class="card"><div class="card-title">Account</div>' +
+  '<div style="display:flex;flex-direction:column;gap:16px;min-width:0">' +
+  '<div class="card" style="margin:0"><div class="card-title">Account</div>' +
     '<div class="pf2-me"><span class="chip c-p">' + esc((me.name || 'A').charAt(0).toUpperCase()) + '</span><div><b>' + esc(me.name || 'Admin') + '</b><span>' + esc(me.role || 'Admin') + '</span></div></div>' +
     '<div class="pf2-kv"><small>Name</small><b>' + esc(me.name || '-') + '</b><small>Role</small><b>' + esc(me.role || '-') + '</b><small>Mobile</small><b>' + (admin.phone ? '+91 ' + esc(admin.phone) : '-') + '</b></div>' +
-  '</div>' +
+  '</div>' + GA.backupCard() + '</div>' +
   '<div class="card"><div class="card-title"><span>Depot / godown location</span><span class="pf2-st" id="dSt"></span></div>' +
     '<p class="pf2-hint">Employees can punch in and out only when their phone is inside this circle. Click the map, drag the pin, type the coordinates, or stand at the godown and use your current location.</p>' +
     '<div class="a-fg"><label for="dName">Depot name</label><div class="field a-f"><input id="dName" placeholder="e.g. General Traders Godown"></div></div>' +
@@ -57,6 +58,7 @@ pg.innerHTML =
     '<div class="pf2-acts"><button class="btn btn-secondary a-btn" id="dHere" type="button">Use my current location</button><button class="btn a-btn" id="dSave" type="button">Save depot location</button><button class="btn btn-secondary a-btn" id="dClear" type="button">Remove</button></div>' +
     '<div class="pf2-msg" id="dMsg" role="status"></div>' +
   '</div></div>';
+GA.bindBackup();
 
 function msg(t, kind) { var m = $('dMsg'); m.textContent = t || ''; m.className = 'pf2-msg' + (kind ? ' ' + kind : ''); }
 function status() { var s = $('dSt'); if (saved) { s.className = 'pf2-st set'; s.textContent = 'Saved'; } else { s.className = 'pf2-st unset'; s.textContent = 'Not set'; } }

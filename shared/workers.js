@@ -102,7 +102,7 @@
   function menu(btn, id) {
     var old = document.querySelector('.wk-pop'); if (old) { old.remove(); }
     var w = find(id), m = document.createElement('div'); m.className = 'wk-pop';
-    m.innerHTML = '<button data-a="v">View details</button><button data-a="e">Edit employee</button><button data-a="p">Reset password</button>' + (isRel(w) ? '<button data-a="r">Re-join (undo relieved)</button>' : '<button data-a="l">Leave</button><button data-a="t" class="' + (w.active ? 'dg' : '') + '">' + (w.active ? 'Deactivate' : 'Activate') + '</button><button data-a="x" class="dg">Mark as relieved</button>');
+    m.innerHTML = '<button data-a="v">View details</button><button data-a="e">Edit employee</button><button data-a="p">Reset password</button><button data-a="d" class="dg">Delete employee</button>' + (isRel(w) ? '<button data-a="r">Re-join (undo relieved)</button>' : '<button data-a="l">Leave</button><button data-a="t" class="' + (w.active ? 'dg' : '') + '">' + (w.active ? 'Deactivate' : 'Activate') + '</button><button data-a="x" class="dg">Mark as relieved</button>');
     // Float the menu above the page (fixed, on <body>) so the scrolling table box never clips it or grows a scrollbar
     m.style.position = 'fixed'; m.style.visibility = 'hidden'; document.body.appendChild(m);
     var br = btn.getBoundingClientRect(), mh = m.offsetHeight, mw = m.offsetWidth;
@@ -116,6 +116,14 @@
   function act(a, id) {
     var w = find(id);
     if (a === 'v') location.hash = '#w/' + id; if (a === 'e') location.hash = '#edit/' + id; if (a === 'p') pwModal(w); if (a === 'l') leaveModal(w); if (a === 'x') relModal(w); if (a === 'r') rejoin(w);
+    if (a === 'd') {
+      if (!confirm('Delete ' + w.name + ' (' + code(w) + ') permanently?\n\nThis removes the employee and their login. It cannot be undone.\nOnly an employee with no attendance, plans or advances can be deleted.')) return;
+      fetch('/api/delete-employee', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id }) }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); }).then(function (r) {
+        if (!r.ok) { alert(r.j.error || 'Could not delete.'); return; }
+        toast(w.name + ' deleted'); setTimeout(function () { location.reload(); }, 700);
+      }).catch(function () { alert('Could not reach the server. Nothing was deleted.'); });
+      return;
+    }
     if (a === 't') { if (w.active && !confirm('Deactivate ' + w.name + '? They will not be able to log in.')) return; GA.setActive(id, !w.active); toast(w.name + (w.active ? ' deactivated' : ' activated')); route(); }
   }
   function relModal(w) {

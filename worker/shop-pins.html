@@ -169,8 +169,10 @@
   function msg(code, text, cls) { var m = $('view').querySelector('[data-m="' + code.replace(/"/g, '') + '"]'); if (m) { m.textContent = text; m.className = 'sp-msg' + (cls ? ' ' + cls : ''); } }
   function find(code) { return GM.pinTasks().filter(function (s) { return s.code === code; })[0]; }
 
-  // Listens to the phone's location for up to 12 seconds and keeps the most accurate reading.
-  // 100 m or better is accepted. If it stays weaker, the employee can still choose "Use it anyway" (laptops have no GPS, so they stay around 100 m or more).
+  // Listens to the phone's location for up to 30 seconds and keeps the most accurate reading.
+  // Shops in a market can be only 5 to 10 m apart, so a weak reading can land on the next shop. It stops at once when it is 10 m or better,
+  // and after 10 seconds when it is 20 m or better. A reading weaker than 20 m is not accepted on its own: the employee is told to try again
+  // at the shop front, or can still choose "Use it anyway" (laptops have no GPS, so they stay around 100 m or more).
   function accept(code, pos) {
     var acc = Math.round(pos.coords.accuracy || 0);
     got[code] = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: acc }; open = code;
@@ -191,10 +193,10 @@
       if (fin) return; stop();
       if (!best) { msg(code, 'Could not get your location. Try again outside the shop.', 'bad'); return; }
       var acc = Math.round(best.coords.accuracy || 0);
-      if (acc <= 100) { accept(code, best); return; }
+      if (acc <= 20) { accept(code, best); return; }
       var m = $('view').querySelector('[data-m="' + code.replace(/"/g, '') + '"]');
       if (m) {
-        m.className = 'sp-msg bad'; m.innerHTML = 'Signal is weak (about ' + acc + ' m). Step outside the shop and try again, or use it anyway. ';
+        m.className = 'sp-msg bad'; m.innerHTML = 'Not exact enough (about ' + acc + ' m). Shops here are close together, so the pin may land on the next shop. Stand at the shop front in the open for a few seconds and try again, or use it anyway. ';
         var u = document.createElement('button'); u.type = 'button'; u.className = 'btn btn-secondary'; u.style.cssText = 'margin-top:8px;min-height:38px'; u.textContent = 'Use it anyway (about ' + acc + ' m)';
         u.onclick = function () { accept(code, best); }; m.appendChild(u);
       }
@@ -203,14 +205,14 @@
       if (fin) return;
       if (!best || pos.coords.accuracy < best.coords.accuracy) best = pos;
       var acc = Math.round(best.coords.accuracy || 0);
-      if (acc <= 25) { done(); return; }
-      msg(code, 'Getting a better signal... (about ' + acc + ' m)');
+      if (acc <= 10) { done(); return; }
+      msg(code, 'Getting a better signal... (about ' + acc + ' m, waiting for 10 m or better)');
     }, function (err) {
       if (fin) return;
       if (best) { done(); return; }
       stop(); msg(code, err && err.code === 1 ? 'Location is blocked. Allow location for this site in the browser settings, then try again.' : 'Could not get your location. Try again outside the shop.', 'bad');
-    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
-    tick = setInterval(function () { if (Date.now() - t0 >= 12000) done(); }, 500);
+    }, { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 });
+    tick = setInterval(function () { var el = Date.now() - t0; if (el >= 30000 || (el >= 10000 && best && best.coords.accuracy <= 20)) done(); }, 500);
   }
 
   // Fills the address box with a suggestion from the map service when the shop has no address. The employee can change it. Silent if offline.

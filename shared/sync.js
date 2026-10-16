@@ -45,6 +45,20 @@ window.GMImg = {
   }
   var DATA_KEY = /^(gm_admin_|gm_crm_data_v5|gm_pins_v1|gm_pintasks_v1|gm_depot_v1|gm_wself_|gm_view_worker|gm_logged_in)/;
   var rev = 0, pending = {}, written = {}, localOnly = { 'gm_logged_in': 1 }; localOnly[VIEW] = 1;
+  // Stale-save protection (admin pages). krev[k] = newest server version of a shared record that this browser knows about.
+  // readRev[k] = the version of it the page last READ. A save is sent together with that version, and the server refuses it when
+  // someone else has saved a newer one in between, so an old open tab or phone can no longer wipe out newer work.
+  var PROT = /^(gm_admin_v1|gm_admin_workers_v1|gm_admin_wprofile_v1|gm_pintasks_v1|gm_depot_v1|gm_admin_account_v1)$/, krev = {}, readRev = {};
+  function staleBanner() {
+    try {
+      if (document.getElementById('gmStale') || !document.body) return;
+      var d = document.createElement('div'); d.id = 'gmStale'; d.setAttribute('role', 'alert');
+      d.style.cssText = 'position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:2147483600;max-width:min(560px,calc(100vw - 24px));background:#7c2d12;color:#fff;padding:12px 14px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);font:14px/1.4 system-ui,sans-serif;display:flex;gap:12px;align-items:center';
+      var t = document.createElement('span'); t.textContent = 'Someone else changed this data while this page was open, so your last change was not saved. Reload to see the latest and try again.';
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = 'Reload'; b.style.cssText = 'flex:0 0 auto;border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer';
+      b.onclick = function () { location.reload(); }; d.appendChild(t); d.appendChild(b); document.body.appendChild(d);
+    } catch (e) {}
+  }
   function ok(k) { return typeof k === 'string' && /^gm_[A-Za-z0-9_\-]{1,80}$/.test(k) && !localOnly[k] && k !== BLOB; }
   function jget(k) { try { return JSON.parse(rawGet.call(ls, k)); } catch (e) { return null; } }
   function wid(s) { try { var o = JSON.parse(s); var i = o && o.worker && o.worker.id; return (i && /^[A-Za-z0-9_\-]{1,60}$/.test(i)) ? i : null; } catch (e) { return null; } }
@@ -61,13 +75,18 @@ window.GMImg = {
   var inflight = {};
   function send(k, force) {
     if (!(k in pending) || (inflight[k] && !force)) return;
-    var v = pending[k], body = JSON.stringify({ v: v }), opt = { method: v === null ? 'DELETE' : 'PUT', headers: { 'Content-Type': 'application/json' }, keepalive: !!force && body.length < 60000 };
+    var v = pending[k], body = JSON.stringify(isAdmin && PROT.test(k) && typeof readRev[k] === 'number' ? { v: v, base: readRev[k] } : { v: v }), opt = { method: v === null ? 'DELETE' : 'PUT', headers: { 'Content-Type': 'application/json' }, keepalive: !!force && body.length < 60000 };
     if (v !== null) opt.body = body;
     inflight[k] = true;
     try {
       fetch(API + '/kv/' + encodeURIComponent(k), opt).then(function (r) {
         inflight[k] = false;
-        if (r.ok) { if (pending[k] === v) delete pending[k]; else send(k); gmEmit('gm-sync-saved', k); }
+        if (r.ok) {
+          r.json().catch(function () { return {}; }).then(function (j) {
+            if (j && typeof j.rev === 'number' && PROT.test(k)) { krev[k] = j.rev; readRev[k] = j.rev; }   // the page's copy now equals the server's
+            if (pending[k] === v) delete pending[k]; else send(k); gmEmit('gm-sync-saved', k);
+          });
+        }
         else if (r.status === 401) { signedOut(); gmEmit('gm-sync-failed', k); }
         else if (r.status === 403 || r.status === 413 || r.status === 507) { if (pending[k] === v) { delete pending[k]; delete written[k]; } gmEmit('gm-sync-failed', k); }   // this account may not save this item; retrying cannot help
         else if (r.status === 409) {
@@ -76,6 +95,7 @@ window.GMImg = {
           r.json().catch(function () { return {}; }).then(function (j) {
             if (pending[k] === v) { delete pending[k]; delete written[k]; }
             try { window.dispatchEvent(new CustomEvent('gm-sync-rejected', { detail: { key: k, error: (j && j.error) || 'The server rejected this change.' } })); } catch (e) {}
+            if (j && j.code === 'stale') staleBanner();
             rev = 0; poll();
           });
         } else gmEmit('gm-sync-failed', k);
@@ -93,8 +113,10 @@ window.GMImg = {
     else if (ok(k)) push(k, v);
   };
   SP.removeItem = function (k) { rawRem.apply(this, arguments); if (this === ls && ok(k)) push(k, null); };
+  SP.getItem = function (k) { if (isAdmin && this === ls && PROT.test(k) && typeof krev[k] === 'number') readRev[k] = krev[k]; return rawGet.apply(this, arguments); };
 
   function applyOne(lk, sk, items) {
+    if (PROT.test(lk) && typeof items[sk].rev === 'number') krev[lk] = items[sk].rev;
     var v = items[sk].v, cur = rawGet.call(ls, lk);
     if (v === null) { if (cur !== null) { rawRem.call(ls, lk); return true; } }
     else if (cur !== v) { rawSet.call(ls, lk, v); return true; }

@@ -51,7 +51,7 @@ pg.innerHTML =
     '<div class="a-fg"><label for="pCur">Current password</label><div class="field a-f"><input id="pCur" type="password" autocomplete="current-password"></div></div>' +
     '<div class="a-fg"><label for="pNew">New password (at least 8 characters)</label><div class="field a-f"><input id="pNew" type="password" autocomplete="new-password"></div></div>' +
     '<div class="a-fg"><label for="pNew2">Repeat new password</label><div class="field a-f"><input id="pNew2" type="password" autocomplete="new-password"></div></div>' +
-    '<div class="pf2-acts"><button class="btn a-btn" id="pSave" type="button">Change password</button></div><div class="pf2-msg" id="pMsg" role="status"></div></div></div>' +
+    '<div class="pf2-acts"><button class="btn a-btn" id="pSave" type="button">Change password</button></div><div class="pf2-msg" id="pMsg" role="status"></div></div>' + GA.backupCard() + '</div>' +
   '<div class="card"><div class="card-title"><span>Depot / godown location</span><span class="pf2-st" id="dSt"></span></div>' +
     '<p class="pf2-hint">Employees can punch in and out only when their phone is inside this circle. Click the map, drag the pin, type the coordinates, or stand at the godown and use your current location.</p>' +
     '<div class="a-fg"><label for="dName">Depot name</label><div class="field a-f"><input id="dName" placeholder="e.g. General Traders Godown"></div></div>' +
@@ -63,6 +63,7 @@ pg.innerHTML =
     '<div class="pf2-acts"><button class="btn btn-secondary a-btn" id="dHere" type="button">Use my current location</button><button class="btn a-btn" id="dSave" type="button">Save depot location</button><button class="btn btn-secondary a-btn" id="dClear" type="button">Remove</button></div>' +
     '<div class="pf2-msg" id="dMsg" role="status"></div>' +
   '</div></div>';
+GA.bindBackup();
 
 function msg(t, kind) { var m = $('dMsg'); m.textContent = t || ''; m.className = 'pf2-msg' + (kind ? ' ' + kind : ''); }
 function status() { var s = $('dSt'); if (saved) { s.className = 'pf2-st set'; s.textContent = 'Saved'; } else { s.className = 'pf2-st unset'; s.textContent = 'Not set'; } }
