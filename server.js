@@ -183,25 +183,26 @@ let sessions = {};
 if (!CLOUD) { try { sessions = JSON.parse(fs.readFileSync(SESSF, 'utf8')); } catch (e) {} }
 let sessTimer = null;
 function saveSessions() { if (CLOUD) { touch('_sessions'); persist(); return; } clearTimeout(sessTimer); sessTimer = setTimeout(() => { try { const t = SESSF + '.tmp'; fs.writeFileSync(t, JSON.stringify(sessions), { mode: 0o600 }); fs.renameSync(t, SESSF); } catch (e) {} }, 500); }
-const TTL = { admin: 12 * 3600e3, worker: 30 * 86400e3 };
+const TTL = { admin: 12 * 3600e3, worker: 30 * 86400e3 }, REMEMBER_TTL = 30 * 86400e3;   // "Remember me" keeps an admin signed in for 30 days instead of 12 hours
 const sha = t => crypto.createHash('sha256').update(t).digest('hex');
 function cookieToken(req) { const m = /(?:^|;\s*)gm_sid=([A-Za-z0-9_-]{20,80})/.exec(req.headers.cookie || ''); return m ? m[1] : null; }
 function getSession(req) {
   const t = cookieToken(req); if (!t) return null;
   const h = sha(t), s = sessions[h]; if (!s) return null;
   const now = Date.now(); if (s.exp < now) { delete sessions[h]; saveSessions(); return null; }
-  if (s.exp - now < TTL[s.role] - 10 * 60e3) { s.exp = now + TTL[s.role]; saveSessions(); }
+  const ttl = s.ttl || TTL[s.role]; if (s.exp - now < ttl - 10 * 60e3) { s.exp = now + ttl; saveSessions(); }
   return Object.assign({ hash: h }, s);
 }
 function isHttps(req) { return !!(req.socket && req.socket.encrypted) || String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim() === 'https'; }
 function setCookie(res, req, token, maxAgeSec) {
   res.setHeader('Set-Cookie', 'gm_sid=' + token + '; Path=/; HttpOnly; SameSite=Strict; Max-Age=' + maxAgeSec + (isHttps(req) ? '; Secure' : ''));
 }
-function startSession(res, req, role, id) {
+function startSession(res, req, role, id, remember) {
+  const ttl = (remember && role === 'admin') ? REMEMBER_TTL : TTL[role];
   const token = crypto.randomBytes(32).toString('base64url');
   Object.keys(sessions).forEach(h => { if (sessions[h].exp < Date.now()) delete sessions[h]; });
-  sessions[sha(token)] = { role, id, exp: Date.now() + TTL[role] }; saveSessions();
-  setCookie(res, req, token, Math.floor(TTL[role] / 1000));
+  sessions[sha(token)] = { role, id, exp: Date.now() + ttl, ttl }; saveSessions();
+  setCookie(res, req, token, Math.floor(ttl / 1000));
 }
 
 // ---- limit password guessing ----
@@ -211,14 +212,17 @@ function noteFail(k, max) { let f = fails[k]; if (!f || (f.until && f.until <= D
 setInterval(() => { const n = Date.now(); Object.keys(fails).forEach(k => { if ((fails[k].until || 0) < n && n - (fails[k].t || 0) > 15 * 60e3) delete fails[k]; }); }, 600e3).unref();
 
 // ---- who may read / write which saved value ----
-const W_READ = new Set(['gm_admin_v1', 'gm_admin_workers_v1', 'gm_admin_wprofile_v1', 'gm_depot_v1', 'gm_pintasks_v1']);
+function CREWDAY() { return new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10).replace(/-/g, ''); }
+const W_READ = new Set(['gm_admin_v1', 'gm_admin_workers_v1', 'gm_admin_wprofile_v1', 'gm_depot_v1', 'gm_pintasks_v1', 'gm_admin_products_v1', 'gm_admin_ledger_v1', 'gm_admin_attedit_v1', 'gm_admin_settings_v1']);
+// Crew marks (delivery results shared between the driver and helpers of one route) and location pings.
+const CREW_RE = /^gm_crew_\d{8}_[A-Za-z0-9_-]{1,40}$/;
 function canRead(s, key) {
   if (s.role === 'admin') return true;
-  return W_READ.has(key) || key === 'gm_pins_v1' || key.indexOf('gm_pins_v1_') === 0 || key === 'gm_crm_data_v5__' + s.id || key === 'gm_wself_' + s.id;
+  return W_READ.has(key) || CREW_RE.test(key) || key === 'gm_locreq_' + s.id || key === 'gm_pins_v1' || key.indexOf('gm_pins_v1_') === 0 || key === 'gm_crm_data_v5__' + s.id || key === 'gm_wself_' + s.id;
 }
 function canWrite(s, key) {
   if (s.role === 'admin') return true;
-  return key === 'gm_crm_data_v5__' + s.id || key === 'gm_pins_v1_' + s.id || key === 'gm_wself_' + s.id || key === 'gm_admin_notifs_v1';
+  return key === 'gm_crm_data_v5__' + s.id || key === 'gm_crew_' + CREWDAY() + '_' + s.id || key === 'gm_loc_' + s.id || key === 'gm_pins_v1_' + s.id || key === 'gm_wself_' + s.id || key === 'gm_admin_notifs_v1';
 }
 // What a signed-in employee is allowed to see inside a value: only their own plan, own profile, own pin tasks.
 function viewFor(s, key, raw) {
@@ -229,21 +233,27 @@ function viewFor(s, key, raw) {
     out.plans = {};
     Object.keys(d.plans || {}).forEach(dt => {
       const raw2 = d.plans[dt], arr = Array.isArray(raw2) ? raw2 : (raw2 ? [raw2] : []);
-      const mine = arr.filter(p => p && typeof p === 'object' && (p.workerId === s.id || (p.history || []).some(h => h && Array.isArray(h.notify) && h.notify.indexOf(s.id) > -1)));
+      const mine = arr.filter(p => p && typeof p === 'object' && (p.workerId === s.id || (Array.isArray(p.helpers) && p.helpers.indexOf(s.id) > -1) || (p.history || []).some(h => h && Array.isArray(h.notify) && h.notify.indexOf(s.id) > -1)));
       if (mine.length) out.plans[dt] = Array.isArray(raw2) ? mine : mine[0];
     });
     return JSON.stringify(out);
   }
   if (key === 'gm_admin_workers_v1') return JSON.stringify({ workers: (d.workers || []).filter(w => w && w.id === s.id).map(w => ({ id: w.id, name: w.name, phone: w.phone, emergency: w.emergency, active: w.active, created: w.created })), leaves: (d.leaves || []).filter(l => l && l.workerId === s.id) });
+  // Employees need the product list to record returns, but only name, code and selling price (no cost, stock or pictures).
+  if (key === 'gm_admin_products_v1') return JSON.stringify((Array.isArray(d) ? d : []).filter(p => p && typeof p === 'object' && p.active !== false).map(p => ({ id: p.id, code: p.code, name: p.name, price: p.price, tax: p.tax, unit: p.unit, active: true })));
+  // Advances/cuts and attendance corrections: an employee gets only their own lines.
+  if (key === 'gm_admin_ledger_v1') return JSON.stringify((Array.isArray(d) ? d : []).filter(e => e && e.workerId === s.id));
+  if (key === 'gm_admin_attedit_v1') { const me = (d.edits && d.edits[s.id]) || {}; return JSON.stringify({ edits: { [s.id]: me }, log: [] }); }
   if (key === 'gm_admin_wprofile_v1') { const o = {}; if (d[s.id]) o[s.id] = d[s.id]; return JSON.stringify(o); }
   if (key === 'gm_pintasks_v1') { const o = Object.assign({}, d, { tasks: {} }); Object.keys(d.tasks || {}).forEach(c => { { const t = d.tasks[c]; if (!t) return; const to = (t.to == null || t.to === '') ? ['all'] : [].concat(t.to); if (to.indexOf('all') > -1 || to.indexOf(s.id) > -1) o.tasks[c] = t; } }); return JSON.stringify(o); }
   return raw;
 }
 // Employees can only ADD notifications for the admin; they cannot change or delete the admin's list.
+function validLoc(l) { return l && Math.abs(l.lat) <= 90 && Math.abs(l.lng) <= 180 && Number.isFinite(l.lat) && Number.isFinite(l.lng) ? { lat: +l.lat, lng: +l.lng, acc: Math.min(99999, Math.max(0, Math.round(+l.acc || 0))) } : undefined; }
 function mergeNotifs(oldRaw, newRaw, s) {
   const old = jparse(oldRaw), inc = jparse(newRaw); if (!Array.isArray(inc)) return null;
   const base = Array.isArray(old) ? old : [], have = new Set(base.map(n => n && n.id));
-  const add = inc.filter(n => n && typeof n === 'object' && typeof n.id === 'string' && !have.has(n.id)).slice(0, 10).map(n => ({ id: String(n.id).slice(0, 60), ts: Number(n.ts) || Date.now(), date: String(n.date || '').slice(0, 10), type: String(n.type || '').slice(0, 30), title: String(n.title || '').slice(0, 200), text: String(n.text || '').slice(0, 600), worker: String(n.worker || '').slice(0, 80), read: false }));
+  const add = inc.filter(n => n && typeof n === 'object' && typeof n.id === 'string' && !have.has(n.id)).slice(0, 10).map(n => ({ id: String(n.id).slice(0, 60), ts: Number(n.ts) || Date.now(), date: String(n.date || '').slice(0, 10), type: String(n.type || '').slice(0, 30), title: String(n.title || '').slice(0, 200), text: String(n.text || '').slice(0, 600), worker: String(n.worker || '').slice(0, 80), read: false, loc: validLoc(n.loc) }));
   return JSON.stringify(add.concat(base).slice(0, 300));
 }
 function workerFileOk(s, v, k, method) {   // photos and documents saved under a worker id or a vehicle id
@@ -287,7 +297,8 @@ function planConflicts(raw) {
     const list = (Array.isArray(plans[d]) ? plans[d] : [plans[d]]).filter(p => p && typeof p === 'object' && p.status !== 'cancelled');
     const w = {}, v = {}, inv = {};
     for (const p of list) {
-      if (p.workerId) { if (w[p.workerId]) out.add(d + '|worker|' + p.workerId + '|' + (p.worker || p.workerId)); w[p.workerId] = 1; }
+      const crew = [p.workerId].concat(Array.isArray(p.helpers) ? p.helpers : []).filter(x => typeof x === 'string' && x);
+      for (const id of crew) { if (w[id]) out.add(d + '|worker|' + id + '|' + ((id === p.workerId ? p.worker : '') || id)); w[id] = 1; }
       if (p.vehicleId) { if (v[p.vehicleId]) out.add(d + '|vehicle|' + p.vehicleId + '|' + (p.vehicle || p.vehicleId)); v[p.vehicleId] = 1; }
       for (const s of (Array.isArray(p.stops) ? p.stops : [])) {
         if (!s || !s.inv) continue;
@@ -327,7 +338,7 @@ function api(req, res, url) {
     const good = checkPw(pw, hash) && !!(a || wk);
     if (!good) { noteFail(kp, 5); noteFail(ki, 25); return send(res, 401, { error: 'Incorrect mobile number or password.' }); }
     delete fails[kp];
-    if (a) { startSession(res, req, 'admin', a.id); logEvents({ role: 'admin', id: a.id }, [{ type: 'login', text: 'Signed in' }]); return send(res, 200, { ok: true, role: 'admin', id: a.id, name: a.name, adminRole: a.role || 'Admin', must: !!auth.admins[a.id].must }); }
+    if (a) { startSession(res, req, 'admin', a.id, b.remember === true); logEvents({ role: 'admin', id: a.id }, [{ type: 'login', text: 'Signed in' }]); return send(res, 200, { ok: true, role: 'admin', id: a.id, name: a.name, adminRole: a.role || 'Admin', must: !!auth.admins[a.id].must }); }
     if (!wk.active) return send(res, 403, { code: 'inactive', error: 'This account is inactive. Contact Fleet Admin.' });
     const t = localDate();
     if ((workerData().leaves || []).some(l => l && l.workerId === wk.id && l.from <= t && t <= l.to)) return send(res, 403, { code: 'leave', error: 'On leave today.' });
@@ -496,7 +507,8 @@ function serveStatic(req, res, url) {
   fs.stat(file, (e, st) => {
     if (!e && st.isDirectory()) file = path.join(file, 'index.html');
     const ext = path.extname(file).toLowerCase();
-    if (!MIME[ext] || path.basename(file).toLowerCase() === 'server.js') { res.writeHead(404); return res.end('Not found'); }
+    if (!MIME[ext] || ['server.js', 'storage.js', 'activity.js'].includes(path.basename(file).toLowerCase())) {   // server code is never sent to a browser
+       res.writeHead(404); return res.end('Not found'); }
     fs.stat(file, (e2, st2) => {
       if (e2 || !st2.isFile()) { res.writeHead(404); return res.end('Not found'); }
       // "no-cache" means: ask the server every time, but the answer is a tiny "not modified" while the file is unchanged. A new deploy changes the tag, so updates still show at once.
@@ -523,6 +535,13 @@ function serveStatic(req, res, url) {
   });
 }
 
+// Shared delivery marks are only needed for the day; older ones are dropped so they never pile up.
+function pruneCrew() {
+  try {
+    const floor = new Date(Date.now() + 5.5 * 3600e3 - 3 * 86400000).toISOString().slice(0, 10).replace(/-/g, '');
+    Object.keys(db.items).forEach(k => { const m = /^gm_crew_(\d{8})_/.exec(k); if (m && m[1] < floor) { delete db.items[k]; if (CLOUD) storage.kv.save([{ key: k, v: null, rev: db.rev }]).catch(() => {}); } });
+  } catch (e) { console.error('Crew cleanup skipped:', e && e.message); }
+}
 let SETUP_NOTICE = [];
 // "node server.js --migrate": copies this computer's data (records, logins, photos, documents) up to Supabase, once.
 async function migrateToCloud() {
@@ -548,10 +567,11 @@ async function boot() {
   await loadDb(); await Files.init();
   if (process.argv.includes('--reset-admin')) { migrateAuth(); resetAdmin(); await flushNow(); process.exit(0); }
   SETUP_NOTICE = migrateAuth();
+  pruneCrew(); setInterval(pruneCrew, 6 * 3600e3).unref();
   if (CLOUD) { await flushNow(); setInterval(() => storage.kv.ping().catch(() => {}), 12 * 3600e3).unref(); }   // a small daily request keeps the free Supabase project from pausing
 
   http.createServer((req, res) => {
-    res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('X-Frame-Options', 'DENY'); res.setHeader('Referrer-Policy', 'same-origin');
+    res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('X-Frame-Options', 'DENY'); res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     if (isHttps(req)) res.setHeader('Strict-Transport-Security', 'max-age=31536000');
     let url; try { url = new URL(req.url, 'http://x'); } catch (e) { res.writeHead(400); return res.end(); }
     if (url.pathname.startsWith('/api/')) { try { return api(req, res, url); } catch (e) { console.error('Request error:', e && e.message); if (!res.headersSent) send(res, 500, { error: 'Server error' }); return; } }

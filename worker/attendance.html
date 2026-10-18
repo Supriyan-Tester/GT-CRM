@@ -347,11 +347,38 @@
   .at-ms.p { background: var(--t-success); } .at-ms.p b { color: var(--success); }
   .at-ms.l { background: var(--t-accent); } .at-ms.l b { color: var(--accent); }
   .at-ms.a { background: var(--t-danger); } .at-ms.a b { color: var(--danger); }
-</style></head>
+</style>
+<style>
+
+/* GM-WORKER-FULL-WIDTH-v1 */
+.app {
+    width: 100% !important;
+    max-width: none !important;
+    box-sizing: border-box !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+</style>
+<style>
+/* Same look as Home and Route: plain background + logo at the top of the side menu */
+body { background: var(--bg); }
+html[data-theme="dark"] body { background: #0B1316; }
+.app { background: none !important; }
+.nav a.brand-side { display: none; }
+@media (min-width: 900px) {
+  .nav a.brand-side { display: flex; flex-direction: row; align-items: center; gap: 12px; min-height: 0; padding: 4px 8px 20px; margin-bottom: 12px; border-radius: 0; border-bottom: 1px solid var(--border); color: var(--text); background: none; }
+  .nav a.brand-side:hover { background: none; }
+  .brand-name { font: 800 16px 'Plus Jakarta Sans','Inter',sans-serif; display: block; }
+  .brand-sub { display: block; font-size: 11.5px; color: var(--muted); font-weight: 500; }
+  .brand-logo { width: 44px; height: 44px; border-radius: 12px; background: #fff; border: 1px solid var(--border); display: grid; place-items: center; overflow: hidden; flex-shrink: 0; }
+  .brand-logo img { width: 40px; display: block; }
+}
+</style>
+</head>
 <body>
 <main class="app">
   <header class="at-head">
-    <div><h1>Attendance</h1><p>View your attendance and working hours.</p></div>
+    <div><h1>Attendance</h1><p>See your days and work hours.</p></div>
     <div class="at-right">
       <div class="at-month">
         <button type="button" id="prevMonthBtn" aria-label="Previous month"><svg class="icon" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
@@ -373,16 +400,16 @@
     <span><i style="background:var(--t-success);color:var(--success)">P</i>Present</span>
     <span><i style="background:var(--t-accent);color:var(--accent)">L</i>Late</span>
     <span><i style="background:var(--t-danger);color:var(--danger)">A</i>Absent</span>
-    <span><i style="background:var(--border);color:var(--muted)">-</i>Not marked</span>
+    <span><i style="background:var(--border);color:var(--muted)">-</i>No record</span>
   </div>
 
   <section class="at-state" id="stateCard"></section>
 
-  <h2 class="at-sec" id="hoursTitle">Today's Working Hours</h2>
+  <h2 class="at-sec" id="hoursTitle">Today's work</h2>
   <div class="at-tiles">
-    <div class="at-tile t1"><span class="chip c-a"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><strong id="tHours">--</strong><small>Total Hours</small></div>
-    <div class="at-tile t2"><span class="chip c-p"><svg class="icon" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg></span><strong id="tKm">--</strong><small>Distance</small></div>
-    <div class="at-tile t3"><span class="chip c-i"><svg class="icon" viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5M4 9v11h16V9M9 20v-6h6v6"/></svg></span><strong id="tStops">--</strong><small>Stops Visited</small></div>
+    <div class="at-tile t1"><span class="chip c-a"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><strong id="tHours">--</strong><small>Hours worked</small></div>
+    <div class="at-tile t2"><span class="chip c-p"><svg class="icon" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg></span><strong id="tKm">--</strong><small>KM driven</small></div>
+    <div class="at-tile t3"><span class="chip c-i"><svg class="icon" viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5M4 9v11h16V9M9 20v-6h6v6"/></svg></span><strong id="tStops">--</strong><small>Shops visited</small></div>
   </div>
 
   <h2 class="at-sec">This Month</h2>
@@ -393,8 +420,8 @@
   </div>
 
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-    <h2 class="at-sec" style="margin:0">Daily Shift Records</h2>
-    <span style="font-size:11px; color:var(--muted);">Tap a day for history</span>
+    <h2 class="at-sec" style="margin:0">Daily records</h2>
+    <span style="font-size:11px; color:var(--muted);">Tap a day to see more</span>
   </div>
   <div id="allDaysList" style="padding-bottom:20px;"></div>
 </main>
@@ -404,7 +431,7 @@
   <div class="modal-sheet">
     <div class="modal-top-bar">
       <div>
-        <div style="font-size:17px; font-weight:700;" id="modalDayTitle">Shift Breakdown</div>
+        <div style="font-size:17px; font-weight:700;" id="modalDayTitle">Day details</div>
         <div style="font-size:12px; color:var(--muted);" id="modalDaySub">October 2026</div>
       </div>
       <button type="button" class="modal-close-btn" id="closeDayModalBtn">✕</button>
@@ -412,34 +439,34 @@
 
     <!-- Vehicle & Odometer Info -->
     <div class="hist-box">
-      <div style="font-size:11px; font-weight:700; color:var(--primary); text-transform:uppercase; margin-bottom:6px;">Vehicle &amp; Distance</div>
+      <div style="font-size:11px; font-weight:700; color:var(--primary); text-transform:uppercase; margin-bottom:6px;">Vehicle &amp; KM</div>
       <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;">
-        <span>Assigned Vehicle:</span>
+        <span>Vehicle:</span>
         <strong id="modalVehicleName">--</strong>
       </div>
       <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--muted);" id="modalKmRow">
-        <span>Odometer:</span>
+        <span>KM:</span>
         <span id="modalKmText">45,162 km ➔ 45,210 km (48 km)</span>
       </div>
     </div>
 
     <!-- Timings Info -->
     <div class="hist-box">
-      <div style="font-size:11px; font-weight:700; color:var(--primary); text-transform:uppercase; margin-bottom:6px;">Duty Timings</div>
+      <div style="font-size:11px; font-weight:700; color:var(--primary); text-transform:uppercase; margin-bottom:6px;">Time</div>
       <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;">
-        <span>Punch In / Punch Out:</span>
+        <span>In / Out:</span>
         <strong id="modalTimesText">--</strong>
       </div>
       <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--muted);">
-        <span>Total Shift Duration:</span>
+        <span>Total time:</span>
         <span id="modalHoursText">9h 15m</span>
       </div>
     </div>
 
     <!-- Shops Visited on this Day -->
     <div style="margin-top:14px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
-      <strong style="font-size:14px;">Shops Delivered on This Day</strong>
-      <span class="badge b-info" id="modalShopsCountBadge">5 Visited</span>
+      <strong style="font-size:14px;">Shops on this day</strong>
+      <span class="badge b-info" id="modalShopsCountBadge">5 shops</span>
     </div>
 
     <div class="hist-box" id="modalShopsListContainer">
@@ -448,20 +475,24 @@
 
     <!-- Returns on this day -->
     <div style="margin-top:10px; margin-bottom:6px;">
-      <strong style="font-size:14px;">Returns &amp; Deductions Handover</strong>
+      <strong style="font-size:14px;">Goods that came back</strong>
     </div>
     <div class="hist-box" id="modalReturnsContainer">
       <!-- Populated via JS -->
     </div>
 
     <button type="button" class="btn btn-secondary" id="dismissDayModalBtn" style="height:48px; width:100%; margin-top:12px;">
-      Close History
+      Close
     </button>
   </div>
 </div>
 
 <!-- Bottom Navigation Bar -->
 <nav class="nav" aria-label="Main Navigation">
+  <a href="home.html" class="brand-side" aria-label="General Traders">
+    <span class="brand-logo"><img src="../assets/logo.png" alt=""></span>
+    <span><b class="brand-name">General Traders</b><small class="brand-sub">Distribution &amp; Delivery</small></span>
+  </a>
   <div>
     <a href="home.html">
       <svg class="icon" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>
@@ -533,15 +564,15 @@
     var d = dayRec(selectedDay) || { status: 'upcoming', inTime: '-', outTime: '-', hours: '-', km: 0 }, el = $('stateCard'), cls = 'at-state', ico = ICON.clock, h = '', p = '', btn = '';
     if (isTodayView()) {
       var sh = GM.getShift();
-      if (!sh.punchedIn && !GM.hasPlanToday()) { h = 'No Plan Today'; p = 'Fleet Admin has not assigned you a plan for today, so there is nothing to check in for yet.'; }
-      else if (!sh.punchedIn) { h = 'Not Checked In Yet'; p = 'Tap below to check in and start your work for today.'; btn = '<a class="at-btn" href="punch-in.html">' + ICON.login + ' Check In Now</a>'; }
-      else if (!sh.punchedOut) { cls += d.status === 'late' ? ' late' : ' ok'; ico = ICON.ok; h = (d.status === 'late' ? 'Checked in late' : 'Checked in') + ' at ' + esc(sh.punchInTime || d.inTime); p = 'You are on duty' + (sh.assignedVehicle ? ' with ' + esc(sh.assignedVehicle) : '') + '.'; btn = '<a class="at-btn red" href="punch-out.html">' + ICON.logout + ' Punch Out</a>'; }
-      else { cls += ' ok'; ico = ICON.ok; h = 'Day Complete'; p = 'In ' + esc(sh.punchInTime || d.inTime) + ' \u00b7 Out ' + esc(sh.punchOutTime || d.outTime); btn = '<button type="button" class="at-btn ghost" data-more>View Shop Deliveries</button>'; }
+      if (!sh.punchedIn && !GM.hasPlanToday()) { h = 'No route today'; p = 'The office has not given you a route yet. You cannot punch in now.'; }
+      else if (!sh.punchedIn) { h = 'Not punched in yet'; p = 'Tap the button to start your day.'; btn = '<a class="at-btn" href="punch-in.html">' + ICON.login + ' Punch In</a>'; }
+      else if (!sh.punchedOut) { cls += d.status === 'late' ? ' late' : ' ok'; ico = ICON.ok; h = (d.status === 'late' ? 'Punched in late' : 'Punched in') + ' at ' + esc(sh.punchInTime || d.inTime); p = 'You are working' + (sh.assignedVehicle ? ' with ' + esc(sh.assignedVehicle) : '') + '.'; btn = '<a class="at-btn red" href="punch-out.html">' + ICON.logout + ' Punch Out</a>'; }
+      else { cls += ' ok'; ico = ICON.ok; h = 'Day finished'; p = 'In ' + esc(sh.punchInTime || d.inTime) + ' \u00b7 Out ' + esc(sh.punchOutTime || d.outTime); btn = '<button type="button" class="at-btn ghost" data-more>See shops</button>'; }
     } else if (d.status === 'present' || d.status === 'late') {
-      cls += d.status === 'late' ? ' late' : ' ok'; ico = ICON.ok; h = d.status === 'late' ? 'Late' : 'Present'; p = 'In ' + esc(d.inTime) + ' \u00b7 Out ' + esc(d.outTime); btn = '<button type="button" class="at-btn ghost" data-more>View Shop Deliveries</button>';
-    } else if (d.status === 'absent') { cls += ' bad'; ico = ICON.x; h = 'Absent'; p = 'No shift was recorded for this day.'; }
-    else if (d.status === 'off') { h = 'Weekly Off'; p = 'No shift on this day.'; }
-    else { var future = new Date(activeYear, activeMonthIdx, selectedDay) > NOW; h = future ? 'Upcoming Day' : 'Not Marked'; p = future ? 'Shift details will appear once the day is done.' : 'No attendance was recorded for this day.'; }
+      cls += d.status === 'late' ? ' late' : ' ok'; ico = ICON.ok; h = d.status === 'late' ? 'Late' : 'Present'; p = 'In ' + esc(d.inTime) + ' \u00b7 Out ' + esc(d.outTime); btn = '<button type="button" class="at-btn ghost" data-more>See shops</button>';
+    } else if (d.status === 'absent') { cls += ' bad'; ico = ICON.x; h = 'Absent'; p = 'No work was recorded on this day.'; }
+    else if (d.status === 'off') { h = 'Sunday holiday'; p = 'No work on this day.'; }
+    else { var future = new Date(activeYear, activeMonthIdx, selectedDay) > NOW; h = future ? 'Day not come yet' : 'No record'; p = future ? 'Details will show after the day is done.' : 'No attendance was recorded on this day.'; }
     el.className = cls;
     el.innerHTML = '<div class="ico">' + ico + '</div><h2>' + h + '</h2><p>' + p + '</p>' + btn;
     var more = el.querySelector('[data-more]'); if (more) more.onclick = function () { openDayModal(selectedDay); };
@@ -555,7 +586,7 @@
       var a = mins(sh.punchInTime);
       if (sh.punchedIn && !sh.punchedOut) { var n = new Date(); hrs = a == null ? '--' : hm(n.getHours() * 60 + n.getMinutes() - a); km = '--'; }
       else if (sh.punchedOut) { var b = mins(sh.punchOutTime); hrs = a != null && b != null ? hm(b - a) : (d.hours || '--'); km = (sh.drivenKm || 0) + ' km'; }
-      $('hoursTitle').textContent = "Today's Working Hours";
+      $('hoursTitle').textContent = "Today's work";
     } else {
       var det = GM.getDayDetail(selectedDay, mkey(activeYear, activeMonthIdx));
       hrs = d.hours && d.hours !== '-' ? d.hours : '0h 00m'; km = (d.km || 0) + ' km'; stops = (det && det.shops ? det.shops.length : 0);
@@ -569,7 +600,7 @@
     var list = isCur ? currentMonthData.filter(function (d) { return d.status !== 'upcoming'; }) : currentMonthData;
     $('allDaysList').innerHTML = list.length ? list.slice().reverse().map(function (d) {
       var bc = 'b-success', bt = 'Present';
-      if (d.status === 'late') { bc = 'b-accent'; bt = 'Late'; } else if (d.status === 'absent') { bc = 'b-danger'; bt = 'Absent'; } else if (d.status === 'off') { bc = 'b-muted'; bt = 'Sunday Off'; }
+      if (d.status === 'late') { bc = 'b-accent'; bt = 'Late'; } else if (d.status === 'absent') { bc = 'b-danger'; bt = 'Absent'; } else if (d.status === 'off') { bc = 'b-muted'; bt = 'Sunday holiday'; }
       return '<div class="log-item" data-day="' + d.day + '"><div style="flex:1;"><strong>' + (d.day < 10 ? '0' : '') + d.day + ' ' + months[activeMonthIdx].slice(0, 3) + ' ' + activeYear + ' (' + esc(d.weekday) + ')</strong>' +
         '<div class="in-out-pill"><span>In: <strong>' + esc(d.inTime) + '</strong></span><span>&bull;</span><span>Out: <strong>' + esc(d.outTime) + '</strong></span></div></div>' +
         '<div style="text-align:right;"><span class="badge ' + bc + '">' + bt + '</span><div style="font-size:11px; color:var(--muted); margin-top:3px;">' + (d.status !== 'absent' && d.status !== 'off' ? esc(d.hours) + ' &bull; ' + (d.km || 0) + ' km' : '--') + '</div></div><div class="log-chevron">&rsaquo;</div></div>';
@@ -620,23 +651,23 @@
     var d = detail.day;
 
     document.getElementById('modalDayTitle').textContent = d.weekday + ', ' + (d.day < 10 ? '0' : '') + d.day + ' ' + months[activeMonthIdx] + ' ' + activeYear;
-    document.getElementById('modalDaySub').textContent = 'Status: ' + d.status.toUpperCase();
+    document.getElementById('modalDaySub').textContent = 'Status: ' + ({ present: 'Present', late: 'Late', absent: 'Absent', off: 'Holiday' }[d.status] || d.status);
 
     if (d.status === 'upcoming') {
       document.getElementById('modalVehicleName').textContent = 'Not yet assigned';
       document.getElementById('modalKmText').textContent = 'Future shift';
       document.getElementById('modalTimesText').textContent = '-- to --';
       document.getElementById('modalHoursText').textContent = '--';
-      document.getElementById('modalShopsCountBadge').textContent = '0 Visited';
+      document.getElementById('modalShopsCountBadge').textContent = '0 shops';
       document.getElementById('modalShopsListContainer').innerHTML = '<div style="font-size:13px; color:var(--muted); padding:6px 0;">This date is in the future. Shift details will appear once completed.</div>';
       document.getElementById('modalReturnsContainer').innerHTML = '<div style="font-size:13px; color:var(--muted); padding:6px 0;">None</div>';
     } else if (d.status === 'absent' || d.status === 'off') {
       document.getElementById('modalVehicleName').textContent = 'None';
       document.getElementById('modalKmText').textContent = '0 km driven';
-      document.getElementById('modalTimesText').textContent = 'No shift logged';
+      document.getElementById('modalTimesText').textContent = 'No work logged';
       document.getElementById('modalHoursText').textContent = '0 hours';
-      document.getElementById('modalShopsCountBadge').textContent = '0 Visited';
-      document.getElementById('modalShopsListContainer').innerHTML = '<div style="font-size:13px; color:var(--muted); padding:6px 0;">' + (d.status === 'absent' ? 'Marked on approved casual leave by Fleet Admin.' : 'Weekly Sunday off.') + '</div>';
+      document.getElementById('modalShopsCountBadge').textContent = '0 shops';
+      document.getElementById('modalShopsListContainer').innerHTML = '<div style="font-size:13px; color:var(--muted); padding:6px 0;">' + (detail.notes || (d.status === 'off' ? 'Sunday holiday.' : 'No record.')) + '</div>';
       document.getElementById('modalReturnsContainer').innerHTML = '<div style="font-size:13px; color:var(--muted); padding:6px 0;">None</div>';
     } else {
       document.getElementById('modalVehicleName').textContent = detail.vehicle;
@@ -644,10 +675,10 @@
       document.getElementById('modalTimesText').textContent = d.inTime + ' to ' + d.outTime;
       document.getElementById('modalHoursText').textContent = d.hours;
       var shops = detail.shops || [], rets = detail.returns || [];
-      document.getElementById('modalShopsCountBadge').textContent = shops.length + ' Visited';
+      document.getElementById('modalShopsCountBadge').textContent = shops.length + (shops.length === 1 ? ' shop' : ' shops');
       document.getElementById('modalShopsListContainer').innerHTML = shops.length ? shops.map(function (x) {
         var ok = x.status === 'delivered';
-        return '<div class="hist-shop-item"><div><strong>' + (ok ? '✓ ' : '🔄 ') + x.name + '</strong><div style="font-size:11px; color:var(--muted);">' + x.boxes + ' Boxes • ' + x.billNo + ' • ' + x.address + '</div></div><span class="badge ' + (ok ? 'b-success' : 'b-accent') + '">' + x.time + '</span></div>';
+        return '<div class="hist-shop-item"><div><strong>' + (ok ? '✓ ' : '🔄 ') + x.name + '</strong><div style="font-size:11px; color:var(--muted);">' + x.boxes + (Number(x.boxes) === 1 ? ' box' : ' boxes') + ' • ' + x.billNo + ' • ' + x.address + '</div></div><span class="badge ' + (ok ? 'b-success' : 'b-accent') + '">' + x.time + '</span></div>';
       }).join('') : '<div style="font-size:13px; color:var(--muted); padding:6px 0;">No delivery details recorded for this day.</div>';
       document.getElementById('modalReturnsContainer').innerHTML = rets.length ? rets.map(function (x) {
         return '<div style="font-size:13px; padding:6px 0;">📦 <strong>' + x.item + '</strong> (' + x.qty + ' units)<div style="font-size:11px; color:var(--danger);">Reason: ' + x.reason + '</div></div>';

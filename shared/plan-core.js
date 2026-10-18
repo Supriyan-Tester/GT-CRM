@@ -136,7 +136,17 @@
   };
 
   /* ---------- assignment rules (the server enforces the same ones) ---------- */
-  DP.workerBusy = function (S, date, wid, exceptId) { return DP.activeOn(S, date).filter(function (p) { return p.id !== exceptId && p.workerId === wid; })[0] || null; };
+  // Driver first, then the helpers riding along. Messages about a plan go to all of them.
+  DP.crew = function (p) { return [p.workerId].concat(Array.isArray(p.helpers) ? p.helpers : []).filter(function (x) { return x; }); };
+  DP.helperNames = function (p) { return (Array.isArray(p.helpers) ? p.helpers : []).map(function (id) { var w = DP.workerById(id); return w ? w.name : id; }); };
+  // A person is busy if they are the driver OR a helper on another active plan that day.
+  DP.workerBusy = function (S, date, wid, exceptId) { return DP.activeOn(S, date).filter(function (p) { return p.id !== exceptId && DP.crew(p).indexOf(wid) > -1; })[0] || null; };
+  // The helpers this driver had on their most recent earlier plan (used to pre-fill the next one).
+  DP.lastHelpers = function (S, driverId, date) {
+    var best = null, ds = Object.keys(S.plans || {}).filter(function (d) { return d < date; }).sort().reverse();
+    for (var i = 0; i < ds.length && !best; i++) { DP.plansOn(S, ds[i]).forEach(function (p) { if (!best && p.status !== 'cancelled' && p.workerId === driverId && Array.isArray(p.helpers) && p.helpers.length) best = p.helpers.slice(); }); if (i > 30) break; }
+    return best || [];
+  };
   DP.vehicleBusy = function (S, date, vid, exceptId) { return DP.activeOn(S, date).filter(function (p) { return p.id !== exceptId && p.vehicleId === vid; })[0] || null; };
   DP.invTaken = function (S, date, exceptId) { var t = {}; DP.activeOn(S, date).forEach(function (p) { if (p.id !== exceptId) p.stops.forEach(function (s) { t[s.inv] = p; }); }); return t; };
 

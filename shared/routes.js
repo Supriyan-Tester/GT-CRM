@@ -261,7 +261,7 @@
         '<div class="rt-mapbox"><div id="rtMap" role="application" aria-label="Map of shops on this route"></div><div class="rt-map-over" id="rtMapOver" hidden></div>' +
         '<div class="rt-map-tools"><button type="button" id="rtFit" aria-label="Fit map to all markers">' + ic('fit') + 'Fit all</button></div></div></div></section></div>' +
     '</div>' +
-    '<div class="noprint rt-foot"><button class="r-demo" id="demo" type="button">Load demo data</button></div></div>' +
+    '<div class="noprint rt-foot"><button class="r-demo" id="demo" type="button" style="display:none">Load demo data</button></div></div>' +
     '<div class="rt-print" id="rtPrint"></div>' +
     '<div class="modal-overlay a-c" id="mo"><div class="modal-sheet" id="mc" role="dialog" aria-modal="true"></div></div>' +
     '<div class="rt-menu" id="rtMenu" role="menu" hidden></div><div class="rt-scrim" id="rtScrim" hidden></div><div class="rt-sheet" id="rtSheet" role="dialog" aria-modal="true" hidden></div>' +
@@ -540,13 +540,15 @@
       if (!byRoute[x.r.id]) { byRoute[x.r.id] = []; order.push(x.r.id); }
       byRoute[x.r.id].push({ x: x, ll: ll }); pts.push(ll);
     });
-    var many = pts.length > 400;
+    var many = pts.length > 400, did = M.drawId = (M.drawId || 0) + 1;
     order.forEach(function (rid) {
-      var arr = byRoute[rid], color = cur === ALL ? PALETTE[ri[rid] % PALETTE.length] : PALETTE[0];
+      var arr = byRoute[rid], color = cur === ALL ? PALETTE[ri[rid] % PALETTE.length] : PALETTE[0], straight = [];
       for (var k = 1; k < arr.length; k++) {
         var gap = arr[k].x.n - arr[k - 1].x.n > 1;   // a shop without a pin sits between these two stops
-        L.polyline([arr[k - 1].ll, arr[k].ll], { color: color, weight: 3.5, opacity: .85, dashArray: gap ? '3 9' : null, lineCap: 'round', interactive: false }).addTo(M.group);
+        straight.push(L.polyline([arr[k - 1].ll, arr[k].ll], { color: color, weight: 3.5, opacity: .85, dashArray: gap ? '3 9' : null, lineCap: 'round', interactive: false }).addTo(M.group));
       }
+      // the straight lines above stay only until the road line arrives (or if it cannot be fetched)
+      if (!many && window.RoadLine && arr.length > 1) RoadLine.draw(M.group, arr.map(function (p) { return p.ll; }), { color: color, weight: 4 }, straight, function () { return !M.map || M.drawId !== did; });
     });
     order.forEach(function (rid) {
       var color = cur === ALL ? PALETTE[ri[rid] % PALETTE.length] : PALETTE[0];
@@ -759,7 +761,7 @@
       var toId = b.dataset.id, to = routeById(toId), code = x.code, fromId = x.r.id; closeModal();
       commitOp(function () {
         var t = routeById(toId), f = routeById(fromId); if (!t || !f || t === f || f.codes.indexOf(code) < 0) return false;
-        O.assign(S, code, toId); var c = O.cust(S, code); if (c) delete c.noRoute; return true;
+        O.assign(S, code, toId); var c = O.cust(S, code); if (c) { delete c.noRoute; c.handRoute = true; } return true;
       }, { ok: x.c.name + ' moved to ' + to.name + '. Saved.', fail: 'The shop was not moved.', after: function () { if (selCode === code) selCode = null; } });
     };
   }
@@ -822,7 +824,7 @@
         var done = commitOp(function () {
           if (O.rid(S, nm)) return false;
           var r = { id: id, name: nm, codes: [] }; S.routes.push(r);
-          codes.forEach(function (c) { O.assign(S, c, r.id); var x = O.cust(S, c); if (x) delete x.noRoute; });
+          codes.forEach(function (c) { O.assign(S, c, r.id); var x = O.cust(S, c); if (x) { delete x.noRoute; x.handRoute = true; } });
           return true;
         }, { ok: 'Route ' + nm + ' added with ' + plural(codes.length, 'shop') + '.', fail: 'The route was not created.', after: function () { cur = id; q = ''; $('rtQ').value = ''; pgCards = 1; pgList = 1; mapFit = true; writeHash(); } });
         if (done) closeModal();

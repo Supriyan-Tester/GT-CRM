@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script src="../shared/sync.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>General Traders - Admin</title>
+<link rel="stylesheet" href="../shared/theme.css">
+<link rel="stylesheet" href="../shared/admin.css">
+<link rel="stylesheet" href="../shared/vendor/leaflet/leaflet.css">
+<script src="../shared/theme.js"></script>
+<style>
+.lv-note{color:var(--muted);font-size:14px;line-height:1.5;margin:0 0 16px;max-width:900px}
+.lv-btn svg,.lv-ic svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.lv-ic{width:38px;height:38px;flex:none;margin:0;display:grid;place-items:center;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--primary);cursor:pointer}
+.lv-ic.spin svg{animation:lvspin .8s linear infinite}
+@keyframes lvspin{to{transform:rotate(360deg)}}
+.lv-btn{gap:6px;font-weight:700;cursor:pointer;white-space:nowrap}
+.lv-btn:disabled{opacity:.6;cursor:default}
+.lv-wrap{display:grid;grid-template-columns:minmax(340px,430px) 1fr;gap:16px;align-items:start}
+.lv-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-card);box-shadow:var(--shadow);overflow:hidden}
+.lv-ph{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)}
+.lv-ph b{font-size:17px}
+.lv-ph .gt-dd{width:auto;min-width:96px}
+.lv-ph .gt-dd-trigger{min-height:34px;border-radius:8px;font-size:13px;font-weight:600;padding:0 10px}
+.lv-list{max-height:min(62vh,500px);overflow-y:auto}
+.lv-row{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer}
+.lv-row:last-child{border-bottom:0}
+.lv-row:hover{background:var(--t-primary)}
+.lv-row.on{background:var(--t-primary);box-shadow:inset 3px 0 0 var(--primary)}
+.lv-av{width:40px;height:40px;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;font-weight:700;font-size:16px}
+.lv-mid{flex:1;min-width:0}
+.lv-top{display:flex;align-items:center;justify-content:space-between;gap:6px 8px;flex-wrap:wrap;margin-bottom:2px}.lv-top b{font-size:15px}.lv-pills{display:flex;gap:6px;flex:none}
+.lv-mid>span{display:block;font-size:12.5px;color:var(--muted);margin-top:1px;white-space:normal;overflow-wrap:anywhere;line-height:1.35}
+.lv-st{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;white-space:nowrap;border-radius:999px;font-size:12px;font-weight:700;flex:none}
+.lv-st i{width:7px;height:7px;border-radius:50%;background:currentColor}
+.lv-live{background:var(--t-success);color:var(--success)}
+.lv-off{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
+.lv-nod{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
+.lv-chev{width:16px;height:16px;flex:none;align-self:center;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.lv-mapbox{position:relative}
+#lvMap{height:min(62vh,500px);border-radius:var(--radius-card);border:1px solid var(--border);z-index:0}
+.lv-empty{padding:30px 16px;text-align:center;color:var(--muted);font-size:14px}
+.lv-empty b{display:block;color:var(--text);font-size:16px;margin-bottom:4px}
+.lv-pin{position:relative;width:0;height:0}
+.lv-pin .d{position:absolute;left:-17px;top:-17px;width:34px;height:34px;border-radius:50%;border:3px solid #fff;color:#fff;font-weight:700;font-size:15px;display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.lv-pin .d.sel{transform:scale(1.18)}
+.lv-pin .t{position:absolute;left:20px;top:-17px;background:#fff;color:#0F172A;border-radius:8px;padding:3px 8px;font-size:12px;line-height:1.25;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.lv-pin .t b{display:block;font-size:12.500px}
+.lv-pin .t span{color:#64748B}
+@media(max-width:820px){
+  .lv-wrap{grid-template-columns:1fr}
+  .lv-mapbox{order:-1}
+  #lvMap{height:340px}
+  .lv-list{max-height:none}
+}
+</style></head>
+<body>
+<script src="../shared/mock-data.js"></script>
+<script src="../shared/road-line.js"></script>
+<script src="../shared/admin.js"></script>
+<script src="../shared/vendor/leaflet/leaflet.js"></script>
+<script>
+GA.guard();
+var $ = function (i) { return document.getElementById(i); }, esc = GA.esc, map = null, layer = null, sel = null, asked = {}, SHOWN = false;
+var trailId = 0, EV = { delivered: 'Delivered a shop', problem: 'Reported a problem', cancelled: 'Cancelled a shop', punchin: 'Punched in', punchout: 'Punched out', requested: 'Located by office' };
+var COLORS = ['#16A34A', '#2563EB', '#7C3AED', '#F97316', '#EC4899', '#0891B2', '#CA8A04', '#DC2626'];
+var SVG = function (p, c) { return '<svg' + (c ? ' class="' + c + '"' : '') + ' viewBox="0 0 24 24" aria-hidden="true">' + p + '</svg>'; };
+var RF = '<path d="M20 11a8 8 0 0 0-14.500-3.500L4 9M4 4v5h5M4 13a8 8 0 0 0 14.500 3.500L20 15M20 20v-5h-5"/>';
+var pg = GA.mount("live.html", "Live location");
+pg.innerHTML = '<p class="lv-note">Location is read only when an employee taps Delivered, Problem or Punch in/out, or when you press <b>Locate now</b> and their app is open. It is not tracked in the background.</p>' +
+  '<div class="field a-f" data-act style="width:190px;height:38px"><input id="lvQ" type="search" placeholder="Search employee..." aria-label="Search employee" autocomplete="off"></div>' +
+  '<button class="lv-ic" id="lvRf" type="button" title="Refresh" aria-label="Refresh" data-act>' + SVG(RF) + '</button>' +
+  '<button class="btn lv-btn" id="lvAll" type="button" data-act>' + SVG('<path d="m3 11 18-8-8 18-2-8z"/>') + 'Locate Now</button>' +
+  '<div class="lv-wrap"><div class="lv-panel"><div class="lv-ph"><b id="lvCount">Employees</b><select id="lvF"><option value="all">All</option><option value="live">Live</option><option value="off">Offline</option><option value="none">No data</option></select></div><div class="lv-list" id="lvList"></div></div><div class="lv-mapbox"><div id="lvMap"></div></div></div>';
+function locs() {
+  var out = {};
+  for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && k.indexOf('gm_loc_') === 0) { try { var o = JSON.parse(localStorage.getItem(k)); if (o && typeof o.lat === 'number') out[o.id || k.slice(7)] = o; } catch (e) {} } }
+  return out;
+}
+function ago(t) { var s = Math.max(0, Math.round((Date.now() - t) / 1000)); if (s < 60) return s + ' s ago'; var m = Math.round(s / 60); if (m < 60) return m + ' min ago'; var h = Math.floor(m / 60); if (h < 24) return h + ' h ' + (m % 60) + ' min ago'; return new Date(t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ', ' + new Date(t).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }); }
+function clock(t) { return new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }); }
+function status(o) { return !o ? 'none' : (Date.now() - o.t) / 60000 < 10 ? 'live' : 'off'; }
+function people() {
+  var L = locs(), seen = {}, list = GA.workers().filter(function (w) { return w.active !== false; }).map(function (w, i) { seen[w.id] = 1; return { id: w.id, name: w.name || w.id, role: 'Delivery / Driver', loc: L[w.id] || null }; });
+  Object.keys(L).forEach(function (id) { if (!seen[id]) list.push({ id: id, name: L[id].name || id, role: L[id].role === 'helper' ? 'Helper' : 'Delivery / Driver', loc: L[id] }); });
+  list.forEach(function (p, i) { p.color = COLORS[i % COLORS.length]; });
+  var rank = { live: 0, off: 1, none: 2 };
+  return list.sort(function (a, b) { var x = status(a.loc), y = status(b.loc); return rank[x] - rank[y] || (b.loc ? b.loc.t : 0) - (a.loc ? a.loc.t : 0) || a.name.localeCompare(b.name); });
+}
+function ask(ids) { var by = (GA.session() || {}).name || ''; ids.forEach(function (id) { try { localStorage.setItem('gm_locreq_' + id, JSON.stringify({ ts: Date.now(), by: by })); } catch (x) {} asked[id] = Date.now(); }); draw(); }
+function draw() {
+  var all = people(), f = $('lvF').value, q = $('lvQ').value.trim().toLowerCase();
+  var list = all.filter(function (p) { return (f === 'all' || status(p.loc) === f) && (!q || p.name.toLowerCase().indexOf(q) >= 0); });
+  $('lvCount').textContent = 'Employees (' + all.length + ')';
+  $('lvList').innerHTML = list.length ? list.map(function (p) {
+    var st = status(p.loc), o = p.loc, req = asked[p.id] && Date.now() - asked[p.id] < 120000;
+    var sub = o ? p.role + ' &middot; ' + (st === 'live' ? clock(o.t) : ago(o.t)) : p.role;
+    var detail = o ? esc(EV[o.ev] || 'Seen') + (o.label ? ': ' + esc(o.label) : '') + (o.bat != null ? ' &middot; battery ' + o.bat + '%' : '') : '';
+    return '<div class="lv-row' + (sel === p.id ? ' on' : '') + '" data-id="' + esc(p.id) + '"><span class="lv-av" style="background:' + (st === 'none' ? '#9ca3af' : st === 'off' ? '#94a3b8' : p.color) + '">' + esc(p.name.charAt(0).toUpperCase()) + '</span>' +
+      '<div class="lv-mid"><div class="lv-top"><b>' + esc(p.name) + '</b><span class="lv-pills"><span class="lv-st lv-' + (st === 'live' ? 'live' : st === 'off' ? 'off' : 'nod') + '">' + (st === 'live' ? '<i></i>Live' : st === 'off' ? '<i></i>Offline' : '<i></i>No data') + '</span>' +
+      (req ? '<span class="lv-st lv-off">Asked</span>' : '') + '</span></div><span>' + sub + '</span>' + (detail ? '<span>' + detail + '</span>' : '') + '</div>' + SVG('<path d="m9 6 6 6-6 6"/>', 'lv-chev') + '</div>';
+  }).join('') : '<div class="lv-empty"><b>' + (all.length ? 'No matches' : 'No employees yet') + '</b>' + (all.length ? 'Try a different search or filter.' : 'Add employees first, then their locations appear here after they deliver, report a problem or punch in or out.') + '</div>';
+  [].forEach.call($('lvList').querySelectorAll('.lv-row'), function (r) { r.onclick = function () { sel = r.getAttribute('data-id'); draw(); paint(true); }; });
+  paint(false, all);
+}
+function pinHtml(p, selected) {
+  var st = status(p.loc), c = st === 'live' ? p.color : '#94a3b8';
+  return '<div class="lv-pin"><div class="d' + (selected ? ' sel' : '') + '" style="background:' + c + '">' + esc(p.name.charAt(0).toUpperCase()) + '</div><div class="t"><b>' + esc(p.name) + '</b><span>' + clock(p.loc.t) + '</span></div></div>';
+}
+// OpenStreetMap sometimes blocks tile requests (403 "Access blocked", e.g. on localhost).
+// Try OSM first; after a few failures switch to CARTO's free basemap so the map is never blank.
+function addTiles() {
+  var fails = 0, osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, referrerPolicy: 'origin', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }).addTo(map);
+  osm.on('tileerror', function () {
+    if (++fails < 3) return;
+    map.removeLayer(osm); osm.off('tileerror');
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19, subdomains: 'abcd', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>' }).addTo(map);
+  });
+}
+function paint(fit, all) {
+  if (typeof L === 'undefined') return;
+  all = all || people();
+  if (!map) { map = L.map('lvMap').setView([20.59, 78.96], 5); addTiles(); layer = L.layerGroup().addTo(map); fit = true; }
+  layer.clearLayers(); var pts = [], P = all.filter(function (p) { return p.loc; });
+  P.forEach(function (p) {
+    var o = p.loc, m = L.marker([o.lat, o.lng], { icon: L.divIcon({ className: '', html: pinHtml(p, sel === p.id), iconSize: [0, 0] }), zIndexOffset: sel === p.id ? 1000 : 0 }).addTo(layer);
+    m.on('click', function () { sel = p.id; draw(); }); pts.push([o.lat, o.lng]);
+    if (sel === p.id && Array.isArray(o.pts) && o.pts.length > 1 && o.day) { var tr = o.pts.map(function (q) { return [q[0], q[1]]; }), did = trailId = (typeof trailId === 'number' ? trailId : 0) + 1, st = L.polyline(tr, { color: '#2563eb', weight: 3, opacity: .7 }).addTo(layer); if (window.RoadLine) RoadLine.draw(layer, tr, { color: '#2563eb', weight: 4, opacity: .75 }, [st], function () { return trailId !== did || !map; }); }
+  });
+  if ((fit || !SHOWN) && pts.length) { var s = P.filter(function (p) { return p.id === sel; })[0]; if (s) map.setView([s.loc.lat, s.loc.lng], 16); else map.fitBounds(pts, { padding: [60, 60], maxZoom: 16 }); SHOWN = true; }
+  setTimeout(function () { map.invalidateSize(); }, 50);
+}
+$('lvQ').oninput = draw; $('lvF').onchange = draw;
+$('lvRf').onclick = function () { var b = $('lvRf'); b.classList.add('spin'); draw(); paint(true); setTimeout(function () { b.classList.remove('spin'); }, 600); };
+$('lvAll').onclick = function () { ask(people().map(function (p) { return p.id; })); var b = $('lvAll'); b.disabled = true; setTimeout(function () { b.disabled = false; }, 4000); };
+draw();
+window.addEventListener('gm-sync', draw); setInterval(draw, 30000);
+</script>
+</body>
+</html>

@@ -83,8 +83,8 @@ function load(cb) {
 function facts() {
   var t = GA.today(), S = GA.ops.get(), PL = GA.ops.activePlansOn(S, t), sun = new Date().getDay() === 0, late = mins(GM.LATE_AFTER || '08:30');
   return GA.workers().filter(function (w) { return w.active; }).map(function (w) {
-    var rec = recs[w.id], lg = logOf(rec, t), plan = PL.filter(function (p) { return p.workerId === w.id; })[0], planned = !!plan;
-    var shops = planned ? (rec && rec.appliedPlan && rec.appliedPlan.indexOf(t) === 0 ? rec.shops : plan.stops.map(function () { return { status: 'pending' }; })) : [];
+    var rec = recs[w.id], lg = logOf(rec, t), plan = PL.filter(function (p) { return p.workerId === w.id; })[0], host = plan || PL.filter(function (p) { return (p.helpers || []).indexOf(w.id) > -1; })[0], riding = !plan && !!host, planned = !!host;
+    var shops = plan ? (rec && rec.appliedPlan && rec.appliedPlan.indexOf(t) === 0 ? rec.shops : plan.stops.map(function () { return { status: 'pending' }; })) : [];
     var c = function (x) { return shops.filter(function (q) { return q.status === x; }).length; };
     var st, tone;
     if (w.onLeave) { st = 'On leave'; tone = 'b-info'; }
@@ -94,7 +94,7 @@ function facts() {
     else if (!rec) { st = 'Not signed in yet'; tone = 'b-muted'; }
     else if (new Date().getHours() * 60 + new Date().getMinutes() > late) { st = 'No punch-in'; tone = 'b-danger'; }
     else { st = 'Not started'; tone = 'b-muted'; }
-    return { w: w, rec: rec, lg: lg, st: st, tone: tone, shops: shops, done: c('delivered'), retry: c('retry'), canc: c('cancelled'), pend: c('pending'), km: lg ? (lg.km || 0) : 0, veh: (rec && rec.shift && rec.shift.assignedVehicle) || (planned ? plan.vehicleLabel : ''), returns: lg || planned ? ((rec && rec.returns) || []) : [] };
+    return { w: w, rec: rec, lg: lg, st: st, tone: tone, shops: shops, done: c('delivered'), retry: c('retry'), canc: c('cancelled'), pend: c('pending'), km: lg ? (lg.km || 0) : 0, veh: (rec && rec.shift && rec.shift.assignedVehicle) || (host ? host.vehicleLabel : ''), returns: lg || planned ? ((rec && rec.returns) || []).filter(function (r) { return !r.shared; }) : [] };
   });
 }
 

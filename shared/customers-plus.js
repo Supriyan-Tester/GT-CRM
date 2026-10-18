@@ -337,6 +337,7 @@
     G('gpGo').onclick = function () {
       var r = applySimple(P.list); closeM(); areaOptions(); render();
       pmsg(r.added + ' added, ' + r.updated + ' updated' + (r.routes ? ', ' + r.routes + ' new routes' : '') + '.', true);
+      openRouteSuggest(true);
     };
   }
   function applySimple(list) {
@@ -354,7 +355,8 @@
       if (r.route) {
         var rt = (S.routes || []).filter(function (x) { return String(x.name).toLowerCase() === r.route.toLowerCase(); })[0];
         if (!rt) { var n0 = (S.routes || []).length; rt = O.areaRoute(S, r.route); if ((S.routes || []).length > n0) made++; }
-        if (rt) { O.assign(S, c.code, rt.id); delete c.noRoute; }
+        /* A Route column only fills shops that have no route yet. A route already set (or set by hand) is never overwritten. */
+        if (rt && !O.routeOf(S, c.code) && !O.isLocked(c)) O.assign(S, c.code, rt.id);
       }
     });
     O.syncRoutes(S); save();
@@ -388,6 +390,55 @@
     G('xFile').onchange = function () { handleFile(this); }; G('sSample').onclick = sample; G('no').onclick = closeM;
   };
   G('imp').onclick = function () { openImport(); };
+
+  /* ---------- route suggestions from the address (asks first, never touches routes set by hand) ---------- */
+  function openRouteSuggest(afterImport) {
+    var list = O.suggestRoutes(S), pick = {};
+    function rank(s) { return s.how === 'exact' ? 0 : (s.how === 'near' && s.sure ? 1 : (s.how === 'similar' ? 2 : (s.how === 'near' ? 3 : 4))); }
+    list.sort(function (a, b) { return rank(a) - rank(b); });
+    list.forEach(function (s) { pick[s.code] = (s.how === 'exact' || (s.how === 'near' && s.sure)); });
+    if (!list.length) {
+      if (afterImport) return;
+      show('<div class="card-title">Suggest routes</div><p class="mu" style="margin-bottom:12px">No suggestions. Every shop either has a route, was set by hand, or its address does not contain the name of a route.</p><div class="btn-group"><button class="btn a-btn" id="srNo" type="button">Close</button></div>');
+      G('srNo').onclick = closeM; return;
+    }
+    function nChecked() { return list.filter(function (s) { return pick[s.code]; }).length; }
+    function draw() {
+      var rows = list.slice(0, 200).map(function (s) {
+        return '<tr><td><input type="checkbox" data-sr="' + E(s.code) + '"' + (pick[s.code] ? ' checked' : '') + ' aria-label="Use this suggestion for ' + E(s.name) + '"></td><td>' + E(s.name) + '</td><td>' + E(s.address || DASH) + '</td><td><b>' + E(s.routeName) + '</b>' + (s.how === 'near' ? '<div class="mu" style="font-size:11px">nearest on the map, ' + s.km + ' km' + (s.sure ? '' : ', please check') + '</div>' : s.how === 'similar' ? '<div class="mu" style="font-size:11px">similar spelling, please check</div>' : (s.how === 'road' ? '<div class="mu" style="font-size:11px">from a road name, please check</div>' : '')) + '</td></tr>';
+      }).join('');
+      show('<div class="card-title">Suggest routes</div>' +
+        '<p style="margin-bottom:8px"><b>' + list.length + '</b> ' + (list.length === 1 ? 'shop has' : 'shops have') + ' no route and a suggested route. Nothing changes until you press Apply.</p>' +
+        '<p class="mu" style="font-size:12px;margin:0 0 8px">Ticked rows are sure matches. Rows marked "please check" are not ticked, so tick them only if you agree. "Nearest on the map" uses the map pin and the closest shop already on a route. Shops you moved or took off a route by hand are never listed.</p>' +
+        '<div class="gp-prev gp-sr"><table><tr><th></th><th>Shop</th><th>Address</th><th>Suggested route</th></tr>' + rows + '</table></div>' +
+        (list.length > 200 ? '<p class="mu" style="font-size:12px;margin:6px 0">Showing the first 200 of ' + list.length + '. The rest are in Apply too if ticked.</p>' : '') +
+        '<div class="msg" id="mm" style="margin:10px 0"></div>' +
+        '<div class="btn-group"><button class="btn btn-secondary a-btn" id="srNo" type="button">Not now</button><button class="btn a-btn" id="srGo" type="button"' + (nChecked() ? '' : ' disabled') + '>Apply ' + nChecked() + (nChecked() === 1 ? ' route' : ' routes') + '</button></div>');
+      G('srNo').onclick = closeM;
+      [].slice.call(document.querySelectorAll('[data-sr]')).forEach(function (b) { b.onchange = function () { pick[b.getAttribute('data-sr')] = b.checked; var g = G('srGo'); g.textContent = 'Apply ' + nChecked() + (nChecked() === 1 ? ' route' : ' routes'); g.disabled = !nChecked(); }; });
+      G('srGo').onclick = function () {
+        var n = O.applyRouteSuggestions(S, list.filter(function (s) { return pick[s.code]; }));
+        save(); closeM(); render(); pmsg(n + (n === 1 ? ' shop' : ' shops') + ' put on a route.', true);
+      };
+    }
+    draw();
+  }
+  window.gpSuggestRoutes = openRouteSuggest;
+  var sug = G('sugRt'); if (sug) sug.onclick = function () { openRouteSuggest(false); };
+  /* After an import finishes, offer the suggestions (the admin can say "Not now") */
+  (function () {
+    var done0 = window.importDone; if (typeof done0 !== 'function') return;
+    window.importDone = function (msg) {
+      done0.apply(this, arguments);
+      var n = O.suggestRoutes(S).length;
+      if (!n) return;
+      var box = G('mc'); if (!box) return;
+      var b = document.createElement('div'); b.className = 'gp-okbox'; b.style.cursor = 'pointer';
+      b.innerHTML = '<span><b>' + n + '</b> shops have no route, but their address matches a route. <u>Review suggestions</u></span>';
+      b.onclick = function () { openRouteSuggest(false); };
+      box.appendChild(b);
+    };
+  })();
 
   /* ---------- small clean-ups ---------- */
   window.qvClose = function () { closeQuick(); };   /* old Escape handler pointed at a drawer that no longer exists */

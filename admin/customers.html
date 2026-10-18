@@ -29,8 +29,9 @@ pg.innerHTML =
     '<div class="gtc-head-copy"><p>Manage shops, customer information and delivery routes</p></div>' +
     '<div class="gtc-head-actions">' +
       '<div class="field a-f" data-act style="width:190px;height:38px"><input type="search" id="cSearch" placeholder="Search customer..." aria-label="Search customers, shops or phone numbers" autocomplete="off"></div>' +
-      '<button class="btn btn-secondary a-btn" id="demo" data-act>Load demo data</button>' +
+      '<button class="btn btn-secondary a-btn" id="demo" data-act style="display:none">Load demo data</button>' +
       '<button class="btn btn-secondary a-btn" id="imp" data-act>' + GA.icon('plus') + ' Import</button>' +
+      '<button class="btn btn-secondary a-btn" id="sugRt" data-act>Suggest routes</button>' +
       '<button class="btn btn-secondary a-btn" id="exp" data-act>Export</button>' +
       '<button class="btn btn-secondary a-btn" id="shopLoc" data-act>Shop locations</button>' +
       '<button class="btn a-btn" id="add" data-act>' + GA.icon('plus') + ' Add customer</button>' +
@@ -160,7 +161,7 @@ function form(c) {
     if ($('fSt').value === 'i') x.inactive = true; else delete x.inactive;
     var rv = $('fR').value, follow = before && rv === before.id && oldArea && before.name.toLowerCase() === oldArea.toLowerCase() && x.area && x.area.toLowerCase() !== oldArea.toLowerCase();
     if (follow) { O.assign(S, x.code, O.areaRoute(S, x.area).id); delete x.noRoute; }
-    else { O.assign(S, x.code, rv); if (rv) delete x.noRoute; else if (before) x.noRoute = true; }
+    else { O.assign(S, x.code, rv); if (rv) { delete x.noRoute; if (rv !== (before ? before.id : '')) x.handRoute = true; } else if (before) x.noRoute = true; }
     O.syncRoutes(S); save(); areaOptions(); render();
     c = x; base = snap(); sync(); $('fCode').textContent = x.code; if (window.gpFormPhoto) window.gpFormPhoto(c, $('fPhoto'));
     err(isNew ? 'Customer added (' + x.code + ').' : 'Changes saved.', true);
@@ -194,7 +195,7 @@ function apply_import(list, mkRoutes, repPins) {
     if (r.address && (isNew || !String(c.address || '').trim())) c.address = r.address;
     if (r.phone2) c.phone2 = r.phone2; if (r.gstin) c.gstin = r.gstin; if (r.regn) c.regn = r.regn;
     if (r.geo && r.geo.lat != null && (repPins || c.lat == null || c.lng == null)) { c.lat = r.geo.lat; c.lng = r.geo.lng; pins++; }
-    if (!isNew && r.area && oldArea && r.area.toLowerCase() !== oldArea.toLowerCase()) { var cr = routeOf(c.code); if (cr && cr.name.toLowerCase() === oldArea.toLowerCase()) O.assign(S, c.code, ''); }
+    if (!isNew && r.area && oldArea && r.area.toLowerCase() !== oldArea.toLowerCase()) { var cr = routeOf(c.code); if (cr && cr.name.toLowerCase() === oldArea.toLowerCase() && !c.handRoute) O.assign(S, c.code, ''); }
   });
   var sr = O.syncRoutes(S);
   save(); return { added: P.add, updated: P.upd, routes: sr.made, pins: pins };
@@ -486,7 +487,7 @@ function bulkRoute(v) {
   if (v === '__new') { var n = (prompt('Name of the new route') || '').trim(); if (!n) { render(); return; } var rt = O.areaRoute(S, n); id = rt.id; nm = rt.name; }
   else if (v !== '__none') { var r0 = S.routes.filter(function (x) { return x.id === v; })[0]; if (!r0) { render(); return; } id = r0.id; nm = r0.name; }
   if (!confirm((id ? 'Move ' : 'Take ') + codes.length + ' shops ' + (id ? 'to the route ' + nm : 'off their routes') + '?')) { render(); return; }
-  codes.forEach(function (code) { O.assign(S, code, id); var c = cust(code); if (id) delete c.noRoute; else c.noRoute = true; });
+  codes.forEach(function (code) { O.assign(S, code, id); var c = cust(code); if (id) { delete c.noRoute; c.handRoute = true; } else c.noRoute = true; });
   SEL = {}; save(); render(); pmsg(codes.length + ' shops ' + (id ? 'moved to ' + nm : 'taken off their routes') + '.', true);
 }
 function bulkStatus() {
@@ -570,6 +571,7 @@ function visitMatch(c, days) {
   return (Date.now() - d.getTime()) <= (+days * 86400000);
 }
 function hasPin(c) { return c && c.lat != null && c.lng != null && !isNaN(+c.lat) && !isNaN(+c.lng); }
+function noRouteCount() { var rm = routeMap(); return S.customers.filter(function (c) { return !c.inactive && !rm[c.code]; }).length; }
 function routeFor(code, rm) { return (rm || routeMap())[code] || null; }
 function customerMatches(c, rm) {
   var q = $('cSearch').value.trim().toLowerCase(), ar = $('cArea').value, rt = $('cRoute').value, pn = $('cPin').value, st = $('cSt').value, vi = $('cVisit').value;
@@ -577,7 +579,7 @@ function customerMatches(c, rm) {
   if (st === 'active' && c.inactive) return false;
   if (st === 'inactive' && !c.inactive) return false;
   if (ar && c.area !== ar) return false;
-  if (rt && (!r || r.id !== rt)) return false;
+  if (rt === '__none') { if (r) return false; } else if (rt && (!r || r.id !== rt)) return false;
   var pin = hasPin(c); if (pn === 'yes' && !pin) return false; if (pn === 'no' && pin) return false;
   if (!visitMatch(c, vi)) return false;
   if (!q) return true;
@@ -634,20 +636,60 @@ function setupViewSwitch() {
   document.querySelectorAll('.gtc-view-switch button').forEach(function(b){ b.onclick=function(){ var v=b.dataset.view; document.querySelectorAll('.gtc-view-switch button').forEach(function(x){x.classList.toggle('on',x===b);}); $('cListView').hidden=v!=='list'; $('cCardsView').hidden=v!=='cards'; $('cMapView').hidden=v!=='map'; if(v==='map') renderCustomerMap(customerList()); }; });
 }
 setupViewSwitch();
+var CM = { map: null, layer: null, loading: false, cbs: [] };
+var CM_COLORS = ['#0f766e', '#d97706', '#7c3aed', '#dc2626', '#2563eb', '#db2777', '#65a30d', '#0891b2', '#9333ea', '#ea580c', '#4f46e5', '#059669'];
+function cmColor(r) { if (!r) return '#6b7280'; var h = 0; String(r.id).split('').forEach(function (ch) { h = (h * 31 + ch.charCodeAt(0)) % 9973; }); return CM_COLORS[h % CM_COLORS.length]; }
+function cmLoad(ok, fail) {
+  if (window.L && L.map) return ok();
+  CM.cbs.push([ok, fail]); if (CM.loading) return; CM.loading = true;
+  if (!document.querySelector('link[data-leaflet]')) { var css = document.createElement('link'); css.rel = 'stylesheet'; css.href = '../shared/vendor/leaflet/leaflet.css'; css.setAttribute('data-leaflet', '1'); document.head.appendChild(css); }
+  var s = document.createElement('script'); s.src = '../shared/vendor/leaflet/leaflet.js'; s.async = true;
+  s.onload = function () { CM.loading = false; var l = CM.cbs; CM.cbs = []; l.forEach(function (c) { c[0](); }); };
+  s.onerror = function () { CM.loading = false; var l = CM.cbs; CM.cbs = []; l.forEach(function (c) { c[1](); }); };
+  document.head.appendChild(s);
+}
+function cmEmpty(html) { if (CM.map) { CM.map.remove(); CM.map = null; CM.layer = null; } $('gtcMapHost').innerHTML = html; }
 function renderCustomerMap(list) {
-  var host=$('gtcMapHost');
-  if(!list.length){host.innerHTML='<div class="gtc-map-empty">No customers match the current filters.</div>';return;}
-  var pin=list.filter(hasPin);
-  if(!pin.length){host.innerHTML='<div class="gtc-map-empty"><b>No stored locations</b><span>Map view only uses real latitude/longitude saved on customer records.</span></div>';return;}
-  host.innerHTML='<div class="gtc-map-fallback"><div><b>'+pin.length+' customers with stored coordinates</b><span>The project will not invent map coordinates.</span></div>'+pin.map(function(c){return '<div class="gtc-map-row"><div><b>'+esc(c.name)+'</b><span>'+esc(c.code)+' \u00B7 '+esc(c.area||'')+'</span></div><a class="btn btn-secondary a-btn" target="_blank" rel="noopener" href="'+mapLink(c.lat,c.lng)+'">Open map</a></div>';}).join('')+'</div>';
+  var host = $('gtcMapHost');
+  if (!list.length) { cmEmpty('<div class="gtc-map-empty">No customers match the current filters.</div>'); return; }
+  var pin = list.filter(hasPin), noPin = list.length - pin.length;
+  if (!pin.length) { cmEmpty('<div class="gtc-map-empty"><b>No stored locations</b><span>Map view only uses real latitude/longitude saved on customer records.</span></div>'); return; }
+  var rm = routeMap();
+  if (!CM.map || !document.getElementById('cmMap')) {
+    if (CM.map) { CM.map.remove(); CM.map = null; CM.layer = null; }
+    host.innerHTML = '<div id="cmInfo" class="mu" style="margin:0 0 8px;font-size:13px"></div><div id="cmMap" style="height:min(68vh,620px);min-height:380px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--bg)"></div><div id="cmLegend" style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:12.5px"></div>';
+  }
+  cmLoad(function () {
+    if (!CM.map) {
+      CM.map = L.map('cmMap', { zoomControl: true, minZoom: 3 }).setView([11.0, 77.0], 10);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors' }).addTo(CM.map);
+      L.control.scale({ imperial: false }).addTo(CM.map); CM.layer = L.layerGroup().addTo(CM.map);
+    }
+    CM.layer.clearLayers();
+    var pts = [], counts = {};
+    pin.forEach(function (c) {
+      var r = routeFor(c.code, rm), col = cmColor(r), ll = [+c.lat, +c.lng], k = r ? r.id : '__none';
+      counts[k] = counts[k] || { n: 0, name: r ? r.name : 'No route', col: col }; counts[k].n++;
+      var m = L.circleMarker(ll, { radius: 8, color: '#ffffff', weight: 2, fillColor: col, fillOpacity: c.inactive ? 0.45 : 0.95 });
+      m.bindTooltip(esc(c.name), { direction: 'top', offset: [0, -6] });
+      m.bindPopup('<b>' + esc(c.name) + '</b><br>' + esc(c.code) + ' &middot; ' + esc(r ? r.name : 'No route') + (c.address ? '<br>' + esc(c.address) : '') + (c.phone ? '<br>' + esc(c.phone) : '') + '<br><a target="_blank" rel="noopener" href="' + mapLink(c.lat, c.lng) + '">Open in Google Maps</a>');
+      m.addTo(CM.layer); pts.push(ll);
+    });
+    CM.map.invalidateSize(); CM.map.fitBounds(pts, { padding: [30, 30], maxZoom: 15 });
+    $('cmInfo').textContent = pin.length + ' shops on the map' + (noPin ? ', ' + noPin + ' without a map location' : '') + '. Colours show the route. Tap a dot for details.';
+    $('cmLegend').innerHTML = Object.keys(counts).sort(function (x, y) { return x === '__none' ? 1 : y === '__none' ? -1 : counts[y].n - counts[x].n; }).map(function (k) { var o = counts[k]; return '<span style="display:inline-flex;align-items:center;gap:6px"><i style="width:11px;height:11px;border-radius:50%;background:' + o.col + ';display:inline-block"></i>' + esc(o.name) + ' (' + o.n + ')</span>'; }).join('');
+  }, function () {
+    cmEmpty('<div class="gtc-map-empty"><b>The map could not be loaded</b><span>Check the internet connection and open the Map tab again.</span></div>');
+  });
 }
 function render() {
   installCustomerBindings();
   var rm=routeMap(), total=S.customers.length, active=S.customers.filter(function(c){return !c.inactive;}).length, inactive=total-active, pinned=S.customers.filter(hasPin).length, noPin=total-pinned;
   $('stats').innerHTML='<div class="gtc-stat"><span class="gtc-stat-icon">\u2301</span><div><b>'+total+'</b><span>Total customers</span></div></div><div class="gtc-stat"><span class="gtc-stat-icon success">\u2713</span><div><b>'+active+'</b><span>Active</span></div></div><div class="gtc-stat"><span class="gtc-stat-icon danger">\u00D7</span><div><b>'+inactive+'</b><span>Inactive</span></div></div><div class="gtc-stat"><span class="gtc-stat-icon info">\u2316</span><div><b>'+pinned+'</b><span>With location</span></div></div><div class="gtc-stat"><span class="gtc-stat-icon muted">\u25CB</span><div><b>'+noPin+'</b><span>Without location</span></div></div>';
   areaOptions();
-  var rv=$('cRoute').value; $('cRoute').innerHTML='<option value="">All routes</option>'+(S.routes||[]).slice().sort(function(a,b){return String(a.name).localeCompare(String(b.name));}).map(function(r){return '<option value="'+esc(r.id)+'">'+esc(r.name)+' ('+r.codes.length+')</option>';}).join(''); $('cRoute').value=rv;
+  var rv=$('cRoute').value; $('cRoute').innerHTML='<option value="">All routes</option><option value="__none">No route ('+noRouteCount()+')</option>'+(S.routes||[]).slice().sort(function(a,b){return String(a.name).localeCompare(String(b.name));}).map(function(r){return '<option value="'+esc(r.id)+'">'+esc(r.name)+' ('+r.codes.length+')</option>';}).join(''); $('cRoute').value=rv;
   var list=customerList();
+  if($('cMapView') && !$('cMapView').hidden) renderCustomerMap(list);
   var pages=Math.max(1,Math.ceil(list.length/PS)); if(PG>pages)PG=pages; if(PG<1)PG=1; var from=(PG-1)*PS,part=list.slice(from,from+PS),sc=selCodes();
   $('cCount').textContent=list.length+' '+(list.length===1?'customer':'customers');
   handleCustomerDeepLink();

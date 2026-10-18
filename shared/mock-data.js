@@ -19,8 +19,8 @@
     shift: {
       punchedIn: false,
       punchInTime: null,
-      assignedVehicle: 'Van A (MH-12-AB-1234)',
-      lastRecordedKm: 45210,
+      assignedVehicle: '',
+      lastRecordedKm: 0,
       startKm: null,
       punchedOut: false,
       punchOutTime: null,
@@ -29,10 +29,10 @@
       handoverCompleted: false
     },
     warehouse: {
-      name: 'General Traders Central Depot',
-      address: 'Plot 42, Industrial Area, Gate 2',
-      lat: 18.5204,
-      lng: 73.8567,
+      name: 'Depot',
+      address: '',
+      lat: null,
+      lng: null,
       radiusMeters: 200
     },
     products: [
@@ -322,6 +322,34 @@
     var a = String(x.address || '').replace(/\s+/g, ' ').trim().slice(0, 200); if (a) e.address = a;
   }
   function markPinDone(code) { if (!code) return; var d = loadStore(); d.pinDone = d.pinDone || {}; d.pinDone[code] = Date.now(); saveStore(d); }
+  /* ---- Crew: a driver and helpers share one route. Each person writes their own marks (gm_crew_<day>_<id>); everyone merges the others' marks into their own list. ---- */
+  function crewDay() { var t = new Date(); return t.getFullYear() + String(t.getMonth() + 1).padStart(2, '0') + String(t.getDate()).padStart(2, '0'); }
+  function crewMerge(d) {
+    if (!d || !d.crewSize || d.crewSize < 2 || !Array.isArray(d.shops)) return false;
+    var me = (d.worker || {}).id, pre = 'gm_crew_' + crewDay() + '_', changed = false;
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i); if (!k || k.indexOf(pre) !== 0 || k === pre + me) continue;
+      var c; try { c = JSON.parse(localStorage.getItem(k)); } catch (e) { continue; }
+      if (!c || typeof c !== 'object') continue;
+      var marks = c.marks || {};
+      Object.keys(marks).forEach(function (bill) {
+        var m = marks[bill]; if (!m || !m.f || typeof m.t !== 'number') return;
+        d.shops.forEach(function (sh) {
+          if ((sh.billNo || sh.id) !== bill || (sh.sAt || 0) >= m.t) return;
+          if (sh.status === m.f.status && sh.sAt === m.t) return;
+          Object.keys(m.f).forEach(function (f) { sh[f] = m.f[f]; });
+          sh.sAt = m.t; sh.doneBy = m.by || ''; changed = true;
+        });
+      });
+      (Array.isArray(c.returns) ? c.returns : []).forEach(function (r) {
+        if (!r || r.id == null) return;
+        d.returns = d.returns || [];
+        if (!d.returns.some(function (x) { return x.id === r.id; })) { d.returns.push(Object.assign({}, r, { shared: true })); changed = true; }
+      });
+    }
+    return changed;
+  }
+
   window.GM = {
     // Set to false before real workers use the app: hides the demo login helper.
     DEMO_MODE: false,
@@ -367,7 +395,11 @@
       var raw = adm.plans && adm.plans[key], every = Array.isArray(raw) ? raw : (raw ? [raw] : []);
       // Cancelled plans stay in the admin data as history; the worker only follows active plans.
       var list = every.filter(function (p) { return p && p.status !== 'cancelled'; });
-      var plan = list.filter(function (p) { return p && p.workerId && p.workerId === w.id; })[0], custs = adm.customers || [];
+      // The plan this person follows: as the driver (workerId) or as a helper riding along (helpers).
+      var plan = list.filter(function (p) { return p && p.workerId && p.workerId === w.id; })[0] || list.filter(function (p) { return p && Array.isArray(p.helpers) && p.helpers.indexOf(w.id) > -1; })[0], custs = adm.customers || [];
+      var crewRole = plan ? (plan.workerId === w.id ? 'driver' : 'helper') : null, crewSize = plan ? 1 + (Array.isArray(plan.helpers) ? plan.helpers.length : 0) : 0, crewDirty = false;
+      var prevRole = d.crewRole;
+      if (d.crewRole !== crewRole || d.crewSize !== crewSize) { d.crewRole = crewRole; d.crewSize = crewSize; crewDirty = true; }
       // Messages the admin sent about changes to today's plans (priority shop, new order, worker or vehicle change, cancellation).
       // Each one is stored once in this worker's own record, which is also how the admin page can tell it arrived.
       var got = (d.noticeIds = d.noticeIds || []), gotNew = false;
@@ -376,7 +408,7 @@
           if (!h || !h.id || !h.notify || h.notify.indexOf(w.id) < 0 || got.indexOf(h.id) > -1) return;
           got.push(h.id); gotNew = true;
           d.notices = d.notices || [];
-          d.notices.unshift({ id: h.id, ts: h.ts, type: h.type, text: h.workerText || h.text, read: false });
+          d.notices.unshift({ id: h.id, ts: h.ts, type: h.type, text: (h.workerTexts && h.workerTexts[w.id]) || h.workerText || h.text, read: false });
         });
       });
       if (d.notices) d.notices = d.notices.slice(0, 30);
@@ -384,15 +416,17 @@
       if (!plan) {
         // The plan this worker was following was cancelled or given to someone else: unfinished shops come off the list.
         if (typeof d.appliedPlan === 'string' && d.appliedPlan.indexOf(key + ':') === 0 && d.appliedPlan !== key + ':none') {
-          d.shops = (d.shops || []).filter(function (s) { return s.status !== 'pending'; });
+          // A helper's list is only a copy of the driver's route, so it goes away completely when they are taken off the plan.
+          d.shops = prevRole === 'helper' ? [] : (d.shops || []).filter(function (s) { return s.status !== 'pending'; });
+          if (prevRole === 'helper') d.returns = (d.returns || []).filter(function (r) { return !r.shared; });
           d.shops.forEach(function (s, i) { s.distance = 'Stop ' + (i + 1) + ' of ' + d.shops.length; });
           d.appliedPlan = key + ':none'; saveStore(d); return true;
         }
-        if (gotNew || fresh) { saveStore(d); return true; }
+        if (gotNew || fresh || crewDirty) { saveStore(d); return true; }
         return false;
       }
       var tag = key + ':' + plan.builtAt;
-      if (d.appliedPlan === tag) { if (gotNew) { saveStore(d); return true; } return false; }
+      if (d.appliedPlan === tag) { var mg = crewMerge(d); if (gotNew || mg || crewDirty) { saveStore(d); return true; } return false; }
       var sameDay = typeof d.appliedPlan === 'string' && d.appliedPlan.indexOf(key + ':') === 0;
       function mk(s, id) {
         var c = custs.filter(function (x) { return x.code === s.code; })[0] || {};
@@ -423,6 +457,7 @@
       shops.forEach(function (s, i) { s.distance = 'Stop ' + (i + 1) + ' of ' + shops.length; });
       d.shops = shops;
       d.appliedPlan = tag;
+      crewMerge(d);
       saveStore(d);
       return true;
     },
@@ -545,6 +580,7 @@
       for (var i = 0; i < d.shops.length; i++) {
         if (d.shops[i].id === id) {
           d.shops[i] = Object.assign(d.shops[i], updates);
+          if (updates && updates.status) { d.shops[i].sAt = Date.now(); d.shops[i].doneBy = (d.worker || {}).name || ''; }
           break;
         }
       }
@@ -568,7 +604,7 @@
     // The product list is uploaded by the admin (Products page). No built-in demo products.
     getProducts: function () {
       var L = []; try { L = JSON.parse(localStorage.getItem('gm_admin_products_v1')) || []; } catch (e) {}
-      return (Array.isArray(L) ? L : []).filter(function (p) { return p.active !== false; }).map(function (p) { return { code: String(p.code || ''), name: String(p.name || ''), unitPrice: Number(p.price) || 0 }; });
+      return (Array.isArray(L) ? L : []).filter(function (p) { return p.active !== false; }).map(function (p) { return { code: String(p.code || ''), name: String(p.name || ''), unitPrice: Number(p.price) || 0, tax: Number(p.tax) || 0 }; });
     },
 
     qtyLabel: function (sh) { return sh && sh.items && sh.items.length ? sh.items.length + (sh.items.length === 1 ? ' item' : ' items') : ((sh && sh.boxes) || 0) + ' Boxes'; },
@@ -664,7 +700,7 @@
 
     // The depot set by the admin (Profile page, key gm_depot_v1, synced to every device) wins over the built-in sample location.
     getWarehouse: function () {
-      var base = loadStore().warehouse || {};
+      var base = { name: 'Depot', address: '', lat: null, lng: null, radiusMeters: 200 };   // no built-in sample depot: location is checked only after the office saves the depot
       try {
         var dp = JSON.parse(localStorage.getItem('gm_depot_v1'));
         if (dp && isFinite(dp.lat) && isFinite(dp.lng)) return Object.assign({}, base, { name: dp.name || base.name, address: dp.address || base.address, lat: dp.lat, lng: dp.lng, radiusMeters: dp.radiusMeters || base.radiusMeters || 200 });
@@ -683,7 +719,9 @@
   function notify(type, title, text) {
     try {
       var l = JSON.parse(localStorage.getItem(NK)); if (!Array.isArray(l)) l = [];
-      l.unshift({ id: 'N' + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), date: dkey(), type: type, title: title, text: text, worker: loadStore().worker.name, read: false });
+      var nn = { id: 'N' + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), date: dkey(), type: type, title: title, text: text, worker: loadStore().worker.name, read: false };
+      try { var fx = GM.fix && GM.fix(); if (fx && /^(delivered|problem|cancelled|punchin|punchout|route)$/.test(type)) nn.loc = { lat: Math.round(fx.lat * 1e6) / 1e6, lng: Math.round(fx.lng * 1e6) / 1e6, acc: fx.acc || 0 }; } catch (e) {}
+      l.unshift(nn);
       localStorage.setItem(NK, JSON.stringify(l.slice(0, 300)));
     } catch (e) {}
   }
@@ -740,8 +778,8 @@
   GM.updateShift = function (u) {
     var old = GM.getShift(), res = _ush.call(GM, u), nm = GM.getWorker().name;
     try {
-      if (u.punchedIn && !old.punchedIn) notify('punchin', nm + ' punched in', 'At ' + (u.punchInTime || '') + ', start km ' + u.startKm + ', vehicle ' + (res.assignedVehicle || '-') + '.');
-      if (u.punchedOut && !old.punchedOut) notify('punchout', nm + ' punched out', 'At ' + (u.punchOutTime || '') + ', end km ' + u.endKm + ', driven ' + (u.drivenKm || 0) + ' km. Day closed.');
+      if (u.punchedIn && !old.punchedIn) notify('punchin', nm + ' punched in', 'At ' + (u.punchInTime || '') + (u.startKm != null ? ', start km ' + u.startKm : '') + ', vehicle ' + (res.assignedVehicle || '-') + '.');
+      if (u.punchedOut && !old.punchedOut) notify('punchout', nm + ' punched out', 'At ' + (u.punchOutTime || '') + (u.endKm != null && !isNaN(u.endKm) ? ', end km ' + u.endKm + ', driven ' + (u.drivenKm || 0) + ' km' : '') + '. Day closed.');
     } catch (e) {}
     return res;
   };
@@ -761,7 +799,7 @@
     d.attendanceLog = d.attendanceLog || {}; d.attendanceLog[mk] = d.attendanceLog[mk] || {};
     var r = d.attendanceLog[mk][dk];
     if (!r) {
-      var im = mins(sh.punchInTime), lim = mins(LATE_AFTER);
+      var im = mins(sh.punchInTime), lim = mins(GM.settings().lateAfter);
       r = d.attendanceLog[mk][dk] = { day: t.getDate(), weekday: WD[t.getDay()], status: (im != null && im > lim) ? 'late' : 'present', inTime: sh.punchInTime || '-', outTime: '-', hours: '-', km: 0, vehicle: sh.assignedVehicle || '', startKm: sh.startKm == null ? null : sh.startKm, endKm: null };
     }
     if (kind === 'out') {
@@ -769,6 +807,8 @@
       var a = mins(r.inTime), b = mins(r.outTime);
       r.hours = (a != null && b != null && b >= a) ? hm(b - a) : '-';
       r.km = Number(sh.drivenKm) || 0; r.endKm = sh.endKm == null ? null : sh.endKm;
+      r.shops = (d.shops || []).filter(function (s) { return s && s.status && s.status !== 'pending'; }).map(function (s) { return { name: s.name, address: String(s.address || '').split(',')[0], boxes: s.boxes, billNo: s.billNo, time: s.sAt ? new Date(s.sAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : '', status: s.status === 'delivered' ? 'delivered' : 'retry' }; });
+      r.returns = (d.returns || []).map(function (x) { return { item: x.productName, qty: x.quantity, amount: x.deductionAmount, reason: x.reason }; });
     }
     localStorage.setItem(KEY, JSON.stringify(d));
   }
@@ -778,6 +818,156 @@
     try { if (u && u.punchedIn === true && u.punchInTime) rec('in', res); if (u && u.punchedOut === true && u.punchOutTime) rec('out', res); } catch (e) {}
     return res;
   };
-  GM.LATE_AFTER = LATE_AFTER;
+    /* ---- Work rules the office can change (admin > My profile > Work rules). Saved as gm_admin_settings_v1 and synced to every phone. ---- */
+  var SET_DEFAULT = { lateAfter: '08:30', highKm: 250, jumpKm: 300, requireDepot: false,
+    returnReasons: ['Broken', 'Expired', 'Expiry date is near', 'Leaking / seal open', 'Wrong item sent', 'Shop did not order', 'Bad quality', 'Shop did not want'] };
+  GM.settingsDefault = SET_DEFAULT;
+  GM.settings = function () {
+    var s = {}; try { s = JSON.parse(localStorage.getItem('gm_admin_settings_v1')) || {}; } catch (e) {}
+    var out = { lateAfter: /^\d{1,2}:\d{2}$/.test(s.lateAfter || '') ? s.lateAfter : SET_DEFAULT.lateAfter,
+      highKm: Number(s.highKm) > 0 ? Number(s.highKm) : SET_DEFAULT.highKm, jumpKm: Number(s.jumpKm) > 0 ? Number(s.jumpKm) : SET_DEFAULT.jumpKm,
+      requireDepot: s.requireDepot === true,
+      returnReasons: (Array.isArray(s.returnReasons) ? s.returnReasons : []).map(function (x) { return String(x || '').trim(); }).filter(Boolean).slice(0, 20) };
+    if (!out.returnReasons.length) out.returnReasons = SET_DEFAULT.returnReasons.slice();
+    return out;
+  };
+  try { Object.defineProperty(GM, 'LATE_AFTER', { get: function () { return GM.settings().lateAfter; }, configurable: true }); } catch (e) { GM.LATE_AFTER = LATE_AFTER; }
+
+  /* ---- Driver's own Attendance and Account: real data only (no sample history) ---- */
+  function p2(n) { return String(n).padStart(2, '0'); }
+  function jl(k, d) { try { var r = JSON.parse(localStorage.getItem(k)); return r == null ? d : r; } catch (e) { return d; } }
+  function ymd(t) { return t.getFullYear() + '-' + p2(t.getMonth() + 1) + '-' + p2(t.getDate()); }
+  function hrsText(a, b) { var x = mins(a), y = mins(b); return (x != null && y != null && y >= x) ? hm(y - x) : '-'; }
+  function shopRow(s) { return { name: s.name, address: String(s.address || '').split(',')[0], boxes: s.boxes, billNo: s.billNo, time: s.sAt ? new Date(s.sAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : '', status: s.status === 'delivered' ? 'delivered' : 'retry' }; }
+  function retRow(x) { return { item: x.productName, qty: x.quantity, amount: x.deductionAmount, reason: x.reason }; }
+  // One day of this employee: their own punch record, the office's correction on top, leave and Sundays.
+  function ownDay(ds) {
+    var st = GM.getData() || {}, w = st.worker || {}, td = ymd(new Date());
+    var log = ((st.attendanceLog || {})[ds.slice(0, 7)] || {})[+ds.slice(8)];
+    var ed = (((jl('gm_admin_attedit_v1', {}) || {}).edits || {})[w.id] || {})[ds];
+    var wd = jl('gm_admin_workers_v1', {}) || {};
+    var me = (wd.workers || []).filter(function (x) { return x && x.id === w.id; })[0] || {};
+    var d = new Date(ds + 'T00:00:00');
+    var o = { day: d.getDate(), weekday: WD[d.getDay()], status: null, inTime: '-', outTime: '-', hours: '-', km: 0, vehicle: '', startKm: null, endKm: null, shops: [], returns: [], note: '' };
+    if (log) { o.status = log.status; o.inTime = log.inTime || '-'; o.outTime = log.outTime || '-'; o.hours = log.hours || hrsText(o.inTime, o.outTime); o.km = Number(log.km) || 0; o.vehicle = log.vehicle || ''; o.startKm = log.startKm; o.endKm = log.endKm; o.shops = log.shops || []; o.returns = log.returns || []; }
+    if (ed && ed.status) {
+      o.status = ed.status === 'leave' ? 'absent' : ed.status; o.inTime = ed.inTime || '-'; o.outTime = ed.outTime || '-'; o.hours = hrsText(o.inTime, o.outTime); o.km = Number(ed.km) || 0; o.vehicle = ed.vehicle || o.vehicle;
+      if (ed.status === 'leave') o.note = 'On approved leave.'; else if (ed.status === 'absent') o.note = 'Marked absent by the office.';
+      if (ed.remarks) o.note = (o.note ? o.note + ' ' : '') + ed.remarks;
+    }
+    if (!o.status) {
+      var start = me.created || '';
+      if (ds > td || (start && ds < start)) o.status = 'upcoming';
+      else if (d.getDay() === 0) { o.status = 'off'; o.note = 'Sunday holiday.'; }
+      else if ((wd.leaves || []).some(function (l) { return l && l.workerId === w.id && l.from <= ds && ds <= l.to; })) { o.status = 'absent'; o.note = 'On approved leave.'; }
+      else if (ds === td && new Date().getHours() < 12) o.status = 'upcoming';
+      else { o.status = 'absent'; o.note = 'No punch-in was recorded.'; }
+    }
+    if (ds === td && !o.shops.length) {   // today: show what is on the live route
+      o.shops = (st.shops || []).filter(function (s) { return s.status && s.status !== 'pending'; }).map(shopRow);
+      o.returns = (st.returns || []).map(retRow);
+    }
+    return o;
+  }
+  GM.getMonthlyAttendance = function (key) {
+    var m = /^(\d{4})-(\d{2})$/.exec(key || ''); if (!m) return [];
+    var n = new Date(+m[1], +m[2], 0).getDate(), out = [];
+    for (var i = 1; i <= n; i++) out.push(ownDay(m[1] + '-' + m[2] + '-' + p2(i)));
+    return out;
+  };
+  GM.getDayDetail = function (dayNum, key) {
+    var o = ownDay(key + '-' + p2(dayNum));
+    return { day: o, vehicle: o.vehicle || '--', startKm: o.startKm || 0, endKm: o.endKm || 0, shops: o.shops, returns: o.returns, notes: o.note };
+  };
+  GM.getMonthlyAdvances = function (key) {
+    var mon = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], me = ((GM.getData() || {}).worker || {}).id;
+    return (jl('gm_admin_ledger_v1', []) || []).filter(function (e) { return e && e.workerId === me && String(e.date).slice(0, 7) === key; })
+      .sort(function (a, b) { return a.date < b.date ? 1 : -1; })
+      .map(function (e) { return { id: e.id, date: e.date.slice(8, 10) + ' ' + mon[+e.date.slice(5, 7) - 1] + ' ' + e.date.slice(0, 4), title: e.title, type: e.type, amount: e.amount, note: e.note || 'Added by the office' }; });
+  };
 })();
 /* GM-ATTENDANCE END */
+/* GM-CREW START: shared delivery marks for a driver + helpers, and the location the office sees.
+   Location is only read when the employee taps something (arrived, delivered, problem, punch in/out) or when the office presses "Locate now" while the app is open.
+   Nothing runs in the background. */
+(function () {
+  if (!window.GM) return;
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function day8() { var t = new Date(); return t.getFullYear() + pad(t.getMonth() + 1) + pad(t.getDate()); }
+  function me() { return GM.getData().worker || {}; }
+  function getJ(k) { try { var v = JSON.parse(localStorage.getItem(k)); return v && typeof v === 'object' ? v : null; } catch (e) { return null; } }
+  function putJ(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+  /* ---- sharing marks with the rest of the crew ---- */
+  function publish(fn) {
+    try {
+      var d = GM.getData(); if (!d.crewSize || d.crewSize < 2 || !me().id) return;
+      var k = 'gm_crew_' + day8() + '_' + me().id, c = getJ(k) || {}; c.marks = c.marks || {}; c.returns = c.returns || [];
+      fn(c, d); c.by = me().name || ''; putJ(k, c);
+    } catch (e) {}
+  }
+  var _us = GM.updateShop, _ar = GM.addReturn;
+  GM.updateShop = function (id, updates) {
+    var r = _us.apply(GM, arguments);
+    if (updates && updates.status) publish(function (c) { var sh = GM.getShop(id); if (!sh) return; c.marks[sh.billNo || sh.id] = { f: Object.assign({}, updates, { doneBy: me().name || '' }), t: sh.sAt || Date.now(), by: me().name || '' }; });
+    if (updates && updates.status) { try { GM.captureLoc(updates.status === 'delivered' ? 'delivered' : updates.status === 'retry' ? 'problem' : 'cancelled', (GM.getShop(id) || {}).name || ''); } catch (e) {} }
+    return r;
+  };
+  GM.addReturn = function (r) {
+    var out = _ar.apply(GM, arguments);
+    publish(function (c) { var list = GM.getReturns().filter(function (x) { return !x.shared; }); c.returns = list.slice(-40); });
+    return out;
+  };
+
+  /* ---- location ---- */
+  function fresh(f, ms) { return f && typeof f.lat === 'number' && Date.now() - f.t < ms; }
+  GM.fix = function (ms) { try { var f = JSON.parse(sessionStorage.getItem('gm_lastfix')); return fresh(f, ms || 180000) ? f : null; } catch (e) { return null; } };
+  function saveFix(f) { try { sessionStorage.setItem('gm_lastfix', JSON.stringify(f)); } catch (e) {} }
+  GM.refreshFix = function (cb) {
+    if (!navigator.geolocation) { cb && cb(null); return; }
+    navigator.geolocation.getCurrentPosition(function (p) {
+      var f = { lat: p.coords.latitude, lng: p.coords.longitude, acc: Math.round(p.coords.accuracy || 0), t: Date.now() }; saveFix(f); cb && cb(f);
+    }, function () { cb && cb(null); }, { enableHighAccuracy: true, maximumAge: 30000, timeout: 8000 });
+  };
+  var bat = null; try { if (navigator.getBattery) navigator.getBattery().then(function (b) { bat = Math.round(b.level * 100); }); } catch (e) {}
+  function dist(a, b) { var R = 6371000, r = Math.PI / 180, dLa = (b[0] - a[0]) * r, dLo = (b[1] - a[1]) * r, x = Math.sin(dLa / 2) * Math.sin(dLa / 2) + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLo / 2) * Math.sin(dLo / 2); return 2 * R * Math.asin(Math.sqrt(x)); }
+  function writeLoc(f, ev, label) {
+    try {
+      var w = me(); if (!w.id) return;
+      var k = 'gm_loc_' + w.id, o = getJ(k) || {}, sh = GM.getShift() || {}, d = GM.getData();
+      var pts = Array.isArray(o.pts) && o.day === day8() ? o.pts : [];
+      var lp = pts[pts.length - 1]; if (!lp || dist([lp[0], lp[1]], [f.lat, f.lng]) > 25 || f.t - lp[2] > 120000) pts.push([Math.round(f.lat * 1e5) / 1e5, Math.round(f.lng * 1e5) / 1e5, f.t, ev]);
+      if (pts.length > 80) pts = pts.slice(-80);
+      putJ(k, { id: w.id, name: w.name || '', role: d.crewRole || 'driver', lat: Math.round(f.lat * 1e6) / 1e6, lng: Math.round(f.lng * 1e6) / 1e6, acc: f.acc || 0, t: f.t, ev: ev, label: label || '', veh: sh.assignedVehicle || '', bat: bat, day: day8(), pts: pts });
+    } catch (e) {}
+  }
+  // Called when the employee taps something. Uses the freshest fix the page already has, and asks the phone for a new one for the next tap.
+  GM.captureLoc = function (ev, label) {
+    var f = GM.fix(); if (f) writeLoc(f, ev, label);
+    GM.refreshFix(function (n) { if (n) writeLoc(n, ev, label); });
+  };
+  var _ush = GM.updateShift;
+  GM.updateShift = function (u) {
+    var r = _ush.apply(GM, arguments);
+    try { if (u && u.punchedIn === true) GM.captureLoc('punchin', ''); if (u && u.punchedOut === true) GM.captureLoc('punchout', ''); } catch (e) {}
+    return r;
+  };
+
+  // "Locate now" from the office: works only while this app is open on a shift.
+  function answerRequest() {
+    try {
+      var w = me(), q = getJ('gm_locreq_' + w.id), sh = GM.getShift() || {};
+      if (!q || typeof q.ts !== 'number' || Date.now() - q.ts > 10 * 60000) return;
+      var done = 0; try { done = Number(localStorage.getItem('gt_locreq_done')) || 0; } catch (e) {}
+      if (q.ts <= done || !sh.punchedIn || sh.punchedOut) return;
+      try { localStorage.setItem('gt_locreq_done', String(q.ts)); } catch (e) {}
+      GM.refreshFix(function (f) { if (f) writeLoc(f, 'requested', ''); });
+    } catch (e) {}
+  }
+  // Having a recent fix ready means the next tap can put a location on the office notification. The fix stays on this phone until then.
+  function warm() { try { var sh = GM.getShift() || {}; if (sh.punchedIn && !sh.punchedOut && !GM.fix(60000)) GM.refreshFix(); } catch (e) {} }
+  window.addEventListener('gm-sync', answerRequest);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', warm); else warm();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', answerRequest); else setTimeout(answerRequest, 1500);
+})();
+/* GM-CREW END */

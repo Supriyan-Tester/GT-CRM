@@ -9,7 +9,8 @@
     
     // Update theme-toggle buttons if present on the screen
     var btn = document.getElementById('themeToggle');
-    if (btn) {
+    [].forEach.call(document.querySelectorAll('[data-set]'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-set') === theme); });
+    if (btn && !btn.getAttribute('data-gt-switch')) {
       btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
     }
     
@@ -46,10 +47,30 @@
     } catch (err) {}
   }
 
+  // Every in-app theme button becomes the same sliding light/dark pill used on the sign-in page.
+  function upgradeToggle() {
+    var old = document.getElementById('themeToggle');
+    if (!old || old.getAttribute('data-gt-switch')) return;
+    var sun = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+    var moon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+    var sw = document.createElement('div');
+    sw.id = 'themeToggle'; sw.className = 'gt-switch'; sw.setAttribute('role', 'group');
+    sw.setAttribute('aria-label', 'Theme'); sw.setAttribute('data-gt-switch', '1');
+    sw.innerHTML = '<button type="button" data-set="light" aria-label="Light theme">' + sun + '</button><button type="button" data-set="dark" aria-label="Dark theme">' + moon + '</button>';
+    old.parentNode.replaceChild(sw, old);
+    sw.onclick = function (e) {
+      var b = e.target.closest ? e.target.closest('[data-set]') : null;
+      // a script calling .click() on the switch (no inner button) flips the theme
+      applyTheme(b ? b.getAttribute('data-set') : (root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'), true);
+    };
+    applyTheme(root.getAttribute('data-theme') || 'light', false);
+  }
+
   function initListeners() {
     fillShared();
+    upgradeToggle();
     var toggleBtn = document.getElementById('themeToggle');
-    if (toggleBtn) {
+    if (toggleBtn && !toggleBtn.getAttribute('data-gt-switch')) {
       toggleBtn.onclick = function () {
         var current = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
         applyTheme(current, true);
@@ -639,7 +660,7 @@
 
     document
       .querySelectorAll(
-        "input[type='date']:not([data-gt-calendar-ready='1'])"
+        'input[data-gt-legacy-off]'
       )
       .forEach(build);
 
@@ -1807,7 +1828,7 @@
 
     var inputs =
       root.querySelectorAll(
-        'input[type="date"]'
+        'input[data-gt-legacy-off]'
       );
 
     Array.prototype.forEach.call(
@@ -2015,10 +2036,157 @@
     });
     input.addEventListener('change', function () { refresh(inst); }); input.addEventListener('input', function () { refresh(inst); });
   }
-  function scan() { [].forEach.call(document.querySelectorAll("input[type='month']:not([data-gt-month-ready='1'])"), build); }
+  function scan() { [].forEach.call(document.querySelectorAll('input[data-gt-legacy-off]'), build); }
   document.addEventListener('click', function (e) { if (cur && !e.target.closest('.gt-mo-pop') && !e.target.closest('.gt-cal')) closeAll(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && cur) { var t = cur.trigger; closeAll(); t.focus(); } });
   window.addEventListener('resize', closeAll); window.addEventListener('scroll', function (e) { if (cur && !e.target.closest) closeAll(); }, true);
   function start() { scan(); var t; new MutationObserver(function () { clearTimeout(t); t = setTimeout(scan, 30); }).observe(document.documentElement, { childList: true, subtree: true }); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
+/* ============================================================
+   GT-PICKER: one calendar for every date and month field in the app.
+   Replaces the native browser pickers and the older calendar scripts above (their scans are switched off).
+   The original <input> stays in the page (hidden), so existing code that reads .value or listens for change keeps working.
+   ============================================================ */
+(function () {
+  'use strict';
+  if (window.GTPickerLoaded) return; window.GTPickerLoaded = true;
+  var MF = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  var MS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  var WD = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  var ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>';
+  var desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  var pop = null, back = null, cur = null;
+  function p2(n) { return String(n).padStart(2, '0'); }
+  function now() { var d = new Date(); return { y: d.getFullYear(), m: d.getMonth(), d: d.getDate() }; }
+  function parse(v) { var m = /^(\d{4})-(\d{2})(?:-(\d{2}))?/.exec(v || ''); return m ? { y: +m[1], m: +m[2] - 1, d: m[3] ? +m[3] : 1 } : null; }
+  function iso(y, m, d) { return y + '-' + p2(m + 1) + '-' + p2(d); }
+  function lab(inst) {
+    var q = parse(inst.input.value);
+    if (!q) return '';
+    return inst.kind === 'month' ? MF[q.m] + ' ' + q.y : q.d + ' ' + MS[q.m] + ' ' + q.y;
+  }
+  function refresh(inst) {
+    var t = lab(inst);
+    inst.label.textContent = t || (inst.kind === 'month' ? 'Select month' : 'Select date');
+    inst.btn.classList.toggle('empty', !t);
+  }
+  function lim(inst, a) { return inst.input.getAttribute(a) || ''; }
+  function badMonth(inst, y, m) { var v = y + '-' + p2(m + 1), mn = lim(inst, 'min').slice(0, 7), mx = lim(inst, 'max').slice(0, 7); return !!((mn && v < mn) || (mx && v > mx)); }
+  function badYear(inst, y) { var mn = lim(inst, 'min').slice(0, 4), mx = lim(inst, 'max').slice(0, 4); return !!((mn && String(y) < mn) || (mx && String(y) > mx)); }
+  function badDay(inst, s) { var mn = lim(inst, 'min'), mx = lim(inst, 'max'); return !!((mn && s < mn) || (mx && s > mx)); }
+
+  function ensure() {
+    if (pop) return;
+    back = document.createElement('div'); back.className = 'gtp-back'; document.body.appendChild(back);
+    pop = document.createElement('div'); pop.className = 'gtp-pop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Choose date'); document.body.appendChild(pop);
+    pop.addEventListener('click', onPop);
+    back.addEventListener('click', close);
+  }
+  function head(prev, title, next, tAct) {
+    return '<div class="gtp-head"><button type="button" class="gtp-nav" data-a="' + prev + '" aria-label="Previous">&#8249;</button>' +
+      '<button type="button" class="gtp-title" data-a="' + tAct + '">' + title + (tAct === 'none' ? '' : '<i aria-hidden="true"></i>') + '</button>' +
+      '<button type="button" class="gtp-nav" data-a="' + next + '" aria-label="Next">&#8250;</button></div>';
+  }
+  function draw() {
+    var i = cur, t = now(), sel = parse(i.input.value), h = '';
+    if (i.view === 'days') {
+      var first = new Date(i.y, i.m, 1).getDay(), dim = new Date(i.y, i.m + 1, 0).getDate(), cells = '';
+      h = head('pm', MF[i.m] + ' ' + i.y, 'nm', 'months') + '<div class="gtp-week">' + WD.map(function (w) { return '<span>' + w + '</span>'; }).join('') + '</div><div class="gtp-days">';
+      for (var c = 0; c < 42; c++) {
+        var dt = new Date(i.y, i.m, 1 - first + c), s = iso(dt.getFullYear(), dt.getMonth(), dt.getDate()), out = dt.getMonth() !== i.m;
+        var on = sel && sel.y === dt.getFullYear() && sel.m === dt.getMonth() && sel.d === dt.getDate(), td = t.y === dt.getFullYear() && t.m === dt.getMonth() && t.d === dt.getDate();
+        cells += '<button type="button" class="gtp-day' + (out ? ' out' : '') + (on ? ' on' : '') + (td ? ' td' : '') + '" data-day="' + s + '"' + (badDay(i, s) ? ' disabled' : '') + '>' + dt.getDate() + '</button>';
+        if (c >= 34 && c % 7 === 6 && dt.getMonth() !== i.m && c < 41) { /* a sixth row is only needed when the month spills into it */ }
+      }
+      h += cells + '</div><div class="gtp-foot"><button type="button" class="gtp-link" data-a="today">Today</button></div>';
+    } else if (i.view === 'months') {
+      h = head('py', String(i.y), 'ny', 'years') + '<div class="gtp-grid">' + MS.map(function (n, k) {
+        var on = sel && sel.y === i.y && sel.m === k, td = t.y === i.y && t.m === k;
+        return '<button type="button" class="gtp-cell' + (on ? ' on' : '') + (td ? ' td' : '') + '" data-mon="' + k + '"' + (badMonth(i, i.y, k) ? ' disabled' : '') + '>' + n + '</button>';
+      }).join('') + '</div>' + (i.kind === 'month' ? '<div class="gtp-foot"><button type="button" class="gtp-link" data-a="today">This month</button></div>' : '');
+    } else {
+      var s0 = i.dec;
+      h = head('pd', s0 + ' &ndash; ' + (s0 + 11), 'nd', 'none') + '<div class="gtp-grid">';
+      for (var y = s0; y < s0 + 12; y++) h += '<button type="button" class="gtp-cell' + (sel && sel.y === y ? ' on' : '') + (t.y === y ? ' td' : '') + '" data-yr="' + y + '"' + (badYear(i, y) ? ' disabled' : '') + '>' + y + '</button>';
+      h += '</div>';
+    }
+    pop.innerHTML = '<div class="gtp-view gtp-v-' + i.view + '">' + h + '</div>';
+  }
+  function pick(s) {
+    var i = cur, inp = i.input;
+    desc.set.call(inp, s); refresh(i);
+    var b = i.btn; close(true);
+    inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true }));
+    try { b.focus(); } catch (e) {}
+  }
+  function onPop(e) {
+    var el = e.target.closest('button'); if (!el || !cur || el.disabled) return;
+    var i = cur, a = el.getAttribute('data-a');
+    if (el.hasAttribute('data-day')) return pick(el.getAttribute('data-day'));
+    if (el.hasAttribute('data-mon')) {
+      var k = +el.getAttribute('data-mon');
+      if (i.kind === 'month') return pick(i.y + '-' + p2(k + 1));
+      i.m = k; i.view = 'days'; return draw();
+    }
+    if (el.hasAttribute('data-yr')) { i.y = +el.getAttribute('data-yr'); i.view = 'months'; return draw(); }
+    if (a === 'pm') { i.m--; if (i.m < 0) { i.m = 11; i.y--; } }
+    else if (a === 'nm') { i.m++; if (i.m > 11) { i.m = 0; i.y++; } }
+    else if (a === 'py') i.y--; else if (a === 'ny') i.y++;
+    else if (a === 'pd') i.dec -= 12; else if (a === 'nd') i.dec += 12;
+    else if (a === 'months') i.view = 'months';
+    else if (a === 'years') { i.view = 'years'; i.dec = i.y - 4; }
+    else if (a === 'today') { var t = now(); if (i.kind === 'month') { if (!badMonth(i, t.y, t.m)) pick(t.y + '-' + p2(t.m + 1)); } else if (!badDay(i, iso(t.y, t.m, t.d))) pick(iso(t.y, t.m, t.d)); return; }
+    draw();
+  }
+  function place() {
+    if (!cur) return;
+    var r = cur.btn.getBoundingClientRect(), vw = window.innerWidth, vh = window.innerHeight;
+    if (vw <= 520) { pop.style.left = pop.style.top = ''; pop.classList.add('sheet'); back.classList.add('on'); return; }
+    pop.classList.remove('sheet'); back.classList.remove('on');
+    var w = pop.offsetWidth, h = pop.offsetHeight, l = Math.min(Math.max(10, r.left), vw - w - 10), t = r.bottom + 8;
+    if (t + h > vh - 10 && r.top - h - 8 > 10) t = r.top - h - 8;
+    t = Math.max(10, Math.min(t, vh - h - 10));
+    pop.style.left = Math.round(l) + 'px'; pop.style.top = Math.round(t) + 'px';
+  }
+  function open(inst) {
+    if (inst.input.disabled) return;
+    if (cur) close(true);
+    ensure(); cur = inst;
+    var q = parse(inst.input.value) || now();
+    inst.y = q.y; inst.m = q.m; inst.dec = q.y - 4; inst.view = inst.kind === 'month' ? 'months' : 'days';
+    inst.btn.setAttribute('aria-expanded', 'true'); inst.wrap.classList.add('open');
+    draw(); pop.classList.add('open'); place();
+  }
+  function close(keep) {
+    if (!cur) return;
+    cur.btn.setAttribute('aria-expanded', 'false'); cur.wrap.classList.remove('open');
+    var b = cur.btn; cur = null;
+    if (pop) { pop.classList.remove('open'); pop.classList.remove('sheet'); } if (back) back.classList.remove('on');
+    if (keep !== true) { try { b.focus(); } catch (e) {} }
+  }
+  function build(input) {
+    if (input.getAttribute('data-gtp') === '1') return;
+    var kind = input.type === 'month' ? 'month' : 'date';
+    input.setAttribute('data-gtp', '1');
+    var wrap = document.createElement('span'); wrap.className = 'gtp gtp-' + kind;
+    var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'gtp-btn'; btn.setAttribute('aria-haspopup', 'dialog'); btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-label', input.getAttribute('aria-label') || (kind === 'month' ? 'Choose month' : 'Choose date'));
+    var label = document.createElement('span'); label.className = 'gtp-label'; var ic = document.createElement('span'); ic.className = 'gtp-ic'; ic.innerHTML = ICON;
+    btn.appendChild(label); btn.appendChild(ic);
+    input.parentNode.insertBefore(wrap, input); wrap.appendChild(input); wrap.appendChild(btn);
+    input.classList.add('gtp-native'); input.tabIndex = -1; input.setAttribute('aria-hidden', 'true');
+    var inst = { input: input, kind: kind, wrap: wrap, btn: btn, label: label };
+    Object.defineProperty(input, 'value', { configurable: true, get: function () { return desc.get.call(input); }, set: function (v) { desc.set.call(input, v); refresh(inst); } });
+    input.addEventListener('change', function () { refresh(inst); });
+    btn.addEventListener('click', function (e) { e.preventDefault(); if (cur === inst) close(); else open(inst); });
+    refresh(inst);
+  }
+  function scan() { [].forEach.call(document.querySelectorAll('input[type="date"]:not([data-gtp]),input[type="month"]:not([data-gtp])'), build); }
+  document.addEventListener('mousedown', function (e) { if (cur && !e.target.closest('.gtp-pop') && !e.target.closest('.gtp-btn')) close(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && cur) { e.stopPropagation(); close(); } }, true);
+  window.addEventListener('resize', function () { if (cur) place(); });
+  window.addEventListener('scroll', function (e) { if (cur && !(pop && pop.contains(e.target))) place(); }, true);
+  function start() { scan(); new MutationObserver(scan).observe(document.documentElement, { childList: true, subtree: true }); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

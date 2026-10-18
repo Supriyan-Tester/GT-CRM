@@ -64,7 +64,19 @@
   .po-out:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
   .po-todo { font-size: 12.5px; color: var(--muted); text-align: center; min-height: 18px; }
   .po-wa { display: flex; align-items: center; justify-content: center; height: 46px; border-radius: var(--radius-btn); border: 1.5px solid #25D366; color: #16A34A; font-weight: 700; font-size: 14px; text-decoration: none; background: var(--card); }
-</style></head>
+</style>
+<style>
+
+/* GM-WORKER-FULL-WIDTH-v1 */
+.app {
+    width: 100% !important;
+    max-width: none !important;
+    box-sizing: border-box !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+</style>
+</head>
 <body>
 <main class="app">
   <header class="po-head">
@@ -176,13 +188,16 @@
     checkReturns.checked = true;
   } else $('returnsListContainer').innerHTML = rows.join('');
 
+  var HELPER = GM.getData().crewRole === 'helper';
+  if (HELPER) { var kc = $('startKmDisplay').closest('.po-card'); if (kc) kc.style.display = 'none'; }
   function calc() {
+    if (HELPER) return true;
     var v = parseInt(endKmInput.value, 10);
     endKmField.classList.remove('err'); kmErr.textContent = ''; kmErr.style.color = '';
     if (isNaN(v)) { $('drivenKmDisplay').textContent = '-- km'; return false; }
     if (v < startKm) { endKmField.classList.add('err'); kmErr.textContent = 'Ending KM cannot be lower than morning start (' + startKm.toLocaleString('en-IN') + ' km)'; $('drivenKmDisplay').textContent = 'Invalid'; return false; }
     var d = v - startKm; $('drivenKmDisplay').textContent = d + ' km';
-    if (d > 250) { kmErr.style.color = 'var(--accent)'; kmErr.textContent = 'High mileage: ' + d + ' km driven today.'; }
+    if (d > GM.settings().highKm) { kmErr.style.color = 'var(--accent)'; kmErr.textContent = 'High mileage: ' + d + ' km driven today.'; }
     return true;
   }
   function waLink() {
@@ -207,7 +222,7 @@
 
   outBtn.addEventListener('click', function () {
     var endVal = parseInt(endKmInput.value, 10);
-    GM.updateShift({ punchedOut: true, punchOutTime: endTimeStr, endKm: endVal, drivenKm: endVal - startKm, handoverCompleted: true });
+    GM.updateShift(HELPER ? { punchedOut: true, punchOutTime: endTimeStr, endKm: null, drivenKm: 0, handoverCompleted: true } : { punchedOut: true, punchOutTime: endTimeStr, endKm: endVal, drivenKm: endVal - startKm, handoverCompleted: true });
     outBtn.disabled = true; outBtn.textContent = 'Day closed. Summary sent to the office.';
     setTimeout(function () {
       localStorage.removeItem('gm_logged_in');

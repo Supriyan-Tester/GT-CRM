@@ -40,13 +40,22 @@ var saved = loadDepot(), map, marker, ring;
 // Own pin (the library's image files are not part of this project)
 var PIN = L.divIcon({ className: 'pf2-pin', iconSize: [30, 40], iconAnchor: [15, 38], html: '<svg viewBox="0 0 30 40" width="30" height="40"><path d="M15 1C7.3 1 1 7.2 1 14.8 1 25 15 39 15 39s14-14 14-24.2C29 7.2 22.7 1 15 1z" fill="#0F766E" stroke="#fff" stroke-width="2"/><circle cx="15" cy="14.5" r="5.2" fill="#fff"/></svg>' });
 
+var ST = GM.settings();
+var rulesCard = '<div class="card" style="margin:0"><div class="card-title">Work rules</div>' +
+  '<p class="pf2-hint">These rules apply to every employee phone. Changes show on their phones within a minute.</p>' +
+  '<div class="pf2-two"><div class="a-fg"><label for="rLate">Late after (time)</label><div class="field a-f"><input id="rLate" type="time" value="' + esc(('0' + ST.lateAfter).slice(-5)) + '"></div></div>' +
+  '<div class="a-fg"><label for="rHigh">Warn if driven more than (km a day)</label><div class="field a-f"><input id="rHigh" inputmode="numeric" value="' + ST.highKm + '"></div></div></div>' +
+  '<div class="a-fg"><label for="rJump">Warn if morning KM is more than (km) above last evening KM</label><div class="field a-f"><input id="rJump" inputmode="numeric" value="' + ST.jumpKm + '"></div></div>' +
+  '<label style="display:flex;gap:10px;align-items:flex-start;margin:4px 0 14px;cursor:pointer"><input type="checkbox" id="rDepot"' + (ST.requireDepot ? ' checked' : '') + ' style="width:20px;height:20px;margin-top:2px"><span><b>Employees must be at the depot to punch in and out</b><br><small style="color:var(--muted)">When off, the app only shows a warning. This works only after you save the depot location.</small></span></label>' +
+  '<div class="a-fg"><label for="rReasons">Reasons for returned goods (one on each line, up to 20)</label><div class="field a-f"><textarea id="rReasons" rows="8" style="width:100%">' + esc(ST.returnReasons.join('\n')) + '</textarea></div></div>' +
+  '<div class="pf2-acts"><button class="btn a-btn" id="rSave" type="button">Save work rules</button><button class="btn btn-secondary a-btn" id="rReset" type="button">Back to standard</button></div><div class="pf2-msg" id="rMsg" role="status"></div></div>';
 pg.innerHTML =
   '<div class="pf2-grid">' +
   '<div style="display:flex;flex-direction:column;gap:16px;min-width:0">' +
   '<div class="card" style="margin:0"><div class="card-title">Account</div>' +
     '<div class="pf2-me"><span class="chip c-p">' + esc((me.name || 'A').charAt(0).toUpperCase()) + '</span><div><b>' + esc(me.name || 'Admin') + '</b><span>' + esc(me.role || 'Admin') + '</span></div></div>' +
     '<div class="pf2-kv"><small>Name</small><b>' + esc(me.name || '-') + '</b><small>Role</small><b>' + esc(me.role || '-') + '</b><small>Mobile</small><b>' + (admin.phone ? '+91 ' + esc(admin.phone) : '-') + '</b></div>' +
-  '</div>' + GA.backupCard() + '</div>' +
+  '</div>' + GA.backupCard() + rulesCard + '</div>' +
   '<div class="card"><div class="card-title"><span>Depot / godown location</span><span class="pf2-st" id="dSt"></span></div>' +
     '<p class="pf2-hint">Employees can punch in and out only when their phone is inside this circle. Click the map, drag the pin, type the coordinates, or stand at the godown and use your current location.</p>' +
     '<div class="a-fg"><label for="dName">Depot name</label><div class="field a-f"><input id="dName" placeholder="e.g. General Traders Godown"></div></div>' +
@@ -59,6 +68,26 @@ pg.innerHTML =
     '<div class="pf2-msg" id="dMsg" role="status"></div>' +
   '</div></div>';
 GA.bindBackup();
+function rmsg(t, k) { var m = $('rMsg'); m.textContent = t || ''; m.className = 'pf2-msg' + (k ? ' ' + k : ''); }
+$('rSave').onclick = function () {
+  var late = $('rLate').value, hi = parseInt($('rHigh').value, 10), jp = parseInt($('rJump').value, 10);
+  var rs = $('rReasons').value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+  var seen = {}; rs = rs.filter(function (x) { var k = x.toLowerCase(); if (seen[k]) return false; seen[k] = 1; return true; });
+  if (!/^\d{2}:\d{2}$/.test(late)) { rmsg('Choose the time after which a punch-in counts as late.', 'err'); return; }
+  if (!(hi >= 20 && hi <= 2000)) { rmsg('Daily km warning must be between 20 and 2000.', 'err'); return; }
+  if (!(jp >= 20 && jp <= 5000)) { rmsg('Morning KM warning must be between 20 and 5000.', 'err'); return; }
+  if (!rs.length) { rmsg('Add at least one reason for returned goods.', 'err'); return; }
+  if (rs.length > 20) { rmsg('Use at most 20 reasons.', 'err'); return; }
+  if (rs.some(function (x) { return x.length > 40; })) { rmsg('Each reason must be 40 letters or fewer, so it fits on the phone.', 'err'); return; }
+  try { localStorage.setItem('gm_admin_settings_v1', JSON.stringify({ lateAfter: late, highKm: hi, jumpKm: jp, requireDepot: $('rDepot').checked, returnReasons: rs, updated: new Date().toISOString() })); } catch (e) { rmsg('Could not save in this browser.', 'err'); return; }
+  rmsg('Saved. Employees get the new rules on their phones within a minute.', 'ok');
+};
+$('rReset').onclick = function () {
+  if (!confirm('Go back to the standard rules and reasons?')) return;
+  try { localStorage.removeItem('gm_admin_settings_v1'); } catch (e) {}
+  var D = GM.settingsDefault; $('rLate').value = D.lateAfter; $('rHigh').value = D.highKm; $('rJump').value = D.jumpKm; $('rDepot').checked = false; $('rReasons').value = D.returnReasons.join('\n'); rmsg('Standard rules restored.', 'ok');
+};
+
 
 function msg(t, kind) { var m = $('dMsg'); m.textContent = t || ''; m.className = 'pf2-msg' + (kind ? ' ' + kind : ''); }
 function status() { var s = $('dSt'); if (saved) { s.className = 'pf2-st set'; s.textContent = 'Saved'; } else { s.className = 'pf2-st unset'; s.textContent = 'Not set'; } }
@@ -115,7 +144,7 @@ $('dSave').onclick = function () {
 };
 $('dClear').onclick = function () {
   if (!saved) { msg('No depot location is saved.'); return; }
-  if (!confirm('Remove the depot location? Employees will be checked against the sample location again.')) return;
+  if (!confirm('Remove the depot location? Employees will not be checked against a location until you save a depot again.')) return;
   try { localStorage.removeItem(KEY); } catch (e) {}
   saved = null; $('dLat').value = $('dLng').value = $('dName').value = $('dAddr').value = ''; $('dRad').value = 200;
   if (marker) { map.removeLayer(marker); marker = null; } if (ring) { map.removeLayer(ring); ring = null; }

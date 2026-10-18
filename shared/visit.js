@@ -81,6 +81,7 @@
       V._id = navigator.geolocation.watchPosition(function (pos) {
         if (pos.coords.accuracy > MAXACC) return;
         var f = V.last = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy, t: Date.now() };
+        try { sessionStorage.setItem('gm_lastfix', JSON.stringify({ lat: f.lat, lng: f.lng, acc: Math.round(f.acc), t: f.t })); } catch (e) {}
         autoLeave(f);
         V._cbs.forEach(function (c) { try { c(f); } catch (e) {} });
       }, function (err) { V._cbs.forEach(function (c) { try { c(null, err); } catch (e) {} }); }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });

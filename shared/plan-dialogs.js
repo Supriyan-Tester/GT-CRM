@@ -33,7 +33,7 @@
   DP.dlg.addPlan = function () {
     if (pastBlock()) return;
     var date = DP.ctx.date(), S = DP.fresh();
-    var st = { order: 'route', id: DP.uid('P'), bills: null, fileName: '', rows: [], carryOff: {}, busy: false, rk: 0 };
+    var st = { helpers: [], order: 'route', id: DP.uid('P'), bills: null, fileName: '', rows: [], carryOff: {}, busy: false, rk: 0 };
     st.rows.push(blank());
     var rp = null, wp = null, vp = null, rowPk = {};
     function blank() { return { k: ++st.rk, code: '', inv: '', amount: '', boxes: '' }; }
@@ -45,6 +45,7 @@
         '<section class="dpw-main"><header class="dpw-h"><div><h3 id="apHT"></h3><p id="apHS"></p></div><span class="dpw-date">' + GA.icon('cal') + ' ' + esc(DP.niceDate(date)) + '</span></header>' +
         '<div class="dpw-pane" data-p="0"><div class="a-fg"><label class="dp-lbl" id="apRL">Route <b class="dpw-req">*</b></label><div id="apRoute"></div></div><div id="apPrev"></div>' +
           '<div class="dp-two"><div class="a-fg"><label class="dp-lbl" id="apWL">Employee <b class="dpw-req">*</b></label><div id="apWork"></div></div><div class="a-fg"><label class="dp-lbl" id="apVL">Vehicle <b class="dpw-req">*</b></label><div id="apVeh"></div></div></div>' +
+          '<div class="a-fg"><label class="dp-lbl">Helpers <em>(optional: riding along with the driver)</em></label><div id="apHelp" class="dp-helpers"></div></div>' +
           '<div class="a-fg"><label class="dp-lbl" for="apNotes">Plan notes <em>(optional, for the office)</em></label><textarea class="a-ta" id="apNotes" maxlength="300" rows="3" placeholder="Example: Priority, cover new customers in this area"></textarea></div></div>' +
         '<div class="dpw-pane" data-p="1" hidden><div id="apCarry"></div><div class="a-fg"><label class="dp-lbl" for="apFile">Upload Optech invoice file <em>(.xlsx)</em></label><div class="dpw-drop"><span>' + DP.icon('upload') + '</span><b>Choose the daily bill file</b><small>Supports Optech .xlsx files (also .csv or .txt lists)</small><input class="a-file" type="file" id="apFile" accept=".xlsx,.csv,.txt"></div><div class="mu" id="apFileInfo" style="font-size:13px;margin-top:8px" aria-live="polite"></div></div>' +
           '<details class="dp-man" id="apMan" open><summary>Or enter invoices manually</summary><div id="apRows"></div></details></div>' +
@@ -115,7 +116,7 @@
     function routeOf() { return S.routes.filter(function (r) { return r.id === rp.get(); })[0]; }
     function init(api) {
       rp = DP.picker(api.q('#apRoute'), { labelledBy: 'apRL', placeholder: S.routes.length ? 'Search routes...' : 'No routes yet', options: routeOptions, empty: 'No route matches.', onChange: function () { preview(); renderRows(); billInfo(); api.q('[data-msg]').textContent = ''; } });
-      wp = DP.picker(api.q('#apWork'), { labelledBy: 'apWL', placeholder: 'Search employees...', empty: 'No employee matches.', options: function () {
+      wp = DP.picker(api.q('#apWork'), { labelledBy: 'apWL', placeholder: 'Search employees...', empty: 'No employee matches.', onChange: function (v) { st.helpers = DP.lastHelpers(DP.fresh(), v, date); drawHelp(); }, options: function () {
         var S2 = DP.fresh();
         return GA.workers().filter(function (w) { return w.active; }).map(function (w) { var b = DP.workerBusy(S2, date, w.id), lv = GA.onLeaveOn(w.id, date); return { value: w.id, label: w.name, sub: GA.empCode(w.id) + (w.phone ? ' \u00b7 ' + w.phone : ''), disabled: !!(b || lv), reason: lv ? 'On leave on this date' : b ? 'Already has a plan (' + b.routeName + ')' : '' }; });
       } });
@@ -123,6 +124,8 @@
         var S2 = DP.fresh();
         return GA.vehicles().filter(function (v) { return v.active; }).map(function (v) { var b = DP.vehicleBusy(S2, date, v.id); return { value: v.id, label: v.number + (v.type ? ' (' + v.type + ')' : ''), disabled: !!b, reason: b ? 'In use by ' + b.worker : '' }; });
       } });
+      function drawHelp() { DP.helperBox(DP.$('apHelp'), date, wp.get(), st.helpers, null, function (L) { st.helpers = L; }); }
+      drawHelp();
       if (!S.routes.length) errMsg(api, 'There are no routes yet. Add one on the Routes page first.');
       show(0);
       api.q('#apReview').addEventListener('change', function (e) { if (e.target.name === 'apOrd') { st.order = e.target.value; if (st.road && st.road.done && !st.road.M) st.road = null; buildReview(reviewStops()); } });
@@ -282,8 +285,11 @@
         if (!vh || !vh.active) return { ok: false, error: 'That vehicle is not available.' };
         var bw = DP.workerBusy(S2, date, wid), bv = DP.vehicleBusy(S2, date, vid);
         if (bw) return { ok: false, error: w.name + ' already has a plan on this date (' + bw.routeName + ').' };
+        var hs = [], hbad = '';
+        st.helpers.forEach(function (hid) { var hw = DP.workerById(hid); if (!hw || !hw.active || hid === wid || hbad) return; if (GA.onLeaveOn(hid, date)) hbad = hw.name + ' (helper) is on leave on this date.'; else if (DP.workerBusy(S2, date, hid)) hbad = hw.name + ' (helper) already has a plan on this date.'; else hs.push(hid); });
+        if (hbad) return { ok: false, error: hbad };
         if (bv) return { ok: false, error: 'Vehicle ' + vh.number + ' is already used by ' + bv.worker + ' on this date.' };
-        var plan = { id: st.id, route: route.id, routeName: route.name, vehicleId: vh.id, vehicle: vh.number, vehicleLabel: vh.number + (vh.type ? ' (' + vh.type + ')' : ''), vehicleKm: vh.lastKm, workerId: w.id, worker: w.name, builtAt: Date.now(), stops: [], createdBy: DP.actor(), createdAt: Date.now() };
+        var plan = { id: st.id, route: route.id, routeName: route.name, vehicleId: vh.id, vehicle: vh.number, vehicleLabel: vh.number + (vh.type ? ' (' + vh.type + ')' : ''), vehicleKm: vh.lastKm, workerId: w.id, worker: w.name, helpers: hs, builtAt: Date.now(), stops: [], createdBy: DP.actor(), createdAt: Date.now() };
         var nt = api.q('#apNotes').value.trim(); if (nt) plan.notes = nt;
         var taken = DP.invTaken(S2, date), inv = {}, extra = [], dup = [], noCust = {};
         carry.forEach(function (s) { if (taken[s.inv]) return; taken[s.inv] = 1; plan.stops.push({ code: s.code, name: s.name, address: s.address, inv: s.inv, amount: s.amount, boxes: s.boxes, items: s.items, carried: true }); });
@@ -311,7 +317,7 @@
           plan.stops = fx.concat(rs); plan.orderMode = 'nearest';
         }
         plan.origOrder = plan.stops.map(function (s) { return s.inv; });
-        DP.history(plan, 'created', 'Plan created for ' + w.name + ' on ' + route.name + ' (' + plan.stops.length + ' deliveries).');
+        DP.history(plan, 'created', 'Plan created for ' + w.name + (hs.length ? ' with helper' + (hs.length > 1 ? 's ' : ' ') + hs.map(function (i) { return (DP.workerById(i) || {}).name || i; }).join(', ') : '') + ' on ' + route.name + ' (' + plan.stops.length + ' deliveries).');
         L = L.slice(); L.push(plan); S2.plans[date] = L;
         out.plan = plan; out.extra = extra; out.dup = dup; out.noCust = Object.keys(noCust);
         return { ok: true };
@@ -365,7 +371,7 @@
             var at = p.stops.length;
             if (pos === 'next') { for (var i = 0; i < p.stops.length; i++) if (DP.stopState(p, p.stops[i], date) === 'pending') { at = i; break; } }
             p.stops.splice(at, 0, stop); out.name = c.name; out.worker = p.worker; out.workerId = p.workerId;
-            DP.history(p, 'priority', 'Priority shop added: ' + c.name + ' (' + code + ')' + (time ? ' at ' + time : '') + (note ? ' - ' + note : ''), { notify: [p.workerId], workerText: 'Priority shop added to your route: ' + c.name + (time ? ', around ' + time : '') + (note ? '. ' + note : '') + '.' });
+            DP.history(p, 'priority', 'Priority shop added: ' + c.name + ' (' + code + ')' + (time ? ' at ' + time : '') + (note ? ' - ' + note : ''), { notify: DP.crew(p), workerText: 'Priority shop added to your route: ' + c.name + (time ? ', around ' + time : '') + (note ? '. ' + note : '') + '.' });
             return { ok: true };
           }).then(function (res) {
             DP.setBusy(api, btn, false, '');
@@ -401,7 +407,7 @@
             var c = DP.cust(S2, code); if (!c) return { ok: false, error: 'That shop was not found.' };
             if (DP.invTaken(S2, date)[inv]) return { ok: false, error: 'Invoice ' + inv + ' is already in a plan for this date.' };
             p.stops.push({ code: code, name: c.name, address: c.address || '', inv: inv, amount: Number(amt), boxes: bx });
-            DP.history(p, 'addshop', 'Shop added: ' + c.name + ', invoice ' + inv + '.', { notify: [p.workerId], workerText: 'A delivery was added to your route: ' + c.name + ' (invoice ' + inv + ').' });
+            DP.history(p, 'addshop', 'Shop added: ' + c.name + ', invoice ' + inv + '.', { notify: DP.crew(p), workerText: 'A delivery was added to your route: ' + c.name + ' (invoice ' + inv + ').' });
             out.worker = p.worker; out.name = c.name; return { ok: true };
           }).then(function (res) { DP.setBusy(api, btn, false, ''); if (!res.ok) { errMsg(api, res.error); return; } api.close(true); DP.ctx.refresh(); afterSave(res, out.name + ' added to the plan.', out.worker); });
         };
@@ -473,7 +479,7 @@
             if (cur !== nw) return { ok: false, error: 'The shops on this plan changed. Reopen Change order and try again.' };
             var by = {}; p.stops.forEach(function (s) { by[s.inv] = s; });
             p.stops = order.map(function (i) { return by[i]; }); out.worker = p.worker;
-            DP.history(p, 'order', 'Visit order changed (' + moved + ' stops moved). Route order unchanged.', { notify: [p.workerId], workerText: 'The order of your stops for today was changed. Check your route.' });
+            DP.history(p, 'order', 'Visit order changed (' + moved + ' stops moved). Route order unchanged.', { notify: DP.crew(p), workerText: 'The order of your stops for today was changed. Check your route.' });
             return { ok: true };
           }).then(function (res) { DP.setBusy(api, btn, false, ''); if (!res.ok) { api.q('[data-msg]').style.color = ''; errMsg(api, res.error); if (res.error === DP.STALE_MSG) DP.ctx.refresh(); return; } api.close(true); DP.ctx.refresh(); afterSave(res, "Visit order saved for today's plan.", out.worker); });
         };
@@ -512,14 +518,15 @@
               var w = DP.workerById(id); if (!w || !w.active) return { ok: false, error: 'That employee is not available.' };
               if (GA.onLeaveOn(id, date)) return { ok: false, error: w.name + ' is on leave on this date.' };
               var b = DP.workerBusy(S2, date, id, p.id); if (b) return { ok: false, error: w.name + ' already has a plan on this date (' + b.routeName + ').' };
+              if (Array.isArray(p.helpers)) p.helpers = p.helpers.filter(function (x) { return x !== w.id; });
               var oldId = p.workerId, oldName = p.worker; p.workerId = w.id; p.worker = w.name; out.worker = w.name;
-              var h = DP.history(p, 'worker', 'Employee changed from ' + oldName + ' to ' + w.name + '.', { notify: [oldId, w.id] });
+              var h = DP.history(p, 'worker', 'Employee changed from ' + oldName + ' to ' + w.name + '.', { notify: DP.crew(p).concat([oldId]).filter(function (x, i, a) { return a.indexOf(x) === i; }) });
               h.workerTexts = {}; h.workerTexts[oldId] = 'Your plan for ' + p.routeName + ' today was given to ' + w.name + '.'; h.workerTexts[w.id] = 'You were assigned ' + p.routeName + ' for today (' + p.stops.length + ' stops).';
             } else {
               var v = DP.vehicleById(id); if (!v || !v.active) return { ok: false, error: 'That vehicle is not available.' };
               var bv = DP.vehicleBusy(S2, date, id, p.id); if (bv) return { ok: false, error: 'Vehicle ' + v.number + ' is already used by ' + bv.worker + ' on this date.' };
               var oldV = p.vehicle; p.vehicleId = v.id; p.vehicle = v.number; p.vehicleLabel = v.number + (v.type ? ' (' + v.type + ')' : ''); p.vehicleKm = v.lastKm; out.worker = p.worker;
-              DP.history(p, 'vehicle', 'Vehicle changed from ' + oldV + ' to ' + v.number + '.', { notify: [p.workerId], workerText: 'Your vehicle for today is now ' + v.number + '.' });
+              DP.history(p, 'vehicle', 'Vehicle changed from ' + oldV + ' to ' + v.number + '.', { notify: DP.crew(p), workerText: 'Your vehicle for today is now ' + v.number + '.' });
             }
             return { ok: true };
           }).then(function (res) { DP.setBusy(api, btn, false, ''); if (!res.ok) { errMsg(api, res.error); if (res.error === DP.STALE_MSG) DP.ctx.refresh(); return; } api.close(true); DP.ctx.refresh(); afterSave(res, isW ? 'Employee changed.' : 'Vehicle changed.', isW ? null : out.worker); });
@@ -527,6 +534,47 @@
       }
     });
   }
+  /* ======================= Helpers (riding along with the driver) ======================= */
+  // Tick-list of people who can ride along. host = element, sel = chosen ids, planId = plan being edited (so its own helpers are not "busy").
+  DP.helperBox = function (host, date, driverId, sel, planId, onChange) {
+    if (!host) return; var S2 = DP.fresh(), L = GA.workers().filter(function (w) { return w.active && w.id !== driverId; });
+    if (!L.length) { host.innerHTML = '<span class="mu">No other employees.</span>'; return; }
+    host.innerHTML = L.map(function (w) {
+      var b = DP.workerBusy(S2, date, w.id, planId), lv = GA.onLeaveOn(w.id, date), off = !!(b || lv), on = sel.indexOf(w.id) > -1 && !off;
+      return '<label class="dp-hl' + (off ? ' off' : '') + '"><input type="checkbox" value="' + esc(w.id) + '"' + (on ? ' checked' : '') + (off ? ' disabled' : '') + '><span><b>' + esc(w.name) + '</b><small>' + esc(GA.empCode(w.id)) + (lv ? ' &middot; On leave' : b ? ' &middot; Already on a plan (' + esc(b.routeName) + ')' : '') + '</small></span></label>';
+    }).join('');
+    onChange(sel.filter(function (id) { var b = DP.workerBusy(S2, date, id, planId); return !b && !GA.onLeaveOn(id, date); }));
+    host.onchange = function () { onChange([].map.call(host.querySelectorAll('input:checked'), function (i) { return i.value; })); };
+  };
+  function helpersDlg(planId) {
+    if (pastBlock()) return; var p0 = guardPlan(planId); if (!p0) return;
+    var date = DP.ctx.date(), expect = p0.builtAt, chosen = (p0.helpers || []).slice();
+    DP.dialog({
+      title: 'Helpers', sub: 'People riding along with ' + p0.worker + '. They see the same route and can mark deliveries too.',
+      html: ctxLine(p0) + '<div id="hpBox" class="dp-helpers"></div><div class="dp-formmsg" data-msg role="alert"></div>' + footer('Cancel', 'Save helpers'),
+      onOpen: function (api) {
+        api.q('[data-no]').onclick = function () { api.close(); };
+        DP.helperBox(api.q('#hpBox'), date, p0.workerId, chosen, p0.id, function (L) { chosen = L; });
+        api.q('[data-ok]').onclick = function () {
+          var btn = api.q('[data-ok]'), out = {}; DP.setBusy(api, btn, true, 'Saving...');
+          DP.commit(function (S2) {
+            var p = planIn(S2, date, planId); if (!p || p.status === 'cancelled') return { ok: false, error: 'This plan is no longer active.' };
+            if (DP.stale(p, expect)) { expect = p.builtAt; return { ok: false, error: DP.STALE_MSG }; }
+            var before = (p.helpers || []).slice(), added = chosen.filter(function (x) { return before.indexOf(x) < 0; }), removed = before.filter(function (x) { return chosen.indexOf(x) < 0; });
+            for (var i = 0; i < added.length; i++) { var w = DP.workerById(added[i]); if (!w || !w.active) return { ok: false, error: 'That helper is not available.' }; if (GA.onLeaveOn(w.id, date)) return { ok: false, error: w.name + ' is on leave on this date.' }; if (DP.workerBusy(S2, date, w.id, p.id)) return { ok: false, error: w.name + ' already has a plan on this date.' }; }
+            if (!added.length && !removed.length) { out.same = true; return { ok: true }; }
+            var nm = function (id) { return (DP.workerById(id) || {}).name || id; };
+            p.helpers = chosen.slice();
+            var h = DP.history(p, 'helpers', 'Helpers changed: ' + (p.helpers.length ? p.helpers.map(nm).join(', ') : 'none') + '.', { notify: DP.crew(p).concat(removed) });
+            h.workerTexts = {}; added.forEach(function (id) { h.workerTexts[id] = 'You are a helper on ' + p.routeName + ' today with ' + p.worker + ' (' + p.stops.length + ' stops).'; });
+            removed.forEach(function (id) { h.workerTexts[id] = 'You are no longer a helper on ' + p.routeName + ' today.'; });
+            return { ok: true };
+          }).then(function (res) { DP.setBusy(api, btn, false, ''); if (!res.ok) { errMsg(api, res.error); if (res.error === DP.STALE_MSG) DP.ctx.refresh(); return; } api.close(true); DP.ctx.refresh(); if (out.same) DP.toast('No change.', 'ok'); else afterSave(res, 'Helpers saved.', 'the crew'); });
+        };
+      }
+    });
+  }
+  DP.dlg.helpers = helpersDlg;
   DP.dlg.worker = function (id) { changeAssign('worker', id); };
   DP.dlg.vehicle = function (id) { changeAssign('vehicle', id); };
 
@@ -600,8 +648,8 @@
             var i = a.stops.findIndex(function (s) { return s.inv === inv; }); if (i < 0) return { ok: false, error: 'That shop is no longer on this plan.' };
             if (DP.stopState(a, a.stops[i], date) !== 'pending') return { ok: false, error: 'That shop has already been visited.' };
             var st = a.stops.splice(i, 1)[0]; b.stops.push(st); out.to = b.worker; out.from = a.worker;
-            DP.history(a, 'move', st.name + ' moved to ' + b.worker + "'s plan.", { notify: [a.workerId], workerText: st.name + ' was moved to another employee.' });
-            DP.history(b, 'move', st.name + ' moved here from ' + a.worker + "'s plan.", { notify: [b.workerId], workerText: st.name + ' was added to your route.' });
+            DP.history(a, 'move', st.name + ' moved to ' + b.worker + "'s plan.", { notify: DP.crew(a), workerText: st.name + ' was moved to another employee.' });
+            DP.history(b, 'move', st.name + ' moved here from ' + a.worker + "'s plan.", { notify: DP.crew(b), workerText: st.name + ' was added to your route.' });
             return { ok: true };
           }).then(function (res) { DP.setBusy(api, btn, false, ''); if (!res.ok) { errMsg(api, res.error); if (res.error === DP.STALE_MSG) DP.ctx.refresh(); return; } api.close(true); DP.ctx.refresh(); afterSave(res, stop.name + ' moved to ' + out.to + "'s plan."); });
         };
@@ -625,7 +673,7 @@
             if (DP.stopState(p, p.stops[i], date) !== 'pending') return { ok: false, error: 'That shop has already been visited, so it cannot be removed.' };
             if (p.stops.length === 1) return { ok: false, error: 'A plan needs at least one shop. Cancel the route instead.' };
             p.stops.splice(i, 1); out.worker = p.worker;
-            DP.history(p, 'remove', stop.name + ' (invoice ' + inv + ') removed from the plan.', { notify: [p.workerId], workerText: stop.name + ' was removed from your route.' });
+            DP.history(p, 'remove', stop.name + ' (invoice ' + inv + ') removed from the plan.', { notify: DP.crew(p), workerText: stop.name + ' was removed from your route.' });
             return { ok: true };
           }).then(function (res) { DP.setBusy(api, btn, false, ''); if (!res.ok) { errMsg(api, res.error); if (res.error === DP.STALE_MSG) DP.ctx.refresh(); return; } api.close(true); DP.ctx.refresh(); afterSave(res, stop.name + ' removed from the plan.', out.worker); });
         };

@@ -9,7 +9,7 @@
   var ROLES = [['D', 'Delivery / Driver'], ['H', 'Helper'], ['S', 'Sales'], ['I', 'Inventory'], ['B', 'Billing'], ['L', 'Loading']];
   function rlet(role) { var r = String(role || 'Delivery'); if (/^deliv|driver/i.test(r)) return 'D'; for (var i = 0; i < ROLES.length; i++) if (ROLES[i][1] === r || ROLES[i][1].toLowerCase().indexOf(r.toLowerCase()) === 0) return ROLES[i][0]; return 'D'; }
   function rname(role) { var l = rlet(role); for (var i = 0; i < ROLES.length; i++) if (ROLES[i][0] === l) return ROLES[i][1]; return 'Delivery / Driver'; }
-  var S = { q: '', st: '', route: '', pgn: 1, view: 'table', tab: 'overview', cur: null }, P = {}, recs = {}, F = null;
+  var S = { q: '', st: '', route: '', pgn: 1, view: 'table', tab: 'overview', cur: null, am: '', vm: '' }, P = {}, recs = {}, F = null;
   var $ = function (i) { return document.getElementById(i); };
   function jl(k, d) { try { var r = JSON.parse(localStorage.getItem(k)); return r == null ? d : r; } catch (e) { return d; } }
   function loadP() { P = jl(PK, {}); }
@@ -223,15 +223,75 @@
   // ---------- 3-5. details, documents, routes ----------
   function tile(c, v, l) { return '<div class="wk-tile ' + c + '"><b>' + v + '</b><span>' + l + '</span></div>'; }
   function kv(l, v) { return '<div><small>' + l + '</small><b>' + (v === '' || v == null ? '-' : esc(v)) + '</b></div>'; }
+
+  // ---------- attendance + advances inside the employee page ----------
+  var AEK = 'gm_admin_attedit_v1', WD3 = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  function mshift(m, n) { var d = new Date(+m.slice(0, 4), +m.slice(5, 7) - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+  function mlabel(m) { return ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][+m.slice(5, 7) - 1] + ' ' + m.slice(0, 4); }
+  function monthBar(id, m) { return '<div class="wk-mbar"><button class="wk-ib" data-mv="-1" title="Previous month">&#8249;</button><div class="field"><input type="month" id="' + id + '" value="' + m + '"></div><button class="wk-ib" data-mv="1" title="Next month">&#8250;</button></div>'; }
+  function hm(x) { return x == null ? '-' : Math.floor(x / 60) + 'h ' + String(x % 60).padStart(2, '0') + 'm'; }
+  function tmins(t) { var m = /^(\d{1,2}):(\d{2})\s*(AM|PM)?/i.exec(t || ''); if (!m) return null; var h = +m[1]; if (m[3]) { h = h % 12; if (/pm/i.test(m[3])) h += 12; } return h * 60 + +m[2]; }
+  // One day of one employee: the punch record with any admin correction on top, otherwise absent / leave / day off (same rules as the Attendance page).
+  function dayOf(w, ds, edits, leaves) {
+    var td = GA.today(), lg = (recs[w.id] || {}).attendanceLog || {}, b = (lg[ds.slice(0, 7)] || {})[+ds.slice(8)], e = (edits[w.id] || {})[ds];
+    var o = { st: null, inT: '-', outT: '-', hrs: null, km: 0 };
+    if (b) { o.st = b.status; o.inT = b.inTime || '-'; o.outT = b.outTime || '-'; o.km = Number(b.km) || 0; var m = /(\d+)h\s*(\d+)m/.exec(b.hours || ''); if (m) o.hrs = +m[1] * 60 + +m[2]; }
+    if (e) { o.st = e.status; o.inT = e.inTime || '-'; o.outT = e.outTime || '-'; o.km = Number(e.km) || 0; o.hrs = null; }
+    if (o.hrs == null && o.inT !== '-' && o.outT !== '-') { var x = tmins(o.inT), y = tmins(o.outT); if (x != null && y != null && y >= x) o.hrs = y - x; }
+    if (!o.st) {
+      var dow = new Date(ds + 'T00:00:00').getDay(), start = w.created || '';
+      if (ds > td || (start && ds < start)) o.st = 'none';
+      else if (dow === 0) o.st = 'off';
+      else if (leaves.some(function (l) { return l.from <= ds && ds <= l.to; })) o.st = 'leave';
+      else if (ds === td && new Date().getHours() < 12) o.st = 'pending';
+      else o.st = 'absent';
+    }
+    return o;
+  }
+  var AB = { present: ['b-ac', 'Present'], late: ['b-lv', 'Late'], absent: ['b-ab', 'Absent'], leave: ['b-lea', 'On leave'], off: ['b-of', 'Day off'], pending: ['b-of', 'Not in yet'] };
+  function attendanceTab(w) {
+    var m = S.am, edits = (jl(AEK, null) || {}).edits || {}, lv = GA.leavesOf(w.id), n = new Date(+m.slice(0, 4), +m.slice(5, 7), 0).getDate(), rows = [], c = { present: 0, late: 0, absent: 0, leave: 0, off: 0 }, km = 0, mins = 0, hd = 0;
+    for (var d = n; d >= 1; d--) {
+      var ds = m + '-' + String(d).padStart(2, '0'), o = dayOf(w, ds, edits, lv);
+      if (o.st === 'none') continue;
+      if (c[o.st] != null) c[o.st]++; km += o.km; if (o.hrs != null) { mins += o.hrs; hd++; }
+      rows.push('<tr><td>' + d + ' ' + MN[+m.slice(5, 7) - 1] + '</td><td>' + WD3[new Date(ds + 'T00:00:00').getDay()] + '</td><td><span class="wk-b ' + (AB[o.st] || AB.off)[0] + '">' + (AB[o.st] || AB.off)[1] + '</span></td><td>' + esc(o.inT) + '</td><td>' + esc(o.outT) + '</td><td>' + (o.hrs == null ? '-' : hm(o.hrs)) + '</td><td>' + (o.km ? Math.round(o.km * 10) / 10 + ' km' : '-') + '</td></tr>');
+    }
+    var att = c.present + c.late;
+    return '<div class="wk-card"><h3>Attendance summary <span class="wk-hacts">' + monthBar('aM', m) + '<a class="btn btn-outline" style="padding:0 12px;min-height:36px;font-weight:600" href="attendance.html#worker/' + w.id + '">Full attendance page</a></span></h3>' +
+      '<div class="wk-tiles" style="margin:14px 0 0">' + tile('t-g', att, 'Days attended') + tile('t-y', c.late, 'Days late') + tile('t-r', c.absent, 'Days absent') + tile('t-i', c.leave, 'On leave') + tile('t-b', Math.round(km * 10) / 10 + ' km', 'Distance') + '</div>' +
+      '<p class="wk-sub" style="margin:10px 0 0">' + mlabel(m) + (hd ? ' &middot; average ' + hm(Math.round(mins / hd)) + ' per working day' : '') + ' &middot; ' + c.off + ' day' + (c.off === 1 ? '' : 's') + ' off</p></div>' +
+      '<div class="wk-card" style="margin-top:16px"><h3>Day by day</h3><div class="wk-scroll"><table class="wk-tbl"><thead><tr><th>Date</th><th>Day</th><th>Status</th><th>In</th><th>Out</th><th>Hours</th><th>Distance</th></tr></thead><tbody>' + (rows.join('') || '<tr><td colspan="7"><div class="wk-empty"><b>No records for this month</b></div></td></tr>') + '</tbody></table></div></div>';
+  }
+  function advancesTab(w) {
+    var m = S.vm, list = GA.entries(w.id, m), tot = function (t) { return list.filter(function (e) { return e.type === t; }).reduce(function (a, e) { return a + e.amount; }, 0); }, all = GA.entries(w.id, '');
+    var adv = tot('advance'), ded = tot('deduction');
+    return '<div class="wk-card"><h3>Advances &amp; deductions <span class="wk-hacts">' + monthBar('vM', m) + '<a class="btn btn-outline" style="padding:0 12px;min-height:36px;font-weight:600" href="advances.html">All employees</a><button class="btn" id="bAdv">+ Add entry</button></span></h3>' +
+      '<div class="wk-tiles wk-t3" style="margin:14px 0 0">' + tile('t-y', GA.ops.rupee(adv), 'Advances given') + tile('t-r', GA.ops.rupee(ded), 'Deductions') + tile('t-b', list.length, 'Entries this month') + '</div></div>' +
+      '<div class="wk-card" style="margin-top:16px"><h3>' + mlabel(m) + '</h3><div class="wk-scroll"><table class="wk-tbl"><thead><tr><th>Date</th><th>Title</th><th>Type</th><th>Amount</th><th></th></tr></thead><tbody>' + (list.map(function (e) {
+        return '<tr><td>' + dshort(e.date) + '</td><td>' + esc(e.title) + (e.note ? '<div style="color:var(--muted);font-size:12px">' + esc(e.note) + '</div>' : '') + '</td><td><span class="wk-b ' + (e.type === 'advance' ? 'b-lv' : 'b-cu') + '">' + (e.type === 'advance' ? 'Advance' : 'Deduction') + '</span></td><td><b>' + GA.ops.rupee(e.amount) + '</b></td><td><button class="wk-ib" data-ed="' + e.id + '" title="Delete entry">&times;</button></td></tr>';
+      }).join('') || '<tr><td colspan="5"><div class="wk-empty"><b>No entries in ' + mlabel(m) + '</b>' + (all.length ? 'Use the arrows to see other months.' : 'Add an advance or a deduction with the button above.') + '</div></td></tr>') + '</tbody></table></div></div>';
+  }
+  function advModal(w) {
+    modal('<h2>Add entry for ' + esc(w.name) + '</h2><label class="wk-lbl" for="eT">Type</label>' + sel('eT', [['advance', 'Advance (money given)'], ['deduction', 'Deduction (money cut)']], 'advance') + fgm('Title', 'eN', '', 'placeholder="e.g. Festival advance"') + fgm('Amount (₹)', 'eA', '', 'inputmode="numeric"') + fgm('Date', 'eD', GA.today(), 'type="date"') + fgm('Note (optional)', 'eO', '') + btns('Save entry'));
+    $('mNo').onclick = closeM;
+    $('mOk').onclick = function () {
+      var r = GA.addEntry({ workerId: w.id, type: $('eT').value, title: $('eN').value, amount: $('eA').value, date: $('eD').value, note: $('eO').value });
+      if (!r.ok) return merr(r.error);
+      S.vm = $('eD').value.slice(0, 7); closeM(); toast('Entry saved'); detail(w.id);
+    };
+  }
   function detail(id) {
     var w = find(id); if (!w) { pg.innerHTML = '<div class="wk-card"><div class="wk-empty"><b>Employee not found</b><a href="#">Back to employees</a></div></div>'; return; }
-    if (S.cur !== id) { S.tab = 'overview'; S.cur = id; }
+    if (S.cur !== id) { S.tab = 'overview'; S.cur = id; S.am = S.vm = GA.today().slice(0, 7); }
     var p = prof(id), tabs = [['overview', 'Overview'], ['attendance', 'Attendance'], ['routes', 'Routes'], ['documents', 'Documents'], ['advances', 'Advances'], ['notes', 'Notes']], main = '';
     var lg = (recs[id] || {}).attendanceLog || {}, pr = 0, la = 0, km = 0;
     Object.keys(lg).forEach(function (mk) { Object.keys(lg[mk]).forEach(function (d) { var x = lg[mk][d]; if (x.status === 'present') pr++; if (x.status === 'late') { pr++; la++; } km += Number(x.km) || 0; }); });
     var c = cur(id);
     if (S.tab === 'overview') main = '<div class="wk-2"><div class="wk-col"><div class="wk-card"><h3>Basic details</h3><div class="wk-kv">' + kv('Full name', w.name) + kv('Employee ID', code(w)) + (isRel(w) ? kv('Relieved on', dshort(p.relieved.date)) + kv('Relieving reason', p.relieved.reason) : '') + kv('Phone', '+91 ' + w.phone) + kv('Alternate phone', p.altPhone ? '+91 ' + p.altPhone : '') + kv('Role', rname(p.role)) + kv('Join date', dshort(p.joinDate || w.created)) + kv('Gender', p.gender) + kv('Date of birth', p.dob ? dshort(p.dob) : '') + kv('Current route', c ? c.route : '') + kv('Aadhaar / ID', p.idNumber) + kv('Address', p.address) + kv('Notes', p.notes) + '</div></div></div><div class="wk-col"><div class="wk-card" style="text-align:center"><h3>Profile photo</h3>' + av(w, 'xl') + '<div style="margin-top:10px"><button class="btn btn-outline" id="bChg">Change photo</button><input type="file" id="fPh" accept="image/jpeg,image/png,image/webp" hidden></div></div><div class="wk-card"><h3>Emergency contact</h3><div class="wk-kv">' + kv('Name', p.emName) + kv('Phone', p.emPhone ? '+91 ' + p.emPhone : (/\d/.test(w.emergency || '') ? w.emergency : '')) + '</div></div></div></div>' +
         '<div class="wk-card" style="margin-top:16px"><h3>Quick stats <small style="font-weight:400;color:var(--muted)">from the employee\'s punch records</small></h3><div class="wk-tiles" style="margin:0">' + tile('t-g', pr, 'Days present') + tile('t-y', la, 'Days late') + tile('t-b', Math.round(km * 10) / 10 + ' km', 'Total distance') + tile('t-i', pr ? Math.round(km / pr * 10) / 10 + ' km' : '-', 'Avg daily km') + '</div></div>';
+    else if (S.tab === 'attendance') main = attendanceTab(w);
+    else if (S.tab === 'advances') main = advancesTab(w);
     else if (S.tab === 'routes') {
       var hist = (p.assign || []).slice().reverse();
       main = '<div class="wk-card"><h3>Current assignment <button class="btn btn-outline" id="bAs">Edit assignment</button></h3><div class="wk-kv">' + kv('Assigned route', c ? c.route : 'None') + kv('Vehicle', c && c.vehicle ? c.vehicle : '') + kv('Effective from', c ? dshort(c.from) : '') + '</div></div><div class="wk-card" style="margin-top:16px"><h3>Route history</h3><div class="wk-scroll"><table class="wk-tbl"><thead><tr><th>#</th><th>Route</th><th>Vehicle</th><th>From</th><th>To</th></tr></thead><tbody>' + (hist.map(function (a, i) { return '<tr><td>' + (i + 1) + '</td><td>' + esc(a.route) + '</td><td>' + esc(a.vehicle || '-') + '</td><td>' + dshort(a.from) + '</td><td>' + (a.to ? dshort(a.to) : '<span class="wk-b b-cu">Present</span>') + '</td></tr>'; }).join('') || '<tr><td colspan="5"><div class="wk-empty"><b>No route assigned yet</b></div></td></tr>') + '</tbody></table></div></div>';
@@ -239,18 +299,27 @@
       main = '<div class="wk-card"><h3>Documents <button class="btn" id="bUp">+ Upload document</button></h3><p class="wk-sub">JPG, PNG, WEBP or PDF, up to 5 MB each. One file per document type; uploading again replaces it.</p><div class="wk-scroll"><table class="wk-tbl"><thead><tr><th>#</th><th>Document type</th><th>File name</th><th>Uploaded on</th><th></th></tr></thead><tbody>' + DOCS.map(function (d, i) {
         var f = (p.files || {})[d[0]]; return '<tr><td>' + (i + 1) + '</td><td>' + d[1] + '</td><td>' + (f ? esc(f.name) : '<span style="color:var(--muted)">Not uploaded</span>') + '</td><td>' + (f ? dshort(new Date(f.at).toISOString().slice(0, 10)) : '-') + '</td><td>' + (f ? '<a class="btn btn-outline" style="padding:0 10px;min-height:30px" target="_blank" rel="noopener" href="' + fileUrl(id, d[0], f.at) + '">View</a> <button class="wk-ib" data-rm="' + d[0] + '" title="Remove">&times;</button>' : '<button class="btn btn-outline" style="padding:0 10px;min-height:30px" data-up="' + d[0] + '">Upload</button>') + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
     } else if (S.tab === 'notes') {
-      main = '<div class="wk-card"><h3>Notes</h3><div class="field"><textarea id="nT" rows="6" placeholder="Add notes about this employee...">' + esc(p.notes || '') + '</textarea></div><div class="wk-act"><button class="btn" id="nS">Save notes</button></div></div>';
+      main = '<div class="wk-card wk-nc"><h3>Notes <small id="nCnt">' + (p.notes || '').length + ' / 1000</small></h3><p class="wk-sub">Private notes about this employee. Only admins can see them.</p><div class="wk-nbox"><textarea id="nT" rows="5" maxlength="1000" placeholder="Write a note, for example: good with customers, prefers morning routes...">' + esc(p.notes || '') + '</textarea></div><div class="wk-act"><span class="wk-nst" id="nSt">' + (p.notes ? 'Saved' : '') + '</span><button class="btn" id="nS" disabled>Save notes</button></div></div>';
     }
     pg.innerHTML = '<div class="wk-head"><span class="wk-menu" data-act><button class="wk-ib" id="dMore" title="More">&#8943;</button></span></div>' +
       '<div class="wk-who wk-hero">' + av(w, 'xl') + '<div class="wk-id"><div class="wk-idrow"><h2>' + esc(w.name) + '</h2>' + badge(w) + '</div><div class="wk-meta"><span class="wk-chip">' + esc(code(w)) + '</span><span>+91 ' + esc(w.phone) + '</span><span>' + esc(rname(p.role)) + '</span><span>Joined ' + dshort(p.joinDate || w.created) + '</span>' + (c && c.route ? '<span>' + esc(c.route) + '</span>' : '') + '</div></div></div><div class="wk-tabs">' + tabs.map(function (t) { return '<button data-t="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</div>' + main;
-    [].forEach.call(pg.querySelectorAll('[data-t]'), function (b) { b.onclick = function () { var t = b.getAttribute('data-t'); if (t === 'attendance') { location.href = 'attendance.html#worker/' + id; return; } if (t === 'advances') { location.href = 'advances.html'; return; } S.tab = t; detail(id); }; });
+    [].forEach.call(pg.querySelectorAll('[data-t]'), function (b) { b.onclick = function () { var t = b.getAttribute('data-t'); S.tab = t; detail(id); }; });
     $('dMore').onclick = function (e) { e.stopPropagation(); menu($('dMore'), id); };
     if ($('bChg')) { $('bChg').onclick = function () { $('fPh').click(); }; $('fPh').onchange = function () { var f = this.files[0]; if (!f) return; if (!/^image\/(jpeg|png|webp)$/.test(f.type) || f.size > 25 * 1024 * 1024) { toast('Choose a JPG, PNG or WEBP picture up to 25 MB.'); return; } upload(id, 'photo', f).then(function (m) { prof(id).files = Object.assign({}, prof(id).files, { photo: m }); saveP(); toast('Photo updated'); detail(id); }, function (e) { toast(e.message); }); }; }
+    [].forEach.call(pg.querySelectorAll('[data-mv]'), function (b) { b.onclick = function () { var k = S.tab === 'advances' ? 'vm' : 'am'; S[k] = mshift(S[k], +b.getAttribute('data-mv')); detail(id); }; });
+    if ($('aM')) $('aM').onchange = function () { if (this.value) { S.am = this.value; detail(id); } };
+    if ($('vM')) $('vM').onchange = function () { if (this.value) { S.vm = this.value; detail(id); } };
+    if ($('bAdv')) $('bAdv').onclick = function () { advModal(w); };
+    [].forEach.call(pg.querySelectorAll('[data-ed]'), function (b) { b.onclick = function () { if (confirm('Delete this entry? The employee will no longer see it.')) { GA.removeEntry(b.getAttribute('data-ed')); toast('Entry deleted'); detail(id); } }; });
     if ($('bAs')) $('bAs').onclick = function () { assignModal(w); };
     if ($('bUp')) $('bUp').onclick = function () { docModal(w, ''); };
     [].forEach.call(pg.querySelectorAll('[data-up]'), function (b) { b.onclick = function () { docModal(w, b.getAttribute('data-up')); }; });
     [].forEach.call(pg.querySelectorAll('[data-rm]'), function (b) { b.onclick = function () { if (confirm('Remove this document?')) rmFile(id, b.getAttribute('data-rm')).then(function () { toast('Document removed'); detail(id); }, function (e) { toast(e.message); }); }; });
-    if ($('nS')) $('nS').onclick = function () { prof(id).notes = $('nT').value.trim(); saveP(); toast('Notes saved'); };
+    if ($('nS')) {
+      var nt = $('nT'), saved = nt.value, grow = function () { nt.style.height = 'auto'; nt.style.height = Math.max(132, nt.scrollHeight + 2) + 'px'; };
+      grow(); nt.oninput = function () { grow(); $('nCnt').textContent = nt.value.length + ' / 1000'; var ch = nt.value.trim() !== saved.trim(); $('nS').disabled = !ch; $('nSt').textContent = ch ? 'Unsaved changes' : 'Saved'; };
+      $('nS').onclick = function () { prof(id).notes = nt.value.trim(); saved = prof(id).notes; saveP(); $('nS').disabled = true; $('nSt').textContent = 'Saved'; toast('Notes saved'); };
+    }
   }
   function docModal(w, kind) {
     modal('<h2>Upload document</h2><label class="wk-lbl" for="dK">Document type</label>' + sel('dK', DOCS.map(function (d) { return [d[0], d[1]]; }), kind || 'aadhaar') + '<label class="wk-lbl" for="dF">File</label><div class="field"><input type="file" id="dF" accept="image/jpeg,image/png,image/webp,application/pdf"></div>' + btns('Upload'));

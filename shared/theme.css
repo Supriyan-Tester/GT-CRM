@@ -2383,3 +2383,101 @@ body:not(:has(.a-main)) :is(.btn,.btn-hero,.btn-success,.btn-danger,.btn-seconda
 .gt-cal-sel-y{flex:0 0 76px;width:76px}
 .gt-cal-sel:focus-visible{outline:2px solid var(--primary,#087f78);outline-offset:1px}
 html[data-theme="dark"] .gt-cal-sel{background:#111827;color:#f8fafc;border-color:rgba(255,255,255,.16)}
+
+/* GT theme switch: same sliding light/dark pill as the sign-in page */
+.gt-switch{position:relative;display:inline-grid;grid-template-columns:1fr 1fr;flex:none;padding:4px;border-radius:999px;background:color-mix(in srgb,var(--card) 82%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid var(--border);box-shadow:0 6px 20px rgba(15,23,42,.10);vertical-align:middle}
+html[data-theme="dark"] .gt-switch{box-shadow:0 6px 20px rgba(0,0,0,.4)}
+.gt-switch::before{content:"";position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:999px;background:linear-gradient(135deg,var(--primary),color-mix(in srgb,var(--primary) 72%,#22d3ee));box-shadow:0 4px 12px color-mix(in srgb,var(--primary) 45%,transparent);transition:transform .28s cubic-bezier(.4,.1,.2,1)}
+.gt-switch:has([data-set="dark"][aria-pressed="true"])::before{transform:translateX(100%)}
+.gt-switch button{position:relative;z-index:1;width:38px;height:32px;padding:0;border:0;border-radius:999px;background:none;color:var(--muted);display:grid;place-items:center;cursor:pointer;transition:color .2s}
+.gt-switch button:hover{color:var(--text)}
+.gt-switch button[aria-pressed="true"]{color:var(--on-primary);background:none}
+.gt-switch button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.gt-switch svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .3s}
+#themeToggle.gt-switch:hover svg{transform:none}
+.a-top .gt-switch{margin-left:4px}
+.a-top .gt-switch button{width:34px;height:26px}
+.a-top .gt-switch svg{width:16px;height:16px}
+/* ============================================================
+   GT-PICKER (date + month fields)
+   ============================================================ */
+.gtp{display:flex;align-items:center;flex:1;min-width:0;width:100%;height:100%;position:relative}
+.gtp-native{position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important;margin:0!important;padding:0!important;border:0!important;left:0;bottom:0}
+.gtp-btn{flex:1;min-width:0;height:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 14px;border:0;background:none;color:var(--text);font:inherit;font-size:inherit;text-align:left;cursor:pointer;border-radius:inherit}
+.field .gtp-btn{font-size:16px}
+.gtp-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gtp-btn.empty .gtp-label{color:var(--muted)}
+.gtp-ic{display:grid;place-items:center;color:var(--primary);flex:none}
+.gtp-btn:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+.gtp.open .gtp-ic{color:var(--primary)}
+/* toolbar fields: just a compact button, no extra box around it */
+.a-acts .field:has(.gtp),.at-filters .field:has(.gtp),.vx-tools .field:has(.gtp),.a-bar .field:has(.gtp),.vx-datebox:has(.gtp){border:0!important;background:none!important;box-shadow:none!important;padding:0!important;width:auto!important;min-width:0!important;height:auto!important;flex:0 0 auto}
+.vx-datebox:has(.gtp)>span:not(.gtp):not(.gtp *){display:none}
+.vx-tools .field.a-f:has(.gtp){gap:6px;padding:0 0 0 10px!important}
+.a-acts .gtp,.at-filters .gtp,.vx-tools .gtp,.a-bar .gtp,.vx-datebox .gtp{width:auto;height:auto}
+.a-acts .gtp-btn,.at-filters .gtp-btn,.vx-tools .gtp-btn,.a-bar .gtp-btn,.vx-datebox .gtp-btn{height:38px;min-width:140px;padding:0 10px 0 12px;gap:8px;font-size:13px;border:1px solid var(--border);border-radius:10px;background:var(--card);flex:none}
+.a-acts .gtp-btn:hover,.at-filters .gtp-btn:hover,.vx-tools .gtp-btn:hover,.a-bar .gtp-btn:hover,.vx-datebox .gtp-btn:hover,.gtp.open .gtp-btn{border-color:var(--primary)}
+.a-acts .gtp-ic svg,.at-filters .gtp-ic svg,.vx-tools .gtp-ic svg,.a-bar .gtp-ic svg,.vx-datebox .gtp-ic svg{width:16px;height:16px}
+
+.gtp-back{position:fixed;inset:0;z-index:2147482999;background:rgba(15,23,42,.35);display:none}
+.gtp-back.on{display:block}
+.gtp-pop{position:fixed;z-index:2147483000;display:none;box-sizing:border-box;width:304px;padding:14px;border:1px solid var(--border);border-radius:18px;background:var(--card);color:var(--text);box-shadow:0 22px 54px rgba(15,23,42,.22),0 6px 16px rgba(15,23,42,.10)}
+.gtp-pop.open{display:block;animation:gtpIn .16s ease both}
+@keyframes gtpIn{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:none}}
+.gtp-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:10px}
+.gtp-nav{width:36px;height:36px;border:0;border-radius:10px;background:none;color:var(--muted);font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0}
+.gtp-nav:hover{background:var(--t-primary);color:var(--primary)}
+.gtp-title{flex:1;height:36px;border:0;border-radius:10px;background:none;color:var(--text);font:inherit;font-size:15px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.gtp-title:hover:not([data-a="none"]){background:var(--t-primary);color:var(--primary)}
+.gtp-title[data-a="none"]{cursor:default}
+.gtp-title i{width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translateY(-2px);opacity:.7}
+.gtp-week,.gtp-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.gtp-week span{height:28px;display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--muted)}
+.gtp-day{height:38px;border:0;border-radius:50%;background:none;color:var(--text);font:inherit;font-size:14px;cursor:pointer;display:grid;place-items:center;padding:0;position:relative}
+.gtp-day:hover:not(:disabled):not(.on){background:var(--t-primary);color:var(--primary)}
+.gtp-day.out{color:var(--muted);opacity:.55}
+.gtp-day.td:not(.on){box-shadow:inset 0 0 0 1.5px var(--primary);color:var(--primary);font-weight:700}
+.gtp-day.on,.gtp-cell.on{background:var(--primary);color:#fff;font-weight:700;opacity:1}
+.gtp-day:disabled,.gtp-cell:disabled{opacity:.3;cursor:not-allowed}
+.gtp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:4px 0 2px}
+.gtp-cell{height:46px;border:0;border-radius:12px;background:none;color:var(--text);font:inherit;font-size:14.5px;font-weight:500;cursor:pointer;padding:0}
+.gtp-cell:hover:not(:disabled):not(.on){background:var(--t-primary);color:var(--primary)}
+.gtp-cell.td:not(.on){box-shadow:inset 0 0 0 1.5px var(--primary);color:var(--primary);font-weight:700}
+.gtp-foot{display:flex;justify-content:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.gtp-link{border:0;background:none;color:var(--primary);font:inherit;font-size:14px;font-weight:700;cursor:pointer;padding:4px 8px;border-radius:8px}
+.gtp-link:hover{background:var(--t-primary)}
+@media (max-width:520px){
+  .gtp-pop.sheet{left:12px!important;right:12px;bottom:12px;top:auto!important;width:auto;padding:16px;border-radius:20px}
+  .gtp-day{height:42px}.gtp-cell{height:50px}
+}
+@media (prefers-reduced-motion:reduce){.gtp-pop.open{animation:none}}
+
+/* ============================================================
+   ADMIN BUTTON SIZES: one size for every button.
+   Action buttons 36px, small controls (page numbers, List/Cards switches) 32px, filter dropdowns 36px.
+   ============================================================ */
+body:has(.a-main) :is(.btn,.btn.a-btn,.gce-btn,.lv-btn,.al-btn,.gtc-clear,.at-seg button){height:36px!important;min-height:36px!important;padding:0 14px!important;font-size:13px!important;border-radius:10px!important;line-height:1}
+body:has(.a-main) :is(.btn,.lv-btn,.al-btn,.gce-btn) svg{width:16px;height:16px}
+body:has(.a-main) :is(.wk-pg button,.wk-tg button,.at-pg button,.rt-pg button,.pr-pages button,.gp-pages button,.gtc-pager button,#cPager button,.gtc-view-switch button,.rt-views button){height:32px!important;min-height:32px!important;min-width:32px;padding:0 10px;font-size:13px!important;border-radius:9px!important;line-height:1}
+body:has(.a-main) .a-seg button,body:has(.a-main) .rt-views button{padding:0 12px}
+body:has(.a-main) .gtc-view-switch{display:inline-flex;gap:4px}
+/* filter dropdowns in toolbars line up with the buttons beside them */
+body:has(.a-main) :is(.a-bar,.a-acts,.wk-filters,.at-filters,.vx-tools,.gtc-filters,.gtc-toolbar,.pr-filters,.pr-bar,.pr-tools,.rt-tools) .gt-dd-trigger{min-height:36px!important;height:36px!important;font-size:13px!important;border-radius:10px!important}
+body:has(.a-main) :is(.a-bar,.a-acts,.wk-filters,.at-filters,.vx-tools,.gtc-filters,.gtc-toolbar,.pr-filters,.pr-bar,.pr-tools,.rt-tools) .gtp-btn{height:36px;min-height:36px}
+body:has(.a-main) :is(.a-bar,.a-acts,.at-filters,.vx-tools) .gtp-btn{height:36px}
+body:has(.a-main) :is(.pr-foot,.rt-page-size,.gtc-pager,.pr-pg,.rt-foot) .gt-dd-trigger{min-height:32px!important;height:32px!important;font-size:13px!important;border-radius:9px!important}
+body:has(.a-main) .vx-ph2 .gt-dd-trigger{min-height:36px!important;height:36px!important;border-radius:10px!important}
+body:has(.a-main) .a-dn .a-dnb{height:36px;width:30px}
+
+/* GM-SCROLL-v1: one slim, rounded scrollbar everywhere (page, dropdown lists, tables, pop-ups). No arrow buttons. */
+*::-webkit-scrollbar{width:12px;height:12px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background-color:color-mix(in srgb,var(--muted,#64748b) 38%,transparent);border:3.5px solid transparent;background-clip:content-box;border-radius:999px;min-height:36px;transition:background-color .2s}
+*::-webkit-scrollbar-thumb:hover{background-color:color-mix(in srgb,var(--primary,#0f766e) 75%,transparent)}
+*::-webkit-scrollbar-thumb:active{background-color:var(--primary,#0f766e)}
+*::-webkit-scrollbar-button{display:none;width:0;height:0}
+*::-webkit-scrollbar-corner{background:transparent}
+.gt-dd-menu::-webkit-scrollbar{width:14px}
+.gt-dd-menu::-webkit-scrollbar-track{margin:8px 0}
+.gt-dd-menu::-webkit-scrollbar-thumb{border-width:4px}
+@supports (-moz-appearance:none){*{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--muted,#64748b) 45%,transparent) transparent}}

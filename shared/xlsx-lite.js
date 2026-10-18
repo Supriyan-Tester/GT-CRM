@@ -151,12 +151,13 @@ XLSXLite.bill = function (rows) {
     var r = rows[i], no = g(r, 'bill no');
     if (no) { cur = { inv: no, date: g(r, 'date'), party: g(r, 'party name').replace(/^\s*-\s*/, '').replace(/\s+/g, ' ').trim(), gstin: g(r, 'gstin').toUpperCase().replace(/\s/g, ''), amount: 0, qty: 0, lines: 0, items: [] }; bills.push(cur); }
     if (cur && g(r, 'item name')) {
-      var q = num(g(r, 'qty')), a = 0, ri = num(g(r, 'rate')) || num(g(r, 'rate+tax')) || num(g(r, 'rate + tax')) || num(g(r, 'rate incl tax')), nm = ['tot amt', 'total amt', 'tot amount', 'total amount', 'net amt', 'net amount', 'item amount', 'line total', 'amount', 'amt'];
+      var q = num(g(r, 'qty')), a = 0, ri = num(g(r, 'rate+tax')) || num(g(r, 'rate + tax')) || num(g(r, 'rate incl tax')) || num(g(r, 'rate')), nm = ['tot amt', 'total amt', 'tot amount', 'total amount', 'net amt', 'net amount', 'item amount', 'line total', 'amount', 'amt'];
       for (var z = 0; z < nm.length && !a; z++) a = num(g(r, nm[z]));
-      if (!a && q && ri) a = q * ri;   // no usable amount column (or its formulas have no saved result): quantity x rate
+      if (!a && q && ri) a = q * ri;   // no usable amount column (or its formulas have no saved result): quantity x rate with GST (the Rate+Tax column; plain Rate is before GST)
       cur.amount += a; cur.qty += q; cur.lines++;
       var mrp = num(g(r, 'mrp') || g(r, 'm.r.p') || g(r, 'm.r.p.') || g(r, 'mrp rate'));
-      cur.items.push({ name: g(r, 'item name'), mrp: mrp, qty: q, rate: q && a ? Math.round(a / q * 100) / 100 : ri, amt: Math.round(a * 100) / 100 });
+      var gp = num(g(r, 'gst %')) || num(g(r, 'igst %')) || num(g(r, 'gst')) || 0;
+      cur.items.push({ name: g(r, 'item name'), mrp: mrp, qty: q, gst: gp, rate: q && a ? Math.round(a / q * 100) / 100 : ri, amt: Math.round(a * 100) / 100 });
     }
   }
   bills = bills.filter(function (b) { return b.party && b.lines; });

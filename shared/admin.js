@@ -124,7 +124,7 @@
         }).catch(function (e) { say(e && e.message ? e.message : 'Could not download the backup. Check your connection.', 'err'); }).then(function () { go.disabled = false; });
       };
     },
-    logout: function () { try { sessionStorage.removeItem(SK); } catch (e) {} try { var x = new XMLHttpRequest(); x.open('POST', '/api/logout', false); x.send(); } catch (e) {} location.href = '../login.html'; },
+    logout: function () { try { sessionStorage.removeItem(SK); localStorage.removeItem('gt-remember-admin'); } catch (e) {} try { var x = new XMLHttpRequest(); x.open('POST', '/api/logout', false); x.send(); } catch (e) {} location.href = '../login.html'; },
     guard: function () { if (!GA.session()) { location.replace('../login.html'); throw new Error('Not signed in'); } },
 
     /* ---- Employees ---- */
@@ -284,7 +284,7 @@
     mount: function (page, title, opts) {
       opts = opts || {};
       GA.syncVehicleKm(); GA.ensureCodes();
-      var s = GA.session() || {}, nav = [['index.html', 'Home', 'home'], ['summary.html', 'Daily summary', 'report'], ['workers.html', 'Employees', 'users'], ['vehicles.html', 'Vehicles', 'truck'], ['plan.html', 'Daily plan', 'cal'], ['routes.html', 'Routes', 'map'], ['customers.html', 'Customers', 'store'], ['products.html', 'Products', 'box'], ['attendance.html', 'Attendance', 'clock'], ['advances.html', 'Advances', 'coin'], ['problems.html', 'Problems', 'alert'], ['activity.html', 'Activity log', 'check']];
+      var s = GA.session() || {}, nav = [['index.html', 'Home', 'home'], ['summary.html', 'Daily summary', 'report'], ['workers.html', 'Employees', 'users'], ['vehicles.html', 'Vehicles', 'truck'], ['plan.html', 'Daily plan', 'cal'], ['routes.html', 'Routes', 'map'], ['customers.html', 'Customers', 'store'], ['products.html', 'Products', 'box'], ['attendance.html', 'Attendance', 'clock'], ['advances.html', 'Advances', 'coin'], ['problems.html', 'Problems', 'alert'], ['live.html', 'Live location', 'map'], ['activity.html', 'Activity log', 'check']];
       var links = nav.map(function (n) { return '<a href="' + n[0] + '" title="' + n[1] + '"' + (n[0] === page ? ' aria-current="page"' : '') + '>' + GA.icon(n[2]) + '<span>' + n[1] + '</span></a>'; }).join('');
       document.body.innerHTML = '<div class="a-wrap"><aside class="a-side" id="aSide"><div class="a-brand"><img src="../assets/logo.png" alt=""><span>General Traders</span><button class="a-ib a-col" id="aCol" type="button" title="Collapse menu" aria-label="Collapse menu">' + GA.icon('panel') + '</button></div>' + links +
         '<div class="a-user"><a class="a-me" href="profile.html" title="My profile and depot location"' + (page === 'profile.html' ? ' aria-current="page"' : '') + '><span class="chip c-p">' + esc((s.name || 'A').charAt(0).toUpperCase()) + '</span><div style="flex:1"><b>' + esc(s.name) + '</b><span>' + esc(s.role) + '</span></div></a><button class="a-ib d" id="aOut" title="Sign out">' + GA.icon('logout') + '</button></div></aside>' +
@@ -413,17 +413,93 @@ GA.ops = (function () {
       return r;
     },
     // Every active shop that has an Area but no route goes on the route named after its Area (made if missing).
-    // Shops that were moved or set to "No route" by hand (noRoute) are left alone.
+    // Shops that were moved or set to "No route" by hand (noRoute / handRoute) are left alone.
     syncRoutes: function (S) {
       S.routes = S.routes || []; S.customers = S.customers || [];
       var have = {}, before = S.routes.length, moved = 0;
       S.routes.forEach(function (r) { r.codes.forEach(function (c) { have[c] = 1; }); });
       S.customers.forEach(function (c) {
-        if (!c.area || c.inactive || c.noRoute || have[c.code]) return;
+        if (!c.area || c.inactive || c.noRoute || c.handRoute || have[c.code]) return;
         var r = GA.ops.areaRoute(S, c.area); if (!r) return;
         r.codes.push(c.code); have[c.code] = 1; moved++;
       });
       return { moved: moved, made: S.routes.length - before };
+    },
+    // A shop is locked once the admin sets its route by hand (moved, or taken off its route). Uploads and suggestions never change it.
+    isLocked: function (c) { return !!(c && (c.noRoute || c.handRoute)); },
+    lockRoute: function (S, code) { var c = GA.ops.cust(S, code); if (c) c.handRoute = true; },
+    // Shops with no route whose address, place or area names an existing route. Each suggestion says how sure it is (how):
+    //   exact   = the town part of the address is exactly the route name
+    //   similar = spelled a little differently (Sarvanampatti / Saravanampatti)
+    //   road    = the route name appears only inside a road name ("Karamadai - Sirumugai Road")
+    //   near    = no usable address, so the route whose shops are closest on the map (km = distance, sure = clearly closer than any other route)
+    // Locked shops, inactive shops and shops that already have a route are never suggested.
+    suggestRoutes: function (S) {
+      var key = function (s) { return ' ' + String(s || '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim() + ' '; };
+      var lev = function (a, b) {
+        var m = a.length, n = b.length, d = [], i, j; if (Math.abs(m - n) > 2) return 9;
+        for (j = 0; j <= n; j++) d[j] = j;
+        for (i = 1; i <= m; i++) { var prev = d[0]; d[0] = i; for (j = 1; j <= n; j++) { var t = d[j]; d[j] = Math.min(d[j] + 1, d[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = t; } }
+        return d[n];
+      };
+      var routes = (S.routes || []).map(function (r) { var k = key(r.name); return { r: r, k: k, w: k.trim().split(' '), j: k.replace(/ /g, '') }; })
+        .filter(function (x) { return x.j.length > 2; }).sort(function (a, b) { return b.k.length - a.k.length; });
+      var have = {}; (S.routes || []).forEach(function (r) { r.codes.forEach(function (x) { have[x] = 1; }); });
+      var roadish = /(^| )(ROAD|RD|HIGHWAY|BYPASS|BY PASS|STREET|ST)( |$)/;
+      var exactIn = function (seg) { for (var i = 0; i < routes.length; i++) if (seg.indexOf(routes[i].k) > -1) return routes[i]; return null; };
+      var similarIn = function (seg) {
+        var sw = seg.trim().split(' ');
+        for (var i = 0; i < routes.length; i++) {
+          var rt = routes[i], len = rt.j.length, tol = len >= 8 ? 2 : (len >= 5 ? 1 : 0); if (!tol) continue;
+          for (var s = 0; s + rt.w.length <= sw.length; s++) { var cand = sw.slice(s, s + rt.w.length).join(''); if (lev(cand, rt.j) <= tol) return rt; }
+        }
+        return null;
+      };
+      var hasPin = function (c) { return c.lat != null && c.lng != null && c.lat !== '' && c.lng !== '' && isFinite(+c.lat) && isFinite(+c.lng); };
+      var km = function (la1, lo1, la2, lo2) {
+        var R = 6371, rad = Math.PI / 180, dLa = (la2 - la1) * rad, dLo = (lo2 - lo1) * rad;
+        var a = Math.sin(dLa / 2) * Math.sin(dLa / 2) + Math.cos(la1 * rad) * Math.cos(la2 * rad) * Math.sin(dLo / 2) * Math.sin(dLo / 2);
+        return 2 * R * Math.asin(Math.sqrt(a));
+      };
+      var pts = []; // located shops that are already on a route
+      (S.routes || []).forEach(function (r) { r.codes.forEach(function (code) { var x = GA.ops.cust(S, code); if (x && hasPin(x)) pts.push({ r: r, la: +x.lat, lo: +x.lng }); }); });
+      var nearest = function (c) {
+        if (!hasPin(c) || !pts.length) return null;
+        var best = {}, i, d; // closest member of each route
+        for (i = 0; i < pts.length; i++) { d = km(+c.lat, +c.lng, pts[i].la, pts[i].lo); if (best[pts[i].r.id] == null || d < best[pts[i].r.id].d) best[pts[i].r.id] = { r: pts[i].r, d: d }; }
+        var L = Object.keys(best).map(function (k) { return best[k]; }).sort(function (a, b) { return a.d - b.d; });
+        var b1 = L[0], b2 = L[1];
+        return { r: b1.r, d: b1.d, sure: b1.d <= 3 && (!b2 || b2.d >= b1.d * 1.5) };
+      };
+      var out = [];
+      (S.customers || []).forEach(function (c) {
+        if (c.inactive || have[c.code] || GA.ops.isLocked(c)) return;
+        // The town is written last, so read the address from its last part backwards. Road names are kept for the weakest pass.
+        var parts = String(c.address || '').split(/[,\n;]+/).reverse().concat([c.place, c.area]);
+        var clean = [], roads = [];
+        parts.forEach(function (raw) {
+          raw = String(raw || ''); if (!raw.trim()) return;
+          var seg = key(raw); if (/\s[-\u2013]\s/.test(raw) || roadish.test(seg)) roads.push(seg); else clean.push(seg);
+        });
+        var hit = null, how = '', i;
+        for (i = 0; i < clean.length && !hit; i++) { hit = exactIn(clean[i]); how = 'exact'; }
+        for (i = 0; i < clean.length && !hit; i++) { hit = similarIn(clean[i]); how = 'similar'; }
+        for (i = 0; i < roads.length && !hit; i++) { hit = exactIn(roads[i]); how = 'road'; }
+        if (hit) { out.push({ code: c.code, name: c.name, address: c.address || c.place || c.area || '', routeId: hit.r.id, routeName: hit.r.name, how: how }); return; }
+        var nr = nearest(c);
+        if (nr) out.push({ code: c.code, name: c.name, address: c.address || c.place || c.area || '', routeId: nr.r.id, routeName: nr.r.name, how: 'near', km: Math.round(nr.d * 10) / 10, sure: nr.sure });
+      });
+      return out;
+    },
+    // Put the approved shops on their suggested routes. Shops that got a route or were locked meanwhile are skipped.
+    applyRouteSuggestions: function (S, list) {
+      var n = 0;
+      list.forEach(function (s) {
+        var c = GA.ops.cust(S, s.code), r = (S.routes || []).filter(function (x) { return x.id === s.routeId; })[0];
+        if (!c || !r || c.inactive || GA.ops.isLocked(c) || GA.ops.routeOf(S, s.code)) return;
+        r.codes.push(s.code); n++;
+      });
+      return n;
     },
     rows: function (t) {
       var r = t.trim().split(/\r?\n/).map(function (l) { return l.split(',').map(function (c) { return c.trim().replace(/^"|"$/g, ''); }); }).filter(function (r) { return r.some(Boolean); });

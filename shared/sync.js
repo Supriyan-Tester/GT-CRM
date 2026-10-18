@@ -43,7 +43,7 @@ window.GMImg = {
     try { sessionStorage.removeItem('gm_admin_session'); } catch (e) {}
     location.replace('../login.html');
   }
-  var DATA_KEY = /^(gm_admin_|gm_crm_data_v5|gm_pins_v1|gm_pintasks_v1|gm_depot_v1|gm_wself_|gm_view_worker|gm_logged_in)/;
+  var DATA_KEY = /^(gm_admin_|gm_crm_data_v5|gm_pins_v1|gm_pintasks_v1|gm_depot_v1|gm_wself_|gm_crew_|gm_loc_|gm_locreq_|gm_view_worker|gm_logged_in)/;
   var rev = 0, pending = {}, written = {}, localOnly = { 'gm_logged_in': 1 }; localOnly[VIEW] = 1;
   // Stale-save protection (admin pages). krev[k] = newest server version of a shared record that this browser knows about.
   // readRev[k] = the version of it the page last READ. A save is sent together with that version, and the server refuses it when

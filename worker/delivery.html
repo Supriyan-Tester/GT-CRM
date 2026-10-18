@@ -5,542 +5,376 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>General Traders - Shop Delivery</title>
 <link rel="stylesheet" href="../shared/theme.css">
-<style>
-  /* GPS Arrival Banner */
-  .arrival-banner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: var(--t-success);
-    border: 1px solid var(--success);
-    border-radius: var(--radius-card);
-    padding: 12px 16px;
-    margin-bottom: 14px;
-  }
-  .arrival-text strong {
-    color: var(--success);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 14px;
-  }
-  .arrival-text span {
-    font-size: 12px;
-    color: var(--text);
-  }
-
-  /* Shop Overview Card */
-  .shop-hero {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-card);
-    overflow: hidden;
-    margin-bottom: 16px;
-    box-shadow: var(--shadow);
-  }
-  .shop-cover-img {
-    width: 100%;
-    height: 140px;
-    object-fit: cover;
-    background: var(--border);
-  }
-  .shop-body {
-    padding: 16px;
-  }
-  .shop-main-name {
-    font-size: 20px;
-    font-weight: 700;
-    line-height: 1.2;
-  }
-  .shop-main-addr {
-    font-size: 13px;
-    color: var(--muted);
-    margin-top: 4px;
-    line-height: 1.4;
-  }
-
-  /* Delivery Quantities & Invoice */
-  .delivery-stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-top: 14px;
-  }
-  .stat-box {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 8px;
-    text-align: center;
-  }
-  .stat-box small {
-    display: block;
-    font-size: 11px;
-    color: var(--muted);
-    margin-bottom: 2px;
-  }
-  .stat-box strong {
-    font-size: 15px;
-    font-weight: 700;
-  }
-
-  /* Quick Actions (Maps & Call) */
-  .action-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-top: 14px;
-  }
-
-  /* Two Stacked Main Buttons */
-  .main-actions-stack {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 4px;
-    margin-bottom: 20px;
-  }
-  .btn-delivered {
-    background: var(--success);
-    color: #FFFFFF;
-    height: 56px;
-    font-size: 17px;
-    font-weight: 700;
-  }
-  .btn-problem {
-    background: var(--card);
-    border: 1.5px solid var(--border);
-    color: var(--muted);
-    height: 56px;
-    font-size: 16px;
-    font-weight: 600;
-  }
-  .btn-problem:hover, .btn-problem:active {
-    color: var(--danger);
-    border-color: var(--danger);
-  }
-
-  /* Slide-Up Sheets */
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.65);
-    backdrop-filter: blur(2px);
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    z-index: 100;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
-  }
-  .modal-overlay.active {
-    opacity: 1;
-    pointer-events: auto;
-  }
-  .modal-sheet {
-    background: var(--card);
-    width: 100%;
-    max-width: 480px;
-    border-top-left-radius: 20px;
-    border-top-right-radius: 20px;
-    padding: 20px;
-    max-height: 90vh;
-    overflow-y: auto;
-    transform: translateY(100%);
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .modal-overlay.active .modal-sheet {
-    transform: translateY(0);
-  }
-  .modal-top-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-  }
-  .modal-close-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: 1px solid var(--border);
-    background: var(--bg);
-    color: var(--text);
-    display: grid;
-    place-items: center;
-    font-size: 16px;
-    font-weight: 700;
-    cursor: pointer;
-  }
-
-  /* Search Auto-complete for 1500+ products */
-  .search-results-list {
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    max-height: 160px;
-    overflow-y: auto;
-    background: var(--bg);
-    margin-top: 6px;
-    display: none;
-  }
-  .search-result-item {
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--border);
-    font-size: 13px;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .search-result-item:last-child {
-    border-bottom: 0;
-  }
-  .search-result-item:hover, .search-result-item:active {
-    background: var(--t-primary);
-    color: var(--primary);
-  }
-
-  .selected-prod-pill {
-    display: none;
-    align-items: center;
-    justify-content: space-between;
-    background: var(--t-primary);
-    border: 1px solid var(--primary);
-    border-radius: 10px;
-    padding: 8px 12px;
-    margin-top: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--primary);
-  }
-
-  /* Reason Cards */
-  .reason-card {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 12px 14px;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    cursor: pointer;
-  }
-  .reason-card.selected {
-    border-color: var(--primary);
-    background: var(--t-primary);
-  }
-
-  /* ---- Route details (new design) ---- */
-  .dv-wrap { width: 100%; max-width: 720px; margin: 0 auto; }
-  .dv-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-  .dv-back { width: 40px; height: 40px; border-radius: 12px; background: var(--card); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--text); flex-shrink: 0; box-shadow: var(--shadow); }
-  .dv-back svg { width: 20px; height: 20px; }
-  .dv-title { flex: 1; min-width: 0; }
-  .dv-title h1 { font-size: 18px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .dv-title p { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
-  .dv-mapcard { position: relative; border-radius: var(--radius-card); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); margin-bottom: 12px; background: var(--t-primary); }
-  #dMap { height: 190px; width: 100%; z-index: 0; }
-  .dm-empty { height: 190px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 16px; color: var(--muted); font-size: 13px; }
-  .dv-openmap { position: absolute; right: 10px; bottom: 10px; z-index: 500; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 10px; background: var(--card); color: var(--primary); font-size: 12.5px; font-weight: 700; text-decoration: none; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
-  .dv-openmap svg { width: 15px; height: 15px; }
-  .dv-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow); padding: 14px; margin-bottom: 12px; }
-  .dv-line { display: flex; align-items: center; gap: 12px; }
-  .dv-line + .dv-line { margin-top: 12px; }
-  .dv-ico { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--t-primary); color: var(--primary); flex-shrink: 0; }
-  .dv-ico svg { width: 18px; height: 18px; }
-  .dv-line b { display: block; font-size: 15px; font-weight: 700; }
-  .dv-line small { display: block; font-size: 12.5px; color: var(--muted); margin-top: 1px; }
-  .dv-line .dv-grow { flex: 1; min-width: 0; }
-  .dv-callround { width: 40px; height: 40px; border-radius: 50%; background: var(--t-success); color: var(--success); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .dv-callround svg { width: 18px; height: 18px; }
-  .dv-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
-  .dv-stats > div { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 8px; text-align: center; }
-  .dv-stats small { display: block; font-size: 11px; color: var(--muted); }
-  .dv-stats strong { display: block; font-size: 14px; margin-top: 2px; }
-  .dv-items { margin-bottom: 12px; }
-  .dv-items summary { cursor: pointer; font-weight: 600; font-size: 13px; }
-  .dv-markbtn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 54px; border: 0; border-radius: var(--radius-btn); background: linear-gradient(135deg, var(--hero1), var(--hero2)); color: var(--on-hero); font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(15,118,110,.2); font-family: inherit; }
-  .dv-markbtn svg { width: 20px; height: 20px; }
-  .dv-markbtn:disabled { opacity: .55; box-shadow: none; }
-  .dv-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 12px; }
-  .dv-two a, .dv-problem { display: flex; align-items: center; justify-content: center; gap: 8px; height: 46px; border-radius: var(--radius-btn); background: var(--card); border: 1.5px solid var(--border); color: var(--primary); font-size: 13.5px; font-weight: 700; text-decoration: none; cursor: pointer; font-family: inherit; }
-  .dv-two svg, .dv-problem svg { width: 17px; height: 17px; }
-  .dv-problem { width: 100%; color: var(--danger); margin-bottom: 12px; }
-  .dv-problem:disabled { opacity: .45; }
-  .dv-note { display: flex; gap: 12px; align-items: flex-start; }
-  .dv-note b { font-size: 13.5px; }
-  .dv-note p { font-size: 13px; color: var(--muted); margin-top: 2px; }
-  .arrival-banner { margin-bottom: 12px; }
-  .dv-visit { align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 12px; padding: 12px 14px; border-radius: 14px; background: var(--card, #fff); border: 1px solid var(--border); }
-  .dv-visit small { display: block; font-size: 11px; color: var(--muted); }
-  .dv-visit strong { font-size: 26px; font-variant-numeric: tabular-nums; color: var(--primary); letter-spacing: .02em; }
-  .dv-visit span { font-size: 12px; color: var(--muted); text-align: right; line-height: 1.5; }
-
-  .bill-table-card { background: var(--card); border: 2px solid var(--primary); border-radius: var(--radius-card); box-shadow: 0 4px 14px rgba(15,118,110,.14); margin-bottom: 14px; overflow: hidden; }
-  .bt-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: linear-gradient(135deg, var(--hero1), var(--hero2)); color: var(--on-hero); }
-  .bt-head b { font-size: 15px; }
-  .bt-head span { font-size: 12px; font-weight: 700; background: rgba(255,255,255,.2); padding: 3px 10px; border-radius: 999px; }
-  .bt-scroll { overflow-x: auto; }
-  .bill-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  .bill-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); background: var(--t-primary); padding: 8px 10px; }
-  .bill-table td { padding: 10px; border-top: 1px solid var(--border); vertical-align: top; }
-  .bill-table tbody tr:nth-child(even) { background: var(--bg); }
-  .bt-n { width: 28px; color: var(--muted); }
-  .bt-name { font-weight: 700; line-height: 1.3; }
-  .bt-name small { display: block; font-weight: 500; font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .bill-table .bt-q, .bill-table .bt-r, .bill-table .bt-a { text-align: right; white-space: nowrap; }
-  .bt-q span { display: inline-block; min-width: 30px; text-align: center; padding: 3px 8px; border-radius: 8px; background: var(--t-accent); color: var(--accent); font-weight: 800; font-size: 15px; }
-  .bt-a { font-weight: 700; color: var(--primary); }
-  .bill-table tfoot td { background: var(--t-primary); border-top: 2px solid var(--primary); font-weight: 800; }
-  .arrival-text svg { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-</style>
 <link rel="stylesheet" href="../shared/vendor/leaflet/leaflet.css">
+<style>
+  .app{ background:none; padding:14px 16px 190px; gap:12px; }
+  body{ background:var(--bg); }
+  html[data-theme="dark"] body{ background:#0B1316; }
+  .app > *{ flex-shrink:0; }
+  .dv-head{ display:flex; align-items:center; gap:10px; padding-top:2px; }
+  .dv-back{ width:40px; height:40px; border-radius:12px; background:var(--card); border:1px solid var(--border); display:grid; place-items:center; color:var(--text); flex-shrink:0; }
+  .dv-back svg{ width:19px; height:19px; }
+  .dv-title{ flex:1; min-width:0; }
+  .dv-title h1{ color:var(--text); font:800 19px/1.2 'Plus Jakarta Sans','Inter',sans-serif; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .dv-title p{ font-size:12.5px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .dv-head .gt-switch{ box-shadow:none; }
+  .dv-head .gt-switch button{ width:32px; height:30px; }
+
+  .dv-cols{ display:flex; flex-direction:column; gap:12px; }
+  .dv-l, .dv-r{ display:contents; }
+  .o1{ order:1; } .o2{ order:2; } .o3{ order:3; } .o4{ order:4; } .o5{ order:5; } .o6{ order:6; } .o7{ order:7; }
+
+  .dv-arr{ display:flex; gap:12px; align-items:center; padding:12px 14px; border-radius:16px; border:1px solid; }
+  .dv-dot{ width:38px; height:38px; border-radius:50%; display:grid; place-items:center; flex-shrink:0; }
+  .dv-dot svg{ width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
+  .dv-arr .g{ flex:1; min-width:0; }
+  .dv-arr b{ display:block; font-size:14px; }
+  .dv-arr small{ display:block; font-size:12px; color:var(--muted); margin-top:1px; line-height:1.35; }
+  .dv-arr.ok{ background:var(--t-success); border-color:var(--success); } .dv-arr.ok .dv-dot{ background:var(--success); color:#fff; } .dv-arr.ok b{ color:var(--success); }
+  .dv-arr.far{ background:var(--t-accent); border-color:var(--accent); } .dv-arr.far .dv-dot{ background:var(--accent); color:#1a1200; } .dv-arr.far b{ color:var(--accent); }
+  .dv-arr.nopin{ background:var(--t-info); border-color:var(--info); } .dv-arr.nopin .dv-dot{ background:var(--info); color:#fff; } .dv-arr.nopin b{ color:var(--info); }
+
+  .dv-visit{ display:none; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border-radius:16px; background:var(--card); border:1px solid var(--border); }
+  .dv-visit small{ display:block; font-size:11px; color:var(--muted); }
+  .dv-visit strong{ font:800 24px 'Plus Jakarta Sans','Inter',sans-serif; font-variant-numeric:tabular-nums; color:var(--primary); }
+  .dv-visit span{ font-size:12px; color:var(--muted); text-align:right; line-height:1.5; }
+  .dv-btn2{ height:46px; border-radius:12px; border:1.5px solid var(--primary); color:var(--primary); background:var(--card); font:700 14px Inter,sans-serif; width:100%; cursor:pointer; }
+  .dv-btn2:disabled{ opacity:.5; }
+
+  .dv-shop{ padding:15px; border-radius:22px; background:linear-gradient(135deg,var(--t-primary),var(--card) 85%); border:1px solid var(--border); box-shadow:var(--shadow); }
+  .dv-shop .top{ display:flex; gap:12px; align-items:flex-start; }
+  .dv-av{ width:48px; height:48px; border-radius:14px; background:var(--primary); color:var(--on-primary); display:grid; place-items:center; flex-shrink:0; }
+  .dv-av svg{ width:24px; height:24px; }
+  .dv-shop b{ display:block; font:800 18px/1.2 'Plus Jakarta Sans','Inter',sans-serif; }
+  .dv-shop small{ display:block; font-size:12.5px; color:var(--muted); margin-top:3px; line-height:1.4; }
+  .dv-acts{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+  .dv-acts a{ height:42px; border-radius:12px; border:1.5px solid var(--border); background:var(--card); display:flex; gap:7px; align-items:center; justify-content:center; font:700 13px Inter,sans-serif; color:var(--primary); text-decoration:none; }
+  .dv-acts svg{ width:16px; height:16px; }
+
+  .dv-map{ z-index:0; height:170px; border-radius:20px; overflow:hidden; position:relative; border:1px solid var(--border); background:var(--t-primary); }
+  #dMap{ height:100%; width:100%; z-index:0; }
+  .dm-empty{ height:100%; display:flex; align-items:center; justify-content:center; text-align:center; padding:16px; color:var(--muted); font-size:13px; }
+  .dv-openmap{ position:absolute; right:10px; bottom:10px; z-index:500; display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 11px; border-radius:10px; background:var(--card); color:var(--primary); font:700 12px Inter,sans-serif; text-decoration:none; box-shadow:0 2px 8px rgba(0,0,0,.2); }
+  .dv-openmap svg{ width:15px; height:15px; }
+
+  .dv-stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .dv-stats > div{ background:var(--card); border:1px solid var(--border); border-radius:14px; padding:10px 8px; text-align:center; }
+  .dv-stats small{ display:block; font-size:11px; color:var(--muted); }
+  .dv-stats strong{ display:block; font:800 15px 'Plus Jakarta Sans','Inter',sans-serif; margin-top:2px; }
+
+
+  .dv-note{ display:none; gap:11px; padding:12px 14px; align-items:flex-start; background:var(--card); border:1px solid var(--border); border-radius:18px; }
+  .dv-note .ic{ width:34px; height:34px; border-radius:10px; background:var(--t-accent); color:var(--accent); display:grid; place-items:center; flex-shrink:0; }
+  .dv-note .ic svg{ width:18px; height:18px; }
+  .dv-note b{ font-size:13px; } .dv-note p{ font-size:12.5px; color:var(--muted); margin-top:2px; }
+  .dv-foot{ font-size:11.5px; color:var(--muted); text-align:center; }
+
+  .dv-bar{ position:fixed; left:0; right:0; bottom:calc(76px + env(safe-area-inset-bottom,0px)); z-index:40; padding:12px 16px; background:var(--card); border-top:1px solid var(--border); box-shadow:0 -6px 18px rgba(15,23,42,.07); display:flex; gap:10px; }
+  .dv-mark{ flex:1; height:54px; border:0; border-radius:14px; background:linear-gradient(135deg,var(--hero1),var(--hero2)); color:var(--on-hero); font:800 16px Inter,sans-serif; display:flex; gap:8px; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(15,118,110,.25); cursor:pointer; }
+  .dv-mark svg{ width:20px; height:20px; stroke-width:2.6; }
+  .dv-mark:disabled{ opacity:.55; box-shadow:none; }
+  .dv-mark.done{ background:var(--t-success); color:var(--success); border:1.5px solid var(--success); box-shadow:none; opacity:1; }
+  .dv-prob{ width:54px; height:54px; border-radius:14px; border:1.5px solid var(--border); background:var(--card); color:var(--danger); display:grid; place-items:center; flex-shrink:0; cursor:pointer; gap:8px; font:700 13.5px Inter,sans-serif; }
+  .dv-prob svg{ width:22px; height:22px; }
+  .dv-prob span{ display:none; }
+  .dv-prob:disabled{ opacity:.45; }
+
+  .bl-srch{ display:none; margin-bottom:0; align-items:center; gap:9px; height:44px; padding:0 13px; border-radius:13px; border:1px solid var(--border); background:var(--card); color:var(--muted); }
+  .bl-srch svg{ width:17px; height:17px; flex-shrink:0; }
+  .bl-srch input{ flex:1; min-width:0; border:0; background:none; outline:0; color:var(--text); font:500 13.5px Inter,sans-serif; }
+  .bl-reg{ background:var(--card); border:1px solid var(--border); border-radius:20px; box-shadow:var(--shadow); overflow:hidden; }
+  .bl-bh{ display:flex; justify-content:space-between; align-items:center; padding:12px 14px; }
+  .bl-bh b{ font:800 14.5px 'Plus Jakarta Sans','Inter',sans-serif; color:var(--text); }
+  .bl-bh span{ font:700 11.5px Inter,sans-serif; color:var(--primary); background:var(--t-primary); padding:3px 10px; border-radius:99px; }
+  .bl-tr{ display:grid; grid-template-columns:1fr 34px 28px 46px 58px; gap:5px; align-items:start; padding:9px 12px; border-top:1px solid var(--border); font-size:12.5px; }
+  .bl-tr.h{ background:var(--t-primary); font:700 10.5px Inter,sans-serif; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); align-items:center; border-top:0; }
+  .bl-tr .nm{ font-weight:700; line-height:1.25; color:var(--text); overflow-wrap:anywhere; }
+  .bl-tr .nm em{ font-style:normal; color:var(--muted); font-weight:600; }
+  .bl-tr .r{ text-align:right; font-variant-numeric:tabular-nums; }
+  .bl-tr .mt{ color:var(--muted); }
+  .bl-tr .q{ text-align:center; }
+  .bl-tr .q span{ display:inline-block; min-width:26px; text-align:center; padding:2px 5px; border-radius:7px; background:var(--t-accent); color:var(--accent); font:800 12.5px Inter,sans-serif; }
+  .bl-tr .a{ font-weight:700; color:var(--primary); }
+  .bl-tr.ret{ background:var(--t-danger); } .bl-tr.ret .nm{ color:var(--danger); }
+  .bl-tf{ padding:10px 14px; border-top:1px solid var(--border); display:flex; justify-content:space-between; gap:10px; font-size:13px; color:var(--muted); }
+  .bl-tf b{ color:var(--text); }
+  .bl-tf.neg b{ color:var(--danger); white-space:nowrap; }
+  .bl-tf.g{ background:var(--t-primary); border-top:2px solid var(--primary); font:800 15px Inter,sans-serif; color:var(--text); }
+  .bl-tf.g b{ color:var(--primary); font-size:16px; }
+  .bl-tr .nm small.gs{ display:block; font-size:10.5px; color:var(--muted); margin-top:2px; font-weight:600; }
+  .bl-tf.two{ align-items:flex-start; } .bl-tf.two span{ display:block; font-size:12px; color:var(--muted); } .bl-tf.two span b{ display:block; font-size:15px; margin-top:2px; } .bl-tf.two .rt{ text-align:right; }
+  .bl-tr.ft{ background:var(--bg); align-items:center; } .bl-tr.ft .nm{ font-weight:600; color:var(--muted); }
+  .bl-empty{ padding:22px 14px; text-align:center; color:var(--muted); font-size:13px; border-top:1px solid var(--border); }
+  .bl-reg .bl-bh{ padding:12px 14px; }
+  @media (min-width:900px){ .bl-tr{ grid-template-columns:1fr 70px 50px 72px 92px; font-size:13.5px; padding:11px 16px; } }
+
+  /* Sheets */
+  .modal-overlay{ position:fixed; inset:0; background:rgba(15,23,42,.62); backdrop-filter:blur(2px); display:flex; align-items:flex-end; justify-content:center; z-index:1000; opacity:0; pointer-events:none; transition:opacity .2s ease; }
+  .modal-overlay.active{ opacity:1; pointer-events:auto; }
+  .modal-sheet{ background:var(--card); width:100%; max-width:480px; border-radius:24px 24px 0 0; padding:10px 18px 22px; max-height:92vh; overflow-y:auto; transform:translateY(100%); transition:transform .25s cubic-bezier(.16,1,.3,1); }
+  .modal-overlay.active .modal-sheet{ transform:translateY(0); }
+  .grab{ width:42px; height:4px; border-radius:4px; background:var(--border); margin:0 auto 14px; }
+  .modal-top-bar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .modal-top-bar .tt{ font:800 18px 'Plus Jakarta Sans','Inter',sans-serif; }
+  .modal-close-btn{ width:34px; height:34px; border-radius:50%; border:1px solid var(--border); background:var(--bg); color:var(--text); display:grid; place-items:center; font-size:15px; font-weight:700; cursor:pointer; }
+  .sh-p{ font-size:13px; color:var(--muted); margin-bottom:14px; }
+  .reason-card{ background:var(--bg); border:1.5px solid var(--border); border-radius:14px; padding:11px 13px; margin-bottom:9px; display:flex; align-items:center; gap:12px; cursor:pointer; }
+  .reason-card input{ display:none; }
+  .reason-card.selected{ border-color:var(--primary); background:var(--t-primary); }
+  .reason-card .ci{ width:40px; height:40px; border-radius:12px; display:grid; place-items:center; flex-shrink:0; }
+  .reason-card .ci svg{ width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+  .reason-card b{ display:block; font-size:14.5px; } .reason-card small{ display:block; font-size:12px; color:var(--muted); }
+  .reason-card .rd{ margin-left:auto; width:20px; height:20px; border-radius:50%; border:2px solid var(--border); flex-shrink:0; }
+  .reason-card.selected .rd{ border:6px solid var(--primary); }
+  .sh-btn{ height:50px; border-radius:13px; width:100%; margin-top:8px; display:flex; align-items:center; justify-content:center; font:700 14.5px Inter,sans-serif; cursor:pointer; border:0; }
+  .sh-btn:disabled{ opacity:.6; }
+  .sh-ok{ background:var(--success); color:#fff; } .sh-warn{ background:var(--card); border:1.5px solid var(--accent); color:var(--accent); }
+  .sh-bad{ background:var(--danger); color:#fff; } .sh-ghost{ background:var(--card); border:1px solid var(--border); color:var(--muted); height:44px; font-size:13.5px; }
+  .sh-call{ height:42px; margin:2px 0 12px; border-radius:12px; border:1.5px solid var(--border); background:var(--card); color:var(--primary); display:flex; align-items:center; justify-content:center; font:700 13.5px Inter,sans-serif; text-decoration:none; }
+  .sh-photo{ display:flex; align-items:center; justify-content:center; gap:8px; height:46px; border:1.5px dashed var(--border); border-radius:12px; cursor:pointer; background:var(--bg); font-size:13px; font-weight:600; color:var(--muted); margin:4px 0 6px; }
+  .search-results-list{ border:1px solid var(--border); border-radius:10px; max-height:160px; overflow-y:auto; background:var(--bg); margin-top:6px; display:none; }
+  .search-result-item{ padding:10px 12px; border-bottom:1px solid var(--border); font-size:13px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+  .search-result-item:last-child{ border-bottom:0; }
+  .search-result-item:hover, .search-result-item:active{ background:var(--t-primary); color:var(--primary); }
+  .selected-prod-pill{ display:none; align-items:center; justify-content:space-between; background:var(--t-primary); border:1px solid var(--primary); border-radius:10px; padding:8px 12px; margin-top:6px; font-size:13px; font-weight:600; color:var(--primary); }
+
+
+  /* Returns form */
+  .rt-head{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .rt-head .rt-back{ width:36px; height:36px; border-radius:11px; border:1px solid var(--border); background:var(--bg); color:var(--text); display:grid; place-items:center; cursor:pointer; flex-shrink:0; }
+  .rt-head .rt-back svg{ width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
+  .rt-head b{ font:800 16px 'Plus Jakarta Sans','Inter',sans-serif; color:var(--text); } .rt-head small{ display:block; font-size:12px; color:var(--muted); }
+  .rt-lab{ font:700 12px Inter,sans-serif; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin:14px 0 7px; display:flex; justify-content:space-between; align-items:center; }
+  .rt-lab em{ font-style:normal; text-transform:none; letter-spacing:0; font-weight:600; }
+  .rt-srch{ display:flex; align-items:center; gap:9px; height:48px; padding:0 13px; border:1.5px solid var(--border); border-radius:13px; background:var(--bg); }
+  .rt-srch:focus-within{ border-color:var(--primary); box-shadow:0 0 0 3px var(--ring); }
+  .rt-srch svg{ width:18px; height:18px; fill:none; stroke:var(--muted); stroke-width:2.2; stroke-linecap:round; flex-shrink:0; }
+  .rt-srch input{ flex:1; min-width:0; border:0; outline:0; background:none; color:var(--text); font:500 15px Inter,sans-serif; }
+  .rt-list{ margin-top:8px; max-height:260px; overflow-y:auto; border:1px solid var(--border); border-radius:13px; background:var(--card); }
+  .rt-row{ display:flex; align-items:center; gap:10px; padding:11px 13px; border-bottom:1px solid var(--border); cursor:pointer; }
+  .rt-row:last-child{ border-bottom:0; }
+  .rt-row:active, .rt-row:hover{ background:var(--t-primary); }
+  .rt-row.off{ opacity:.45; }
+  .rt-row .n{ flex:1; min-width:0; } .rt-row .n b{ display:block; font:600 14px/1.3 Inter,sans-serif; color:var(--text); }
+  .rt-row .n small{ display:block; font-size:11.5px; color:var(--muted); margin-top:1px; }
+  .rt-row .p{ font:700 13px Inter,sans-serif; color:var(--primary); white-space:nowrap; }
+  .rt-tag{ display:inline-block; font:700 10.5px Inter,sans-serif; padding:2px 7px; border-radius:20px; background:var(--t-primary); color:var(--primary); margin-left:6px; vertical-align:1px; }
+  .rt-hint{ padding:14px; text-align:center; font-size:12.5px; color:var(--muted); }
+  .rt-sel{ display:none; align-items:center; gap:11px; padding:12px 13px; border:1.5px solid var(--primary); background:var(--t-primary); border-radius:14px; }
+  .rt-sel .n{ flex:1; min-width:0; } .rt-sel b{ display:block; font:700 14.5px/1.3 Inter,sans-serif; color:var(--text); } .rt-sel small{ display:block; font-size:12px; color:var(--muted); margin-top:2px; }
+  .rt-sel button{ border:0; background:none; color:var(--primary); font:700 13px Inter,sans-serif; cursor:pointer; padding:6px; }
+  .rt-qa{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .rt-step{ display:flex; align-items:center; height:48px; border:1.5px solid var(--border); border-radius:13px; background:var(--bg); overflow:hidden; }
+  .rt-step button{ width:46px; height:100%; border:0; background:none; color:var(--primary); font:700 22px Inter,sans-serif; cursor:pointer; }
+  .rt-step input{ flex:1; min-width:0; width:100%; text-align:center; border:0; outline:0; background:none; color:var(--text); font:700 16px Inter,sans-serif; -moz-appearance:textfield; }
+  .rt-step input::-webkit-outer-spin-button, .rt-step input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  .rt-amt{ display:flex; align-items:center; gap:6px; height:48px; padding:0 13px; border:1.5px solid var(--border); border-radius:13px; background:var(--bg); }
+  .rt-amt span{ color:var(--muted); font-weight:700; } .rt-amt input{ flex:1; min-width:0; width:100%; border:0; outline:0; background:none; color:var(--text); font:700 16px Inter,sans-serif; }
+  .rt-brk{ display:none; margin-top:10px; padding:10px 13px; border:1px dashed var(--border); border-radius:12px; background:var(--bg); font-size:13px; color:var(--muted); }
+  .rt-brk div{ display:flex; justify-content:space-between; padding:2px 0; } .rt-brk b{ color:var(--text); }
+  .rt-brk .tot{ border-top:1px solid var(--border); margin-top:5px; padding-top:6px; font-weight:800; } .rt-brk .tot b{ color:var(--primary); font-size:14.5px; }
+  .rt-lines{ display:none; margin-bottom:6px; }
+  .rt-ln{ display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:var(--bg); margin-top:7px; }
+  .rt-ln .n{ flex:1; min-width:0; } .rt-ln b{ display:block; font:600 13.5px/1.3 Inter,sans-serif; color:var(--text); } .rt-ln small{ display:block; font-size:11.5px; color:var(--muted); margin-top:1px; }
+  .rt-ln .a{ font:800 13.5px Inter,sans-serif; color:var(--danger); white-space:nowrap; }
+  .rt-ln button{ width:30px; height:30px; border-radius:50%; border:1px solid var(--border); background:var(--card); color:var(--muted); font-size:13px; cursor:pointer; flex-shrink:0; }
+  .rt-foot{ position:sticky; bottom:-22px; margin:14px -18px -22px; padding:8px 18px 22px; background:var(--card); border-top:1px solid var(--border); z-index:2; }
+  .rt-foot .sh-btn{ margin-top:0; } .rt-foot .sh-btn + .sh-btn{ margin-top:8px; }
+  .rt-chips{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .rt-chip{ display:flex; align-items:center; gap:8px; min-height:46px; padding:8px 11px; border:1.5px solid var(--border); border-radius:12px; background:var(--bg); color:var(--text); font:600 13.5px/1.25 Inter,sans-serif; cursor:pointer; text-align:left; }
+  .rt-chip .dot{ width:18px; height:18px; border-radius:50%; border:2px solid var(--border); flex-shrink:0; }
+  .rt-chip.on{ border-color:var(--primary); background:var(--t-primary); } .rt-chip.on .dot{ border:6px solid var(--primary); }
+  .rt-chip.on{ color:var(--text); }
+  .sh-btn:disabled{ opacity:.45; cursor:not-allowed; }
+
+  .nav a.brand-side{ display:none; }
+  @media (min-width:900px){
+    .app{ max-width:1120px; padding:28px 32px 48px; }
+    .dv-title h1{ font-size:26px; }
+    .dv-cols{ display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:16px; align-items:start; }
+    .dv-l, .dv-r{ display:flex; flex-direction:column; gap:12px; }
+    .dv-map{ height:260px; }
+    .dv-bar{ position:static; padding:0; background:none; border:0; box-shadow:none; flex-direction:column; }
+    .dv-mark{ flex:none; width:100%; }
+    .dv-prob{ width:100%; height:48px; display:flex; justify-content:center; }
+    .dv-prob span{ display:inline; }
+    .nav a.brand-side{ display:flex; flex-direction:row; align-items:center; gap:12px; min-height:0; padding:4px 8px 20px; margin-bottom:12px; border-radius:0; border-bottom:1px solid var(--border); color:var(--text); background:none; }
+    .nav a.brand-side:hover{ background:none; }
+    .brand-name{ font:800 16px 'Plus Jakarta Sans','Inter',sans-serif; display:block; }
+    .brand-sub{ display:block; font-size:11.5px; color:var(--muted); font-weight:500; }
+    .brand-logo{ width:44px; height:44px; border-radius:12px; background:#fff; border:1px solid var(--border); display:grid; place-items:center; overflow:hidden; flex-shrink:0; }
+    .brand-logo img{ width:40px; display:block; }
+    .nav a{ font-weight:600; }
+  }
+  .dv-shop b, .dv-stats strong, .dv-bh b, .dv-it .n, .dv-note b, .reason-card b, .dv-visit strong.t{ color:var(--text); }
+  .dv-stats strong[style]{ color:var(--primary); }
+  .dv-bar{ z-index:40; }
+</style>
+
+<style>
+
+/* GM-WORKER-FULL-WIDTH-v1 */
+.app {
+    width: 100% !important;
+    max-width: none !important;
+    box-sizing: border-box !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+</style>
 </head>
 <body>
 <main class="app">
- <div class="dv-wrap">
-  <div id="leaveStrip"></div>
-  <header class="dv-head">
-    <a href="route.html" class="dv-back" aria-label="Back to Route"><svg class="icon" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></a>
-    <div class="dv-title"><h1 id="shopName">Shop</h1><p id="stopSubtitle">&nbsp;</p></div>
-    <span class="badge b-muted" id="dBadge">Pending</span>
-    <button class="icon-btn" id="themeToggle" aria-label="Switch light or dark theme">
-      <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
-    </button>
-  </header>
+ <div id="leaveStrip"></div>
+ <header class="dv-head">
+   <a href="route.html" class="dv-back" aria-label="Back to Route"><svg class="icon" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></a>
+   <div class="dv-title"><h1 id="shopName">Stop</h1><p id="stopSubtitle">&nbsp;</p></div>
+   <span class="badge b-muted" id="dBadge">Pending</span>
+   <button class="icon-btn" id="themeToggle" aria-label="Switch light or dark theme">
+     <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+   </button>
+ </header>
 
-  <section class="dv-mapcard">
-    <div id="dMap"></div>
-    <a class="dv-openmap" id="directionsBtn" href="#" target="_blank" rel="noopener"><svg class="icon" viewBox="0 0 24 24"><path d="M9 20l-6-2V4l6 2 6-2 6 2v14l-6-2-6 2zM9 6v14M15 4v14"/></svg> Open in Maps</a>
-  </section>
-
-  <div class="arrival-banner">
-    <div class="arrival-text">
-      <strong><svg style="width:16px;height:16px;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Arrival check</strong>
-      <span id="gpsDistanceStatus">Checking your location...</span>
-    </div>
-    <span class="badge b-accent" id="arrivalBadge">Checking</span>
+ <div class="dv-cols">
+  <div class="dv-l">
+   <section class="dv-shop o2">
+     <div class="top">
+       <span class="dv-av"><svg class="icon" viewBox="0 0 24 24"><path d="M3 9l1.5-5h15L21 9M3 9v11h18V9M3 9c0 2 1.5 3 3 3s3-1 3-3c0 2 1.5 3 3 3s3-1 3-3c0 2 1.5 3 3 3"/></svg></span>
+       <div><b id="shopNameCard">Shop</b><small id="shopAddress">Address</small><small id="shopPhone">--</small></div>
+     </div>
+     <div class="dv-acts">
+       <a id="callShopBtn" href="#"><svg class="icon" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Call shop</a>
+       <a id="directionsBtn2" href="#" target="_blank" rel="noopener"><svg class="icon" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg> Directions</a>
+     </div>
+   </section>
+   <div class="dv-stats o4">
+     <div><small>Quantity</small><strong id="shopBoxes">--</strong></div>
+     <div><small>Invoice</small><strong id="shopBillNo">--</strong></div>
+     <div><small>Amount</small><strong style="color:var(--primary)" id="shopAmount">--</strong></div>
+   </div>
+   <div id="billItems" class="o5"></div>
+   <section class="dv-note o6" id="noteCard">
+     <span class="ic"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>
+     <div><b>Customer notes</b><p id="noteText"></p></div>
+   </section>
   </div>
 
-  <div class="dv-visit" id="visitBox" style="display:none">
-    <div><small>Time at this shop</small><strong id="visitClock">00:00</strong></div>
-    <span id="visitSub"></span>
+  <div class="dv-r">
+   <div class="o1" style="display:flex;flex-direction:column;gap:12px">
+     <div class="dv-arr far" id="arrCard">
+       <span class="dv-dot" id="arrDot"></span>
+       <div class="g"><b id="arrTitle">Checking your location</b><small id="gpsDistanceStatus">Checking your location...</small></div>
+       <span class="badge b-accent" id="arrivalBadge">Checking</span>
+     </div>
+     <div class="dv-visit" id="visitBox">
+       <div><small>Time at this shop</small><strong id="visitClock">00:00</strong></div>
+       <span id="visitSub"></span>
+     </div>
+     <button id="reachBtn" type="button" class="dv-btn2" style="display:none">I&rsquo;ve reached the shop</button>
+     <div id="pinBox" style="display:none">
+       <button id="pinBtn" class="dv-btn2" style="height:42px;font-size:13px">Save shop location (stand at the shop)</button>
+       <div id="pinMsg" style="font-size:12px;margin-top:6px;color:var(--muted);text-align:center"></div>
+     </div>
+   </div>
+   <section class="dv-map o3">
+     <div id="dMap"></div>
+     <a class="dv-openmap" id="directionsBtn" href="#" target="_blank" rel="noopener"><svg class="icon" viewBox="0 0 24 24"><path d="M9 20l-6-2V4l6 2 6-2 6 2v14l-6-2-6 2zM9 6v14M15 4v14"/></svg> Open in Maps</a>
+   </section>
+   <div class="dv-bar o7">
+     <button class="dv-mark" id="goodsDeliveredBtn" type="button"><svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Mark as Delivered</button>
+     <button class="dv-prob" id="problemBtn" type="button" aria-label="Problem about shop"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>Problem about shop</span></button>
+   </div>
   </div>
-  <button id="reachBtn" type="button" class="btn btn-secondary" style="display:none;height:46px;font-size:14px;width:100%;margin:0 0 12px">I&rsquo;ve reached the shop</button>
-
-  <div id="pinBox" style="display:none;margin:0 0 12px">
-    <button id="pinBtn" class="btn btn-secondary" style="height:42px;font-size:13px;width:100%">Save shop location (stand at the shop)</button>
-    <div id="pinMsg" style="font-size:12px;margin-top:6px;color:var(--muted)"></div>
-  </div>
-
-  <section class="dv-card">
-    <div class="dv-line">
-      <span class="dv-ico"><svg class="icon" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
-      <div class="dv-grow"><b id="shopNameCard">Shop</b><small id="shopAddress">Address</small></div>
-    </div>
-    <div class="dv-line" id="phoneLine">
-      <span class="dv-ico"><svg class="icon" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
-      <div class="dv-grow"><b id="shopPhone">--</b></div>
-      <a class="dv-callround" id="callIcon" href="#" aria-label="Call"><svg class="icon" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></a>
-    </div>
-  </section>
-
-  <div class="dv-stats">
-    <div><small>Quantity</small><strong id="shopBoxes">--</strong></div>
-    <div><small>Invoice Bill</small><strong id="shopBillNo">--</strong></div>
-    <div><small>Bill Amount</small><strong style="color:var(--primary)" id="shopAmount">--</strong></div>
-  </div>
-  <div id="billItems"></div>
-
-  <button class="dv-markbtn" id="goodsDeliveredBtn" type="button">
-    <svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Mark as Delivered
-  </button>
-
-  <div class="dv-two">
-    <a id="callShopBtn" href="#"><svg class="icon" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Call Customer</a>
-    <a id="directionsBtn2" href="#" target="_blank" rel="noopener"><svg class="icon" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg> Get Directions</a>
-  </div>
-
-  <button class="dv-problem" id="problemBtn" type="button">
-    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Problem About Shop
-  </button>
-
-  <section class="dv-card dv-note" id="noteCard" style="display:none">
-    <span class="dv-ico"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>
-    <div><b>Customer Notes</b><p id="noteText"></p></div>
-  </section>
-  <p style="font-size:12px; color:var(--muted); text-align:center">Cash &amp; payments recorded on physical paper invoice</p>
  </div>
+ <p class="dv-foot">Cash &amp; payments recorded on physical paper invoice</p>
 </main>
 
-<!-- Bottom Navigation Bar -->
 <nav class="nav" aria-label="Main Navigation">
+  <a href="home.html" class="brand-side" aria-label="General Traders">
+    <span class="brand-logo"><img src="../assets/logo.png" alt=""></span>
+    <span><b class="brand-name">General Traders</b><small class="brand-sub">Distribution &amp; Delivery</small></span>
+  </a>
   <div>
-    <a href="home.html">
-      <svg class="icon" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>
-      Home
-    </a>
-    <a href="route.html" aria-current="page">
-      <svg class="icon" viewBox="0 0 24 24"><path d="M9 20l-6-2V4l6 2 6-2 6 2v14l-6-2-6 2zM9 6v14M15 4v14"/></svg>
-      Route
-    </a>
-    <a href="advances.html">
-      <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14.8 9A2 2 0 0 0 13 8h-2a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4h-2a2 2 0 0 1-1.8-1M12 6v12"/></svg>
-      Account
-    </a>
-    <a href="attendance.html">
-      <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-      Attendance
-    </a>
-    <a href="profile.html">
-      <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
-      Profile
-    </a>
+    <a href="home.html"><svg class="icon" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Home</a>
+    <a href="route.html" aria-current="page"><svg class="icon" viewBox="0 0 24 24"><path d="M9 20l-6-2V4l6 2 6-2 6 2v14l-6-2-6 2zM9 6v14M15 4v14"/></svg>Route</a>
+    <a href="advances.html"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14.8 9A2 2 0 0 0 13 8h-2a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4h-2a2 2 0 0 1-1.8-1M12 6v12"/></svg>Account</a>
+    <a href="attendance.html"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Attendance</a>
+    <a href="profile.html"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</a>
   </div>
 </nav>
 
-<!-- MODAL 1: POST-DELIVERY RETURNS CHECK (With Clear Cancel Button) -->
+<!-- Returns sheet -->
 <div class="modal-overlay" id="returnsModal">
   <div class="modal-sheet">
-    <div class="modal-top-bar">
-      <div style="font-size:18px; font-weight:700;">Goods Handed Over ✓</div>
-      <button type="button" class="modal-close-btn" id="closeReturnsModalBtn" aria-label="Cancel and go back">✕</button>
+    <div class="grab"></div>
+    <div class="modal-top-bar"><div class="tt">Delivery done &#10003;</div><button type="button" class="modal-close-btn" id="closeReturnsModalBtn" aria-label="Cancel and go back">&#10005;</button></div>
+    <p class="sh-p" id="retAsk">Did the shop give any goods back to you?</p>
+    <div id="returnsChoiceWrap" style="display:block">
+      <div class="reason-card selected" id="retNoCard">
+        <span class="ci" style="background:var(--t-success);color:var(--success)"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>
+        <div><b>No, nothing came back</b><small>Go to next shop</small></div><span class="rd"></span>
+      </div>
+      <div class="reason-card" id="yesReturnsBtn">
+        <span class="ci" style="background:var(--t-accent);color:var(--accent)"><svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></svg></span>
+        <div><b>Yes, goods came back</b><small>Broken, expired or not wanted</small></div><span class="rd"></span>
+      </div>
+      <button class="sh-btn sh-ok" id="noReturnsBtn" type="button">Done - Next Shop</button>
     </div>
-    <p style="font-size:13px; color:var(--muted); margin-bottom:16px;">
-      Did the shopkeeper give any return products or damaged items?
-    </p>
-
-    <!-- Initial Choice -->
-    <div style="display:flex; flex-direction:column; gap:10px;" id="returnsChoiceWrap">
-      <button class="btn btn-success" id="noReturnsBtn" style="height:52px; font-size:16px;">
-        ✓ No Returns • Finish &amp; Next Stop
-      </button>
-
-      <button class="btn btn-outline" id="yesReturnsBtn" style="height:50px; font-size:15px; border-color:var(--accent); color:var(--accent);">
-        📦 Yes • Record Return Products
-      </button>
-
-      <button type="button" class="btn btn-secondary" id="cancelReturnModalBtn2" style="height:44px; font-size:14px; color:var(--muted);">
-        Cancel (I tapped by mistake)
-      </button>
-    </div>
-
-    <!-- Searchable Return Form (Reveals if "Yes" is clicked) -->
-    <div id="returnFormWrap" style="display:none; margin-top:14px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <span style="font-size:14px; font-weight:700;">Record Return Item</span>
-        <button type="button" id="backToNoReturnsBtn" class="link" style="font-size:12px;">← Back</button>
+    <div id="returnFormWrap" style="display:none">
+      <div class="rt-head">
+        <button type="button" id="backToNoReturnsBtn" class="rt-back" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div><b>Goods came back</b><small id="rtSub">Choose item, how many, and why</small></div>
       </div>
-
-      <!-- Live Search Box for 1500+ Items -->
-      <div style="margin-bottom:12px;">
-        <label for="productSearchInput">Search product</label>
-        <div class="field">
-          <input type="text" id="productSearchInput" placeholder="Type the product name" autocomplete="off">
-        </div>
-        <div class="search-results-list" id="searchResultsList"></div>
-
-        <div class="selected-prod-pill" id="selectedProdPill">
-          <span id="selectedProdLabel">Selected: --</span>
-          <button type="button" id="clearSelectedProd" style="background:none; border:0; color:var(--danger); font-weight:700; cursor:pointer;">✕</button>
-        </div>
+      <div class="rt-lines" id="rtLines"></div>
+      <div id="rtPickWrap">
+        <div class="rt-lab"><span>1. Which item?</span><em id="rtCount"></em></div>
+        <label class="rt-srch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input type="search" id="productSearchInput" placeholder="Type item name or code" autocomplete="off"></label>
+        <div class="rt-list" id="searchResultsList"></div>
       </div>
-
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
-        <div>
-          <label for="modalReturnQty">Quantity</label>
-          <div class="field">
-            <input type="number" id="modalReturnQty" min="1" value="1">
-          </div>
-        </div>
-        <div>
-          <label for="modalReturnAmt">Deduction (₹)</label>
-          <div class="field">
-            <input type="number" id="modalReturnAmt" placeholder="e.g. 150">
-          </div>
-        </div>
+      <div class="rt-sel" id="selectedProdPill">
+        <div class="n"><b id="selectedProdLabel">--</b><small id="selectedProdSub"></small></div>
+        <button type="button" id="clearSelectedProd">Change item</button>
       </div>
-
-      <div style="margin-bottom:14px;">
-        <label for="modalReturnReason">Reason</label>
-        <div class="field">
-          <input type="text" id="modalReturnReason" placeholder="e.g. Broken seal / Expired">
+      <div id="rtDetail" style="display:none">
+        <div class="rt-lab"><span>2. How many? / Amount (&#8377;)</span><em id="rtMax"></em></div>
+        <div class="rt-qa">
+          <div class="rt-step"><button type="button" id="rtMinus" aria-label="Less">&minus;</button><input type="number" id="modalReturnQty" min="1" value="1" inputmode="numeric"><button type="button" id="rtPlus" aria-label="More">+</button></div>
+          <label class="rt-amt"><span>&#8377;</span><input type="number" id="modalReturnAmt" placeholder="0" inputmode="decimal"></label>
         </div>
+        <div class="rt-brk" id="rtBrk"></div>
+        <div class="rt-lab"><span>3. Why came back?</span><em>Touch one</em></div>
+        <div class="rt-chips" id="rtReasons"></div>
       </div>
-
-      <div style="display:flex; flex-direction:column; gap:8px;">
-        <button class="btn btn-hero" id="submitReturnAndFinishBtn" style="background:var(--primary); color:var(--on-primary); height:50px;">
-          Save Return &amp; Complete Delivery
-        </button>
-        <button type="button" class="btn btn-secondary" id="cancelReturnFormBtn" style="height:44px; font-size:13px; color:var(--muted);">
-          Cancel
-        </button>
+      <div class="rt-foot">
+        <button type="button" class="sh-btn sh-warn" id="rtAddBtn" disabled style="display:none">+ Add this item, then add another</button>
+        <button class="sh-btn" id="submitReturnAndFinishBtn" style="background:var(--primary); color:var(--on-primary); margin-top:8px;" disabled>Save &amp; Finish Delivery</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- MODAL 2: PROBLEM ABOUT SHOP SHEET -->
+<!-- Problem sheet -->
 <div class="modal-overlay" id="problemModal">
   <div class="modal-sheet">
-    <div class="modal-top-bar">
-      <div style="font-size:18px; font-weight:700;">Problem About Shop</div>
-      <button type="button" class="modal-close-btn" id="closeProblemModalBtn" aria-label="Close">✕</button>
-    </div>
-
-    <!-- Call Fleet Admin (Using 8489600833) -->
-    <a href="#" data-admin-call class="btn btn-secondary" style="border-color:var(--primary); color:var(--primary); margin-bottom:14px; height:46px; font-size:14px; font-weight:700;">
-      📞 Call Fleet Admin (<span data-admin-phone></span>)
-    </a>
-
-    <!-- Select Reason -->
-    <label style="margin-bottom:6px;">Select Reason</label>
+    <div class="grab"></div>
+    <div class="modal-top-bar"><div class="tt">Problem about shop</div><button type="button" class="modal-close-btn" id="closeProblemModalBtn" aria-label="Close">&#10005;</button></div>
+    <a href="#" data-admin-call class="sh-call">Call Fleet Admin (<span data-admin-phone></span>)</a>
     <div id="modalReasonList">
-      <div class="reason-card selected" data-reason="Shop Closed">
-        <input type="radio" name="pReason" checked>
-        <div>
-          <strong>🚪 Shop Closed</strong>
-          <small style="display:block; color:var(--muted); font-size:11px;">Shutter is down / locked</small>
-        </div>
-      </div>
-      <div class="reason-card" data-reason="Refused Delivery">
-        <input type="radio" name="pReason">
-        <div>
-          <strong>❌ Refused Delivery</strong>
-          <small style="display:block; color:var(--muted); font-size:11px;">Owner declined order / goods</small>
-        </div>
-      </div>
-      <div class="reason-card" data-reason="Reschedule Requested">
-        <input type="radio" name="pReason">
-        <div>
-          <strong>📅 Reschedule Requested</strong>
-          <small style="display:block; color:var(--muted); font-size:11px;">Asked to deliver tomorrow</small>
-        </div>
-      </div>
+      <div class="reason-card selected" data-reason="Shop Closed"><input type="radio" name="pReason" checked>
+        <span class="ci" style="background:var(--t-danger);color:var(--danger)"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M5 21h14M15 12h.01"/></svg></span>
+        <div><b>Shop closed</b><small>Shutter is down / locked</small></div><span class="rd"></span></div>
+      <div class="reason-card" data-reason="Refused Delivery"><input type="radio" name="pReason">
+        <span class="ci" style="background:var(--t-danger);color:var(--danger)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M4.9 4.9l14.2 14.2"/></svg></span>
+        <div><b>Refused delivery</b><small>Owner declined order / goods</small></div><span class="rd"></span></div>
+      <div class="reason-card" data-reason="Reschedule Requested"><input type="radio" name="pReason">
+        <span class="ci" style="background:var(--t-info);color:var(--info)"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span>
+        <div><b>Reschedule requested</b><small>Asked to deliver tomorrow</small></div><span class="rd"></span></div>
     </div>
-
-    <!-- Quick Photo Proof -->
-    <div style="margin:14px 0;">
-      <label>Take Proof Photo (Optional)</label>
-      <label for="modalPhotoInput" style="display:flex; align-items:center; justify-content:center; gap:8px; height:48px; border:1.5px dashed var(--border); border-radius:10px; cursor:pointer; background:var(--bg); font-size:13px; font-weight:600;">
-        📷 <span id="modalPhotoLabel">Snap Closed Shutter Photo</span>
-      </label>
-      <input type="file" id="modalPhotoInput" accept="image/*" capture="environment" style="display:none;">
-    </div>
-
-    <!-- Actions -->
-    <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
-      <button class="btn btn-outline" id="modalRetryLaterBtn" style="height:48px; border-color:var(--accent); color:var(--accent);">
-        🔄 Retry Later Today (End of Route)
-      </button>
-      <button class="btn btn-danger" id="modalCancelTodayBtn" style="height:48px;">
-        🚫 Cancel for Today (Return to Warehouse)
-      </button>
-      <button type="button" class="btn btn-secondary" id="dismissProblemBtn" style="height:44px; color:var(--muted); font-size:13px;">
-        Cancel
-      </button>
-    </div>
+    <label for="modalPhotoInput" class="sh-photo">&#128247; <span id="modalPhotoLabel">Add proof photo (optional)</span></label>
+    <input type="file" id="modalPhotoInput" accept="image/*" capture="environment" style="display:none;">
+    <button class="sh-btn sh-warn" id="modalRetryLaterBtn">Retry later today (end of route)</button>
+    <button class="sh-btn sh-bad" id="modalCancelTodayBtn">Cancel for today (return to warehouse)</button>
+    <button type="button" class="sh-btn sh-ghost" id="dismissProblemBtn">Cancel</button>
   </div>
 </div>
 
@@ -548,6 +382,7 @@
 <script src="../shared/theme.js"></script>
 <script src="../shared/mock-data.js"></script>
 <script src="../shared/visit.js"></script>
+<script src="../shared/road-line.js"></script>
 <script>
   var urlParams = new URLSearchParams(window.location.search);
   var shopId = urlParams.get('id');
@@ -562,9 +397,9 @@
   (function () {
     var all = GM.getShops() || [], idx = 0;
     for (var i = 0; i < all.length; i++) if (all[i].id === shop.id) idx = i + 1;
-    document.getElementById('shopName').textContent = shop.name;
+    document.getElementById('shopName').textContent = 'Stop ' + idx + ' of ' + all.length;
     document.getElementById('shopNameCard').textContent = shop.name;
-    document.getElementById('stopSubtitle').textContent = idx + ' of ' + all.length + ' \u00b7 ' + (shop.owner || 'Route');
+    document.getElementById('stopSubtitle').textContent = shop.owner || 'Today\u2019s route';
     document.getElementById('shopAddress').textContent = shop.address || '-';
     document.getElementById('shopPhone').textContent = shop.phone || 'No phone saved';
     var B = { pending: ['b-muted', 'Pending'], delivered: ['b-success', 'Delivered'], retry: ['b-accent', 'Retry later'], cancelled: ['b-danger', 'Cancelled'] }[shop.status] || ['b-muted', 'Pending'];
@@ -574,7 +409,7 @@
       document.getElementById('noteCard').style.display = 'flex';
     }
     if (shop.status === 'delivered' || shop.status === 'cancelled') {
-      var g = document.getElementById('goodsDeliveredBtn'); g.disabled = true; g.lastChild.textContent = shop.status === 'delivered' ? ' Delivered' : ' Cancelled';
+      var g = document.getElementById('goodsDeliveredBtn'); g.disabled = true; g.classList.add('done'); g.lastChild.textContent = shop.status === 'delivered' ? ' Delivered' : ' Cancelled';
       document.getElementById('problemBtn').disabled = true;
     }
   })();
@@ -582,16 +417,33 @@
   (function () {
     var box = document.getElementById('billItems'), L = shop.items || []; if (!box || !L.length) return;
     function e(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-    function money(n) { return '\u20B9' + (Math.round(n * 100) / 100).toLocaleString('en-IN'); }
+    function money(n) { n = Math.round((Number(n) || 0) * 100) / 100; return '\u20B9' + n.toLocaleString('en-IN', { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 }); }
     var totalQty = 0, total = 0;
-    function mv(x) { return x > 0 ? money(x) : '\u2014'; }
-    var rows = L.map(function (i, n) {
-      var q = Number(i.qty) || 0, r = Number(i.rate) || 0; totalQty += q; total += q * r;
-      return '<tr><td class="bt-n">' + (n + 1) + '</td><td class="bt-name">' + e(i.name) + (i.mrp > 0 ? '<small>MRP ' + money(i.mrp) + '</small>' : '') + '</td><td class="bt-q"><span>' + q + '</span></td><td class="bt-r">' + mv(r) + '</td><td class="bt-a">' + mv(q * r) + '</td></tr>';
-    }).join('');
-    box.innerHTML = '<section class="bill-table-card"><div class="bt-head"><b>Items on this bill</b><span>' + L.length + (L.length === 1 ? ' item' : ' items') + '</span></div>' +
-      '<div class="bt-scroll"><table class="bill-table"><thead><tr><th>#</th><th>Item</th><th class="bt-q">Qty</th><th class="bt-r">Rate</th><th class="bt-a">Amount</th></tr></thead><tbody>' + rows + '</tbody>' +
-      '<tfoot><tr><td></td><td>Total</td><td class="bt-q"><span>' + totalQty + '</span></td><td></td><td class="bt-a">' + mv(total) + '</td></tr></tfoot></table></div></section>';
+    var gstSum = 0, hasGst = false;
+    function lineAmt(i) { return Number(i.amt) > 0 ? Number(i.amt) : (Number(i.qty) || 0) * (Number(i.rate) || 0); }
+    L.forEach(function (i) { var q = Number(i.qty) || 0, g = itemGst(i), a = lineAmt(i); totalQty += q; total += a; if (g > 0) { hasGst = true; gstSum += a - a / (1 + g / 100); } });
+    var rets = (GM.getReturns() || []).filter(function (r) { return r.billNo === shop.billNo; }), ded = 0, rn = {};
+    rets.forEach(function (r) { ded += Number(r.deductionAmount) || 0; rn[String(r.productName).toUpperCase()] = 1; });
+    var srch = L.length > 8 ? '<label class="bl-srch" style="display:flex;margin-bottom:12px"><svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input id="billSearch" type="search" placeholder="Search item on this bill" autocomplete="off"></label>' : '';
+    box.innerHTML = srch + '<section class="bl-reg" id="billReg"></section>';
+    function draw(q) {
+      q = String(q || '').toLowerCase().trim(); var rows = '', shown = 0;
+      L.forEach(function (i, n) {
+        if (q && String(i.name).toLowerCase().indexOf(q) < 0) return; shown++;
+        var qt = Number(i.qty) || 0, r = Number(i.rate) || 0, mrp = Number(i.mrp) || 0, gp = itemGst(i);
+        rows += '<div class="bl-tr' + (rn[String(i.name).toUpperCase()] ? ' ret' : '') + '"><span class="nm"><em>' + (n + 1) + '.</em> ' + e(i.name) + (hasGst ? '<small class="gs">' + (gp > 0 ? gp + '% GST included' : 'No GST') + '</small>' : '') + '</span><span class="r mt">' + (mrp > 0 ? money(mrp) : '\u2014') + '</span><span class="q"><span>' + qt + '</span></span><span class="r">' + money(r) + '</span><span class="r a">' + money(lineAmt(i)) + '</span></div>';
+      });
+      var h = '<div class="bl-bh"><b>Items on this bill</b><span>' + L.length + (L.length === 1 ? ' item' : ' items') + '</span></div>' +
+        '<div class="bl-tr h"><span>Item</span><span class="r">MRP</span><span class="q">Qty</span><span class="r">Rate</span><span class="r">Amount</span></div>' + (shown ? rows : '<div class="bl-empty">No matching item.</div>') +
+        (hasGst ? '<div class="bl-tr ft"><span class="nm">Total without GST</span><span></span><span class="q"><span>' + totalQty + '</span></span><span class="r a" style="grid-column:4 / 6">' + money(total - gstSum) + '</span></div><div class="bl-tf"><span>GST amount</span><b>+ ' + money(gstSum) + '</b></div>' : '<div class="bl-tf"><span>Total qty</span><b>' + totalQty + '</b></div>') + '<div class="bl-tf g"><span>' + (hasGst ? 'Total with GST' : 'Bill total') + '</span><b>' + money(total) + '</b></div>';
+      if (ded > 0) {
+        rets.forEach(function (r) { h += '<div class="bl-tf neg"><span>Returned: ' + e(r.productName) + ' \u00d7 ' + e(r.quantity) + '</span><b>\u2212 ' + money(r.deductionAmount) + '</b></div>'; });
+        h += '<div class="bl-tf g"><span>Net payable</span><b>' + money(total - ded) + '</b></div>';
+      }
+      document.getElementById('billReg').innerHTML = h;
+    }
+    draw('');
+    var si = document.getElementById('billSearch'); if (si) si.addEventListener('input', function () { draw(this.value); });
   })();
   document.getElementById('shopBillNo').textContent = shop.billNo;
   document.getElementById('shopAmount').textContent = Number(shop.billAmount) > 0 ? '₹' + Number(shop.billAmount).toLocaleString('en-IN') : '\u2014';
@@ -606,7 +458,14 @@
     var st = document.getElementById('gpsDistanceStatus'), bd = document.getElementById('arrivalBadge'), btn = document.getElementById('goodsDeliveredBtn');
     var box = document.getElementById('visitBox'), clk = document.getElementById('visitClock'), sub = document.getElementById('visitSub'), reach = document.getElementById('reachBtn');
     var pin = GM.shopPin(shop), open = (shop.status === 'pending' || shop.status === 'retry'), inside = 0, first = true, lastM = null;
-    function show(txt, ok, label) { st.textContent = txt; bd.textContent = label || (ok ? 'At Shop' : 'Not at shop'); bd.className = 'badge ' + (ok ? 'b-success' : 'b-accent'); }
+    var IC = { ok: '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>', far: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>', nopin: '<svg viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>' };
+    function show(txt, ok, label) {
+      st.textContent = txt; bd.textContent = label || (ok ? 'At Shop' : 'Not at shop'); bd.className = 'badge ' + (ok ? 'b-success' : 'b-accent');
+      var np = label === 'No pin' || label === 'Unverified', k = ok ? 'ok' : (np ? 'nopin' : 'far');
+      document.getElementById('arrCard').className = 'dv-arr ' + k; document.getElementById('arrDot').innerHTML = IC[k];
+      document.getElementById('arrTitle').textContent = ok ? 'You\u2019re at the shop' : (label === 'No pin' ? 'Shop location not saved' : label === 'Unverified' ? 'Location not available' : label === 'Checking' ? 'Checking your location' : 'Not at the shop yet');
+      bd.style.display = 'none';
+    }
     function paint() {
       var v = GMVisit.get(shop.id), C = GMVisit.clock;
       if (v && v.arrivedAt) {
@@ -650,7 +509,7 @@
       }, function () { btn.disabled = false; msg.textContent = 'Location was blocked. Allow location for this site and try again.'; }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
     };
   })();
-  document.getElementById('callShopBtn').href = document.getElementById('callIcon').href = 'tel:' + (shop.phone || '');
+  document.getElementById('callShopBtn').href = 'tel:' + (shop.phone || '');
 
   // Map: shop pin (red) and, once location is known, the employee (blue) with a line between
   (function () {
@@ -660,13 +519,27 @@
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
     L.circleMarker([pin.lat, pin.lng], { radius: 9, color: '#fff', weight: 3, fillColor: '#DC2626', fillOpacity: 1 }).addTo(map);
     setTimeout(function () { map.invalidateSize(); }, 200);
-    var me, line;
+    var me, line, roads = L.layerGroup().addTo(map), rlT = 0, rlAt = null, rlBusy = false;
+    // road route from the employee to the shop; the straight dashed line shows until it arrives or if it cannot be fetched
+    function roadTo(lat, lng) {
+      if (!window.RoadLine || rlBusy) return;
+      var now = Date.now(), moved = rlAt ? Math.abs(lat - rlAt[0]) * 111000 + Math.abs(lng - rlAt[1]) * 111000 : 1e9;
+      if (rlAt && (now - rlT < 10000 || moved < 40)) return;
+      rlBusy = true; rlT = now; rlAt = [lat, lng];
+      RoadLine.get([[lat, lng], [pin.lat, pin.lng]]).then(function (r) {
+        rlBusy = false; if (!r) return;
+        roads.clearLayers();
+        r.segs.forEach(function (sg) { L.polyline(sg.line, { color: '#16A34A', weight: 4, opacity: .9, lineCap: 'round', dashArray: sg.road ? null : '6 8' }).addTo(roads); });
+        if (r.segs.some(function (sg) { return sg.road; })) line.setStyle({ opacity: 0 });
+      });
+    }
     window.gmMapMe = function (lat, lng, fit) {
       if (me) { me.setLatLng([lat, lng]); line.setLatLngs([[lat, lng], [pin.lat, pin.lng]]); }
       else {
         me = L.circleMarker([lat, lng], { radius: 8, color: '#fff', weight: 3, fillColor: '#2563EB', fillOpacity: 1 }).addTo(map);
         line = L.polyline([[lat, lng], [pin.lat, pin.lng]], { color: '#16A34A', weight: 4, dashArray: '6 8' }).addTo(map);
       }
+      roadTo(lat, lng);
       if (fit !== false) map.fitBounds(L.latLngBounds([[lat, lng], [pin.lat, pin.lng]]), { padding: [30, 30], maxZoom: 17 });
     };
   })();
@@ -679,26 +552,31 @@
   function closeReturnsModal() {
     returnsModal.classList.remove('active');
     setTimeout(function() {
-      returnsChoiceWrap.style.display = 'flex';
-      returnFormWrap.style.display = 'none';
+      returnsChoiceWrap.style.display = 'block'; document.getElementById('retAsk').style.display = '';
+      returnFormWrap.style.display = 'none'; lines = []; renderLines();
     }, 250);
   }
 
+  var retMode = 'no', noBtn = document.getElementById('noReturnsBtn'), noCard = document.getElementById('retNoCard'), yesCard = document.getElementById('yesReturnsBtn');
+  function setRetMode(m) {
+    retMode = m; noCard.classList.toggle('selected', m === 'no'); yesCard.classList.toggle('selected', m === 'yes');
+    noBtn.innerHTML = m === 'no' ? 'Done - Next Shop' : 'Next';
+  }
+  noCard.addEventListener('click', function () { setRetMode('no'); });
   document.getElementById('goodsDeliveredBtn').addEventListener('click', function() {
-    returnsModal.classList.add('active');
+    setRetMode('no'); returnsModal.classList.add('active');
   });
 
   document.getElementById('closeReturnsModalBtn').addEventListener('click', closeReturnsModal);
-  document.getElementById('cancelReturnModalBtn2').addEventListener('click', closeReturnsModal);
-  document.getElementById('cancelReturnFormBtn').addEventListener('click', closeReturnsModal);
 
   document.getElementById('backToNoReturnsBtn').addEventListener('click', function() {
     returnFormWrap.style.display = 'none';
-    returnsChoiceWrap.style.display = 'flex';
+    returnsChoiceWrap.style.display = 'block'; document.getElementById('retAsk').style.display = '';
   });
 
   // No Returns: Instant Finish
   document.getElementById('noReturnsBtn').addEventListener('click', function() {
+    if (retMode === 'yes') { openReturnForm(); return; }
     this.disabled = true;
     this.textContent = 'Completing delivery...';
     GMVisit.done(shop, 'delivered');
@@ -711,94 +589,137 @@
     advanceToNext();
   });
 
-  // Yes Returns: Show Searchable Form
-  document.getElementById('yesReturnsBtn').addEventListener('click', function() {
-    returnsChoiceWrap.style.display = 'none';
-    returnFormWrap.style.display = 'block';
-    document.getElementById('productSearchInput').focus();
-    renderSearchResults('');
-  });
-
-  // Product Live Search Logic
+  // Yes Returns: product, quantity, reason
+  var REASONS = GM.settings().returnReasons;   // the office can change this list (admin > My profile > Work rules)
   var searchInput = document.getElementById('productSearchInput');
   var searchResultsList = document.getElementById('searchResultsList');
   var selectedProdPill = document.getElementById('selectedProdPill');
-  var selectedProdLabel = document.getElementById('selectedProdLabel');
+  var pickWrap = document.getElementById('rtPickWrap'), detail = document.getElementById('rtDetail');
   var returnAmtInput = document.getElementById('modalReturnAmt');
   var returnQtyInput = document.getElementById('modalReturnQty');
-  var currentSelectedProduct = null;
+  var saveBtn = document.getElementById('submitReturnAndFinishBtn');
+  var reasonBox = document.getElementById('rtReasons');
+  var currentSelectedProduct = null, chosenReason = '', allProds = [], lines = [];
 
+  // GST % of a bill item: the one saved with the bill; for bills saved before that, the tax % of the same product in the admin's product list.
+  var gstByName = null;
+  function itemGst(i) {
+    if (i.gst != null && i.gst !== '') return Number(i.gst) || 0;
+    if (!gstByName) { gstByName = {}; GM.getProducts().forEach(function (p) { if (p.tax) gstByName[nk(p.name)] = p.tax; }); }
+    return gstByName[nk(i.name)] || 0;
+  }
   var billItems = shop.items || [];
-  function ee(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function ee(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function nk(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
-  function left(i) { var done = 0; GM.getReturns().forEach(function (r) { if (r.billNo === shop.billNo && r.productName === i.name) done += Number(r.quantity) || 0; }); return Math.max(0, i.qty - done); }
-  // Items on this shop's bill come first (billed price, limited to what was billed). Then the rest of the product list.
+  function rs(n) { n = Math.round((Number(n) || 0) * 100) / 100; return '\u20B9' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 }); }
+  function left(i) { var done = 0; GM.getReturns().forEach(function (r) { if (r.billNo === shop.billNo && r.productName === i.name) done += Number(r.quantity) || 0; }); lines.forEach(function (r) { if (!r.notOnBill && r.productName === i.name) done += r.quantity; }); return Math.max(0, i.qty - done); }
+  function hit(text, toks) { text = String(text || '').toLowerCase(); return toks.every(function (t) { return text.indexOf(t) > -1; }); }
+  // Items on this shop's bill come first (billed price, limited to what was billed). Then the admin's product list (all words typed must match the name or code).
   function pickList(q) {
-    q = String(q || '').toLowerCase().trim(); var out = [], onBill = {};
-    billItems.forEach(function (i) { onBill[nk(i.name)] = 1; if (!q || i.name.toLowerCase().indexOf(q) > -1) out.push({ key: 'b' + out.length, name: i.name, price: i.rate, max: left(i), bill: true }); });
-    GM.searchProducts(q).forEach(function (p) { if (onBill[nk(p.name)]) return; out.push({ key: 'p' + out.length, name: p.name, price: p.unitPrice, max: null, bill: false, code: p.code }); });
+    var toks = String(q || '').toLowerCase().split(/\s+/).filter(Boolean), out = [], onBill = {};
+    billItems.forEach(function (i) { onBill[nk(i.name)] = 1; if (!toks.length || hit(i.name, toks)) out.push({ name: i.name, price: i.rate, incl: itemGst(i), max: left(i), bill: true, key: 'I' + out.length }); });
+    if (toks.length) {
+      for (var k = 0; k < allProds.length && out.length < 60; k++) {
+        var p = allProds[k]; if (onBill[nk(p.name)]) continue;
+        if (hit(p.name + ' ' + p.code, toks)) out.push({ name: p.name, price: p.unitPrice, tax: p.tax || 0, max: null, bill: false, code: p.code });
+      }
+    }
     return out;
   }
   function renderSearchResults(query) {
-    var L = pickList(query), hasList = GM.getProducts().length || billItems.length;
-    searchResultsList.innerHTML = L.length ? L.map(function (p, n) {
-      var tag = p.bill ? (p.max + ' left to return') : 'Not on this bill';
-      return '<div class="search-result-item" data-n="' + n + '"' + (p.bill && !p.max ? ' style="opacity:.45"' : '') + '><div><strong>' + ee(p.name) + '</strong> <small style="color:var(--muted);font-size:11px">(' + tag + ')</small></div><strong style="color:var(--primary);font-size:12px">&#8377;' + p.price + '</strong></div>';
-    }).join('') : '<div style="padding:10px;color:var(--muted);font-size:12px;">' + (hasList ? 'No matching product.' : 'No product list yet. Ask the admin to upload it.') + '</div>';
-    searchResultsList.style.display = 'block';
-    searchResultsList.querySelectorAll('.search-result-item').forEach(function (item) {
-      item.addEventListener('click', function () {
-        var p = L[+item.getAttribute('data-n')];
-        if (p.bill && !p.max) { alert('All of this item has already been returned.'); return; }
-        currentSelectedProduct = { code: p.bill ? 'I' + p.key : (p.code || ''), name: p.name, unitPrice: p.price, max: p.max, off: !p.bill };
-        selectedProdLabel.textContent = '✓ ' + p.name + ' (₹' + p.price + (p.max != null ? ', up to ' + p.max : '') + ')';
-        selectedProdPill.style.display = 'flex'; searchResultsList.style.display = 'none'; searchInput.value = '';
-        updateCalculatedAmount();
-      });
+    var q = String(query || '').trim(), L = pickList(q), noList = !allProds.length;
+    document.getElementById('rtCount').textContent = noList ? '' : allProds.length.toLocaleString('en-IN') + ' items in list';
+    var h = L.map(function (p, n) {
+      var sub = p.bill ? (p.max ? 'Can return up to ' + p.max : 'Already returned') : ((p.code ? 'Code ' + ee(p.code) : 'Not in this bill') + (p.tax ? ' \u00B7 + ' + p.tax + '% GST' : ''));
+      return '<div class="rt-row' + (p.bill && !p.max ? ' off' : '') + '" data-n="' + n + '"><div class="n"><b>' + ee(p.name) + (p.bill ? '<span class="rt-tag">In this bill</span>' : '') + '</b><small>' + sub + '</small></div><span class="p">' + rs(p.price) + '</span></div>';
+    }).join('');
+    if (!h) h = '<div class="rt-hint">' + (q ? 'Item not found: ' + ee(q) : (noList ? 'Item list is empty. Ask the admin to upload it.' : 'Type item name to see more items.')) + '</div>';
+    else if (!q && !noList) h += '<div class="rt-hint">Type item name to see more items</div>';
+    searchResultsList.innerHTML = h;
+    searchResultsList.querySelectorAll('.rt-row').forEach(function (row) {
+      row.addEventListener('click', function () { choose(L[+row.getAttribute('data-n')]); });
     });
   }
-
-  function updateCalculatedAmount() {
-    if (currentSelectedProduct) {
-      var qty = parseInt(returnQtyInput.value, 10) || 1;
-      returnAmtInput.value = Math.round(currentSelectedProduct.unitPrice * qty * 100) / 100;
-    }
+  function choose(p) {
+    if (p.bill && !p.max) { alert('This item is already returned fully.'); return; }
+    currentSelectedProduct = { code: p.bill ? p.key : (p.code || ''), name: p.name, unitPrice: Number(p.price) || 0, tax: p.bill ? 0 : (Number(p.tax) || 0), incl: p.bill ? (p.incl || 0) : 0, max: p.max, off: !p.bill };
+    document.getElementById('selectedProdLabel').textContent = p.name;
+    document.getElementById('selectedProdSub').textContent = rs(p.price) + ' each' + (currentSelectedProduct.tax ? ' + ' + currentSelectedProduct.tax + '% GST' : (currentSelectedProduct.incl ? ' (GST ' + currentSelectedProduct.incl + '% included)' : '')) + ' \u00B7 ' + (p.bill ? 'In this bill' : 'Not in this bill');
+    document.getElementById('rtMax').textContent = p.max != null ? 'Maximum ' + p.max : '';
+    pickWrap.style.display = 'none'; selectedProdPill.style.display = 'flex'; detail.style.display = 'block';
+    returnQtyInput.value = 1; updateCalculatedAmount(); refreshSave();
   }
-
-  searchInput.addEventListener('input', function() {
-    renderSearchResults(this.value);
+  function clampQty() {
+    var q = parseInt(returnQtyInput.value, 10) || 1; if (q < 1) q = 1;
+    if (currentSelectedProduct && currentSelectedProduct.max != null && q > currentSelectedProduct.max) q = currentSelectedProduct.max;
+    returnQtyInput.value = q; return q;
+  }
+  function updateCalculatedAmount() {
+    if (!currentSelectedProduct) return;
+    var t = currentSelectedProduct.tax || 0, base = Math.round(currentSelectedProduct.unitPrice * clampQty() * 100) / 100;
+    var total = Math.round(base * (1 + t / 100) * 100) / 100, brk = document.getElementById('rtBrk');
+    returnAmtInput.value = total;
+    var inc = currentSelectedProduct.incl || 0;
+    if (inc) { var gtot = Math.round(currentSelectedProduct.unitPrice * clampQty() * 100) / 100, gb = Math.round(gtot / (1 + inc / 100) * 100) / 100; returnAmtInput.value = gtot; brk.style.display = 'block'; brk.innerHTML = '<div><span>Amount without GST</span><b>' + rs(gb) + '</b></div><div><span>GST ' + inc + '% (already in bill)</span><b>+ ' + rs(Math.round((gtot - gb) * 100) / 100) + '</b></div><div class="tot"><span>Total to cut</span><b>' + rs(gtot) + '</b></div>'; }
+    else if (t) { brk.style.display = 'block'; brk.innerHTML = '<div><span>Amount without GST</span><b>' + rs(base) + '</b></div><div><span>GST ' + t + '%</span><b>+ ' + rs(Math.round((total - base) * 100) / 100) + '</b></div><div class="tot"><span>Total to cut</span><b>' + rs(total) + '</b></div>'; }
+    else brk.style.display = 'none';
+  }
+  function refreshSave() {
+    var ok = !!(currentSelectedProduct && chosenReason), n = lines.length + (ok ? 1 : 0);
+    document.getElementById('rtAddBtn').disabled = !ok; document.getElementById('rtAddBtn').style.display = currentSelectedProduct ? 'flex' : 'none';
+    saveBtn.disabled = !n;
+    saveBtn.textContent = 'Save & Finish Delivery' + (n > 1 ? ' (' + n + ' items)' : '');
+  }
+  function mkLine() {
+    return { shopId: shop.id, shopName: shop.name, billNo: shop.billNo, productCode: currentSelectedProduct.code, notOnBill: !!currentSelectedProduct.off,
+      productName: currentSelectedProduct.name, quantity: clampQty(), deductionAmount: Math.round((parseFloat(returnAmtInput.value) || 0) * 100) / 100,
+      gstPercent: currentSelectedProduct.tax || 0, reason: chosenReason };
+  }
+  function renderLines() {
+    var box = document.getElementById('rtLines');
+    box.style.display = lines.length ? 'block' : 'none';
+    box.innerHTML = lines.length ? '<div class="rt-lab" style="margin-top:0"><span>Items coming back (' + lines.length + ')</span><em>' + rs(lines.reduce(function (t, x) { return t + x.deductionAmount; }, 0)) + ' total</em></div>' + lines.map(function (x, n) {
+      return '<div class="rt-ln"><div class="n"><b>' + ee(x.productName) + '</b><small>' + x.quantity + ' pcs \u00B7 ' + ee(x.reason) + '</small></div><span class="a">' + rs(x.deductionAmount) + '</span><button type="button" data-rm="' + n + '" aria-label="Remove">&#10005;</button></div>';
+    }).join('') : '';
+    box.querySelectorAll('[data-rm]').forEach(function (b) { b.addEventListener('click', function () { lines.splice(+b.getAttribute('data-rm'), 1); renderLines(); if (currentSelectedProduct) { currentSelectedProduct.max = null; } resetReturnForm(); }); });
+  }
+  document.getElementById('rtAddBtn').addEventListener('click', function () {
+    if (!currentSelectedProduct || !chosenReason) return;
+    lines.push(mkLine()); renderLines(); resetReturnForm();
+  });
+  reasonBox.innerHTML = REASONS.map(function (r) { return '<button type="button" class="rt-chip" data-r="' + ee(r) + '"><span class="dot"></span>' + ee(r) + '</button>'; }).join('');
+  reasonBox.addEventListener('click', function (e) {
+    var c = e.target.closest('.rt-chip'); if (!c) return;
+    chosenReason = c.getAttribute('data-r');
+    reasonBox.querySelectorAll('.rt-chip').forEach(function (x) { x.classList.toggle('on', x === c); });
+    refreshSave();
   });
 
+  function openReturnForm() {
+    returnsChoiceWrap.style.display = 'none'; returnFormWrap.style.display = 'block'; document.getElementById('retAsk').style.display = 'none';
+    allProds = GM.getProducts();
+    renderLines(); resetReturnForm();
+  }
+  function resetReturnForm() {
+    currentSelectedProduct = null; chosenReason = '';
+    reasonBox.querySelectorAll('.rt-chip').forEach(function (x) { x.classList.remove('on'); });
+    selectedProdPill.style.display = 'none'; detail.style.display = 'none'; pickWrap.style.display = 'block';
+    returnAmtInput.value = ''; returnQtyInput.value = 1; searchInput.value = '';
+    renderSearchResults(''); refreshSave();
+  }
+  yesCard.addEventListener('click', function () { setRetMode('yes'); });
+  searchInput.addEventListener('input', function () { renderSearchResults(this.value); });
   returnQtyInput.addEventListener('input', updateCalculatedAmount);
+  document.getElementById('rtMinus').addEventListener('click', function () { returnQtyInput.value = (parseInt(returnQtyInput.value, 10) || 1) - 1; updateCalculatedAmount(); });
+  document.getElementById('rtPlus').addEventListener('click', function () { returnQtyInput.value = (parseInt(returnQtyInput.value, 10) || 0) + 1; updateCalculatedAmount(); });
+  document.getElementById('clearSelectedProd').addEventListener('click', function () { resetReturnForm(); searchInput.focus(); });
 
-  document.getElementById('clearSelectedProd').addEventListener('click', function() {
-    currentSelectedProduct = null;
-    selectedProdPill.style.display = 'none';
-    returnAmtInput.value = '';
-    renderSearchResults('');
-  });
-
-  // Submit Returns & Finish
-  document.getElementById('submitReturnAndFinishBtn').addEventListener('click', function() {
-    var qty = parseInt(returnQtyInput.value, 10) || 1;
-    var amt = Math.round((parseFloat(returnAmtInput.value) || 0) * 100) / 100;
-    if (currentSelectedProduct && currentSelectedProduct.max != null && qty > currentSelectedProduct.max) { alert('Only ' + currentSelectedProduct.max + ' of this item can be returned from this bill.'); return; }
-    var reason = document.getElementById('modalReturnReason').value || 'Damaged / Refused at shop';
-
-    if (currentSelectedProduct) {
-      GM.addReturn({
-        shopId: shop.id,
-        shopName: shop.name,
-        billNo: shop.billNo,
-        productCode: currentSelectedProduct.code,
-        notOnBill: !!currentSelectedProduct.off,
-        productName: currentSelectedProduct.name,
-        quantity: qty,
-        deductionAmount: amt,
-        reason: reason,
-        time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
-      });
-    }
+  // Submit Returns & Finish (everything added so far, plus the item on screen if it is complete)
+  saveBtn.addEventListener('click', function() {
+    if (currentSelectedProduct && chosenReason) lines.push(mkLine());
+    if (!lines.length) return;
+    var tm = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    lines.forEach(function (x) { x.time = tm; GM.addReturn(x); });
 
     GMVisit.done(shop, 'delivered');
     GM.updateShop(shop.id, {
@@ -808,7 +729,7 @@
     });
 
     this.disabled = true;
-    this.textContent = 'Return Recorded!';
+    this.textContent = 'Saved';
     advanceToNext();
   });
 
@@ -845,7 +766,7 @@
   // Photo Input feedback
   document.getElementById('modalPhotoInput').addEventListener('change', function(e) {
     if (e.target.files && e.target.files[0]) {
-      document.getElementById('modalPhotoLabel').textContent = '✓ Photo Captured (GPS Stamped)';
+      document.getElementById('modalPhotoLabel').textContent = '\u2713 Photo captured (GPS stamped)';
     }
   });
 

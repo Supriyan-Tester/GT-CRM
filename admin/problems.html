@@ -24,8 +24,8 @@ function nameOf(id) { var w = GA.workers().filter(function (x) { return x.id ===
 function ids() { var a = GA.workers().map(function (w) { return w.id; }); Object.keys(recs).forEach(function (i) { if (a.indexOf(i) < 0 && i !== "GT-W104") a.push(i); }); return a; }
 function logOf(id, d) { var l = recs[id] && recs[id].attendanceLog || {}; return (l[d.slice(0, 7)] || {})[+d.slice(8)] || null; }
 // Today's shops for one employee; empty unless the record belongs to today's plan
-function todayShops(id) { var r = recs[id], t = GA.today(); if (!r || !r.appliedPlan || r.appliedPlan.indexOf(t + ":") !== 0) return []; return (r.shops || []).map(function (s) { return Object.assign({ wid: id, worker: nameOf(id) }, s); }); }
-function todayReturns(id) { var r = recs[id], t = GA.today(); if (!r || !r.appliedPlan || r.appliedPlan.indexOf(t + ":") !== 0) return []; return (r.returns || []).map(function (x) { return Object.assign({ worker: nameOf(id) }, x); }); }
+function todayShops(id) { var r = recs[id], t = GA.today(); if (!r || !r.appliedPlan || r.appliedPlan.indexOf(t + ":") !== 0 || r.crewRole === "helper") return []; return (r.shops || []).map(function (s) { return Object.assign({ wid: id, worker: nameOf(id) }, s); }); }
+function todayReturns(id) { var r = recs[id], t = GA.today(); if (!r || !r.appliedPlan || r.appliedPlan.indexOf(t + ":") !== 0) return []; return (r.returns || []).filter(function (x) { return !x.shared; }).map(function (x) { return Object.assign({ worker: nameOf(id) }, x); }); }
 function banner() { return online === false ? "<div class=\"a-warn\" style=\"margin:0 0 12px\">Server not reachable. Nothing is shown until it is back.</div>" : ""; }
 var who = "all", pg = GA.mount("problems.html", "Problems");
 pg.innerHTML = "<div class=\"a-bar\"><label class=\"mu\" for=\"wk\">Employee</label><div class=\"field a-f\" style=\"width:210px\"><select id=\"wk\"></select></div></div><div id=\"out\"></div>";

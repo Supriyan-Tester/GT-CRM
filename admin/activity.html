@@ -6,36 +6,129 @@
 <title>General Traders - Admin</title>
 <link rel="stylesheet" href="../shared/theme.css">
 <link rel="stylesheet" href="../shared/admin.css">
-<script src="../shared/theme.js"></script></head>
+<script src="../shared/theme.js"></script>
+<style>
+.al-sub{color:var(--muted);font-size:14px;margin:0 0 16px}
+.al-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
+.al-f{flex:0 0 190px;min-width:0}
+.al-f>label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:0 0 6px 2px}
+.al-f .field{margin:0}
+.al-f .field select{height:36px;font-size:13px}
+.al-bar .gt-dd{width:100%}
+.al-bar .gt-dd-trigger{min-height:36px!important;height:36px!important;font-size:13px!important;border-radius:10px!important}
+.al-bar .gtp-btn{height:36px;min-height:36px}
+.al-search{display:flex;align-items:center;gap:8px;margin:0!important;flex:1 1 260px;height:36px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.al-search svg{width:16px;height:16px;flex:none;color:var(--muted);fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.al-search input{flex:1;min-width:0;border:0;background:transparent;color:var(--text);font:inherit;font-size:13px;outline:0}
+.al-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 16px;border:0;border-radius:10px;background:var(--primary);color:var(--on-primary);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.al-btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.al-btn.spin svg{animation:alspin .8s linear infinite}
+@keyframes alspin{to{transform:rotate(360deg)}}
+.al-info{display:flex;align-items:center;gap:10px;padding:12px 16px;margin-bottom:14px;border-radius:var(--radius-btn);background:var(--t-primary);color:var(--primary);font-size:13.5px;font-weight:500}
+.al-info svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+.al-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-card);box-shadow:var(--shadow);overflow:hidden}
+.al-head,.al-row{display:grid;grid-template-columns:150px 170px 150px 1fr 28px;gap:12px;align-items:center;padding:0 18px}
+.al-head{height:46px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;color:var(--muted)}
+.al-head button{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.al-head button:hover{color:var(--text)}
+.al-head button i{font-style:normal;font-size:10px;opacity:.5}
+.al-head button.on i{opacity:1;color:var(--primary)}
+.al-item{border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
+.al-item:last-child{border-bottom:0}
+.al-item:hover{background:var(--t-primary)}
+.al-row{min-height:66px;padding-top:10px;padding-bottom:10px}
+.al-when{font-size:14px;font-weight:600;line-height:1.35}
+.al-when span{display:block;font-weight:500;color:var(--muted);font-size:13px}
+.al-who{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;min-width:0}
+.al-av{width:32px;height:32px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--border);color:var(--muted);font-size:13px;font-weight:700}
+.al-who b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.al-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;font-size:13.5px;font-weight:600;white-space:nowrap}
+.al-pill svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.al-g{background:var(--t-success);color:var(--success)}
+.al-b{background:var(--t-info);color:var(--info)}
+.al-o{background:var(--t-accent);color:var(--accent)}
+.al-t{background:var(--t-primary);color:var(--primary)}
+.al-n{background:var(--bg);color:var(--muted)}
+.al-r{background:var(--t-danger);color:var(--danger)}
+.al-what{font-size:14px;line-height:1.45;word-break:break-word}
+.al-chev{width:18px;height:18px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
+.al-item.open .al-chev{transform:rotate(90deg)}
+.al-det{display:none;padding:0 18px 16px 18px;font-size:13.5px;color:var(--muted)}
+.al-item.open .al-det{display:block}
+.al-det div{display:flex;gap:8px;margin-top:6px}.al-det b{color:var(--text);min-width:64px}
+.al-empty{padding:40px 12px;text-align:center;color:var(--muted)}
+.al-more{margin-top:14px;text-align:center}
+.al-more button{height:42px;padding:0 20px;border:1px solid var(--border);border-radius:var(--radius-btn);background:var(--card);color:var(--text);font:inherit;font-weight:600;cursor:pointer}
+@media(max-width:760px){
+  .al-btn{flex:1 1 100%}
+  .al-f{flex:1 1 calc(50% - 5px)}
+  .al-search{flex:1 1 100%;order:3}.al-btn{order:4}
+  .al-head{display:none}
+  .al-row{grid-template-columns:96px auto 1fr 22px;grid-template-areas:"when who pill chev" "what what what what";gap:8px 8px;padding:12px 14px}
+  .al-row>.c-when{grid-area:when}.al-row>.c-who{grid-area:who}.al-who b{max-width:70px}.al-row>.c-type{grid-area:pill;justify-self:end}.al-row>.c-what{grid-area:what}.al-row>.c-chev{grid-area:chev}
+  .al-row .al-pill{font-size:12.5px;padding:5px 10px}
+  .al-det{padding:0 14px 14px}
+}
+</style>
+</head>
 <body>
 <script src="../shared/mock-data.js"></script>
 <script src="../shared/admin.js"></script>
 <script>
 GA.guard();
-var $ = function (i) { return document.getElementById(i); }, esc = GA.esc, data = { month: "", months: [], events: [] }, shown = 50, err = "";
-var TYPES = { all: "All", customer: "Customers", route: "Routes", plan: "Daily plan", employee: "Employees", shop: "Shop pins", vehicle: "Vehicles", product: "Products", settings: "Settings", login: "Sign-ins", password: "Passwords" };
+var $ = function (i) { return document.getElementById(i); }, esc = GA.esc, data = { month: "", months: [], events: [] }, shown = 50, err = "", sortKey = "t", sortDir = -1, openKey = null;
+// label, pill colour, icon path
+var IC = {
+  customer: '<path d="M4 8h16l-1.5-4h-13z"/><path d="M5 8v12h14V8"/><path d="M9 20v-6h6v6"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+  pin: '<path d="M12 21s7-6.2 7-11.5a7 7 0 0 0-14 0C5 14.800 12 21 12 21z"/><circle cx="12" cy="9.500" r="2.500"/>',
+  map: '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
+  cal: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+  truck: '<path d="M2 6h12v10H2zM14 10h4l3 3v3h-7"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>',
+  box: '<path d="m12 3 8 4.500v9L12 21l-8-4.500v-9z"/><path d="m4 7.500 8 4.500 8-4.500M12 12v9"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.600 5.600l2.100 2.100M16.300 16.300l2.100 2.100M5.600 18.400l2.100-2.100M16.300 7.700l2.100-2.100"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3"/>'
+};
+var TYPES = { all: ["All"], customer: ["Customers", "al-g", "customer"], route: ["Routes", "al-t", "map"], plan: ["Daily plan", "al-t", "cal"], employee: ["Employees", "al-n", "user"], shop: ["Live location", "al-o", "pin"], vehicle: ["Vehicles", "al-n", "truck"], product: ["Products", "al-n", "box"], settings: ["Settings", "al-n", "gear"], login: ["Sign-in", "al-b", "user"], password: ["Passwords", "al-r", "key"] };
+var PILL = { customer: "Customer", login: "Sign-in", shop: "Live Location", route: "Route", plan: "Daily plan", employee: "Employee", vehicle: "Vehicle", product: "Product", settings: "Settings", password: "Password" };
+var SVG = function (p) { return '<svg viewBox="0 0 24 24" aria-hidden="true">' + p + '</svg>'; };
 var pg = GA.mount("activity.html", "Activity log");
-pg.innerHTML = "<div class=\"a-bar\"><label class=\"mu\" for=\"mo\">Month</label><div class=\"field a-f\" style=\"width:170px\"><select id=\"mo\" data-gt-dropdown-ready=\"1\"></select></div>" +
-  "<label class=\"mu\" for=\"ty\">Type</label><div class=\"field a-f\" style=\"width:170px\"><select id=\"ty\" data-gt-dropdown-ready=\"1\"></select></div>" +
-  "<div class=\"field a-f\" style=\"width:230px\"><input id=\"q\" type=\"search\" placeholder=\"Search name or words\"></div><button class=\"btn\" id=\"rf\" type=\"button\">Refresh</button></div><div id=\"out\"></div>";
-$("ty").innerHTML = Object.keys(TYPES).map(function (k) { return "<option value=\"" + k + "\">" + TYPES[k] + "</option>"; }).join("");
+pg.innerHTML = '<p class="al-sub">Track all important changes and actions in your system.</p>' +
+  '<div class="al-bar"><div class="al-f"><label for="mo">Month</label><div class="field"><select id="mo"></select></div></div>' +
+  '<div class="al-f"><label for="ty">Type</label><div class="field"><select id="ty"></select></div></div>' +
+  '<label class="al-search">' + SVG('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.500-3.500"/>') + '<input id="q" type="search" placeholder="Search name or keywords..."></label>' +
+  '<button class="al-btn" id="rf" type="button">' + SVG('<path d="M20 11a8 8 0 0 0-14.500-3.500L4 9M4 4v5h5M4 13a8 8 0 0 0 14.500 3.500L20 15M20 20v-5h-5"/>') + 'Refresh</button></div><div id="out"></div>';
+$("ty").innerHTML = Object.keys(TYPES).map(function (k) { return '<option value="' + k + '">' + TYPES[k][0] + '</option>'; }).join("");
 function monthName(m) { var n = ["January","February","March","April","May","June","July","August","September","October","November","December"]; return n[+m.slice(4) - 1] + " " + m.slice(0, 4); }
-function when(t) { var d = new Date(t + 5.5 * 3600e3), p = function (x) { return (x < 10 ? "0" : "") + x; }; return p(d.getUTCDate()) + "/" + p(d.getUTCMonth() + 1) + " " + p(d.getUTCHours()) + ":" + p(d.getUTCMinutes()); }
+function p2(x) { return (x < 10 ? "0" : "") + x; }
+function dparts(t) { var d = new Date(t + 5.5 * 3600e3), M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return { d: p2(d.getUTCDate()) + " " + M[d.getUTCMonth()] + " " + d.getUTCFullYear(), t: p2(d.getUTCHours()) + ":" + p2(d.getUTCMinutes()) }; }
+function pill(type) { var T = TYPES[type]; return T && T[1] ? '<span class="al-pill ' + T[1] + '">' + SVG(IC[T[2]]) + esc(PILL[type] || T[0]) + '</span>' : '<span class="al-pill al-n">' + esc(type) + '</span>'; }
+function th(k, label) { return '<button type="button" data-s="' + k + '"' + (sortKey === k ? ' class="on"' : '') + '>' + label + ' <i>' + (sortKey === k ? (sortDir < 0 ? '&#9660;' : '&#9650;') : '&#8645;') + '</i></button>'; }
 function draw() {
   var ty = $("ty").value, q = $("q").value.trim().toLowerCase();
-  if (err) { $("out").innerHTML = "<div class=\"a-warn\">" + esc(err) + "</div>"; return; }
+  if (err) { $("out").innerHTML = '<div class="a-warn">' + esc(err) + '</div>'; return; }
   var list = data.events.filter(function (e) { return (ty === "all" || e.type === ty) && (!q || (e.text + " " + e.by).toLowerCase().indexOf(q) >= 0); });
-  var rows = list.slice(0, shown).map(function (e) { return "<tr><td style=\"white-space:nowrap\">" + when(e.t) + "</td><td>" + esc(e.by) + "</td><td><span class=\"chip c-p\">" + esc(TYPES[e.type] || e.type) + "</span></td><td>" + esc(e.text) + "</td></tr>"; }).join("");
-  $("out").innerHTML = "<p class=\"mu\" style=\"margin-bottom:12px\">" + list.length + " change" + (list.length === 1 ? "" : "s") + " in " + monthName(data.month) + ". Changes made before this feature was added are not listed.</p>" +
-    "<div class=\"card\"><div class=\"a-scroll\"><table class=\"a-table\"><thead><tr><th>When</th><th>Who</th><th>Type</th><th>What changed</th></tr></thead><tbody>" + (rows || "<tr><td colspan=\"4\" class=\"mu\">Nothing recorded yet.</td></tr>") + "</tbody></table></div></div>" +
-    (list.length > shown ? "<p style=\"margin-top:12px\"><button class=\"btn\" id=\"more\" type=\"button\">Show more</button></p>" : "");
+  list.sort(function (a, b) { var x = sortKey === "t" ? a.t : String(sortKey === "by" ? a.by : a.type).toLowerCase(), y = sortKey === "t" ? b.t : String(sortKey === "by" ? b.by : b.type).toLowerCase(); return (x < y ? -1 : x > y ? 1 : b.t - a.t) * sortDir; });
+  var rows = list.slice(0, shown).map(function (e) {
+    var k = e.t + "|" + e.by + "|" + e.type, dp = dparts(e.t), by = e.by || "-";
+    return '<div class="al-item' + (openKey === k ? ' open' : '') + '" data-k="' + esc(k) + '"><div class="al-row"><div class="c-when al-when">' + dp.d + '<span>' + dp.t + '</span></div>' +
+      '<div class="c-who al-who"><span class="al-av">' + esc(by.charAt(0).toUpperCase()) + '</span><b>' + esc(by) + '</b></div><div class="c-type">' + pill(e.type) + '</div>' +
+      '<div class="c-what al-what">' + esc(e.text) + '</div><div class="c-chev">' + SVG('<path d="m9 6 6 6-6 6"/>').replace('<svg', '<svg class="al-chev"') + '</div></div>' +
+      '<div class="al-det"><div><b>When</b>' + dp.d + ', ' + dp.t + '</div><div><b>Who</b>' + esc(by) + '</div><div><b>Type</b>' + esc((TYPES[e.type] || [e.type])[0]) + '</div><div><b>Change</b><span style="color:var(--text)">' + esc(e.text) + '</span></div></div></div>';
+  }).join("");
+  $("out").innerHTML = '<div class="al-info">' + SVG('<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.500h.01"/>') + '<span>' + list.length + ' change' + (list.length === 1 ? '' : 's') + ' in ' + monthName(data.month) + '. Changes made before this feature was added are not listed.</span></div>' +
+    '<div class="al-card"><div class="al-head"><div>' + th("t", "When") + '</div><div>' + th("by", "Who") + '</div><div>' + th("type", "Type") + '</div><div>What changed</div><div></div></div>' + (rows || '<div class="al-empty">Nothing recorded yet.</div>') + '</div>' +
+    (list.length > shown ? '<div class="al-more"><button id="more" type="button">Show more</button></div>' : '');
   if ($("more")) $("more").onclick = function () { shown += 50; draw(); };
+  [].forEach.call($("out").querySelectorAll("[data-s]"), function (b) { b.onclick = function (ev) { ev.stopPropagation(); var k = b.getAttribute("data-s"); if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = k === "t" ? -1 : 1; } draw(); }; });
+  [].forEach.call($("out").querySelectorAll(".al-item"), function (r) { r.onclick = function () { var k = r.getAttribute("data-k"); openKey = openKey === k ? null : k; r.classList.toggle("open", openKey === k); [].forEach.call($("out").querySelectorAll(".al-item.open"), function (o) { if (o !== r) o.classList.remove("open"); }); }; });
 }
 function load(m) {
+  $("rf").classList.add("spin");
   fetch("/api/activity" + (m ? "?month=" + m : ""), { cache: "no-store", credentials: "same-origin" }).then(function (r) { if (!r.ok) throw new Error(r.status === 403 ? "Only an admin can see the activity log." : "Could not load the log. Try Refresh."); return r.json(); }).then(function (d) {
     data = d; err = ""; var ms = d.months.indexOf(d.month) < 0 ? [d.month].concat(d.months) : d.months;
-    $("mo").innerHTML = ms.map(function (x) { return "<option value=\"" + x + "\">" + monthName(x) + "</option>"; }).join(""); $("mo").value = d.month; draw();
-  }).catch(function (e) { err = e.message || "Could not load the log."; draw(); });
+    $("mo").innerHTML = ms.map(function (x) { return '<option value="' + x + '">' + monthName(x) + '</option>'; }).join(""); $("mo").value = d.month; draw();
+  }).catch(function (e) { err = e.message || "Could not load the log."; draw(); }).then(function () { $("rf").classList.remove("spin"); });
 }
 $("mo").onchange = function () { shown = 50; load($("mo").value); };
 $("ty").onchange = function () { shown = 50; draw(); }; $("q").oninput = function () { shown = 50; draw(); };
