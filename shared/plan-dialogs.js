@@ -33,17 +33,17 @@
   DP.dlg.addPlan = function () {
     if (pastBlock()) return;
     var date = DP.ctx.date(), S = DP.fresh();
-    var st = { helpers: [], order: 'route', id: DP.uid('P'), bills: null, fileName: '', rows: [], carryOff: {}, busy: false, rk: 0 };
+    var st = { helpers: [], order: 'route', id: DP.uid('P'), bills: null, fileName: '', rows: [], carryOff: {}, busy: false, rk: 0, more: [] };
     st.rows.push(blank());
     var rp = null, wp = null, vp = null, rowPk = {};
     function blank() { return { k: ++st.rk, code: '', inv: '', amount: '', boxes: '' }; }
-    var step = 0, STEPS = [['Plan Details', 'Select the route, employee and vehicle for this daily plan.'], ['Invoice / Shops', 'Upload the daily bill or enter invoices for this route.'], ['Review', 'Check the details before creating the daily plan.'], ['Create', '']];
+    var step = 0, STEPS = [['Plan Details', 'Select the route (you can add more than one), employee and vehicle for this daily plan.'], ['Invoice / Shops', 'Upload the daily bill or enter invoices for this route.'], ['Review', 'Check the details before creating the daily plan.'], ['Create', '']];
     var api = DP.dialog({
       title: 'Add Daily Plan', wide: true, cls: 'dpw-dlg',
       html: '<div class="dpw"><aside class="dpw-side"><span class="dpw-logo">' + GA.icon('cal') + '</span><h3 class="dpw-t">Add Daily Plan</h3><p class="dpw-d">Create a daily plan to manage deliveries, track invoices and assign an employee, vehicle and route.</p><ol class="dpw-steps" id="apSteps"></ol>' +
         '<div class="dpw-tip"><b>Tip</b>A daily plan helps you assign work, track deliveries and manage invoices on the day.</div></aside>' +
         '<section class="dpw-main"><header class="dpw-h"><div><h3 id="apHT"></h3><p id="apHS"></p></div><span class="dpw-date">' + GA.icon('cal') + ' ' + esc(DP.niceDate(date)) + '</span></header>' +
-        '<div class="dpw-pane" data-p="0"><div class="a-fg"><label class="dp-lbl" id="apRL">Route <b class="dpw-req">*</b></label><div id="apRoute"></div></div><div id="apPrev"></div>' +
+        '<div class="dpw-pane" data-p="0"><div class="a-fg"><label class="dp-lbl" id="apRL">Route <b class="dpw-req">*</b></label><div id="apRoute"></div><div id="apMore"></div></div><div id="apPrev"></div>' +
           '<div class="dp-two"><div class="a-fg"><label class="dp-lbl" id="apWL">Employee <b class="dpw-req">*</b></label><div id="apWork"></div></div><div class="a-fg"><label class="dp-lbl" id="apVL">Vehicle <b class="dpw-req">*</b></label><div id="apVeh"></div></div></div>' +
           '<div class="a-fg"><label class="dp-lbl">Helpers <em>(optional: riding along with the driver)</em></label><div id="apHelp" class="dp-helpers"></div></div>' +
           '<div class="a-fg"><label class="dp-lbl" for="apNotes">Plan notes <em>(optional, for the office)</em></label><textarea class="a-ta" id="apNotes" maxlength="300" rows="3" placeholder="Example: Priority, cover new customers in this area"></textarea></div></div>' +
@@ -113,9 +113,26 @@
       show(3);
     }
     function routeOptions() { return S.routes.slice().sort(function (a, b) { return a.name.localeCompare(b.name); }).map(function (r) { return { value: r.id, label: r.name, sub: r.codes.length + ' customer' + (r.codes.length === 1 ? '' : 's') }; }); }
-    function routeOf() { return S.routes.filter(function (r) { return r.id === rp.get(); })[0]; }
+    // One or more routes in a plan. With more than one, the shops of all of them are joined in the order the routes were picked.
+    function mergeRoutes(list, ids) {
+      var rs = ids.map(function (id) { return list.filter(function (r) { return r.id === id; })[0]; });
+      if (!rs.length || rs.some(function (r) { return !r; })) return null;
+      var codes = []; rs.forEach(function (r) { r.codes.forEach(function (c) { if (codes.indexOf(c) < 0) codes.push(c); }); });
+      return { id: rs[0].id, ids: ids.slice(), name: rs.map(function (r) { return r.name; }).join(' + '), codes: codes };
+    }
+    function routeIds() { return rp && rp.get() ? [rp.get()].concat(st.more.filter(function (i) { return i !== rp.get(); })) : []; }
+    function routeOf() { return mergeRoutes(S.routes, routeIds()); }
+    function drawMore() {
+      var host = DP.$('apMore'); if (!host) return;
+      var first = rp.get(); if (!first) { host.innerHTML = ''; return; }
+      host.innerHTML = (st.more.length ? '<div class="dp-chips" style="margin-top:8px">' + st.more.map(function (id) { var r = S.routes.filter(function (x) { return x.id === id; })[0]; return r ? '<span class="dp-chip on">' + esc(r.name) + ' <button type="button" data-rm="' + esc(id) + '" aria-label="Remove route ' + esc(r.name) + '" style="border:0;background:none;color:inherit;cursor:pointer;font-weight:800">&times;</button></span>' : ''; }).join('') + '</div>' : '') +
+        '<div style="margin-top:8px"><div id="apMoreP"></div></div>';
+      var mp = DP.picker(DP.$('apMoreP'), { label: 'Add another route', placeholder: '+ Add another route (optional)', empty: 'No other route.', options: function () { var used = routeIds(); return routeOptions().filter(function (o) { return used.indexOf(o.value) < 0; }); },
+        onChange: function (v) { if (v) { st.more.push(v); drawMore(); preview(); renderRows(); billInfo(); } } });
+      host.querySelectorAll('[data-rm]').forEach(function (b) { b.onclick = function () { st.more = st.more.filter(function (i) { return i !== b.dataset.rm; }); drawMore(); preview(); renderRows(); billInfo(); }; });
+    }
     function init(api) {
-      rp = DP.picker(api.q('#apRoute'), { labelledBy: 'apRL', placeholder: S.routes.length ? 'Search routes...' : 'No routes yet', options: routeOptions, empty: 'No route matches.', onChange: function () { preview(); renderRows(); billInfo(); api.q('[data-msg]').textContent = ''; } });
+      rp = DP.picker(api.q('#apRoute'), { labelledBy: 'apRL', placeholder: S.routes.length ? 'Search routes...' : 'No routes yet', options: routeOptions, empty: 'No route matches.', onChange: function () { st.more = st.more.filter(function (i) { return i !== rp.get(); }); drawMore(); preview(); renderRows(); billInfo(); api.q('[data-msg]').textContent = ''; } });
       wp = DP.picker(api.q('#apWork'), { labelledBy: 'apWL', placeholder: 'Search employees...', empty: 'No employee matches.', onChange: function (v) { st.helpers = DP.lastHelpers(DP.fresh(), v, date); drawHelp(); }, options: function () {
         var S2 = DP.fresh();
         return GA.workers().filter(function (w) { return w.active; }).map(function (w) { var b = DP.workerBusy(S2, date, w.id), lv = GA.onLeaveOn(w.id, date); return { value: w.id, label: w.name, sub: GA.empCode(w.id) + (w.phone ? ' \u00b7 ' + w.phone : ''), disabled: !!(b || lv), reason: lv ? 'On leave on this date' : b ? 'Already has a plan (' + b.routeName + ')' : '' }; });
@@ -167,7 +184,7 @@
             '<td><input data-f="amount" aria-label="Amount, row ' + (i + 1) + '" inputmode="decimal" value="' + esc(r.amount) + '" placeholder="0"></td><td><input data-f="boxes" aria-label="Boxes, row ' + (i + 1) + '" inputmode="numeric" value="' + esc(r.boxes) + '" placeholder="0"></td>' +
             '<td><button type="button" class="dp-ib bd" data-del="' + r.k + '" aria-label="Delete invoice row ' + (i + 1) + '">' + GA.icon('trash') + '</button></td></tr><tr data-e="' + r.k + '" hidden><td></td><td colspan="5" class="dp-err"></td></tr>';
         }).join('') + '</tbody></table><div class="dp-tot"><span><button type="button" class="btn btn-secondary a-btn" data-addrow>' + GA.icon('plus') + ' Add another invoice</button> <button type="button" class="btn btn-secondary a-btn" data-paste>Paste rows</button></span><span>Total <b id="apTot"></b></span></div>' +
-        '<div class="mu" style="font-size:12px;margin-top:6px">Customers are limited to the selected route. Boxes is optional.</div>';
+        '<div class="mu" style="font-size:12px;margin-top:6px">Customers are limited to the selected route(s). Boxes is optional.</div>';
       st.rows.forEach(function (r) {
         var host = box.querySelector('tr[data-k="' + r.k + '"] [data-pk]');
         rowPk[r.k] = DP.picker(host, { label: 'Customer, row ' + (st.rows.indexOf(r) + 1), placeholder: routeOf() ? 'Choose customer' : 'Choose a route first', options: routeCustOptions, value: (routeOf() && routeOf().codes.indexOf(r.code) > -1) ? r.code : '', empty: 'No customer on this route matches.', onChange: function (v) { r.code = v; clearRowErr(r.k); } });
@@ -278,8 +295,8 @@
       DP.commit(function (S2) {
         var L = DP.plansOn(S2, date);
         if (L.some(function (p) { return p.id === st.id; })) { out.already = true; return { ok: true }; }   // a repeated click or retry never makes a second plan
-        var route = S2.routes.filter(function (x) { return x.id === r.id; })[0], w = DP.workerById(wid), vh = DP.vehicleById(vid);
-        if (!route) return { ok: false, error: 'That route no longer exists.' };
+        var route = mergeRoutes(S2.routes, r.ids), w = DP.workerById(wid), vh = DP.vehicleById(vid);
+        if (!route) return { ok: false, error: 'One of the routes no longer exists.' };
         if (!w || !w.active) return { ok: false, error: 'That employee is not available.' };
         if (GA.onLeaveOn(wid, date)) return { ok: false, error: w.name + ' is on leave on this date.' };
         if (!vh || !vh.active) return { ok: false, error: 'That vehicle is not available.' };
@@ -289,7 +306,7 @@
         st.helpers.forEach(function (hid) { var hw = DP.workerById(hid); if (!hw || !hw.active || hid === wid || hbad) return; if (GA.onLeaveOn(hid, date)) hbad = hw.name + ' (helper) is on leave on this date.'; else if (DP.workerBusy(S2, date, hid)) hbad = hw.name + ' (helper) already has a plan on this date.'; else hs.push(hid); });
         if (hbad) return { ok: false, error: hbad };
         if (bv) return { ok: false, error: 'Vehicle ' + vh.number + ' is already used by ' + bv.worker + ' on this date.' };
-        var plan = { id: st.id, route: route.id, routeName: route.name, vehicleId: vh.id, vehicle: vh.number, vehicleLabel: vh.number + (vh.type ? ' (' + vh.type + ')' : ''), vehicleKm: vh.lastKm, workerId: w.id, worker: w.name, helpers: hs, builtAt: Date.now(), stops: [], createdBy: DP.actor(), createdAt: Date.now() };
+        var plan = { id: st.id, route: route.id, routeName: route.name, routeIds: route.ids.length > 1 ? route.ids : undefined, vehicleId: vh.id, vehicle: vh.number, vehicleLabel: vh.number + (vh.type ? ' (' + vh.type + ')' : ''), vehicleKm: vh.lastKm, workerId: w.id, worker: w.name, helpers: hs, builtAt: Date.now(), stops: [], createdBy: DP.actor(), createdAt: Date.now() };
         var nt = api.q('#apNotes').value.trim(); if (nt) plan.notes = nt;
         var taken = DP.invTaken(S2, date), inv = {}, extra = [], dup = [], noCust = {};
         carry.forEach(function (s) { if (taken[s.inv]) return; taken[s.inv] = 1; plan.stops.push({ code: s.code, name: s.name, address: s.address, inv: s.inv, amount: s.amount, boxes: s.boxes, items: s.items, carried: true }); });

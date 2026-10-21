@@ -154,8 +154,9 @@
     return { stops: stops, pts: pts, areas: areas, order: order, km: pts.length > 1 ? DP.lineKm(pts.map(function (x) { return x.ll; })) : null };
   }
   function tabRoute(p) {
-    var f = routeFacts(p), rt = DP.S.routes.filter(function (r) { return r.id === p.route; })[0];
-    return '<div class="dp-kv"><div><small>Route</small><b>' + esc(p.routeName) + '</b></div><div><small>Customers on route (saved)</small><b>' + (rt ? rt.codes.length : '-') + '</b></div><div><small>Stops in this plan</small><b>' + p.stops.length + '</b></div><div><small>Areas</small><b>' + f.order.length + '</b></div><div><small>Stops with a map pin</small><b>' + f.pts.length + ' of ' + p.stops.length + '</b></div>' +
+    var f = routeFacts(p), rt = DP.S.routes.filter(function (r) { return r.id === p.route; })[0], nc = null;
+    if (p.routeIds && p.routeIds.length > 1) { var cs = {}; p.routeIds.forEach(function (id) { var x = DP.S.routes.filter(function (r) { return r.id === id; })[0]; if (x) x.codes.forEach(function (c) { cs[c] = 1; }); }); nc = Object.keys(cs).length; }
+    return '<div class="dp-kv"><div><small>Route</small><b>' + esc(p.routeName) + '</b></div><div><small>Customers on route (saved)</small><b>' + (nc != null ? nc : rt ? rt.codes.length : '-') + '</b></div><div><small>Stops in this plan</small><b>' + p.stops.length + '</b></div><div><small>Areas</small><b>' + f.order.length + '</b></div><div><small>Stops with a map pin</small><b>' + f.pts.length + ' of ' + p.stops.length + '</b></div>' +
       (f.km != null ? '<div><small>Straight-line distance</small><b>about ' + f.km.toFixed(1) + ' km</b></div>' : '') + '</div>' +
       (f.km != null ? '<p class="mu" style="font-size:12px;margin-bottom:12px">Straight-line distance between stops that have a map pin, in visiting order. It is not road distance and no travel time is estimated.</p>' : '') +
       '<b style="font-size:13px">Area sequence</b><div class="dp-areas" style="margin:8px 0 14px">' + (f.order.length ? f.order.map(function (a, i) { return '<span class="badge">' + (i + 1) + '. ' + esc(a) + ' (' + f.areas[a] + ')</span>'; }).join('') : '<span class="mu">No areas saved for these customers.</span>') + '</div>' +

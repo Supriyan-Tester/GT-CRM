@@ -8,7 +8,8 @@
 <link rel="stylesheet" href="../shared/admin.css">
 <link rel="stylesheet" href="../shared/plan.css">
 <link rel="stylesheet" href="../shared/vehicles.css">
-<script src="../shared/theme.js"></script></head>
+<script src="../shared/theme.js"></script>  <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-32.png"><link rel="apple-touch-icon" href="/assets/icon-180.png">
+</head>
 <body>
 <script src="../shared/mock-data.js"></script>
 <script src="../shared/admin.js"></script>
@@ -21,6 +22,9 @@ var pg = GA.mount('vehicles.html', editId ? 'Edit vehicle' : 'Add vehicle', { ba
 var old = editId ? VX.vehicle(editId) : null;
 var VTYPES = ['Pickup', 'Mini truck', 'Truck', 'Van', 'Car', 'Bike', 'Other'], BODIES = ['Open body', 'Closed body', 'Box body', 'Tipper', 'Passenger', 'Other'],
   FUELS = ['Diesel', 'Petrol', 'CNG', 'Electric', 'Other'], TRANS = ['Manual', 'Automatic'], OWNERS = ['Company', 'Individual', 'Leased'];
+// Bikes and cars have no "open / closed body", so the Body type question is only asked for the other vehicle types.
+var NO_BODY = ['Bike', 'Car'];
+function needsBody() { return NO_BODY.indexOf(d.vtype) < 0; }
 var STEPS = ['Basic information', 'Registration & documents', 'Initial details', 'Review & save'];
 var d = {}, files = {}, errs = {}, step = 0, saving = false;
 if (old) { d = Object.assign({}, old, { odo: old.lastKm }); } else { d = { status: 'active', ownerType: 'Company', transmission: 'Manual', odo: '' }; }
@@ -45,7 +49,7 @@ function s1() {
   var pv = files.photo ? '<img src="' + (files.photo._u || (files.photo._u = URL.createObjectURL(files.photo))) + '" alt="Selected vehicle photo" style="width:100%;height:100%;object-fit:cover">' : old && old.files && old.files.photo ? VX.photo(old, 'xl') : '<span class="vx-ph-i" style="display:grid;place-items:center;height:100%">' + GA.icon('truck') + '</span>';
   return '<div class="vx-form">' + fld('number', 'Vehicle number', { req: 1, ph: 'TN43X1234', up: 1, maxlength: 20 }) + fld('code', 'Internal code', { req: 1, ph: editId ? '' : 'Leave blank to use ' + nextId(), up: 1, maxlength: 20 }) + fld('status', 'Status', { req: 1, options: [['active', 'Active'], ['inactive', 'Inactive'], ['repair', 'In service / repair']] }) +
     fld('type', 'Model / name', { req: 1, ph: 'Tata Ace', w: 'w2', maxlength: 40 }) + fld('vtype', 'Vehicle type', { req: 1, options: VTYPES }) +
-    fld('body', 'Body type', { req: 1, options: BODIES }) + fld('fuel', 'Fuel type', { req: 1, options: FUELS }) + fld('transmission', 'Transmission', { req: 1, options: TRANS }) +
+    (needsBody() ? fld('body', 'Body type', { req: 1, options: BODIES }) : '') + fld('fuel', 'Fuel type', { req: 1, options: FUELS }) + fld('transmission', 'Transmission', { req: 1, options: TRANS }) +
     fld('color', 'Colour', { opt: 1, maxlength: 20 }) + '</div>' +
     '<div class="vx-sect"><div><h3>Vehicle photo <em class="mu" style="font-weight:400;font-size:13px">(optional)</em></h3><small>JPG, PNG or WEBP, up to 5 MB.</small></div></div><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><span class="vx-ph xl" style="overflow:hidden">' + pv + '</span><div><button type="button" class="btn btn-secondary a-btn" data-up="photo">' + DP.icon('upload') + ' ' + (files.photo || (old && old.files && old.files.photo) ? 'Replace photo' : 'Upload photo') + '</button>' + (files.photo ? ' <button type="button" class="btn btn-secondary a-btn" data-rm="photo">Clear</button>' : '') + (errs.file_photo ? '<div class="vx-fe" role="alert">' + esc(errs.file_photo) + '</div>' : '') + '</div></div>';
 }
@@ -78,7 +82,7 @@ function validate(s) {
     if (!n) e.number = 'Enter the vehicle number.'; else if (!/^[A-Z0-9 -]{4,20}$/.test(n)) e.number = 'Use letters and numbers only (4 to 20 characters).';
     else if (VX.vehicles().some(function (v) { return v.id !== editId && v.number.toUpperCase().replace(/[\s-]/g, '') === n.replace(/[\s-]/g, ''); })) e.number = 'This vehicle number already exists.';
     if (editId || String(d.code || '').trim()) { var c = VX.checkCode(d.code, editId); if (c && (String(d.code || '').trim() || !editId)) e.code = c; }
-    req('type', 'Enter the model or name.'); req('vtype', 'Choose the vehicle type.'); req('body', 'Choose the body type.'); req('fuel', 'Choose the fuel type.'); req('transmission', 'Choose the transmission.');
+    req('type', 'Enter the model or name.'); req('vtype', 'Choose the vehicle type.'); if (needsBody()) req('body', 'Choose the body type.'); req('fuel', 'Choose the fuel type.'); req('transmission', 'Choose the transmission.');
     if (!d.status) e.status = 'Choose the status.';
   }
   if (s === 1) { if (d.regDate && d.regDate > GA.today()) e.regDate = 'Registration date cannot be in the future.'; }
@@ -104,7 +108,7 @@ function go(n) { step = n; errs = {}; render(); window.scrollTo(0, 0); }
 var pick = null;
 document.addEventListener('input', function (e) { var k = e.target.dataset && e.target.dataset.k; if (k) { d[k] = e.target.value; if (errs[k]) { delete errs[k]; var m = $('e_' + k); if (m) m.remove(); e.target.closest('.field').style.borderColor = ''; } } });
 document.addEventListener('change', function (e) {
-  var k = e.target.dataset && e.target.dataset.k; if (k && e.target.tagName === 'SELECT') { d[k] = e.target.value; if (errs[k]) { delete errs[k]; render(); } }
+  var k = e.target.dataset && e.target.dataset.k; if (k && e.target.tagName === 'SELECT') { d[k] = e.target.value; if (k === 'vtype' && !needsBody()) { d.body = ''; delete errs.body; render(); } else if (k === 'vtype') render(); else if (errs[k]) { delete errs[k]; render(); } }
   if (e.target.id === 'wFile') { var f = e.target.files[0]; if (!f || !pick) return; var m = VX.checkFile(f, pick); if (m) { errs['file_' + pick] = m; } else { delete errs['file_' + pick]; files[pick] = f; } render(); }
 });
 document.addEventListener('click', function (e) {

@@ -8,7 +8,8 @@
 <link rel="stylesheet" href="../shared/admin.css">
 <link rel="stylesheet" href="../shared/plan.css">
 <link rel="stylesheet" href="../shared/products.css">
-<script src="../shared/theme.js"></script></head>
+<script src="../shared/theme.js"></script>  <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-32.png"><link rel="apple-touch-icon" href="/assets/icon-180.png">
+</head>
 <body>
 <script src="../shared/mock-data.js"></script>
 <script src="../shared/admin.js"></script>
@@ -26,6 +27,8 @@ if (editCode && !orig) {
   throw new Error('stop');
 }
 var STEPS = [['Basic Information', 'Enter the product name, code and category.'], ['Pricing & Stock', 'Set the price and stock details.'], ['Category & Details', 'Provide more information about the product.'], ['Images', 'Upload product images (optional, up to ' + PR.MAXIMG + ').']];
+// Units offered in the Unit / Sub Unit lists: the built-in ones plus every unit already used on a product (Nos, Kg, BAG ...), without repeats.
+var unitsAll = (function () { var seen = {}, out = []; PR.UNITS.concat(L.map(function (p) { return p.unit; }), L.map(function (p) { return p.subUnit; })).forEach(function (u) { u = String(u || '').trim(); var k = u.toLowerCase(); if (u && !seen[k]) { seen[k] = 1; out.push(u); } }); return out; })();
 var d = orig ? JSON.parse(JSON.stringify(orig)) : { code: '', name: '', category: '', sub: '', unit: '', brand: '', desc: '', price: '', cost: '', stock: '', low: '', track: false, expTrack: false, hsn: '', barcode: '', expMonths: '', tax: '', weight: '', storage: '', active: true, alias: '', printName: '', mrp: '', subUnit: '', ratio: '', openQty: '', openVal: '', avg: '', batch: false };
 if (src) { d = JSON.parse(JSON.stringify(src)); d.code = ''; d.name = src.name + ' (copy)'; delete d.id; delete d.imgs; delete d.at; delete d.upd; }
 ['price', 'cost', 'stock', 'low', 'expMonths', 'weight', 'mrp', 'ratio', 'openQty', 'openVal', 'avg'].forEach(function (k) { if (d[k] == null) d[k] = ''; });
@@ -53,7 +56,7 @@ function s0() {
   return '<div class="pr-sec"><h3>Basic Information</h3><small>Enter the product name, code and category.</small></div><div class="pr-cols"><div class="pr-form">' +
     fld('code', 'Product Code', { req: 1, ph: editCode ? '' : nextC, max: 30 }) + fld('name', 'Product Name', { req: 1, ph: 'e.g. Mango Sauce', max: 80 }) +
     fld('category', 'Category', { req: 1, list: cats, ph: cats.length ? 'Choose or type' : 'e.g. Sauce', max: 40 }) + fld('sub', 'Sub Category', { opt: 1, list: subs, max: 40 }) +
-    fld('unit', 'Unit', { req: 1, list: PR.UNITS, ph: 'e.g. 200 ml', max: 20 }) + fld('brand', 'Brand', { opt: 1, list: PR.brands(L), ph: 'General Traders', max: 40 }) +
+    fld('unit', 'Unit', { req: 1, list: unitsAll, ph: 'e.g. 200 ml', max: 20 }) + fld('brand', 'Brand', { opt: 1, list: PR.brands(L), ph: 'General Traders', max: 40 }) +
     fld('alias', 'Alias / Short name', { opt: 1, ph: 'Used when searching', max: 60 }) + fld('printName', 'Print name', { opt: 1, ph: 'Name shown on bills', max: 80 }) +
     fld('desc', 'Description', { opt: 1, area: 1, cnt: 1, w: 'w2', ph: 'Short description of the product' }) + '</div>' +
     '<div class="pr-photo"><div class="pv" id="pvMain">' + mainPv() + '</div><button class="btn btn-secondary a-btn" type="button" id="pvBtn">' + DP.icon('upload') + ' ' + (imgs.length ? 'Change image' : 'Add image') + '</button><small class="mu" style="display:block;margin-top:6px;font-size:12px">JPG, PNG or WEBP, up to 5 MB</small></div></div>';
@@ -63,7 +66,7 @@ function s1() {
     fld('mrp', 'MRP (\u20b9)', { opt: 1, type: 'number', ph: '0' }) + fld('price', 'Selling Price (\u20b9)', { req: 1, type: 'number', ph: '0', extra: PR.loss(d) ? '<span class="pr-warn">Purchase price is higher than the selling price.</span>' : '' }) +
     fld('cost', 'Purchase Price (\u20b9)', { opt: 1, type: 'number', ph: '0' }) + '<div class="a-fg"><label>Margin</label><div class="pr-mg" id="mgn">' + mgnText() + '</div></div></div></div>' +
     '<div class="pr-box"><div class="pr-sec"><h3>Pack Sizes</h3><small>Optional. For example 1 box = 12 pcs.</small></div><div class="pr-form">' +
-    fld('subUnit', 'Sub Unit', { opt: 1, list: PR.UNITS, ph: 'e.g. pcs', max: 20 }) + fld('ratio', 'Ratio', { opt: 1, type: 'number', ph: '1', extra: '<span class="mu" style="font-size:12px;display:block;margin-top:4px">How many sub units in 1 main unit</span>' }) + '</div></div>' +
+    fld('subUnit', 'Sub Unit', { opt: 1, list: unitsAll, ph: 'e.g. pcs', max: 20 }) + fld('ratio', 'Ratio', { opt: 1, type: 'number', ph: '1', extra: '<span class="mu" style="font-size:12px;display:block;margin-top:4px">How many sub units in 1 main unit</span>' }) + '</div></div>' +
     '<div class="pr-box"><div class="pr-sec"><h3>Stock Information</h3><small>Track current stock quantity and low stock alert.</small></div><div class="pr-form">' +
     fld('stock', 'Current Stock', { type: 'number', ph: '0', opt: 1 }) + fld('low', 'Low Stock Alert', { type: 'number', ph: '0', opt: 1 }) +
     fld('openQty', 'Opening Qty', { type: 'number', ph: '0', opt: 1 }) + fld('openVal', 'Opening Value (\u20b9)', { type: 'number', ph: '0', opt: 1 }) + fld('avg', 'Average Sales', { type: 'number', ph: '0', opt: 1 }) +
@@ -102,6 +105,14 @@ function draw() {
 function bind() {
   [].forEach.call(pg.querySelectorAll('[data-k]'), function (el) {
     var k = el.dataset.k;
+    // The browser's suggestion list only shows options that match the text already typed, so a box that already holds "Nos" shows an empty list.
+    // Clear the box while it has focus so every option is listed, and put the old text back if nothing was chosen.
+    if (el.getAttribute('list')) {
+      var keep = null;
+      el.addEventListener('focus', function () { if (el.value) { keep = el.value; el.value = ''; } });
+      el.addEventListener('blur', function () { if (keep !== null && el.value === '') el.value = keep; keep = null; });
+      el.addEventListener('input', function () { keep = null; });
+    }
     var h = function () {
       d[k] = el.type === 'checkbox' ? el.checked : el.value; dirty = true;
       if (errs[k]) { delete errs[k]; var e = $('f_' + k + 'E'); if (e) e.remove(); el.parentNode.style.borderColor = ''; el.setAttribute('aria-invalid', 'false'); }

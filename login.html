@@ -130,7 +130,8 @@
     .brand-chip img { height: 46px; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-</style></head>
+</style>  <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-32.png"><link rel="apple-touch-icon" href="/assets/icon-180.png">
+</head>
 <body class="gt-login">
 <main class="stage">
   <div class="top">
@@ -190,7 +191,7 @@
         </div>
 
         <div class="row">
-          <label class="remember"><input type="checkbox" id="remember" checked> Remember me</label>
+          <label class="remember"><input type="checkbox" id="remember" checked> Remember my mobile number</label>
           <button type="button" class="btn-forgot" id="forgot">Forgot password?</button>
         </div>
         <div class="msg" id="msg" role="alert"></div>
@@ -202,6 +203,7 @@
         <svg viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="13" width="4" height="6" rx="1.5"/><rect x="17" y="13" width="4" height="6" rx="1.5"/><path d="M19 19c0 1.7-1.8 2.5-5 2.5"/></svg>
         <span><b>Need help?</b>Contact Fleet Admin at <strong data-admin-phone></strong></span>
       </div>
+      <p style="text-align:center;margin:14px 0 0;font-size:13px;color:var(--muted)">By signing in you accept the <a href="privacy.html" style="color:var(--primary);font-weight:600">Privacy notice</a></p>
     </div>
   </section>
 </main>
@@ -239,7 +241,7 @@
   function saveRemember(d) {
     try { if (remember.checked) localStorage.setItem(REMEMBER_KEY, d); else localStorage.removeItem(REMEMBER_KEY); } catch (e) {}
   }
-  // Remember me also keeps an admin signed in on this device (the server keeps the sign-in for 30 days).
+  // Admins are no longer kept signed in (they sign out after 30 minutes idle); this block only cleans up an old setting.
   var STAY_KEY = 'gt-remember-admin';
   try {
     var stay = JSON.parse(localStorage.getItem(STAY_KEY) || 'null');
@@ -250,6 +252,8 @@
       }, function () {});
     }
   } catch (e) {}
+
+  if (/[?&]idle=1/.test(location.search)) { msg.className = 'msg'; msg.style.color = 'var(--primary)'; msg.textContent = 'You were signed out after 30 minutes of inactivity. Please sign in again.'; }
 
   phone.addEventListener('input', function () {
     var d = phoneDigits();
@@ -283,7 +287,7 @@
     // Forget whatever the previous person left in this browser, then load only what this account may see.
     if (window.GMSync) { GMSync.clearLocal(); GMSync.pull(); }
     if (j.role === 'admin') {
-      GA.setSession({ id: j.id, name: j.name, role: j.adminRole });
+      GA.setSession({ id: j.id, name: j.name, role: j.adminRole, perms: j.perms, full: j.full, super: j.super });
       if (j.must) { askNewPassword(typedPw); return; }
       msg.className = 'msg'; msg.textContent = '';
       setTimeout(function () { window.location.href = 'admin/index.html'; }, 300);
@@ -327,7 +331,7 @@
     post('/api/login', { phone: d, password: p, remember: remember.checked }, function (r, j) {
       if (r.ok && j.ok) {
         saveRemember(d);
-        try { if (remember.checked && j.role === 'admin' && !j.must) localStorage.setItem(STAY_KEY, JSON.stringify({ id: j.id, name: j.name, role: j.adminRole })); else localStorage.removeItem(STAY_KEY); } catch (e) {}
+        try { localStorage.removeItem(STAY_KEY); } catch (e) {}   // admins are not kept signed in any more
         enter(j, p); return;
       }
       go.disabled = false; setLoading(false);

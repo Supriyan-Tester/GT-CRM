@@ -3,6 +3,8 @@
    replace the load()/save() internals and keep the GA function names. */
 (function () {
   var WK = 'gm_admin_workers_v1', SK = 'gm_admin_session', OLD = 'gm_admin_v1';
+  // Which modules unlock which page (same table as PAGE_RULES in server.js): '*' anyone, 'full' Admin / Super Admin, 'super' Super Admin only.
+  var PAGE_NEEDS = { 'index.html': '*', 'profile.html': '*', 'notifications.html': '*', 'summary.html': ['sales', 'billing', 'delivery'], 'customers.html': ['sales', 'billing'], 'routes.html': ['sales', 'delivery'], 'plan.html': ['delivery'], 'vehicles.html': ['delivery'], 'live.html': ['delivery'], 'problems.html': ['delivery', 'helper'], 'attendance.html': ['helper'], 'advances.html': ['billing'], 'products.html': ['inventory', 'billing', 'sales'], 'workers.html': 'full', 'activity.html': 'full', 'super.html': 'super', 'users.html': 'super' };
   var DEF = { admins: [{ id: 'A1', phone: '8489600833', name: 'Bala', role: 'Admin' }], workers: [], leaves: [] };
 
   // Admin accounts: the built-in one, unless it was edited on the Profile page (kept in gm_admin_account_v1, which sync.js shares with the server).
@@ -70,7 +72,14 @@
     /* ---- Session ---- */
     // Returns the admin session if this mobile number + password belongs to an admin, otherwise null.
     // The server checks the password (POST /api/login). The sign-in page then calls this to remember who is signed in for this tab.
-    setSession: function (s) { try { sessionStorage.setItem(SK, JSON.stringify({ id: s.id, name: s.name, role: s.role })); } catch (e) {} },
+    setSession: function (s) { try { sessionStorage.setItem(SK, JSON.stringify({ id: s.id, name: s.name, role: s.role, perms: s.perms, full: s.full, super: s.super })); } catch (e) {} },
+    // Can this signed-in person open this admin page? (Only for showing or hiding menu items. The server decides for real.)
+    can: function (page) {
+      var s = GA.session() || {}, r = PAGE_NEEDS[page]; if (r === undefined) r = 'full';
+      if (s.super === undefined && s.full === undefined) return r !== 'super';   // an older sign-in with no role info: show the normal menu, the server still checks
+      if (r === '*') return true; if (r === 'super') return !!s.super; if (r === 'full') return !!s.full || !!s.super;
+      if (s.full || s.super) return true; var m = s.perms || []; return r.some(function (x) { return m.indexOf(x) > -1; });
+    },
     session: function () { try { return JSON.parse(sessionStorage.getItem(SK)); } catch (e) { return null; } },
     // The signed-in admin's own account (name, mobile, role). The password is never returned.
     account: function () { var s = GA.session() || {}, a = admins().filter(function (x) { return x.id === s.id; })[0] || admins()[0] || {}; return { id: a.id, name: a.name, phone: a.phone, role: a.role }; },
@@ -100,7 +109,9 @@
     backupCard: function () {
       return '<div class="card" id="bkCard"><div class="card-title">Backup</div>' +
         '<p class="pf2-hint">Download a full copy of your data: customers, routes, plans, employees, attendance and settings. Keep the file somewhere safe, for example email it to yourself or save it in Google Drive. Photos and documents are not included.</p>' +
-        '<div class="pf2-acts"><button class="btn a-btn" id="bkGo" type="button">Download backup</button></div>' +
+        '<div class="pf2-acts"><button class="btn a-btn" id="bkGo" type="button">Download backup</button>' +
+        ((GA.session() || {}).super ? '<button class="btn btn-secondary a-btn" id="bkImp" type="button">Import backup</button><input type="file" id="bkFile" accept=".json,application/json" hidden>' : '') + '</div>' +
+        '<div id="bkImpBox" class="pf2-hint" style="display:none;margin-top:12px"></div>' +
         '<div class="pf2-msg" id="bkMsg" role="status"></div></div>';
     },
     bindBackup: function () {
@@ -122,6 +133,40 @@
           try { localStorage.setItem('gt_last_backup', n.toISOString()); } catch (e) {}
           say('Backup downloaded (' + Math.max(1, Math.round(b.size / 1024)) + ' KB). Keep the file safe.', 'ok');
         }).catch(function (e) { say(e && e.message ? e.message : 'Could not download the backup. Check your connection.', 'err'); }).then(function () { go.disabled = false; });
+      };
+    },
+    // Import backup (Super Admin): choose a file -> the server checks it -> the person confirms -> data is replaced (a safety copy is kept first)
+    bindImport: function () {
+      var btn = document.getElementById('bkImp'), inp = document.getElementById('bkFile'), box = document.getElementById('bkImpBox'), m = document.getElementById('bkMsg'); if (!btn || !inp) return;
+      var text = '';
+      function say(t, kind) { m.textContent = t; m.className = 'pf2-msg' + (kind ? ' ' + kind : ''); }
+      function esc(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+      function post(q) { return fetch('/api/import' + q, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: text }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(j.error || (r.status === 401 ? 'Your sign-in expired. Sign in again.' : r.status === 403 ? 'Only the Super Admin can import a backup.' : 'The server could not read this file.')); return j; }); }); }
+      function reset() { box.style.display = 'none'; box.innerHTML = ''; text = ''; inp.value = ''; btn.disabled = false; }
+      btn.onclick = function () { inp.click(); };
+      inp.onchange = function () {
+        var f = inp.files && inp.files[0]; if (!f) return;
+        say('Checking the file...'); btn.disabled = true;
+        var rd = new FileReader();
+        rd.onerror = function () { say('Could not read that file.', 'err'); reset(); };
+        rd.onload = function () {
+          text = String(rd.result || '');
+          post('?preview=1').then(function (j) {
+            say('');
+            box.style.display = 'block';
+            box.innerHTML = '<b>' + esc(f.name) + '</b><br>' + j.records + ' records' + (j.exportedAt ? ', saved on ' + esc(String(j.exportedAt).slice(0, 10)) : '') + (j.employees ? ', ' + j.employees + ' employees' : '') + '.<br>' +
+              'Importing <b>replaces all current data</b> (customers, routes, plans, employees, settings, activity log). Logins and user accounts are kept. A safety copy of the current data is saved first.' +
+              (j.removed ? '<br>' + j.removed + ' records that exist now are not in this file and will be removed.' : '') +
+              '<div class="pf2-acts" style="margin-top:10px"><button class="btn a-btn" id="bkOk" type="button">Replace data with this backup</button><button class="btn btn-secondary a-btn" id="bkNo" type="button">Cancel</button></div>';
+            document.getElementById('bkNo').onclick = function () { reset(); say(''); };
+            document.getElementById('bkOk').onclick = function () {
+              this.disabled = true; say('Restoring...');
+              post('').then(function (r) { reset(); say('Backup restored. Safety copy of the old data: ' + r.safetyCopy + '. Reload the page.', 'ok'); setTimeout(function () { location.reload(); }, 2500); })
+                .catch(function (e) { reset(); say(e.message, 'err'); });
+            };
+          }).catch(function (e) { reset(); say(e.message, 'err'); });
+        };
+        rd.readAsText(f);
       };
     },
     logout: function () { try { sessionStorage.removeItem(SK); localStorage.removeItem('gt-remember-admin'); } catch (e) {} try { var x = new XMLHttpRequest(); x.open('POST', '/api/logout', false); x.send(); } catch (e) {} location.href = '../login.html'; },
@@ -284,9 +329,10 @@
     mount: function (page, title, opts) {
       opts = opts || {};
       GA.syncVehicleKm(); GA.ensureCodes();
-      var s = GA.session() || {}, nav = [['index.html', 'Home', 'home'], ['summary.html', 'Daily summary', 'report'], ['workers.html', 'Employees', 'users'], ['vehicles.html', 'Vehicles', 'truck'], ['plan.html', 'Daily plan', 'cal'], ['routes.html', 'Routes', 'map'], ['customers.html', 'Customers', 'store'], ['products.html', 'Products', 'box'], ['attendance.html', 'Attendance', 'clock'], ['advances.html', 'Advances', 'coin'], ['problems.html', 'Problems', 'alert'], ['live.html', 'Live location', 'map'], ['activity.html', 'Activity log', 'check']];
+      var s = GA.session() || {}, nav = [['index.html', 'Home', 'home'], ['summary.html', 'Daily summary', 'report'], ['workers.html', 'Employees', 'users'], ['vehicles.html', 'Vehicles', 'truck'], ['plan.html', 'Daily plan', 'cal'], ['routes.html', 'Routes', 'map'], ['customers.html', 'Customers', 'store'], ['products.html', 'Products', 'box'], ['attendance.html', 'Attendance', 'clock'], ['advances.html', 'Advances', 'coin'], ['problems.html', 'Problems', 'alert'], ['live.html', 'Live location', 'map'], ['activity.html', 'Activity log', 'check'], ['super.html', 'User overview', 'report'], ['users.html', 'Users & Admins', 'key']];
+      nav = nav.filter(function (n) { return GA.can(n[0]); });
       var links = nav.map(function (n) { return '<a href="' + n[0] + '" title="' + n[1] + '"' + (n[0] === page ? ' aria-current="page"' : '') + '>' + GA.icon(n[2]) + '<span>' + n[1] + '</span></a>'; }).join('');
-      document.body.innerHTML = '<div class="a-wrap"><aside class="a-side" id="aSide"><div class="a-brand"><img src="../assets/logo.png" alt=""><span>General Traders</span><button class="a-ib a-col" id="aCol" type="button" title="Collapse menu" aria-label="Collapse menu">' + GA.icon('panel') + '</button></div>' + links +
+      document.body.innerHTML = '<div class="a-wrap"><aside class="a-side" id="aSide"><div class="a-brand"><img src="../assets/logo.png" alt=""><span>General Traders</span><button class="a-ib a-col" id="aCol" type="button" title="Collapse menu" aria-label="Collapse menu">' + GA.icon('panel') + '</button></div><nav class="a-nav" aria-label="Main menu">' + links + '</nav>' +
         '<div class="a-user"><a class="a-me" href="profile.html" title="My profile and depot location"' + (page === 'profile.html' ? ' aria-current="page"' : '') + '><span class="chip c-p">' + esc((s.name || 'A').charAt(0).toUpperCase()) + '</span><div style="flex:1"><b>' + esc(s.name) + '</b><span>' + esc(s.role) + '</span></div></a><button class="a-ib d" id="aOut" title="Sign out">' + GA.icon('logout') + '</button></div></aside>' +
         '<div class="a-main"><div class="a-top"><button class="a-ib a-menu" id="aMenu" title="Menu" aria-label="Open menu">' + GA.icon('menu') + '</button>' + (opts.back ? '<a class="a-bk" id="aBack" href="' + opts.back[0] + '" title="Back to ' + esc(opts.back[1]) + '">' + GA.icon('back') + '<span>' + esc(opts.back[1]) + '</span></a>' : '') + '<h1>' + esc(title) + '</h1><div class="a-acts" id="aActs"></div><span class="a-bellwrap"><button class="a-ib" id="aBell" title="Notifications">' + GA.icon('bell') + '<i class="a-dot" id="aDot"></i></button><div class="a-pop" id="aPop"></div></span><button class="a-ib" id="themeToggle" title="Light or dark theme">' + GA.icon('moon') + '</button></div><div id="aPage"></div></div></div>';
       document.getElementById('aOut').onclick = GA.logout;
@@ -544,4 +590,67 @@ GA.tile = function (cls, icon, n, label) { return '<div class="a-stat ' + cls + 
       subtree:true
     }
   );
+})();
+
+/* ---- Idle sign-out: an admin who has not touched the page for 30 minutes is signed out (the server enforces the same limit). ---- */
+(function () {
+  var LIMIT = 30 * 60e3, WARN = 2 * 60e3, ACT = 'gm_last_act', last = Date.now(), lastPing = 0, lastWrite = 0, warnEl = null, done = false;
+  function onAdminPage() { return /\/admin\//.test(location.pathname) && window.GA && GA.session && GA.session(); }
+  // Activity in ANY tab counts, so the last-activity time is shared through localStorage.
+  function lastAct() { var v = 0; try { v = +localStorage.getItem(ACT) || 0; } catch (e) {} return Math.max(last, v); }
+  function mark() {
+    var n = Date.now(); last = n;
+    if (n - lastWrite > 15e3) { lastWrite = n; try { localStorage.setItem(ACT, String(n)); } catch (e) {} }
+    if (warnEl) { warnEl.remove(); warnEl = null; }
+  }
+  function signOut() {
+    if (done) return; done = true;
+    try { sessionStorage.removeItem('gm_admin_session'); localStorage.removeItem(ACT); } catch (e) {}
+    try { var x = new XMLHttpRequest(); x.open('POST', '/api/logout', false); x.send(); } catch (e) {}
+    location.href = '../login.html?idle=1';
+  }
+  function ping() {   // tells the server the person is really using the page
+    lastPing = Date.now();
+    fetch('/api/keepalive', { method: 'POST', cache: 'no-store', credentials: 'same-origin' }).then(function (r) { if (r.status === 401) signOut(); }, function () {});
+  }
+  function warn(secs) {
+    if (!warnEl) {
+      warnEl = document.createElement('div'); warnEl.setAttribute('role', 'alert');
+      warnEl.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:99999;background:#1f2937;color:#fff;padding:12px 16px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.35);display:flex;gap:14px;align-items:center;font-size:14px;max-width:92vw';
+      warnEl.innerHTML = '<span></span><button type="button" style="background:#14b8a6;color:#06201d;border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer">Stay signed in</button>';
+      warnEl.querySelector('button').onclick = function () { mark(); ping(); };
+      document.body.appendChild(warnEl);
+    }
+    warnEl.firstChild.textContent = 'You will be signed out in ' + Math.max(secs, 0) + ' seconds because of inactivity.';
+  }
+  function tick() {
+    if (!onAdminPage()) return;
+    var now = Date.now(), idle = now - lastAct();
+    if (idle >= LIMIT) { signOut(); return; }
+    if (idle >= LIMIT - WARN) { warn(Math.ceil((LIMIT - idle) / 1000)); return; }
+    if (now - lastPing > 4 * 60e3 && idle < 60e3) ping();   // active in the last minute: keep the server session alive
+  }
+  function start() {
+    if (!onAdminPage()) return;
+    ['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll'].forEach(function (ev) { window.addEventListener(ev, mark, { passive: true, capture: true }); });
+    var mm = 0; window.addEventListener('mousemove', function () { var n = Date.now(); if (n - mm > 5e3) { mm = n; mark(); } }, { passive: true });
+    mark(); lastPing = Date.now(); setInterval(tick, 5e3);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) tick(); });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
+
+/* ---- Role info refresh: a sign-in made before roles existed has no role info in this tab, so ask the server once and redraw the menu. ---- */
+(function () {
+  function go() {
+    if (!/\/admin\//.test(location.pathname) || !window.GA || !GA.session) return;
+    var s = GA.session(); if (!s || s.full !== undefined || s.super !== undefined) return;
+    try { if (sessionStorage.getItem('gm_role_try')) return; sessionStorage.setItem('gm_role_try', '1'); } catch (e) { return; }
+    fetch('/api/me', { cache: 'no-store', credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (m) {
+      if (!m || m.role !== 'admin' || m.full === undefined) return;
+      GA.setSession({ id: s.id, name: m.name || s.name, role: m.adminRole || s.role, perms: m.perms, full: m.full, super: m.super });
+      location.reload();
+    }, function () {});
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
 })();

@@ -379,3 +379,12 @@ html.fx-theming *,html.fx-theming *::before,html.fx-theming *::after{transition:
 .a-main :is(.gtc-stat,.at-tile,.wk-tile,.vx-tile,.pr-tile,.dp-stat,.a-stat):hover,
 .a-main [class$="-tiles"]>*:hover,.a-main [class$="-stats"]>*:hover{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){.a-main :is(.gtc-stat,.at-tile,.wk-tile,.vx-tile,.pr-tile,.dp-stat,.a-stat),.a-main [class$="-tiles"]>*,.a-main [class$="-stats"]>*{animation:none!important}}
+/* Sidebar: brand on top and profile at the bottom stay put; only the menu list scrolls */
+.a-side{overflow:hidden}
+.a-side .a-brand,.a-side .a-user{flex:none}
+.a-nav{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:4px;margin:0 -12px;padding:0 12px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;overscroll-behavior:contain}
+.a-nav::-webkit-scrollbar{width:6px}.a-nav::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.a-nav a{flex:none}
+.a-user{margin-top:0;background:var(--card)}
+@media(max-width:900px){.a-side{overflow-y:hidden}}
+.a-wrap.col .a-nav{margin:0 -10px;padding:0 10px}

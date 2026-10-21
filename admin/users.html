@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script src="../shared/sync.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Users &amp; Admins - General Traders Admin</title>
+<link rel="stylesheet" href="../shared/theme.css">
+<link rel="stylesheet" href="../shared/admin.css">
+<link rel="stylesheet" href="../shared/plan.css">
+<link rel="stylesheet" href="../shared/users.css">
+<script src="../shared/theme.js"></script>  <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-32.png"><link rel="apple-touch-icon" href="/assets/icon-180.png">
+</head>
+<body>
+<script src="../shared/mock-data.js"></script>
+<script src="../shared/admin.js"></script>
+<script src="../shared/plan-core.js"></script>
+<script src="../shared/users.js"></script>
+<script>
+GA.guard();
+var $ = function (i) { return document.getElementById(i); }, esc = GA.esc;
+var pg = GA.mount('users.html', 'Users & Admins');
+var qs = new URLSearchParams(location.search), ALL = [], ME = '', st = { q: '', role: qs.get('role') || '', status: qs.get('status') || '', page: 1, size: 10 };
+
+pg.innerHTML =
+  '<div class="us-head"><p>View and manage all users.</p></div>' +
+  '<section class="us-panel"><div class="us-bar">' +
+    '<div class="field a-f us-q"><input type="search" id="uQ" placeholder="Search name, phone or email..." aria-label="Search users" autocomplete="off"></div>' +
+    '<div class="field a-f us-f"><select id="uRole" aria-label="Filter by role"><option value="">All Roles</option>' + US.ROLES.map(function (r) { return '<option value="' + r + '">' + r + '</option>'; }).join('') + '</select></div>' +
+    '<div class="field a-f us-f"><select id="uSt" aria-label="Filter by status"><option value="">All Status</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="pending">Pending</option></select></div>' +
+    '<a class="btn a-btn" href="user-edit.html">' + GA.icon('plus') + ' Create User</a>' +
+  '</div><div id="uBody"><div class="us-empty">Loading users...</div></div></section>';
+
+$('uRole').value = st.role; $('uSt').value = st.status;
+$('uQ').oninput = function () { st.q = this.value.trim().toLowerCase(); st.page = 1; draw(); };
+$('uRole').onchange = function () { st.role = this.value; st.page = 1; draw(); };
+$('uSt').onchange = function () { st.status = this.value; st.page = 1; draw(); };
+
+function load() {
+  US.users().then(function (d) { ALL = d.users; ME = d.me; draw(); }, function (e) { $('uBody').innerHTML = '<div class="us-empty">' + esc(e.message) + '</div>'; });
+}
+function filtered() {
+  return ALL.filter(function (u) {
+    if (st.role && u.role !== st.role) return false;
+    if (st.status && u.status !== st.status) return false;
+    return !st.q || (u.name + ' ' + u.phone + ' ' + u.email).toLowerCase().indexOf(st.q) >= 0;
+  });
+}
+function draw() {
+  var list = filtered(), pages = Math.max(1, Math.ceil(list.length / st.size)); if (st.page > pages) st.page = pages;
+  var from = (st.page - 1) * st.size, rows = list.slice(from, from + st.size);
+  if (!rows.length) { $('uBody').innerHTML = '<div class="us-empty">' + (ALL.length ? 'No users match these filters.' : 'No users yet.') + '</div>'; return; }
+  $('uBody').innerHTML = '<div class="us-scroll"><table class="us-table"><thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Role</th><th>Status</th><th>Last login</th><th style="text-align:right">Actions</th></tr></thead><tbody>' +
+    rows.map(function (u, i) {
+      var me = u.id === ME;
+      return '<tr><td class="no">' + (from + i + 1) + '</td><td><div class="us-cell">' + US.avatar(u) + '<div><b>' + esc(u.name) + (me ? ' <small style="display:inline">(you)</small>' : '') + '</b><small>' + esc(u.email || 'No email') + '</small></div></div></td>' +
+        '<td>' + esc(US.phone(u.phone)) + '</td><td>' + US.role(u.role) + '</td><td>' + US.status(u.status) + '</td><td>' + US.when(u.last) + '</td>' +
+        '<td class="acts"><a class="us-ib" href="user-edit.html?id=' + encodeURIComponent(u.id) + '" title="Edit ' + esc(u.name) + '" aria-label="Edit ' + esc(u.name) + '">' + GA.icon('edit') + '</a>' +
+        '<button type="button" class="us-ib" data-reset="' + esc(u.id) + '" title="Reset password"' + (me ? ' disabled' : '') + ' aria-label="Reset password for ' + esc(u.name) + '">' + GA.icon('key') + '</button>' +
+        '<button type="button" class="us-ib d" data-tog="' + esc(u.id) + '" title="' + (u.status === 'inactive' ? 'Activate' : 'Deactivate') + '"' + (me ? ' disabled' : '') + ' aria-label="' + (u.status === 'inactive' ? 'Activate ' : 'Deactivate ') + esc(u.name) + '">' + GA.icon('power') + '</button></td></tr>';
+    }).join('') + '</tbody></table></div>' +
+    '<div class="us-foot"><span>Showing ' + (from + 1) + '-' + (from + rows.length) + ' of ' + list.length + ' user' + (list.length === 1 ? '' : 's') + '</span><span style="display:flex;gap:8px;align-items:center">' +
+    '<button type="button" class="btn btn-secondary" id="uPrev"' + (st.page <= 1 ? ' disabled' : '') + '>Previous</button><span>Page ' + st.page + ' of ' + pages + '</span><button type="button" class="btn btn-secondary" id="uNext"' + (st.page >= pages ? ' disabled' : '') + '>Next</button></span></div>';
+  if ($('uPrev')) $('uPrev').onclick = function () { st.page--; draw(); };
+  if ($('uNext')) $('uNext').onclick = function () { st.page++; draw(); };
+  [].forEach.call(pg.querySelectorAll('[data-reset]'), function (b) { b.onclick = function () { var u = byId(b.dataset.reset); if (u) US.resetPassword(u, load); }; });
+  [].forEach.call(pg.querySelectorAll('[data-tog]'), function (b) { b.onclick = function () { var u = byId(b.dataset.tog); if (u) US.setActive(u, u.status === 'inactive', load); }; });
+}
+function byId(id) { return ALL.filter(function (u) { return u.id === id; })[0]; }
+load();
+</script>
+</body>
+</html>

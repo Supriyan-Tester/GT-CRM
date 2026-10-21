@@ -222,6 +222,7 @@
     margin-right: 0 !important;
 }
 </style>
+  <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-32.png"><link rel="apple-touch-icon" href="/assets/icon-180.png">
 </head>
 <body>
 <main class="app">
@@ -281,7 +282,7 @@
      <a class="dv-openmap" id="directionsBtn" href="#" target="_blank" rel="noopener"><svg class="icon" viewBox="0 0 24 24"><path d="M9 20l-6-2V4l6 2 6-2 6 2v14l-6-2-6 2zM9 6v14M15 4v14"/></svg> Open in Maps</a>
    </section>
    <div class="dv-bar o7">
-     <button class="dv-mark" id="goodsDeliveredBtn" type="button"><svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Mark as Delivered</button>
+     <button class="dv-mark" id="goodsDeliveredBtn" type="button"><svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> I&rsquo;ve reached the shop</button>
      <button class="dv-prob" id="problemBtn" type="button" aria-label="Problem about shop"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>Problem about shop</span></button>
    </div>
   </div>
@@ -474,11 +475,13 @@
         sub.innerHTML = 'Arrived ' + C(v.arrivedAt) + (v.arriveHow === 'gps' ? ' (GPS)' : ' (you tapped)') + '<br>' + (v.doneAt ? (v.outcome === 'delivered' ? 'Delivered ' : 'Problem ') + C(v.doneAt) + (v.leftAt ? ' \u00b7 Left ' + C(v.leftAt) : '') : 'Timer running');
         if (!v.doneAt) show(lastM != null && lastM <= ARRIVE_RADIUS ? 'At the shop (' + lastM + ' m away)' : 'Arrival noted at ' + C(v.arrivedAt), true);
       } else {
-        box.style.display = 'none'; reach.style.display = open ? 'block' : 'none';
+        box.style.display = 'none'; reach.style.display = 'none';
       }
+      // One main button: "I've reached the shop" first, then it turns into "Mark as Delivered"
+      if (open) btn.lastChild.textContent = (v && v.arrivedAt) ? ' Mark as Delivered' : ' I\u2019ve reached the shop';
     }
     reach.onclick = function () { GMVisit.arrive(shop, 'manual', { dist: lastM }); paint(); };
-    setInterval(paint, 1000); paint();
+    setInterval(paint, 1000); paint(); window.gmPaintVisit = paint;
     if (!pin) { show('Shop location not saved. Tap "I\u2019ve reached the shop" when you arrive.', false, 'No pin'); return; }
     if (!navigator.geolocation) { show('This phone cannot give its location. Tap "I\u2019ve reached the shop" when you arrive.', false, 'Unverified'); return; }
     show('Checking your location...', false, 'Checking');
@@ -564,6 +567,8 @@
   }
   noCard.addEventListener('click', function () { setRetMode('no'); });
   document.getElementById('goodsDeliveredBtn').addEventListener('click', function() {
+    var v = GMVisit.get(shop.id);
+    if (!(v && v.arrivedAt)) { GMVisit.arrive(shop, 'manual', {}); if (window.gmPaintVisit) window.gmPaintVisit(); return; }   // first tap = reached the shop; the label changes by itself
     setRetMode('no'); returnsModal.classList.add('active');
   });
 

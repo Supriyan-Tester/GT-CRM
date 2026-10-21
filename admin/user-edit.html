@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script src="../shared/sync.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Create user - General Traders Admin</title>
+<link rel="stylesheet" href="../shared/theme.css">
+<link rel="stylesheet" href="../shared/admin.css">
+<link rel="stylesheet" href="../shared/plan.css">
+<link rel="stylesheet" href="../shared/users.css">
+<script src="../shared/theme.js"></script>  <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-32.png"><link rel="apple-touch-icon" href="/assets/icon-180.png">
+</head>
+<body>
+<script src="../shared/mock-data.js"></script>
+<script src="../shared/admin.js"></script>
+<script src="../shared/plan-core.js"></script>
+<script src="../shared/users.js"></script>
+<script>
+GA.guard();
+var $ = function (i) { return document.getElementById(i); }, esc = GA.esc, editId = new URLSearchParams(location.search).get('id') || '';
+var pg = GA.mount('users.html', editId ? 'Edit User' : 'Create New User', { back: ['users.html', 'Users & Admins'] });
+document.title = (editId ? 'Edit user' : 'Create user') + ' - General Traders Admin';
+var d = { name: '', email: '', phone: '', role: '', perms: [], status: 'active' }, mode = 'temp', errs = {}, saving = false, me = '', cur = null;
+
+function fld(k, label, o) {
+  o = o || {}; var e = errs[k], v = d[k] == null ? '' : d[k], ctl;
+  if (o.options) ctl = '<select id="f_' + k + '" data-k="' + k + '"><option value="">Select</option>' + o.options.map(function (x) { return '<option value="' + esc(x) + '"' + (x === v ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select>';
+  else ctl = '<input id="f_' + k + '" data-k="' + k + '" type="' + (o.type || 'text') + '" value="' + esc(v) + '"' + (o.ph ? ' placeholder="' + esc(o.ph) + '"' : '') + (o.inputmode ? ' inputmode="' + o.inputmode + '"' : '') + (o.max ? ' maxlength="' + o.max + '"' : '') + ' autocomplete="off">';
+  return '<div class="a-fg"><label for="f_' + k + '">' + label + (o.req ? ' <b aria-hidden="true">*</b>' : ' <em>(Optional)</em>') + '</label><div class="field a-f"' + (e ? ' style="border-color:var(--danger)"' : '') + '>' + ctl + '</div>' + (e ? '<div class="us-fe" role="alert">' + esc(e) + '</div>' : '') + '</div>';
+}
+function perms() {
+  var full = US.isFullRole(d.role);
+  return '<div class="us-perms">' + US.MODULES.map(function (m) {
+    var on = full || d.perms.indexOf(m[0]) >= 0;
+    return '<label class="us-ck' + (full ? ' off' : '') + '"><input type="checkbox" data-perm="' + m[0] + '"' + (on ? ' checked' : '') + (full ? ' disabled' : '') + '> ' + m[1] + '</label>';
+  }).join('') + '</div>' + (errs.perms ? '<div class="us-fe" role="alert">' + esc(errs.perms) + '</div>' : '') +
+    '<p class="us-note">' + (full ? (d.role === 'Super Admin' ? 'Super Admin has full access to everything, including user management.' : 'Admin can open every page except Users & Admins.') : d.role ? 'This user will only see the pages of the ticked modules.' : 'Choose a role first. The role pre-ticks its module, and you can tick more.') + '</p>';
+}
+function opt(name, val, cur2, title, sub) { return '<label class="us-opt' + (val === cur2 ? ' on' : '') + '"><input type="radio" name="' + name + '" value="' + val + '"' + (val === cur2 ? ' checked' : '') + '><span><b>' + title + '</b><small>' + sub + '</small></span></label>'; }
+
+function draw() {
+  var me2 = cur && cur.id === me, isNew = !editId;
+  pg.innerHTML = '<div class="us-form">' +
+    '<p class="mu" style="font-size:13.5px;margin-top:-4px">' + (isNew ? 'Add a new user and assign a role.' : 'Update user details and permissions.') + '</p>' +
+    '<section class="us-panel"><div class="us-ph"><h3>' + (isNew ? 'Basic Details' : 'User Details') + '</h3></div><div class="us-pb"><div class="us-grid">' +
+      fld('name', 'Full Name', { req: 1, ph: 'e.g. Suresh Kumar', max: 60 }) + fld('email', 'Email Address', { type: 'email', ph: 'name@example.com', max: 80 }) + fld('phone', 'Phone Number', { req: 1, ph: '10-digit mobile', max: 12, inputmode: 'numeric' }) +
+    '</div><p class="us-note" style="margin-top:0">The mobile number is the login ID.</p></div></section>' +
+    '<section class="us-panel"><div class="us-ph"><h3>Role &amp; Module Access</h3></div><div class="us-pb"><div class="us-grid c2"><div>' +
+      fld('role', 'Role', { req: 1, options: US.ROLES }) + '</div><div><div class="a-fg"><label>Module Access (Permissions)</label>' + perms() + '</div></div></div></div></section>' +
+    '<section class="us-panel"><div class="us-ph"><h3>Account Status</h3></div><div class="us-pb"><div class="us-opts">' +
+      opt('st', 'active', d.status, 'Active', 'User can log in and access the system') + opt('st', 'inactive', d.status, 'Inactive', 'Temporarily disabled') + '</div>' +
+      (isNew ? '<div class="us-opts us-pw">' + opt('pm', 'temp', mode, 'Generate a temporary password', 'Recommended. You will see it once, to share with the user') + opt('pm', 'manual', mode, 'Set password manually', 'Choose a password now (at least 8 characters)') + '</div>' +
+        (mode === 'manual' ? '<div class="us-pw">' + '<div class="a-fg"><label for="f_password">Password <b aria-hidden="true">*</b></label><div class="field a-f"' + (errs.password ? ' style="border-color:var(--danger)"' : '') + '><input id="f_password" type="text" autocomplete="off" maxlength="100" value="' + esc(d.password || '') + '" placeholder="At least 8 characters"></div>' + (errs.password ? '<div class="us-fe" role="alert">' + esc(errs.password) + '</div>' : '') + '</div></div>' : '') +
+        '<p class="us-note">The user must choose their own password the first time they sign in.</p>' : '') +
+    '</div></section>' +
+    (!isNew ? '<section class="us-panel"><div class="us-ph"><h3>Reset Password</h3></div><div class="us-pb"><button type="button" class="btn btn-secondary a-btn" id="eReset"' + (me2 ? ' disabled' : '') + ' style="width:100%">' + GA.icon('key') + ' Create a new temporary password</button>' + (me2 ? '<p class="us-note">To change your own password, use your profile page.</p>' : '') + '</div></section>' +
+      '<section class="us-panel us-danger"><div class="us-ph"><h3>Danger Zone</h3></div><div class="us-pb"><button type="button" class="btn ' + (cur.status === 'inactive' ? '' : 'btn-danger') + '" id="eTog"' + (me2 ? ' disabled' : '') + ' style="width:100%">' + GA.icon('power') + ' ' + (cur.status === 'inactive' ? 'Activate User' : 'Deactivate User') + '</button><p class="us-note">' + (me2 ? 'You cannot deactivate your own account.' : 'This disables the user\'s access to the system. Their history stays.') + '</p></div></section>' : '') +
+    '<div class="us-bar2"><a class="btn btn-secondary" href="users.html">Cancel</a><button type="button" class="btn" id="eSave"' + (saving ? ' disabled' : '') + '>' + (saving ? 'Saving...' : isNew ? 'Create User' : 'Save Changes') + '</button></div></div>';
+  wire();
+}
+function wire() {
+  [].forEach.call(pg.querySelectorAll('[data-k]'), function (el) {
+    var k = el.dataset.k;
+    el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', function () {
+      d[k] = el.value; delete errs[k];
+      if (k === 'role') { d.perms = US.ROLE_MOD[d.role] ? [US.ROLE_MOD[d.role]] : []; delete errs.perms; draw(); }
+    });
+  });
+  [].forEach.call(pg.querySelectorAll('[data-perm]'), function (el) { el.onchange = function () { var m = el.dataset.perm, i = d.perms.indexOf(m); if (el.checked && i < 0) d.perms.push(m); if (!el.checked && i >= 0) d.perms.splice(i, 1); delete errs.perms; }; });
+  [].forEach.call(pg.querySelectorAll('input[name="st"]'), function (el) { el.onchange = function () { d.status = el.value; draw(); }; });
+  [].forEach.call(pg.querySelectorAll('input[name="pm"]'), function (el) { el.onchange = function () { mode = el.value; draw(); }; });
+  if ($('f_password')) $('f_password').oninput = function () { d.password = this.value; delete errs.password; };
+  $('eSave').onclick = save;
+  if ($('eReset')) $('eReset').onclick = function () { US.resetPassword(cur, function () {}); };
+  if ($('eTog')) $('eTog').onclick = function () { US.setActive(cur, cur.status === 'inactive', function (u) { cur = u; d.status = u.status === 'inactive' ? 'inactive' : 'active'; draw(); }); };
+}
+function check() {
+  var e = {}, ph = String(d.phone || '').replace(/\D/g, '').slice(-10);
+  if (String(d.name || '').trim().length < 2) e.name = 'Enter the full name.';
+  if (!/^[6-9]\d{9}$/.test(ph)) e.phone = 'Enter a valid 10-digit mobile number.';
+  if (d.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email.trim())) e.email = 'Enter a valid email, or leave it empty.';
+  if (!d.role) e.role = 'Choose a role.';
+  else if (!US.isFullRole(d.role) && !d.perms.length) e.perms = 'Tick at least one module.';
+  if (!editId && mode === 'manual' && String(d.password || '').length < 8) e.password = 'Use at least 8 characters.';
+  return e;
+}
+function save() {
+  if (saving) return; errs = check();
+  if (Object.keys(errs).length) { draw(); var f = pg.querySelector('.us-fe'); if (f) f.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
+  saving = true; draw();
+  var body = { name: d.name.trim(), email: (d.email || '').trim(), phone: String(d.phone).replace(/\D/g, '').slice(-10), role: d.role, perms: US.isFullRole(d.role) ? [] : d.perms, status: d.status };
+  if (!editId && mode === 'manual') body.password = d.password;
+  US.api(editId ? 'PUT' : 'POST', editId ? '/api/users/' + encodeURIComponent(editId) : '/api/users', body).then(function (r) {
+    saving = false;
+    if (!r.ok) { var m = r.data.error || 'Could not save. Try again.'; if (/mobile/i.test(m)) errs.phone = m; else if (/email/i.test(m)) errs.email = m; else if (/module/i.test(m)) errs.perms = m; else DP.toast(m, 'err'); draw(); return; }
+    if (editId) { DP.toast('Changes saved.', 'ok'); setTimeout(function () { location.href = 'users.html'; }, 500); return; }
+    US.showCredentials({ title: 'User created', name: body.name, phone: body.phone, password: r.data.tempPassword, intro: 'Share these login details with the new user.' }, function () { location.href = 'users.html'; });
+  });
+}
+
+// Start: the Super Admin sees this page; edit mode loads the user first.
+US.users().then(function (data) {
+  me = data.me;
+  if (editId) {
+    cur = data.users.filter(function (u) { return u.id === editId; })[0];
+    if (!cur) { pg.innerHTML = '<div class="us-empty">User not found. <a href="users.html">Back to users</a></div>'; return; }
+    d = { name: cur.name, email: cur.email, phone: cur.phone, role: cur.role, perms: cur.perms.slice(), status: cur.status === 'inactive' ? 'inactive' : 'active' };
+  }
+  draw();
+}, function (e) { pg.innerHTML = '<div class="us-empty">' + esc(e.message) + '</div>'; });
+</script>
+</body>
+</html>

@@ -78,11 +78,14 @@
   function n(v) { return v === '' || v == null ? NaN : Number(String(v).replace(/,/g, '')); }
   PR.check = function (d, L, self, step) {
     var e = {}, o;
+    // "Is this row the product being edited?" PR.load() builds new objects on every call, so comparing objects (x !== self) never matched
+    // and an edited product was reported as a duplicate of itself. Compare the product's id (or code) instead.
+    function isSelf(x) { return !!self && (x === self || (x.id && self.id ? x.id === self.id : x.code === self.code)); }
     if (step == null || step === 0) {
       if (!String(d.code || '').trim()) e.code = 'Enter a product code.';
-      else if ((o = L.filter(function (x) { return x !== self && String(x.code).toUpperCase() === String(d.code).trim().toUpperCase(); })[0])) e.code = 'This code is already used by ' + o.name + '.';
+      else if ((o = L.filter(function (x) { return !isSelf(x) && String(x.code).toUpperCase() === String(d.code).trim().toUpperCase(); })[0])) e.code = 'This code is already used by ' + o.name + '.';
       if (!String(d.name || '').trim()) e.name = 'Enter the product name.';
-      else if ((o = L.filter(function (x) { return x !== self && PR.nk(x.name) === PR.nk(d.name); })[0])) e.name = 'A product with this name already exists (' + o.code + ').';
+      else if ((o = L.filter(function (x) { return !isSelf(x) && PR.nk(x.name) === PR.nk(d.name); })[0])) e.name = 'A product with this name already exists (' + o.code + ').';
       if (!String(d.category || '').trim()) e.category = 'Choose or type a category.';
       if (!String(d.unit || '').trim()) e.unit = 'Choose or type a unit.';
     }

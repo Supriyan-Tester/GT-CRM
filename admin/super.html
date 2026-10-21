@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script src="../shared/sync.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>User overview - General Traders Admin</title>
+<link rel="stylesheet" href="../shared/theme.css">
+<link rel="stylesheet" href="../shared/admin.css">
+<link rel="stylesheet" href="../shared/plan.css">
+<link rel="stylesheet" href="../shared/users.css">
+<script src="../shared/theme.js"></script>  <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-32.png"><link rel="apple-touch-icon" href="/assets/icon-180.png">
+</head>
+<body>
+<script src="../shared/mock-data.js"></script>
+<script src="../shared/admin.js"></script>
+<script src="../shared/plan-core.js"></script>
+<script src="../shared/users.js"></script>
+<script>
+GA.guard();
+var $ = function (i) { return document.getElementById(i); }, esc = GA.esc;
+var pg = GA.mount('super.html', 'User overview');
+pg.innerHTML = '<div class="us-head"><p>Overview of users and roles.</p><a class="btn a-btn" href="user-edit.html">' + GA.icon('plus') + ' Create User</a></div><div id="sBody"><div class="us-empty">Loading...</div></div>';
+
+function tile(icon, color, n, label, note, href, cls) {
+  return '<a class="us-tile" href="' + href + '"><span class="chip" style="--rc:' + color + '">' + GA.icon(icon) + '</span><div><b>' + n + '</b><span>' + label + '</span>' + (note ? '<small class="' + (cls || '') + '">' + note + '</small>' : '') + '</div></a>';
+}
+function donut(counts, total) {
+  var R = 70, C = 2 * Math.PI * R, off = 0, segs = '';
+  US.ROLES.forEach(function (r) {
+    var n = counts[r] || 0; if (!n) return;
+    var len = C * n / total; segs += '<circle cx="95" cy="95" r="' + R + '" fill="none" stroke="' + US.COLOR[r] + '" stroke-width="24" stroke-dasharray="' + len + ' ' + (C - len) + '" stroke-dashoffset="' + (-off) + '" transform="rotate(-90 95 95)"><title>' + r + ': ' + n + '</title></circle>'; off += len;
+  });
+  if (!total) segs = '<circle cx="95" cy="95" r="' + R + '" fill="none" stroke="var(--border)" stroke-width="24"/>';
+  return '<svg viewBox="0 0 190 190" role="img" aria-label="Users by role">' + segs + '<text x="95" y="98" text-anchor="middle" class="ctr">' + total + '</text><text x="95" y="118" text-anchor="middle" class="sub">Total</text></svg>';
+}
+function actIcon(e) { return e.type === 'login' ? 'check' : e.type === 'password' ? 'key' : 'users'; }
+
+US.users().then(function (d) {
+  var U = d.users, counts = {}, pend = 0, act = 0;
+  U.forEach(function (u) { counts[u.role] = (counts[u.role] || 0) + 1; if (u.status === 'pending') pend++; if (u.status === 'active') act++; });
+  var admins = (counts['Super Admin'] || 0) + (counts['Admin'] || 0);
+  $('sBody').innerHTML =
+    '<div class="us-tiles">' +
+      tile('users', '#2563EB', U.length, 'Total Users', act + ' active', 'users.html') +
+      tile('key', '#DC2626', admins, 'Admins', 'Super Admin + Admin', 'users.html?role=Admin', 'mu') +
+      tile('coin', US.COLOR.Sales, counts.Sales || 0, 'Sales Users', '', 'users.html?role=Sales') +
+      tile('report', US.COLOR.Billing, counts.Billing || 0, 'Billing Users', '', 'users.html?role=Billing') +
+      tile('store', US.COLOR.Inventory, counts.Inventory || 0, 'Inventory Users', '', 'users.html?role=Inventory') +
+      tile('truck', US.COLOR.Delivery, counts.Delivery || 0, 'Delivery Users', '', 'users.html?role=Delivery') +
+      tile('users', US.COLOR.Helper, counts.Helper || 0, 'Helper Users', '', 'users.html?role=Helper') +
+      tile('bell', '#F59E0B', pend, 'Pending Invitations', pend ? 'View' : '', 'users.html?status=pending', 'mu') +
+    '</div>' +
+    '<div class="us-two"><section class="us-panel"><div class="us-ph"><h3>Users by Role</h3></div><div class="us-pb"><div class="us-donut">' + donut(counts, U.length) +
+      '<div class="us-leg">' + US.ROLES.map(function (r) { return '<div><i style="background:' + US.COLOR[r] + '"></i>' + (r === 'Admin' ? 'Admins' : r) + '<em>' + (counts[r] || 0) + '</em></div>'; }).join('') + '</div></div></div></section>' +
+    '<section class="us-panel"><div class="us-ph"><h3>Recent Activity</h3><a class="btn btn-secondary a-btn" style="width:auto;min-height:34px" href="activity.html">View All</a></div><div class="us-pb"><div class="us-act" id="sAct"><div class="us-empty">Loading...</div></div></div></section></div>';
+  loadAct();
+}, function (e) { $('sBody').innerHTML = '<div class="us-empty">' + esc(e.message) + '</div>'; });
+
+function loadAct() {
+  US.api('GET', '/api/activity').then(function (r) {
+    var box = $('sAct'); if (!box) return;
+    var ev = (r.ok && r.data.events || []).filter(function (e) { return e.type === 'settings' || e.type === 'password' || e.type === 'login'; }).slice(0, 6);
+    box.innerHTML = ev.length ? ev.map(function (e) { return '<div><span class="chip c-p">' + GA.icon(actIcon(e)) + '</span><div><b>' + esc(e.text) + '</b><small>by ' + esc(e.by) + '</small></div><time>' + US.ago(e.t) + '</time></div>'; }).join('') : '<div class="us-empty">Nothing recorded yet.</div>';
+  });
+}
+</script>
+</body>
+</html>

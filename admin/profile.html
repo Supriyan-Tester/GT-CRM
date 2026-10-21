@@ -25,7 +25,8 @@
 .pf2-acts{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .pf2-pin{background:none;border:0;filter:drop-shadow(0 3px 4px rgba(15,23,42,.35))}
 .pf2-msg{font-size:13px;min-height:18px;margin-top:10px}.pf2-msg.ok{color:var(--success)}.pf2-msg.err{color:var(--danger)}
-</style></head>
+</style>  <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-32.png"><link rel="apple-touch-icon" href="/assets/icon-180.png">
+</head>
 <body>
 <script src="../shared/mock-data.js"></script>
 <script src="../shared/admin.js"></script>
@@ -41,6 +42,17 @@ var saved = loadDepot(), map, marker, ring;
 var PIN = L.divIcon({ className: 'pf2-pin', iconSize: [30, 40], iconAnchor: [15, 38], html: '<svg viewBox="0 0 30 40" width="30" height="40"><path d="M15 1C7.3 1 1 7.2 1 14.8 1 25 15 39 15 39s14-14 14-24.2C29 7.2 22.7 1 15 1z" fill="#0F766E" stroke="#fff" stroke-width="2"/><circle cx="15" cy="14.5" r="5.2" fill="#fff"/></svg>' });
 
 var ST = GM.settings();
+function consentCard() {
+  var ws = [], C = {}; try { ws = GA.workers() || []; } catch (e) {} try { C = JSON.parse(localStorage.getItem('gm_admin_consent_v1')) || {}; } catch (e) {}
+  var ok = 0, rows = ws.map(function (w) {
+    var at = C[w.id] && C[w.id].at || '';
+    if (at) ok++;
+    var d = at ? new Date(at) : null, txt = d && !isNaN(d) ? d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '';
+    return '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--border)"><span>' + esc(w.name || w.id) + '</span><span class="mu" style="white-space:nowrap">' + (txt ? '\u2713 ' + esc(txt) : 'Not yet') + '</span></div>';
+  }).join('');
+  return '<div class="card" style="margin:0"><div class="card-title">Privacy notice accepted</div>' +
+    '<p class="pf2-hint">Employees see the notice once, the first time they open the app. The time is written by the server, so it cannot be changed from a phone. ' + (ws.length ? ok + ' of ' + ws.length + ' have accepted.' : 'No employees yet.') + '</p>' + rows + '</div>';
+}
 var rulesCard = '<div class="card" style="margin:0"><div class="card-title">Work rules</div>' +
   '<p class="pf2-hint">These rules apply to every employee phone. Changes show on their phones within a minute.</p>' +
   '<div class="pf2-two"><div class="a-fg"><label for="rLate">Late after (time)</label><div class="field a-f"><input id="rLate" type="time" value="' + esc(('0' + ST.lateAfter).slice(-5)) + '"></div></div>' +
@@ -55,7 +67,11 @@ pg.innerHTML =
   '<div class="card" style="margin:0"><div class="card-title">Account</div>' +
     '<div class="pf2-me"><span class="chip c-p">' + esc((me.name || 'A').charAt(0).toUpperCase()) + '</span><div><b>' + esc(me.name || 'Admin') + '</b><span>' + esc(me.role || 'Admin') + '</span></div></div>' +
     '<div class="pf2-kv"><small>Name</small><b>' + esc(me.name || '-') + '</b><small>Role</small><b>' + esc(me.role || '-') + '</b><small>Mobile</small><b>' + (admin.phone ? '+91 ' + esc(admin.phone) : '-') + '</b></div>' +
-  '</div>' + GA.backupCard() + rulesCard + '</div>' +
+  '</div><div class="card" style="margin:0"><div class="card-title">Change my password</div>' +
+    '<div class="a-fg"><label for="pwCur">Current password</label><div class="field a-f"><input id="pwCur" type="password" autocomplete="current-password"></div></div>' +
+    '<div class="a-fg"><label for="pwNew">New password <small>(at least 8 characters)</small></label><div class="field a-f"><input id="pwNew" type="password" autocomplete="new-password"></div></div>' +
+    '<div class="a-fg"><label for="pwNew2">Repeat new password</label><div class="field a-f"><input id="pwNew2" type="password" autocomplete="new-password"></div></div>' +
+    '<div class="pf2-acts"><button class="btn a-btn" id="pwGo" type="button">Change password</button></div><div class="pf2-msg" id="pwMsg" role="status"></div></div>' + GA.backupCard() + rulesCard + consentCard() + '<p class="mu" style="margin:12px 4px;font-size:13px"><a href="../privacy.html" style="color:var(--primary);font-weight:600">Privacy notice</a> &middot; shown to drivers on the sign-in page and in their profile.</p></div>' +
   '<div class="card"><div class="card-title"><span>Depot / godown location</span><span class="pf2-st" id="dSt"></span></div>' +
     '<p class="pf2-hint">Employees can punch in and out only when their phone is inside this circle. Click the map, drag the pin, type the coordinates, or stand at the godown and use your current location.</p>' +
     '<div class="a-fg"><label for="dName">Depot name</label><div class="field a-f"><input id="dName" placeholder="e.g. General Traders Godown"></div></div>' +
@@ -67,7 +83,16 @@ pg.innerHTML =
     '<div class="pf2-acts"><button class="btn btn-secondary a-btn" id="dHere" type="button">Use my current location</button><button class="btn a-btn" id="dSave" type="button">Save depot location</button><button class="btn btn-secondary a-btn" id="dClear" type="button">Remove</button></div>' +
     '<div class="pf2-msg" id="dMsg" role="status"></div>' +
   '</div></div>';
-GA.bindBackup();
+GA.bindBackup(); GA.bindImport();
+$('pwGo').onclick = function () {
+  var m = $('pwMsg'), c = $('pwCur').value, n = $('pwNew').value, n2 = $('pwNew2').value;
+  function say(t, k) { m.textContent = t; m.className = 'pf2-msg' + (k ? ' ' + k : ''); }
+  if (!c) return say('Enter your current password.', 'err');
+  if (n !== n2) return say('The two new passwords do not match.', 'err');
+  var r = GA.changePassword((GA.session() || {}).id, c, n);
+  if (!r.ok) return say(r.error, 'err');
+  $('pwCur').value = $('pwNew').value = $('pwNew2').value = ''; say('Password changed. Other devices were signed out.', 'ok');
+};
 function rmsg(t, k) { var m = $('rMsg'); m.textContent = t || ''; m.className = 'pf2-msg' + (k ? ' ' + k : ''); }
 $('rSave').onclick = function () {
   var late = $('rLate').value, hi = parseInt($('rHigh').value, 10), jp = parseInt($('rJump').value, 10);

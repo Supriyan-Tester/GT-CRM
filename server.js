@@ -113,7 +113,7 @@ function localDate() { const d = new Date(), p = n => String(n).padStart(2, '0')
 function jparse(raw) { try { return JSON.parse(raw); } catch (e) { return null; } }
 function stored(key) { const it = db.items[key]; return it && it.v != null ? jparse(it.v) : null; }
 
-const DEFAULT_ADMIN = { id: 'A1', phone: '8489600833', name: 'Bala', role: 'Admin' };
+const DEFAULT_ADMIN = { id: 'A1', phone: '8489600833', name: 'Bala', role: 'Super Admin' };
 function adminList() {
   let a = stored('gm_admin_account_v1');
   if (Array.isArray(a) && a.length && a[0].phone) return a;
@@ -168,6 +168,7 @@ function migrateAuth() {
     if (db.items[k] && typeof db.items[k].v === 'string') { const c = cleanValue(k, db.items[k].v); if (c !== db.items[k].v) setItem(k, c); }
   });
   Object.keys(db.items).forEach(k => { if ((k === 'gm_crm_data_v5' || k.indexOf('gm_crm_data_v5__') === 0) && db.items[k] && typeof db.items[k].v === 'string') { const c = cleanValue(k, db.items[k].v); if (c !== db.items[k].v) setItem(k, c); } });
+  upgradeAccounts();
   persist();
   return notice;
 }
@@ -178,19 +179,95 @@ function resetAdmin() {
   console.log('\n  Admin ' + a.phone + ' new temporary password:  ' + t + '\n  You must choose your own password when you sign in.\n');
 }
 
+
+// ---- roles and permissions ----
+// Super Admin: everything, plus managing users. Admin: every CRM page, but not user management.
+// Sales / Billing / Inventory / Delivery / Helper: only the pages of the modules ticked for that user (see PAGE_RULES).
+const MODULES = ['sales', 'billing', 'inventory', 'delivery', 'helper'];
+const ROLES = ['Super Admin', 'Admin', 'Sales', 'Billing', 'Inventory', 'Delivery', 'Helper'];
+const ROLE_MODULE = { Sales: 'sales', Billing: 'billing', Inventory: 'inventory', Delivery: 'delivery', Helper: 'helper' };
+function acctOf(s) { return s && s.role === 'admin' ? (adminList().filter(x => x && x.id === s.id)[0] || null) : null; }
+function isSuper(a) { return !!a && a.role === 'Super Admin'; }
+function isFull(a) { return !!a && (a.role === 'Super Admin' || a.role === 'Admin' || !ROLE_MODULE[a.role]); }   // an old account with no known role keeps full access
+function modsOf(a) { return isFull(a) ? MODULES.slice() : (Array.isArray(a && a.perms) ? a.perms.filter(m => MODULES.indexOf(m) > -1) : []); }
+function hasAny(a, list) { if (isFull(a)) return true; const m = modsOf(a); return list.some(x => m.indexOf(x) > -1); }
+// Which admin page needs what: '*' any signed-in user, 'full' Admin or Super Admin, 'super' Super Admin only, or a list of modules (any one is enough).
+const PAGE_RULES = {
+  'index.html': '*', 'profile.html': '*', 'notifications.html': '*',
+  'summary.html': ['sales', 'billing', 'delivery'], 'customers.html': ['sales', 'billing'], 'routes.html': ['sales', 'delivery'], 'plan.html': ['delivery'],
+  'vehicles.html': ['delivery'], 'vehicle.html': ['delivery'], 'vehicle-edit.html': ['delivery'], 'vehicle-fuel.html': ['delivery'], 'vehicle-maintenance.html': ['delivery'],
+  'live.html': ['delivery'], 'problems.html': ['delivery', 'helper'], 'attendance.html': ['helper'], 'advances.html': ['billing'],
+  'products.html': ['inventory', 'billing', 'sales'], 'product-edit.html': ['inventory'],
+  'workers.html': 'full', 'activity.html': 'full', 'admin.html': 'full',
+  'super.html': 'super', 'users.html': 'super', 'user-edit.html': 'super'
+};
+function pageAllowed(a, file) {
+  if (!a) return false;
+  const r = PAGE_RULES[file] || 'full';
+  if (r === '*') return true; if (r === 'super') return isSuper(a); if (r === 'full') return isFull(a);
+  return hasAny(a, r);
+}
+// Saved records only some roles may change. (Reading stays open: the pages need data from several modules.)
+const KEY_RULES = { gm_admin_products_v1: ['inventory'], gm_admin_vehicles_v1: ['delivery'], gm_admin_vfuel_v1: ['delivery'], gm_admin_vehsync_v1: ['delivery'], gm_admin_ledger_v1: ['billing'], gm_admin_workers_v1: 'full', gm_admin_wprofile_v1: 'full' };
+function adminMayWrite(s, key) { const a = acctOf(s); if (!a) return false; const r = KEY_RULES[key]; if (!r) return true; return r === 'full' ? isFull(a) : hasAny(a, r); }
+function cleanPhone(v) { return String(v || '').replace(/\D/g, '').slice(-10); }
+function phoneTaken(phone, exceptId) { return adminList().some(a => a && a.id !== exceptId && a.phone === phone) || (workerData().workers || []).some(w => w && w.phone === phone); }
+function publicUser(a) {
+  const au = auth.admins[a.id] || {}, st = a.status === 'inactive' ? 'inactive' : ((au.must && !au.last) ? 'pending' : 'active');
+  return { id: a.id, name: a.name, phone: a.phone, email: a.email || '', role: a.role || 'Admin', perms: isFull(a) ? [] : modsOf(a), status: st, last: au.last || 0, created: a.created || 0, must: !!au.must };
+}
+// Older accounts get the new fields; the very first account becomes the Super Admin.
+function upgradeAccounts() {
+  const list = adminList().map(a => Object.assign({}, a)); let ch = false;
+  list.forEach((a, i) => {
+    if (i === 0 && a.role !== 'Super Admin') { a.role = 'Super Admin'; ch = true; }
+    if (!a.role) { a.role = 'Admin'; ch = true; }
+    if (!a.status) { a.status = 'active'; ch = true; }
+    if (!Array.isArray(a.perms)) { a.perms = []; ch = true; }
+    if (a.email == null) { a.email = ''; ch = true; }
+  });
+  if (ch || !(db.items['gm_admin_account_v1'] && db.items['gm_admin_account_v1'].v)) { setItem('gm_admin_account_v1', JSON.stringify(list)); persist(); }
+}
+// A saved copy of the account list that came from a browser. Only the signed-in person's own name and mobile number can change this way;
+// roles, permissions, status and new or removed users change only through /api/users (Super Admin only).
+function sanitizeAccounts(s, newRaw) {
+  const inc = jparse(newRaw); if (!Array.isArray(inc)) return null;
+  return JSON.stringify(adminList().map(a => {
+    const n = inc.filter(x => x && x.id === a.id)[0]; if (!n || a.id !== s.id) return a;
+    const out = Object.assign({}, a), nm = String(n.name || '').trim().slice(0, 60), ph = cleanPhone(n.phone);
+    if (nm.length >= 2) out.name = nm;
+    if (/^[6-9]\d{9}$/.test(ph) && !phoneTaken(ph, a.id)) out.phone = ph;
+    return out;
+  }));
+}
+function dropSessionsOf(id) { Object.keys(sessions).forEach(h => { if (sessions[h].role === 'admin' && sessions[h].id === id) delete sessions[h]; }); saveSessions(); }
+function pageGate(req, file) {   // null = allowed
+  const s = getSession(req); if (!s || s.role !== 'admin') return { redirect: '/login.html' };
+  const a = acctOf(s); if (!a || a.status === 'inactive') return { redirect: '/login.html' };
+  if (pageAllowed(a, file)) return null;
+  return { denied: true };
+}
+const DENIED_HTML = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>No access - General Traders</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:Inter,system-ui,sans-serif;background:#0F1418;color:#F1F5F9}.b{max-width:420px;padding:32px;text-align:center}h1{font-size:22px;margin:0 0 8px}p{color:#94A3B8;margin:0 0 20px;line-height:1.5}a{display:inline-block;background:#2DD4BF;color:#06201D;font-weight:700;text-decoration:none;padding:10px 18px;border-radius:10px}</style></head><body><div class="b"><h1>You do not have access to this page</h1><p>Your account is not set up for this part of the system. Ask the Super Admin to change your role or permissions.</p><a href="/admin/index.html">Go to Home</a></div></body></html>';
+
 // ---- sessions (cookie "gm_sid", HttpOnly; only a hash of the token is stored) ----
 let sessions = {};
 if (!CLOUD) { try { sessions = JSON.parse(fs.readFileSync(SESSF, 'utf8')); } catch (e) {} }
 let sessTimer = null;
 function saveSessions() { if (CLOUD) { touch('_sessions'); persist(); return; } clearTimeout(sessTimer); sessTimer = setTimeout(() => { try { const t = SESSF + '.tmp'; fs.writeFileSync(t, JSON.stringify(sessions), { mode: 0o600 }); fs.renameSync(t, SESSF); } catch (e) {} }, 500); }
-const TTL = { admin: 12 * 3600e3, worker: 30 * 86400e3 }, REMEMBER_TTL = 30 * 86400e3;   // "Remember me" keeps an admin signed in for 30 days instead of 12 hours
+// An admin is signed out after 30 minutes with no activity. "Remember me" no longer lengthens an admin sign-in.
+// Background polling (GET requests) does not count as activity for an admin; only saving something or the page's own /api/keepalive does.
+const TTL = { admin: 30 * 60e3, worker: 30 * 86400e3 };
 const sha = t => crypto.createHash('sha256').update(t).digest('hex');
 function cookieToken(req) { const m = /(?:^|;\s*)gm_sid=([A-Za-z0-9_-]{20,80})/.exec(req.headers.cookie || ''); return m ? m[1] : null; }
 function getSession(req) {
   const t = cookieToken(req); if (!t) return null;
   const h = sha(t), s = sessions[h]; if (!s) return null;
   const now = Date.now(); if (s.exp < now) { delete sessions[h]; saveSessions(); return null; }
-  const ttl = s.ttl || TTL[s.role]; if (s.exp - now < ttl - 10 * 60e3) { s.exp = now + ttl; saveSessions(); }
+  if (s.role === 'admin') { const ac = adminList().filter(x => x && x.id === s.id)[0]; if (!ac || ac.status === 'inactive') { delete sessions[h]; saveSessions(); return null; } }
+  const ttl = TTL[s.role], gap = s.role === 'admin' ? 60e3 : 10 * 60e3;   // admin sessions use the current limit even if they were created under the old 12 h / 30 day rule
+  if (s.exp > now + ttl) s.exp = now + ttl;
+  const active = s.role !== 'admin' || (req.method !== 'GET' && req.method !== 'HEAD') || /^\/api\/keepalive/.test(req.url || '');
+  if (active && s.exp - now < ttl - gap) { s.exp = now + ttl; saveSessions(); }
   return Object.assign({ hash: h }, s);
 }
 function isHttps(req) { return !!(req.socket && req.socket.encrypted) || String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim() === 'https'; }
@@ -198,7 +275,7 @@ function setCookie(res, req, token, maxAgeSec) {
   res.setHeader('Set-Cookie', 'gm_sid=' + token + '; Path=/; HttpOnly; SameSite=Strict; Max-Age=' + maxAgeSec + (isHttps(req) ? '; Secure' : ''));
 }
 function startSession(res, req, role, id, remember) {
-  const ttl = (remember && role === 'admin') ? REMEMBER_TTL : TTL[role];
+  const ttl = TTL[role];
   const token = crypto.randomBytes(32).toString('base64url');
   Object.keys(sessions).forEach(h => { if (sessions[h].exp < Date.now()) delete sessions[h]; });
   sessions[sha(token)] = { role, id, exp: Date.now() + ttl, ttl }; saveSessions();
@@ -217,15 +294,19 @@ const W_READ = new Set(['gm_admin_v1', 'gm_admin_workers_v1', 'gm_admin_wprofile
 // Crew marks (delivery results shared between the driver and helpers of one route) and location pings.
 const CREW_RE = /^gm_crew_\d{8}_[A-Za-z0-9_-]{1,40}$/;
 function canRead(s, key) {
-  if (s.role === 'admin') return true;
+  if (s.role === 'admin') return true;   // (the account list is trimmed per person in viewFor)
   return W_READ.has(key) || CREW_RE.test(key) || key === 'gm_locreq_' + s.id || key === 'gm_pins_v1' || key.indexOf('gm_pins_v1_') === 0 || key === 'gm_crm_data_v5__' + s.id || key === 'gm_wself_' + s.id;
 }
 function canWrite(s, key) {
-  if (s.role === 'admin') return true;
+  if (s.role === 'admin') return adminMayWrite(s, key);
   return key === 'gm_crm_data_v5__' + s.id || key === 'gm_crew_' + CREWDAY() + '_' + s.id || key === 'gm_loc_' + s.id || key === 'gm_pins_v1_' + s.id || key === 'gm_wself_' + s.id || key === 'gm_admin_notifs_v1';
 }
 // What a signed-in employee is allowed to see inside a value: only their own plan, own profile, own pin tasks.
 function viewFor(s, key, raw) {
+  if (s.role === 'admin' && key === 'gm_admin_account_v1' && raw != null) {   // only the Super Admin sees everybody; others see just their own record
+    const me = acctOf(s); if (isSuper(me)) return raw;
+    const L = jparse(raw); return JSON.stringify((Array.isArray(L) ? L : []).filter(a => a && a.id === s.id).map(a => ({ id: a.id, name: a.name, phone: a.phone, role: a.role })));
+  }
   if (s.role === 'admin' || raw == null) return raw;
   const d = jparse(raw); if (!d || typeof d !== 'object') return raw;
   if (key === 'gm_admin_v1') {
@@ -338,7 +419,12 @@ function api(req, res, url) {
     const good = checkPw(pw, hash) && !!(a || wk);
     if (!good) { noteFail(kp, 5); noteFail(ki, 25); return send(res, 401, { error: 'Incorrect mobile number or password.' }); }
     delete fails[kp];
-    if (a) { startSession(res, req, 'admin', a.id, b.remember === true); logEvents({ role: 'admin', id: a.id }, [{ type: 'login', text: 'Signed in' }]); return send(res, 200, { ok: true, role: 'admin', id: a.id, name: a.name, adminRole: a.role || 'Admin', must: !!auth.admins[a.id].must }); }
+    if (a) {
+      if (a.status === 'inactive') return send(res, 403, { code: 'inactive', error: 'This account is inactive. Contact the Super Admin.' });
+      startSession(res, req, 'admin', a.id, b.remember === true); logEvents({ role: 'admin', id: a.id }, [{ type: 'login', text: 'Signed in' }]);
+      auth.admins[a.id].last = Date.now(); saveAuth();
+      return send(res, 200, { ok: true, role: 'admin', id: a.id, name: a.name, adminRole: a.role || 'Admin', perms: isFull(a) ? MODULES.slice() : modsOf(a), full: isFull(a), super: isSuper(a), must: !!auth.admins[a.id].must });
+    }
     if (!wk.active) return send(res, 403, { code: 'inactive', error: 'This account is inactive. Contact Fleet Admin.' });
     const t = localDate();
     if ((workerData().leaves || []).some(l => l && l.workerId === wk.id && l.from <= t && t <= l.to)) return send(res, 403, { code: 'leave', error: 'On leave today.' });
@@ -350,7 +436,8 @@ function api(req, res, url) {
   if (p === '/api/logout' && req.method === 'POST') { if (s) { delete sessions[s.hash]; saveSessions(); } setCookie(res, req, '', 0); return send(res, 200, { ok: true }); }
   if (!s) return send(res, 401, { error: 'Please sign in.' });
   const mustChange = s.role === 'admin' && auth.admins[s.id] && auth.admins[s.id].must;
-  if (p === '/api/me') return send(res, 200, { ok: true, role: s.role, id: s.id, must: !!mustChange });
+  if (p === '/api/keepalive' && req.method === 'POST') return send(res, 200, { ok: true });   // the admin page calls this while the person is really using it
+  if (p === '/api/me') { const ac = acctOf(s); return send(res, 200, { ok: true, role: s.role, id: s.id, must: !!mustChange, name: ac ? ac.name : undefined, adminRole: ac ? (ac.role || 'Admin') : undefined, perms: ac ? modsOf(ac) : undefined, full: ac ? isFull(ac) : undefined, super: ac ? isSuper(ac) : undefined }); }
   if (p === '/api/change-password' && req.method === 'POST') return body(req, (err, b) => {
     if (err || !b || typeof b.current !== 'string' || typeof b.next !== 'string') return send(res, 400, { error: 'Enter your current and new password.' });
     const rec = (s.role === 'admin' ? auth.admins : auth.workers)[s.id], k = 'c:' + s.role + s.id;
@@ -358,12 +445,79 @@ function api(req, res, url) {
     if (!rec || !checkPw(b.current, rec.h)) { noteFail(k, 5); return send(res, 400, { error: 'The current password is not correct.' }); }
     if (b.next.length < 8) return send(res, 400, { error: 'The new password must be at least 8 characters.' });
     if (b.next === b.current) return send(res, 400, { error: 'Choose a password different from the current one.' });
-    (s.role === 'admin' ? auth.admins : auth.workers)[s.id] = { h: hashPw(b.next), must: false }; saveAuth();
+    (s.role === 'admin' ? auth.admins : auth.workers)[s.id] = Object.assign({}, rec, { h: hashPw(b.next), must: false }); saveAuth();
     Object.keys(sessions).forEach(h => { if (sessions[h].role === s.role && sessions[h].id === s.id && h !== s.hash) delete sessions[h]; }); saveSessions();
     logEvents(s, [{ type: 'password', text: 'Changed own password' }]);
     send(res, 200, { ok: true });
   }, 4096);
   if (mustChange) return send(res, 403, { error: 'Choose a new password first.', must: true });
+
+  // ---- Users & Admins (Super Admin only) ----
+  if (p === '/api/users' || p.indexOf('/api/users/') === 0) {
+    const me = acctOf(s); if (!isSuper(me)) return send(res, 403, { error: 'Only the Super Admin can manage users.' });
+    const parts = p.split('/'), uid = parts[3] ? decodeURIComponent(parts[3]) : '', act = parts[4] || '';
+    const clean = (b, cur) => {   // validates the form fields; returns { error } or { rec }
+      const name = String(b.name == null ? (cur && cur.name) || '' : b.name).trim().slice(0, 60), phone = cleanPhone(b.phone == null ? (cur && cur.phone) : b.phone), email = String(b.email == null ? (cur && cur.email) || '' : b.email).trim().slice(0, 80);
+      const role = b.role == null ? (cur && cur.role) : String(b.role), status = b.status == null ? ((cur && cur.status) || 'active') : String(b.status);
+      if (name.length < 2) return { error: 'Enter the full name (at least 2 letters).' };
+      if (!/^[6-9]\d{9}$/.test(phone)) return { error: 'Enter a valid 10-digit mobile number.' };
+      if (phoneTaken(phone, cur && cur.id)) return { error: 'This mobile number is already used by another user or employee.' };
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Enter a valid email address, or leave it empty.' };
+      if (ROLES.indexOf(role) < 0) return { error: 'Choose a role.' };
+      if (status !== 'active' && status !== 'inactive') return { error: 'Choose the account status.' };
+      let perms = Array.isArray(b.perms) ? b.perms : (cur && cur.perms) || [];
+      perms = ROLES.indexOf(role) < 2 ? [] : MODULES.filter(m => perms.indexOf(m) > -1);
+      if (ROLES.indexOf(role) >= 2 && !perms.length) return { error: 'Tick at least one module for this user.' };
+      return { rec: { name, phone, email, role, perms, status } };
+    };
+    const activeSupers = (list, skipId) => list.filter(a => a && a.id !== skipId && a.role === 'Super Admin' && a.status !== 'inactive').length;
+    if (p === '/api/users' && req.method === 'GET') return send(res, 200, { ok: true, me: s.id, users: adminList().map(publicUser) });
+    if (p === '/api/users' && req.method === 'POST') return body(req, (err, b) => {
+      if (err || !b) return send(res, 400, { error: 'Send the user details.' });
+      const c = clean(b, null); if (c.error) return send(res, 400, { error: c.error });
+      const list = adminList().map(a => Object.assign({}, a)), n = list.reduce((m, a) => { const x = /^A(\d+)$/.exec(a.id || ''); return x ? Math.max(m, +x[1]) : m; }, 0) + 1;
+      const id = 'A' + n, pw = (typeof b.password === 'string' && b.password.length >= 8) ? b.password.slice(0, 100) : tempPassword();
+      if (typeof b.password === 'string' && b.password && b.password.length < 8) return send(res, 400, { error: 'A password you set must be at least 8 characters.' });
+      list.push(Object.assign({ id, created: Date.now() }, c.rec));
+      auth.admins[id] = { h: hashPw(pw), must: true }; saveAuth();   // the new user must choose their own password at first sign-in
+      setItem('gm_admin_account_v1', JSON.stringify(list));
+      logEvents(s, [{ type: 'settings', text: 'User created: ' + c.rec.name + ' (' + c.rec.role + ')' }]);
+      send(res, 200, { ok: true, user: publicUser(list[list.length - 1]), tempPassword: pw });
+    }, 4096);
+    if (uid && !act && req.method === 'PUT') return body(req, (err, b) => {
+      if (err || !b) return send(res, 400, { error: 'Send the user details.' });
+      const list = adminList().map(a => Object.assign({}, a)), i = list.findIndex(a => a.id === uid); if (i < 0) return send(res, 404, { error: 'User not found.' });
+      const cur = list[i], c = clean(b, cur); if (c.error) return send(res, 400, { error: c.error });
+      if (uid === s.id && c.rec.status === 'inactive') return send(res, 400, { error: 'You cannot deactivate your own account.' });
+      if (cur.role === 'Super Admin' && (c.rec.role !== 'Super Admin' || c.rec.status === 'inactive') && !activeSupers(list, uid)) return send(res, 400, { error: 'There must always be at least one active Super Admin.' });
+      const before = publicUser(cur); list[i] = Object.assign({}, cur, c.rec);
+      setItem('gm_admin_account_v1', JSON.stringify(list));
+      if (c.rec.status === 'inactive' || c.rec.role !== cur.role) dropSessionsOf(uid);   // they sign in again under the new rules
+      const ch = []; if (before.role !== c.rec.role) ch.push('role ' + before.role + ' to ' + c.rec.role); if (before.status !== 'pending' && cur.status !== c.rec.status) ch.push(c.rec.status === 'inactive' ? 'deactivated' : 'activated');
+      if (JSON.stringify(before.perms) !== JSON.stringify(publicUser(list[i]).perms)) ch.push('module access'); if (cur.name !== c.rec.name || cur.phone !== c.rec.phone || (cur.email || '') !== c.rec.email) ch.push('details');
+      if (ch.length) logEvents(s, [{ type: 'settings', text: 'User ' + c.rec.name + ': ' + ch.join(', ') + ' changed' }]);
+      send(res, 200, { ok: true, user: publicUser(list[i]) });
+    }, 4096);
+    if (uid && act === 'reset' && req.method === 'POST') {
+      const a = adminList().filter(x => x && x.id === uid)[0]; if (!a) return send(res, 404, { error: 'User not found.' });
+      if (uid === s.id) return send(res, 400, { error: 'Use Change password on your own profile.' });
+      const pw = tempPassword(); auth.admins[uid] = Object.assign({}, auth.admins[uid], { h: hashPw(pw), must: true }); saveAuth(); dropSessionsOf(uid);
+      logEvents(s, [{ type: 'settings', text: 'Password reset for ' + a.name }]);
+      return send(res, 200, { ok: true, tempPassword: pw });
+    }
+    return send(res, 404, { error: 'not found' });
+  }
+
+
+  // Privacy notice acceptance. The server writes the time with its own clock; employees cannot write or read this key through /api/kv.
+  if (p === '/api/consent' && s.role === 'worker') {
+    const CK = 'gm_admin_consent_v1', cur = (db.items[CK] && jparse(db.items[CK].v)) || {};
+    if (req.method === 'GET') return send(res, 200, { ok: true, at: (cur[s.id] && cur[s.id].at) || null });
+    if (req.method === 'POST') {
+      if (!cur[s.id]) { cur[s.id] = { v: 1, at: new Date().toISOString() }; setItem(CK, JSON.stringify(cur)); }
+      return send(res, 200, { ok: true, at: cur[s.id].at });
+    }
+  }
 
   if (p === '/api/state' && req.method === 'GET') {
     const since = parseInt(url.searchParams.get('since'), 10) || 0, out = {};
@@ -371,14 +525,14 @@ function api(req, res, url) {
     return send(res, 200, { rev: db.rev, items: out });   // always fresh (never cached); only compressed
   }
   if (p === '/api/activity' && req.method === 'GET') {
-    if (s.role !== 'admin') return send(res, 403, { error: 'Admin only' });
+    if (s.role !== 'admin' || !isFull(acctOf(s))) return send(res, 403, { error: 'Admin only' });
     const months = Object.keys(db.activity).filter(k => /^\d{6}$/.test(k)).sort().reverse();
     let mo = String(url.searchParams.get('month') || ''); if (!/^\d{6}$/.test(mo)) mo = months[0] || istMonth(Date.now());
     const events = (db.activity[mo] || []).slice().reverse().map(e => ({ t: e.t, by: e.by, role: e.role, type: e.type, text: e.text }));
     return send(res, 200, { month: mo, months, events });
   }
   if (p === '/api/delete-employee' && req.method === 'POST') return body(req, (err, b) => {
-    if (s.role !== 'admin') return send(res, 403, { error: 'Admin only' });
+    if (s.role !== 'admin' || !isFull(acctOf(s))) return send(res, 403, { error: 'Admin only' });
     const id = b && typeof b.id === 'string' ? b.id : '';
     if (!/^[A-Za-z0-9_-]{1,40}$/.test(id)) return send(res, 400, { error: 'bad employee id' });
     const wd = workerData(), w = (wd.workers || []).filter(x => x && x.id === id)[0];
@@ -401,10 +555,46 @@ function api(req, res, url) {
     send(res, 200, { ok: true });
   }, 1024);
   if (p === '/api/export' && req.method === 'GET') {
-    if (s.role !== 'admin') return send(res, 403, { error: 'Admin only' });
+    if (s.role !== 'admin' || !isSuper(acctOf(s))) return send(res, 403, { error: 'Super Admin only' });
     const ist = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Disposition': 'attachment; filename="gm-crm-backup-' + ist + '.json"' });
     return res.end(JSON.stringify(Object.assign({ app: 'GM-CRM backup', exportedAt: new Date().toISOString() }, db), null, 2));
+  }
+  // Import backup (Super Admin only). POST /api/import?preview=1 only checks the file; without it the data is replaced.
+  // Logins (auth.json), sessions and the admin account list are never touched, so nobody is locked out.
+  if (p === '/api/import' && req.method === 'POST') {
+    if (s.role !== 'admin' || !isSuper(acctOf(s))) return send(res, 403, { error: 'Super Admin only' });
+    const preview = /[?&]preview=1\b/.test(req.url || '');
+    return body(req, async (err, b) => {
+      if (err || !b || typeof b !== 'object') return send(res, 400, { error: 'This is not a readable backup file.' });
+      if (!b.items || typeof b.items !== 'object' || Array.isArray(b.items)) return send(res, 400, { error: 'This file is not a GM-CRM backup (no data found).' });
+      const keys = Object.keys(b.items);
+      if (!keys.length || keys.length > MAX_KEYS) return send(res, 400, { error: 'The backup has ' + keys.length + ' records, which is not valid.' });
+      for (const k of keys) { const it = b.items[k]; if (!it || typeof it !== 'object' || (it.v != null && typeof it.v !== 'string') || (it.v && it.v.length > MAX_VALUE)) return send(res, 400, { error: 'The backup file is damaged (record "' + String(k).slice(0, 40) + '").' }); }
+      if (b.activity != null && (typeof b.activity !== 'object' || Array.isArray(b.activity))) return send(res, 400, { error: 'The backup file is damaged (activity log).' });
+      const KEEP = ['gm_admin_account_v1'];
+      const live = k => db.items[k] && db.items[k].v != null;
+      const count = (obj, k) => { try { const v = JSON.parse(obj[k].v); return Array.isArray(v) ? v.length : (v && typeof v === 'object' ? Object.keys(v).length : 0); } catch (e) { return 0; } };
+      const info = { ok: true, records: keys.length, exportedAt: b.exportedAt || null, current: Object.keys(db.items).filter(live).length, removed: Object.keys(db.items).filter(k => live(k) && !b.items[k] && KEEP.indexOf(k) < 0).length };
+      const workersIn = b.items['gm_admin_workers_v1'] ? (() => { try { return (JSON.parse(b.items['gm_admin_workers_v1'].v).workers || []).length; } catch (e) { return 0; } })() : 0;
+      info.employees = workersIn; info.workersNow = (workerData().workers || []).length;
+      if (preview) return send(res, 200, info);
+      try {
+        // 1. safety copy of what is there now
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-'), name = 'backups/before-import-' + stamp + '.json', snap = Buffer.from(JSON.stringify(db));
+        if (CLOUD) await Files.put(name, snap, 'application/json'); else fs.writeFileSync(path.join(DATA, name), snap);
+        // 2. replace the data (account list kept as it is now)
+        const old = Object.keys(db.items);
+        keys.forEach(k => { if (KEEP.indexOf(k) < 0) setItem(k, b.items[k].v == null ? null : b.items[k].v); });
+        old.forEach(k => { if (!b.items[k] && KEEP.indexOf(k) < 0 && live(k)) setItem(k, null); });
+        const acts = b.activity || {};
+        Object.keys(db.activity).forEach(m => { if (!acts[m]) { db.activity[m] = []; touch('_activity_' + m); } });
+        Object.keys(acts).forEach(m => { if (Array.isArray(acts[m])) { db.activity[m] = acts[m]; touch('_activity_' + m); } });
+        logEvents(s, [{ type: 'backup', text: 'Backup imported (' + keys.length + ' records' + (b.exportedAt ? ', exported ' + String(b.exportedAt).slice(0, 10) : '') + '). Safety copy: ' + name.slice(8) }]);
+        persist(); await flushNow();
+        info.safetyCopy = name.slice(8); send(res, 200, info);
+      } catch (e) { console.error('Import failed:', e && e.message); send(res, 500, { error: 'The import failed: ' + (e && e.message ? e.message : 'unknown error') + '. Your data was not changed unless the safety copy says otherwise.' }); }
+    }, 64 * 1024 * 1024);
   }
   const m = /^\/api\/kv\/([^/]+)$/.exec(p);
   if (m) {
@@ -426,6 +616,7 @@ function api(req, res, url) {
         const bad = planConflict(db.items[key] && db.items[key].v, val);
         if (bad) return send(res, 409, { error: bad });
       }
+      if (key === 'gm_admin_account_v1') { val = sanitizeAccounts(s, val); if (val == null) return send(res, 400, { error: 'bad list' }); }
       val = cleanValue(key, val);
       const oldV = db.items[key] ? db.items[key].v : null;
       setItem(key, val);
@@ -509,6 +700,12 @@ function serveStatic(req, res, url) {
     const ext = path.extname(file).toLowerCase();
     if (!MIME[ext] || ['server.js', 'storage.js', 'activity.js'].includes(path.basename(file).toLowerCase())) {   // server code is never sent to a browser
        res.writeHead(404); return res.end('Not found'); }
+    const rp = path.relative(ROOT, file).split(path.sep);
+    if (rp[0] === 'admin' && ext === '.html') {   // admin pages: only for a signed-in admin whose role allows that page
+      const g = pageGate(req, rp[rp.length - 1]);
+      if (g && g.redirect) { res.writeHead(302, { Location: g.redirect, 'Cache-Control': 'no-store' }); return res.end(); }
+      if (g && g.denied) { res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); return res.end(DENIED_HTML); }
+    }
     fs.stat(file, (e2, st2) => {
       if (e2 || !st2.isFile()) { res.writeHead(404); return res.end('Not found'); }
       // "no-cache" means: ask the server every time, but the answer is a tiny "not modified" while the file is unchanged. A new deploy changes the tag, so updates still show at once.
