@@ -15,6 +15,7 @@
 <script src="../shared/admin.js"></script>
 <script src="../shared/plan-core.js"></script>
 <script src="../shared/users.js"></script>
+<script src="../shared/user-form.js"></script>
 <script>
 GA.guard();
 var $ = function (i) { return document.getElementById(i); }, esc = GA.esc;
@@ -27,7 +28,7 @@ pg.innerHTML =
     '<div class="field a-f us-q"><input type="search" id="uQ" placeholder="Search name, phone or email..." aria-label="Search users" autocomplete="off"></div>' +
     '<div class="field a-f us-f"><select id="uRole" aria-label="Filter by role"><option value="">All Roles</option>' + US.ROLES.map(function (r) { return '<option value="' + r + '">' + r + '</option>'; }).join('') + '</select></div>' +
     '<div class="field a-f us-f"><select id="uSt" aria-label="Filter by status"><option value="">All Status</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="pending">Pending</option></select></div>' +
-    '<a class="btn a-btn" href="user-edit.html">' + GA.icon('plus') + ' Create User</a>' +
+    '<button type="button" class="btn a-btn" id="uNew">' + GA.icon('plus') + ' Create User</button>' +
   '</div><div id="uBody"><div class="us-empty">Loading users...</div></div></section>';
 
 $('uRole').value = st.role; $('uSt').value = st.status;
@@ -54,7 +55,7 @@ function draw() {
       var me = u.id === ME;
       return '<tr><td class="no">' + (from + i + 1) + '</td><td><div class="us-cell">' + US.avatar(u) + '<div><b>' + esc(u.name) + (me ? ' <small style="display:inline">(you)</small>' : '') + '</b><small>' + esc(u.email || 'No email') + '</small></div></div></td>' +
         '<td>' + esc(US.phone(u.phone)) + '</td><td>' + US.role(u.role) + '</td><td>' + US.status(u.status) + '</td><td>' + US.when(u.last) + '</td>' +
-        '<td class="acts"><a class="us-ib" href="user-edit.html?id=' + encodeURIComponent(u.id) + '" title="Edit ' + esc(u.name) + '" aria-label="Edit ' + esc(u.name) + '">' + GA.icon('edit') + '</a>' +
+        '<td class="acts"><button type="button" class="us-ib" data-edit="' + esc(u.id) + '" title="Edit ' + esc(u.name) + '" aria-label="Edit ' + esc(u.name) + '">' + GA.icon('edit') + '</button>' +
         '<button type="button" class="us-ib" data-reset="' + esc(u.id) + '" title="Reset password"' + (me ? ' disabled' : '') + ' aria-label="Reset password for ' + esc(u.name) + '">' + GA.icon('key') + '</button>' +
         '<button type="button" class="us-ib d" data-tog="' + esc(u.id) + '" title="' + (u.status === 'inactive' ? 'Activate' : 'Deactivate') + '"' + (me ? ' disabled' : '') + ' aria-label="' + (u.status === 'inactive' ? 'Activate ' : 'Deactivate ') + esc(u.name) + '">' + GA.icon('power') + '</button></td></tr>';
     }).join('') + '</tbody></table></div>' +
@@ -62,11 +63,13 @@ function draw() {
     '<button type="button" class="btn btn-secondary" id="uPrev"' + (st.page <= 1 ? ' disabled' : '') + '>Previous</button><span>Page ' + st.page + ' of ' + pages + '</span><button type="button" class="btn btn-secondary" id="uNext"' + (st.page >= pages ? ' disabled' : '') + '>Next</button></span></div>';
   if ($('uPrev')) $('uPrev').onclick = function () { st.page--; draw(); };
   if ($('uNext')) $('uNext').onclick = function () { st.page++; draw(); };
+  [].forEach.call(pg.querySelectorAll('[data-edit]'), function (b) { b.onclick = function () { US.openForm({ id: b.dataset.edit, done: load }); }; });
   [].forEach.call(pg.querySelectorAll('[data-reset]'), function (b) { b.onclick = function () { var u = byId(b.dataset.reset); if (u) US.resetPassword(u, load); }; });
   [].forEach.call(pg.querySelectorAll('[data-tog]'), function (b) { b.onclick = function () { var u = byId(b.dataset.tog); if (u) US.setActive(u, u.status === 'inactive', load); }; });
 }
 function byId(id) { return ALL.filter(function (u) { return u.id === id; })[0]; }
 load();
+$('uNew').onclick = function () { US.openForm({ done: load }); };
 </script>
 </body>
 </html>

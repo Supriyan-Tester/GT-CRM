@@ -102,6 +102,7 @@
     var items = [{ label: 'View route on map', icon: 'route', run: function () { openFs(p.id); } }];
     if (p.status !== 'cancelled') items.push(
       { label: 'Add priority shop', icon: 'flag', disabled: !can, hint: hint, run: function () { DP.dlg.priority(p.id); } },
+      { label: 'Add another route', icon: 'route', disabled: !can, hint: hint, run: function () { DP.dlg.addRoute(p.id); } },
       { label: 'Add shop with invoice', icon: 'plus', disabled: !can, hint: hint, run: function () { DP.dlg.addShop(p.id); } },
       { label: 'Change order', icon: 'swap', disabled: !can, hint: hint, run: function () { DP.dlg.order(p.id); } },
       { label: 'Helpers', icon: 'users', disabled: !can, hint: hint, run: function () { DP.dlg.helpers(p.id); } },

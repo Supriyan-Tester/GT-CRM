@@ -388,3 +388,16 @@ html.fx-theming *,html.fx-theming *::before,html.fx-theming *::after{transition:
 .a-user{margin-top:0;background:var(--card)}
 @media(max-width:900px){.a-side{overflow-y:hidden}}
 .a-wrap.col .a-nav{margin:0 -10px;padding:0 10px}
+
+/* Top bar: signed-in user with a small menu */
+.a-uw{position:relative;display:inline-block;margin-left:8px}
+.a-uchip{display:inline-flex;align-items:center;gap:10px;height:40px;padding:0 10px 0 4px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font:inherit}
+.a-uchip .chip{width:30px;height:30px;font-size:13px}
+.a-un{display:flex;flex-direction:column;text-align:left;line-height:1.15}.a-un b{font-size:13px}.a-un small{font-size:11px;color:var(--muted)}
+.a-uchip i{font-style:normal;color:var(--muted);font-size:12px}
+.a-umenu{display:none;position:absolute;right:0;top:46px;min-width:190px;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);padding:6px;z-index:75}
+.a-umenu.show{display:block}
+.a-umenu a,.a-umenu button{display:block;width:100%;text-align:left;padding:10px 12px;border:0;border-radius:8px;background:none;color:var(--text);font:600 14px inherit;text-decoration:none;cursor:pointer}
+.a-umenu a:hover,.a-umenu button:hover{background:var(--t-primary);color:var(--primary)}
+.a-umenu button{color:var(--danger)}
+@media(max-width:640px){.a-un,.a-uchip i{display:none}.a-uchip{padding:0 4px}}

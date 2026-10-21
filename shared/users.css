@@ -12,15 +12,15 @@
 .us-av{width:38px;height:38px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:700;font-size:15px;background:color-mix(in srgb,var(--rc,var(--primary)) 16%,var(--card));color:color-mix(in srgb,var(--rc,var(--primary)) 80%,var(--text))}
 
 /* overview tiles */
-.us-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.us-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:1fr;gap:12px;margin-bottom:14px}
 @media(max-width:1100px){.us-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){.us-tiles{gap:8px}}
 .us-tile{min-height:92px;display:flex;gap:12px;align-items:center;padding:14px 16px;border-radius:var(--radius-card);border:1px solid var(--border);background:var(--card);box-shadow:var(--shadow);text-align:left;font-family:inherit;color:var(--text);cursor:pointer;text-decoration:none;min-width:0;transition:transform .15s,border-color .15s}
 .us-tile:hover{transform:translateY(-2px);border-color:var(--primary)}
-.us-tile .chip{width:46px;height:46px;border-radius:50%;flex:none;--rc:var(--primary);background:color-mix(in srgb,var(--rc) 14%,var(--card));color:var(--rc)}
+.us-tile .chip{display:grid;place-items:center;margin:0;width:46px;height:46px;border-radius:50%;flex:none;--rc:var(--primary);background:color-mix(in srgb,var(--rc) 14%,var(--card));color:var(--rc)}
 .us-tile .chip svg.icon{width:22px;height:22px}
 .us-tile b{display:block;font-size:24px;line-height:1.1}
-.us-tile span{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
+.us-tile div>span{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
 .us-tile small{display:block;font-size:12px;font-weight:600;margin-top:4px;color:var(--success)}
 .us-tile small.mu{color:var(--primary)}
 
@@ -85,3 +85,15 @@
 .us-cred{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:12px 0;display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:14px}
 .us-cred span{color:var(--muted)}.us-cred b{font-size:16px;letter-spacing:.04em;word-break:break-all}
 .us-dlg-acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}.us-dlg-acts .btn,.us-dlg-acts a.btn{width:auto;flex:1 1 140px;text-decoration:none;text-align:center;display:inline-flex;align-items:center;justify-content:center}
+
+/* pop-up version of the user form */
+.us-dlg .us-bar2{background:linear-gradient(to top,var(--card) 70%,transparent);margin-top:4px}
+.us-dlg .us-panel{margin-bottom:12px}
+
+/* pop-up: role and module boxes stack, buttons stay pinned at the bottom, only the form scrolls */
+.us-dlg{max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.us-dlg [data-body]{flex:1;min-height:0;display:flex;flex-direction:column}
+.us-dlg #usBox,.us-dlg .us-form{flex:1;min-height:0;display:flex;flex-direction:column}
+.us-dlg .us-scroll{flex:1;min-height:0;overflow-y:auto;padding:2px 6px 4px 2px;margin-right:-6px}
+.us-dlg .us-bar2{position:static;flex:none;background:none;border-top:1px solid var(--border);padding:12px 0 0;margin-top:8px}
+.us-dlg .us-grid.c2{grid-template-columns:1fr}

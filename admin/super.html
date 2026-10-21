@@ -15,12 +15,14 @@
 <script src="../shared/admin.js"></script>
 <script src="../shared/plan-core.js"></script>
 <script src="../shared/users.js"></script>
+<script src="../shared/user-form.js"></script>
 <script>
 GA.guard();
 var $ = function (i) { return document.getElementById(i); }, esc = GA.esc;
 var pg = GA.mount('super.html', 'User overview');
-pg.innerHTML = '<div class="us-head"><p>Overview of users and roles.</p><a class="btn a-btn" href="user-edit.html">' + GA.icon('plus') + ' Create User</a></div><div id="sBody"><div class="us-empty">Loading...</div></div>';
+pg.innerHTML = '<div class="us-head"><p>Overview of users and roles.</p><button type="button" class="btn a-btn" id="sNew">' + GA.icon('plus') + ' Create User</button></div><div id="sBody"><div class="us-empty">Loading...</div></div>';
 
+document.getElementById('sNew').onclick = function () { US.openForm({ done: function () { location.reload(); } }); };
 function tile(icon, color, n, label, note, href, cls) {
   return '<a class="us-tile" href="' + href + '"><span class="chip" style="--rc:' + color + '">' + GA.icon(icon) + '</span><div><b>' + n + '</b><span>' + label + '</span>' + (note ? '<small class="' + (cls || '') + '">' + note + '</small>' : '') + '</div></a>';
 }

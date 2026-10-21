@@ -401,6 +401,53 @@
     });
   };
 
+  /* ======================= Add another route to an existing plan ======================= */
+  // Pick a route that is not in the plan yet, then type the invoice for each customer that has one. Customers left blank are skipped.
+  DP.dlg.addRoute = function (planId) {
+    if (pastBlock()) return; var p0 = guardPlan(planId); if (!p0) return;
+    var date = DP.ctx.date(), expect = p0.builtAt, pk, S = DP.fresh(), cur = null;
+    var inPlan = (p0.routeIds && p0.routeIds.length ? p0.routeIds : [p0.route]);
+    DP.dialog({
+      title: 'Add another route', sub: 'Adds the shops of one more route to this plan. The saved route is not changed.', wide: true,
+      html: ctxLine(p0) + '<div class="a-fg"><label class="dp-lbl" id="arL">Route</label><div id="arR"></div></div><div id="arRows" style="max-height:50vh;overflow:auto"></div><div class="dp-formmsg" data-msg role="alert"></div>' + footer('Cancel', 'Add route to plan'),
+      onOpen: function (api) {
+        pk = DP.picker(api.q('#arR'), { labelledBy: 'arL', placeholder: 'Search routes...', empty: 'No other route.',
+          options: function () { return S.routes.filter(function (r) { return inPlan.indexOf(r.id) < 0; }).sort(function (a, b) { return a.name.localeCompare(b.name); }).map(function (r) { return { value: r.id, label: r.name, sub: r.codes.length + ' customer' + (r.codes.length === 1 ? '' : 's') }; }); },
+          onChange: function (id) { cur = S.routes.filter(function (r) { return r.id === id; })[0]; draw(); } });
+        function draw() {
+          var h = api.q('#arRows'); if (!cur) { h.innerHTML = ''; return; }
+          h.innerHTML = cur.codes.length ? '<table class="dp-table"><thead><tr><th>Customer</th><th>Invoice no.</th><th>Amount</th><th>Boxes</th></tr></thead><tbody>' + cur.codes.map(function (c, i) { var x = DP.cust(S, c) || { name: c }; return '<tr data-i="' + i + '"><td><b>' + esc(x.name) + '</b><br><span class="mu">' + esc(c) + '</span></td><td><div class="field a-f"><input data-f="inv" autocomplete="off"></div></td><td><div class="field a-f"><input data-f="amt" inputmode="decimal"></div></td><td><div class="field a-f"><input data-f="bx" inputmode="numeric"></div></td></tr>'; }).join('') + '</tbody></table><div class="mu" style="font-size:12px;margin-top:6px">Fill in only the customers that have an invoice today. Boxes is optional.</div>' : '<div class="mu">This route has no customers.</div>';
+        }
+        api.q('[data-no]').onclick = function () { api.close(); };
+        api.q('[data-ok]').onclick = function () {
+          errMsg(api, ''); if (!cur) { errMsg(api, 'Choose a route.'); pk.focus(); return; }
+          var rows = [], bad = '';
+          [].forEach.call(api.qa('#arRows tr[data-i]'), function (tr) {
+            var inv = tr.querySelector('[data-f=inv]').value.trim(), amt = tr.querySelector('[data-f=amt]').value.trim(), bx = tr.querySelector('[data-f=bx]').value.trim();
+            if (!inv && !amt && !bx) return; var code = cur.codes[+tr.dataset.i];
+            if (!inv || amt === '' || !(Number(amt) >= 0) || (bx !== '' && !(Number(bx) >= 0))) { bad = bad || 'Check the invoice number and amount for ' + ((DP.cust(S, code) || {}).name || code) + '.'; return; }
+            rows.push({ code: code, inv: inv, amt: Number(amt), bx: bx === '' ? 0 : Number(bx) });
+          });
+          if (bad) { errMsg(api, bad); return; }
+          if (!rows.length) { errMsg(api, 'Enter at least one invoice for this route.'); return; }
+          var seen = {}; for (var i = 0; i < rows.length; i++) { if (seen[rows[i].inv]) { errMsg(api, 'Invoice ' + rows[i].inv + ' is typed twice.'); return; } seen[rows[i].inv] = 1; }
+          var btn = api.q('[data-ok]'), out = {}; DP.setBusy(api, btn, true, 'Adding...');
+          DP.commit(function (S2) {
+            var p = planIn(S2, date, planId); if (!p || p.status === 'cancelled') return { ok: false, error: 'This plan is no longer active.' };
+            if (DP.stale(p, expect)) { expect = p.builtAt; return { ok: false, error: DP.STALE_MSG }; }
+            var rt = S2.routes.filter(function (r) { return r.id === cur.id; })[0]; if (!rt) return { ok: false, error: 'That route no longer exists.' };
+            var ids = (p.routeIds && p.routeIds.length ? p.routeIds : [p.route]); if (ids.indexOf(rt.id) > -1) return { ok: false, error: 'This route is already in the plan.' };
+            var taken = DP.invTaken(S2, date); for (var k = 0; k < rows.length; k++) if (taken[rows[k].inv]) return { ok: false, error: 'Invoice ' + rows[k].inv + ' is already in a plan for this date.' };
+            rows.forEach(function (r) { var c = DP.cust(S2, r.code) || { name: r.code }; p.stops.push({ code: r.code, name: c.name, address: c.address || '', inv: r.inv, amount: r.amt, boxes: r.bx }); });
+            p.routeIds = ids.concat([rt.id]); p.routeName = p.routeName + ' + ' + rt.name;
+            DP.history(p, 'addroute', 'Route added: ' + rt.name + ' (' + rows.length + ' deliveries).', { notify: DP.crew(p), workerText: 'Another route was added to your plan: ' + rt.name + ' (' + rows.length + ' stops).' });
+            out.worker = p.worker; out.name = rt.name; out.n = rows.length; return { ok: true };
+          }).then(function (res) { DP.setBusy(api, btn, false, ''); if (!res.ok) { errMsg(api, res.error); return; } api.close(true); DP.ctx.refresh(); afterSave(res, out.name + ' added (' + out.n + ' shops).', out.worker); });
+        };
+      }
+    });
+  };
+
   /* ======================= Add shop with an invoice (existing feature) ======================= */
   DP.dlg.addShop = function (planId) {
     if (pastBlock()) return; var p0 = guardPlan(planId); if (!p0) return;

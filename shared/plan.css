@@ -235,7 +235,7 @@
 .dp-table .c-name{min-width:170px}
 .dp-table .c-area{max-width:140px}
 @media(max-width:1500px) and (min-width:1280px){.dp-grid{grid-template-columns:270px minmax(0,1fr) 320px}}
-.dp-dlg .dp-foot{position:sticky;bottom:-20px;background:var(--card);padding:10px 0 4px;margin-bottom:-4px}
+.dp-dlg .dp-foot{position:sticky;bottom:-6px;background:var(--card);padding:12px 0 10px;margin-bottom:0}
 .dp-items summary{cursor:pointer;color:var(--primary);font-weight:600}
 .dp-table .r{text-align:right}.dp-ptable{margin:6px 0 4px;min-width:420px}.dp-ptable td:first-child{min-width:200px}
 .dp-prow>td{padding-top:0!important}.dp-prow details{padding:2px 0 8px}

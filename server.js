@@ -437,7 +437,7 @@ function api(req, res, url) {
   if (!s) return send(res, 401, { error: 'Please sign in.' });
   const mustChange = s.role === 'admin' && auth.admins[s.id] && auth.admins[s.id].must;
   if (p === '/api/keepalive' && req.method === 'POST') return send(res, 200, { ok: true });   // the admin page calls this while the person is really using it
-  if (p === '/api/me') { const ac = acctOf(s); return send(res, 200, { ok: true, role: s.role, id: s.id, must: !!mustChange, name: ac ? ac.name : undefined, adminRole: ac ? (ac.role || 'Admin') : undefined, perms: ac ? modsOf(ac) : undefined, full: ac ? isFull(ac) : undefined, super: ac ? isSuper(ac) : undefined }); }
+  if (p === '/api/me') { const ac = acctOf(s); return send(res, 200, { ok: true, role: s.role, id: s.id, must: !!mustChange, name: ac ? ac.name : undefined, adminRole: ac ? (ac.role || 'Admin') : undefined, email: ac ? (ac.email || '') : undefined, phone: ac ? ac.phone : undefined, perms: ac ? modsOf(ac) : undefined, full: ac ? isFull(ac) : undefined, super: ac ? isSuper(ac) : undefined }); }
   if (p === '/api/change-password' && req.method === 'POST') return body(req, (err, b) => {
     if (err || !b || typeof b.current !== 'string' || typeof b.next !== 'string') return send(res, 400, { error: 'Enter your current and new password.' });
     const rec = (s.role === 'admin' ? auth.admins : auth.workers)[s.id], k = 'c:' + s.role + s.id;
