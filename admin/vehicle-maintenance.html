@@ -1,119 +1,770 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head><script src="../shared/sync.js"></script>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vehicle maintenance - General Traders Admin</title>
-<link rel="stylesheet" href="../shared/theme.css">
-<link rel="stylesheet" href="../shared/admin.css">
-<link rel="stylesheet" href="../shared/plan.css">
-<link rel="stylesheet" href="../shared/vehicles.css">
-<script src="../shared/theme.js"></script>  <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-32.png"><link rel="apple-touch-icon" href="/assets/icon-180.png">
-</head>
-<body>
-<script src="../shared/mock-data.js"></script>
-<script src="../shared/admin.js"></script>
-<script src="../shared/plan-core.js"></script>
-<script src="../shared/vehicles.js"></script>
-<script>
-GA.guard();
-var $ = function (i) { return document.getElementById(i); }, esc = GA.esc, id = VX.qs('id'), date = VX.viewDate(), T = VX.today();
-var TABS = [['overview', 'Overview'], ['history', 'Service history'], ['upcoming', 'Upcoming services'], ['repairs', 'Repairs'], ['odo', 'Odometer history'], ['costs', 'Costs'], ['notes', 'Notes']];
-var st = { tab: (location.hash || '#overview').slice(1), year: T.slice(0, 4) };
-if (!TABS.some(function (t) { return t[0] === st.tab; })) st.tab = 'overview';
-var pg = GA.mount('vehicles.html', 'Vehicle maintenance', { back: ['vehicles.html', 'Vehicles'] });
-VX.initTips();
-
-function head(v) {
-  var right = '<div class="vx-avail ok"><a class="btn a-btn" href="#" id="sAdd" data-act>' + DP.icon('wrench') + ' Add service record</a><a class="btn btn-secondary" data-act href="' + VX.link('vehicle-fuel.html', v.id, date) + '">' + DP.icon('fuel') + ' Fuel records</a></div>';
-  return '<div class="vx-head"><div><p>Services, repairs, reminders and costs for this vehicle.</p></div></div>' + VX.banner(v, right);
-}
-function tabs() { return '<div class="vx-tabs" role="tablist">' + TABS.map(function (t) { return '<button type="button" class="vx-tab' + (st.tab === t[0] ? ' on' : '') + '" role="tab" aria-selected="' + (st.tab === t[0]) + '" data-tab="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '<a class="vx-tab" href="' + VX.link('vehicle.html', id, date) + '#docs">Documents</a></div>'; }
-function sd(s) { return s.status === 'done' ? (s.doneDate || '') : (s.scheduledDate || ''); }
-function stBadge(s, v) { return s.status === 'done' ? '<span class="badge b-success">Done</span>' : VX.isOverdue(s, v) ? '<span class="badge b-danger">Overdue</span>' : s.status === 'open' ? '<span class="badge b-info">In workshop</span>' : '<span class="badge b-muted">Upcoming</span>'; }
-function acts(s, done) { return '<td style="white-space:nowrap">' + (done ? '' : '<button type="button" class="btn btn-secondary a-btn" style="min-height:32px" data-done="' + s.id + '">Mark done</button> ') + '<button type="button" class="vx-ib" data-edit="' + s.id + '" aria-label="Edit record" title="Edit">' + GA.icon('edit') + '</button> <button type="button" class="vx-ib d" data-del="' + s.id + '" aria-label="Delete record" title="Delete">' + GA.icon('trash') + '</button></td>'; }
-function table(L, v, done) {
-  if (!L.length) return VX.empty(done ? 'No completed records yet' : 'Nothing scheduled', done ? 'Completed services and repairs appear here.' : 'Use "Add service record" to schedule one.');
-  return '<div class="a-scroll"><table class="vx-table stack"><thead><tr><th>' + (done ? 'Date' : 'Due date') + '</th><th>Type</th><th>Kind</th><th class="r">' + (done ? 'Odometer' : 'Due km') + '</th><th>Vendor</th><th class="r">Cost</th><th>Status</th><th></th></tr></thead><tbody>' + L.map(function (s) { return '<tr><td data-l="Date">' + (sd(s) ? VX.date(sd(s)) : '-') + '</td><td data-l="Type">' + esc(s.type) + (s.notes ? '<small class="mu" style="display:block">' + esc(s.notes) + '</small>' : '') + '</td><td data-l="Kind">' + (s.kind === 'repair' ? 'Repair' : 'Service') + '</td><td class="r" data-l="Km">' + ((done ? s.odometer : s.dueKm) ? VX.num(done ? s.odometer : s.dueKm) + ' km' : '-') + '</td><td data-l="Vendor">' + esc(s.vendor || '-') + '</td><td class="r" data-l="Cost">' + (s.cost > 0 ? VX.money(s.cost) : '-') + '</td><td data-l="Status">' + stBadge(s, v) + '</td>' + acts(s, done) + '</tr>'; }).join('') + '</tbody></table></div>';
-}
-function panel(t, body, sub) { return '<section class="vx-panel"><div class="vx-ph2"><h3>' + t + (sub ? '<span class="sub">' + sub + '</span>' : '') + '</h3></div><div class="vx-body">' + body + '</div></section>'; }
-function costChart(S) {
-  var data = []; for (var m = 1; m <= 12; m++) { var k = st.year + '-' + String(m).padStart(2, '0'), t = S.filter(function (s) { return s.status === 'done' && String(s.doneDate || '').slice(0, 7) === k; }).reduce(function (a, s) { return a + (s.cost || 0); }, 0); data.push({ label: VX.monthName(k).slice(0, 3), full: VX.monthName(k), value: t, text: VX.money(t) }); }
-  return VX.barChart({ data: data, unit: '₹', label: 'Maintenance cost per month in rupees', yName: 'rupees', empty: 'No costs recorded in ' + st.year, emptySub: 'Costs appear when a service or repair is marked done with a cost.' });
-}
-function render() {
-  var v = VX.vehicle(id);
-  if (!v) { pg.innerHTML = '<div class="vx-head"><div>' + '<h2>Vehicle not found</h2></div></div>'; return; }
-  var S = VX.services(id), up = S.filter(function (s) { return s.status !== 'done'; }).sort(function (a, b) { return (a.scheduledDate || '9999') < (b.scheduledDate || '9999') ? -1 : 1; }), done = S.filter(function (s) { return s.status === 'done'; }).sort(function (a, b) { return (a.doneDate || '') < (b.doneDate || '') ? 1 : -1; });
-  var over = up.filter(function (s) { return VX.isOverdue(s, v); }), svcDone = done.filter(function (s) { return s.kind !== 'repair'; }), last = svcDone[0], next = up.filter(function (s) { return s.kind !== 'repair'; })[0];
-  var tiles = '<div class="vx-tiles"><div class="vx-tile"><span class="chip c-i">' + DP.icon('wrench') + '</span><div><b>' + svcDone.length + '</b><span class="lbl">Total services</span></div></div><div class="vx-tile"><span class="chip c-s">' + GA.icon('check') + '</span><div><b>' + (last && last.doneDate ? VX.relDays(VX.daysBetween(T, last.doneDate)) : '-') + '</b><span class="lbl">Last service</span></div></div><div class="vx-tile"><span class="chip c-a">' + GA.icon('cal') + '</span><div><b>' + (next ? (next.scheduledDate ? VX.date(next.scheduledDate) : VX.num(next.dueKm) + ' km') : '-') + '</b><span class="lbl">Next service</span></div></div><div class="vx-tile"><span class="chip ' + (over.length ? 'c-d' : 'c-s') + '">' + GA.icon('alert') + '</span><div><b>' + over.length + '</b><span class="lbl">Overdue</span></div></div></div>';
-  var rem = VX.reminders(v), remH = rem.length ? '<ul class="vx-rem">' + rem.slice(0, 8).map(function (r) { return '<li><i class="' + (r.days < 0 ? 'late' : r.days <= 30 ? 'soon' : '') + '"></i><div>' + esc(r.title) + '<small>' + esc(r.sub) + '</small></div></li>'; }).join('') + '</ul>' : VX.empty('No reminders', 'Scheduled services and document expiries show here.');
-  var nextH = next ? '<b style="font-size:16px">' + esc(next.type) + '</b><div class="mu" style="font-size:13px;margin:4px 0 10px">' + (next.scheduledDate ? VX.date(next.scheduledDate) + ' (' + VX.relDays(VX.daysBetween(T, next.scheduledDate)) + ')' : '') + (next.dueKm ? ' · at ' + VX.num(next.dueKm) + ' km, ' + (v.lastKm >= next.dueKm ? 'reached' : VX.num(next.dueKm - v.lastKm) + ' km to go') : '') + '</div><button type="button" class="btn a-btn" data-done="' + next.id + '">Mark as done</button>' : VX.empty('No service scheduled', 'Add a service record to plan the next one.');
-  var body;
-  if (st.tab === 'overview') body = tiles + '<div class="vx-cols"><div class="vx-c8" style="grid-column:span 8;display:flex;flex-direction:column;gap:14px;min-width:0">' + panel('Upcoming services', table(up.slice(0, 5), v, false), 'The next five') + panel('Service cost', '<div class="field a-f" style="width:140px;margin-bottom:8px"><select id="sYear" aria-label="Year">' + yrs(S) + '</select></div>' + costChart(S)) + '</div><div class="vx-c4" style="grid-column:span 4;display:flex;flex-direction:column;gap:14px;min-width:0">' + panel('Next service', nextH) + panel('Maintenance reminders', remH) + '</div></div>';
-  else if (st.tab === 'history') body = panel('Service history', table(done.filter(function (s) { return s.kind !== 'repair'; }), v, true));
-  else if (st.tab === 'upcoming') body = panel('Upcoming services', table(up.filter(function (s) { return s.kind !== 'repair'; }), v, false));
-  else if (st.tab === 'repairs') body = panel('Repairs', table(S.filter(function (s) { return s.kind === 'repair'; }).sort(function (a, b) { return (sd(b) || '9999') > (sd(a) || '9999') ? 1 : -1; }), v, false), 'Open and completed repairs');
-  else if (st.tab === 'odo') { var ev = VX.odoEvents(v); body = panel('Odometer history', VX.lineChart({ data: ev.map(function (e) { return { label: VX.date(e.date, true), full: VX.date(e.date) + ' · ' + e.source, value: e.km, text: VX.num(e.km) + ' km' }; }), unit: 'km', label: 'Odometer reading over time', yName: 'kilometres', empty: 'Not enough readings yet', emptySub: 'Readings come from fuel, service and trip entries.' }) + (ev.length ? '<div class="a-scroll" style="margin-top:12px"><table class="vx-table stack"><thead><tr><th>Date</th><th>Source</th><th class="r">Reading</th><th class="r">Added</th></tr></thead><tbody>' + ev.slice().reverse().slice(0, 100).map(function (e) { return '<tr><td data-l="Date">' + VX.date(e.date) + '</td><td data-l="Source">' + e.source + '</td><td class="r" data-l="Reading">' + VX.num(e.km) + ' km</td><td class="r" data-l="Added">' + (e.added == null ? '-' : '+' + VX.num(e.added) + ' km') + '</td></tr>'; }).join('') + '</tbody></table></div>' : '')); }
-  else if (st.tab === 'costs') { var tot = done.reduce(function (a, s) { return a + (s.cost || 0); }, 0), yr = done.filter(function (s) { return String(s.doneDate).slice(0, 4) === st.year; }).reduce(function (a, s) { return a + (s.cost || 0); }, 0); body = '<div class="vx-tiles" style="grid-template-columns:repeat(2,1fr)"><div class="vx-tile"><span class="chip c-p">' + DP.icon('chart') + '</span><div><b>' + VX.money(yr) + '</b><span class="lbl">Spent in ' + st.year + '</span></div></div><div class="vx-tile"><span class="chip c-i">' + DP.icon('chart') + '</span><div><b>' + VX.money(tot) + '</b><span class="lbl">Spent in total</span></div></div></div>' + panel('Cost per month', '<div class="field a-f" style="width:140px;margin-bottom:8px"><select id="sYear" aria-label="Year">' + yrs(S) + '</select></div>' + costChart(S)); }
-  else body = panel('Maintenance notes', (v.mnote ? '<p style="font-size:14px;white-space:pre-wrap">' + esc(v.mnote) + '</p>' : VX.empty('No maintenance notes', 'Keep reminders about parts, vendors or warranties here.')) + '<button type="button" class="btn btn-secondary a-btn" style="margin-top:10px" id="sNote">Edit notes</button>');
-  pg.innerHTML = head(v) + tabs() + '<div id="sBody">' + body + '</div>';
-  document.title = v.number + ' - Maintenance - General Traders Admin';
-}
-function yrs(S) { var y = {}; y[T.slice(0, 4)] = 1; S.forEach(function (s) { if (s.doneDate) y[s.doneDate.slice(0, 4)] = 1; }); return Object.keys(y).sort().reverse().map(function (k) { return '<option' + (k === st.year ? ' selected' : '') + '>' + k + '</option>'; }).join(''); }
-
-function form(rec) {
-  rec = rec || {}; var v = VX.vehicle(id), kind = rec.kind || 'service';
-  function f(k, l, val, t, x) { return '<div class="a-fg"><label for="sf_' + k + '">' + l + '</label><div class="field a-f"><input id="sf_' + k + '" type="' + (t || 'text') + '" value="' + esc(val == null ? '' : val) + '" ' + (x || '') + ' autocomplete="off"></div></div>'; }
-  DP.dialog({ title: rec.id ? 'Edit record' : 'Add service record', wide: true, html: '<div class="vx-form" style="grid-template-columns:1fr 1fr"><div class="a-fg"><label for="sf_kind">Kind</label><div class="field a-f"><select id="sf_kind"><option value="service"' + (kind === 'service' ? ' selected' : '') + '>Service</option><option value="repair"' + (kind === 'repair' ? ' selected' : '') + '>Repair</option></select></div></div>' +
-    '<div class="a-fg"><label for="sf_type">Service type *</label><div class="field a-f"><select id="sf_type">' + VX.SERVICE_TYPES.map(function (x) { return '<option' + (x === rec.type ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select></div></div>' +
-    f('date', 'Scheduled date', rec.scheduledDate, 'date') + f('km', 'Due at km', rec.dueKm, 'number', 'min="0" step="1" inputmode="numeric"') + f('vendor', 'Vendor / workshop', rec.vendor, 'text', 'maxlength="60"') + f('cost', 'Cost (₹)', rec.cost, 'number', 'min="0" step="any" inputmode="decimal"') +
-    '<div class="a-fg" style="grid-column:1/-1"><label for="sf_notes">Notes</label><div class="field a-f"><input id="sf_notes" value="' + esc(rec.notes || '') + '" maxlength="200"></div></div>' +
-    '<label style="grid-column:1/-1;display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="sf_ws"' + (rec.status === 'open' ? ' checked' : '') + '> Vehicle is in the workshop now (removes it from Daily plan choices)</label></div><div class="vx-fe" id="sf_err" role="alert"></div><div class="dp-foot"><button type="button" class="btn btn-secondary" data-no>Cancel</button><button type="button" class="btn" data-ok>Save record</button></div>',
-    onOpen: function (api) {
-      var q = function (s) { return api.q(s); }; q('[data-no]').onclick = function () { api.close(); };
-      q('[data-ok]').onclick = function () {
-        var d = q('#sf_date').value, km = q('#sf_km').value, c = q('#sf_cost').value, ws = q('#sf_ws').checked;
-        if (!d && !km && !ws) { q('#sf_err').textContent = 'Enter a scheduled date, a due km, or mark the vehicle as in the workshop.'; return; }
-        if (km !== '' && !(Number(km) > 0)) { q('#sf_err').textContent = 'Due km must be above 0.'; return; }
-        if (c !== '' && !(Number(c) >= 0)) { q('#sf_err').textContent = 'Enter a valid cost.'; return; }
-        var r = VX.saveService(Object.assign({}, rec, { vehicleId: id, kind: q('#sf_kind').value, type: q('#sf_type').value, scheduledDate: d, dueKm: km === '' ? 0 : Number(km), vendor: q('#sf_vendor').value.trim(), cost: c === '' ? 0 : Number(c), notes: q('#sf_notes').value.trim(), status: ws ? 'open' : (rec.status === 'done' ? 'done' : 'upcoming') }));
-        if (!r) { q('#sf_err').textContent = 'Could not save on this computer.'; return; }
-        if (ws && v.status === 'active') VX.setStatus(id, 'repair'); else if (!ws && rec.status === 'open' && VX.vehicle(id).status === 'repair') VX.setStatus(id, 'active');
-        api.close(); DP.toast('Record saved.', 'ok'); render();
+  <head>
+    <script src="../shared/sync.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vehicle maintenance - General Traders Admin</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="../shared/admin.css" />
+    <link rel="stylesheet" href="../shared/plan.css" />
+    <link rel="stylesheet" href="../shared/vehicles.css" />
+    <script src="../shared/theme.js"></script>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/icon-32.png"
+    />
+    <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+  </head>
+  <body>
+    <script src="../shared/mock-data.js"></script>
+    <script src="../shared/admin.js"></script>
+    <script src="../shared/plan-core.js"></script>
+    <script src="../shared/vehicles.js"></script>
+    <script>
+      GA.guard();
+      var $ = function (i) {
+          return document.getElementById(i);
+        },
+        esc = GA.esc,
+        id = VX.qs("id"),
+        date = VX.viewDate(),
+        T = VX.today();
+      var TABS = [
+        ["overview", "Overview"],
+        ["history", "Service history"],
+        ["upcoming", "Upcoming services"],
+        ["repairs", "Repairs"],
+        ["odo", "Odometer history"],
+        ["costs", "Costs"],
+        ["notes", "Notes"],
+      ];
+      var st = {
+        tab: (location.hash || "#overview").slice(1),
+        year: T.slice(0, 4),
       };
-    } });
-}
-function markDone(sid) {
-  var s = VX.services(id).filter(function (x) { return x.id === sid; })[0], v = VX.vehicle(id); if (!s) return;
-  DP.dialog({ title: 'Mark as done', html: '<p style="font-size:14px;margin-bottom:10px">' + esc(s.type) + '</p><div class="vx-form" style="grid-template-columns:1fr 1fr"><div class="a-fg"><label for="md_d">Done on *</label><div class="field a-f"><input type="date" id="md_d" value="' + T + '" max="' + T + '"></div></div><div class="a-fg"><label for="md_k">Odometer (km)</label><div class="field a-f"><input type="number" id="md_k" min="0" value="' + v.lastKm + '" inputmode="numeric"></div></div><div class="a-fg"><label for="md_c">Cost (₹)</label><div class="field a-f"><input type="number" id="md_c" min="0" step="any" value="' + (s.cost || '') + '" inputmode="decimal"></div></div></div>' + (v.status === 'repair' ? '<label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:10px"><input type="checkbox" id="md_a" checked> Make the vehicle active again</label>' : '') + '<div class="vx-fe" id="md_err" role="alert"></div><div class="dp-foot"><button type="button" class="btn btn-secondary" data-no>Cancel</button><button type="button" class="btn" data-ok>Mark done</button></div>',
-    onOpen: function (api) {
-      var q = function (x) { return api.q(x); }; q('[data-no]').onclick = function () { api.close(); };
-      q('[data-ok]').onclick = function () {
-        var d = q('#md_d').value, k = q('#md_k').value, c = q('#md_c').value;
-        if (!d || d > T) { q('#md_err').textContent = 'Choose a done date that is not in the future.'; return; }
-        if (k !== '' && !(Number(k) >= 0)) { q('#md_err').textContent = 'Enter a valid odometer reading.'; return; }
-        if (c !== '' && !(Number(c) >= 0)) { q('#md_err').textContent = 'Enter a valid cost.'; return; }
-        if (!VX.saveService(Object.assign({}, s, { status: 'done', doneDate: d, odometer: k === '' ? 0 : Number(k), cost: c === '' ? 0 : Number(c) }))) { q('#md_err').textContent = 'Could not save on this computer.'; return; }
-        var a = q('#md_a'); if (a && a.checked) VX.setStatus(id, 'active');
-        api.close(); DP.toast('Marked as done.', 'ok'); render();
-      };
-    } });
-}
-function note() {
-  var v = VX.vehicle(id);
-  DP.dialog({ title: 'Maintenance notes', html: '<div class="field a-f" style="height:auto"><textarea id="mn" rows="5" maxlength="500" style="padding:10px 12px;width:100%" aria-label="Maintenance notes">' + esc(v.mnote || '') + '</textarea></div><div class="dp-foot"><button type="button" class="btn btn-secondary" data-no>Cancel</button><button type="button" class="btn" data-ok>Save notes</button></div>', onOpen: function (api) { api.q('[data-no]').onclick = function () { api.close(); }; api.q('[data-ok]').onclick = function () { if (VX.patch(id, { mnote: api.q('#mn').value.trim() }, 'Maintenance notes updated')) { api.close(); DP.toast('Notes saved.', 'ok'); render(); } else DP.toast('Could not save on this computer.', 'err'); }; } });
-}
-document.addEventListener('click', function (e) {
-  var t;
-  if ((t = e.target.closest('[data-tab]'))) { st.tab = t.dataset.tab; history.replaceState(null, '', location.pathname + location.search + '#' + st.tab); render(); return; }
-  if (e.target.closest('#sAdd')) { e.preventDefault(); form(); return; }
-  if (e.target.closest('#sNote')) { note(); return; }
-  if ((t = e.target.closest('[data-done]'))) { markDone(t.dataset.done); return; }
-  if ((t = e.target.closest('[data-edit]'))) { form(VX.services(id).filter(function (x) { return x.id === t.dataset.edit; })[0]); return; }
-  if ((t = e.target.closest('[data-del]'))) { var rid = t.dataset.del; DP.dialog({ title: 'Delete this record?', html: '<p style="font-size:14px">This cannot be undone.</p><div class="dp-foot"><button type="button" class="btn btn-secondary" data-no>Keep it</button><button type="button" class="btn btn-danger" data-ok>Delete</button></div>', onOpen: function (api) { api.q('[data-no]').onclick = function () { api.close(); }; api.q('[data-ok]').onclick = function () { VX.removeService(rid); api.close(); DP.toast('Record deleted.', 'ok'); render(); }; } }); }
-});
-document.addEventListener('change', function (e) { if (e.target.id === 'sYear') { st.year = e.target.value; render(); } });
-render();
-</script></body>
+      if (
+        !TABS.some(function (t) {
+          return t[0] === st.tab;
+        })
+      )
+        st.tab = "overview";
+      var pg = GA.mount("vehicles.html", "Vehicle maintenance", {
+        back: ["vehicles.html", "Vehicles"],
+      });
+      VX.initTips();
+
+      function head(v) {
+        var right =
+          '<div class="vx-avail ok"><a class="btn a-btn" href="#" id="sAdd" data-act>' +
+          DP.icon("wrench") +
+          ' Add service record</a><a class="btn btn-secondary" data-act href="' +
+          VX.link("vehicle-fuel.html", v.id, date) +
+          '">' +
+          DP.icon("fuel") +
+          " Fuel records</a></div>";
+        return (
+          '<div class="vx-head"><div><p>Services, repairs, reminders and costs for this vehicle.</p></div></div>' +
+          VX.banner(v, right)
+        );
+      }
+      function tabs() {
+        return (
+          '<div class="vx-tabs" role="tablist">' +
+          TABS.map(function (t) {
+            return (
+              '<button type="button" class="vx-tab' +
+              (st.tab === t[0] ? " on" : "") +
+              '" role="tab" aria-selected="' +
+              (st.tab === t[0]) +
+              '" data-tab="' +
+              t[0] +
+              '">' +
+              t[1] +
+              "</button>"
+            );
+          }).join("") +
+          '<a class="vx-tab" href="' +
+          VX.link("vehicle.html", id, date) +
+          '#docs">Documents</a></div>'
+        );
+      }
+      function sd(s) {
+        return s.status === "done" ? s.doneDate || "" : s.scheduledDate || "";
+      }
+      function stBadge(s, v) {
+        return s.status === "done"
+          ? '<span class="badge b-success">Done</span>'
+          : VX.isOverdue(s, v)
+            ? '<span class="badge b-danger">Overdue</span>'
+            : s.status === "open"
+              ? '<span class="badge b-info">In workshop</span>'
+              : '<span class="badge b-muted">Upcoming</span>';
+      }
+      function acts(s, done) {
+        return (
+          '<td style="white-space:nowrap">' +
+          (done
+            ? ""
+            : '<button type="button" class="btn btn-secondary a-btn" style="min-height:32px" data-done="' +
+              s.id +
+              '">Mark done</button> ') +
+          '<button type="button" class="vx-ib" data-edit="' +
+          s.id +
+          '" aria-label="Edit record" title="Edit">' +
+          GA.icon("edit") +
+          '</button> <button type="button" class="vx-ib d" data-del="' +
+          s.id +
+          '" aria-label="Delete record" title="Delete">' +
+          GA.icon("trash") +
+          "</button></td>"
+        );
+      }
+      function table(L, v, done) {
+        if (!L.length)
+          return VX.empty(
+            done ? "No completed records yet" : "Nothing scheduled",
+            done
+              ? "Completed services and repairs appear here."
+              : 'Use "Add service record" to schedule one.',
+          );
+        return (
+          '<div class="a-scroll"><table class="vx-table stack"><thead><tr><th>' +
+          (done ? "Date" : "Due date") +
+          '</th><th>Type</th><th>Kind</th><th class="r">' +
+          (done ? "Odometer" : "Due km") +
+          '</th><th>Vendor</th><th class="r">Cost</th><th>Status</th><th></th></tr></thead><tbody>' +
+          L.map(function (s) {
+            return (
+              '<tr><td data-l="Date">' +
+              (sd(s) ? VX.date(sd(s)) : "-") +
+              '</td><td data-l="Type">' +
+              esc(s.type) +
+              (s.notes
+                ? '<small class="mu" style="display:block">' +
+                  esc(s.notes) +
+                  "</small>"
+                : "") +
+              '</td><td data-l="Kind">' +
+              (s.kind === "repair" ? "Repair" : "Service") +
+              '</td><td class="r" data-l="Km">' +
+              ((done ? s.odometer : s.dueKm)
+                ? VX.num(done ? s.odometer : s.dueKm) + " km"
+                : "-") +
+              '</td><td data-l="Vendor">' +
+              esc(s.vendor || "-") +
+              '</td><td class="r" data-l="Cost">' +
+              (s.cost > 0 ? VX.money(s.cost) : "-") +
+              '</td><td data-l="Status">' +
+              stBadge(s, v) +
+              "</td>" +
+              acts(s, done) +
+              "</tr>"
+            );
+          }).join("") +
+          "</tbody></table></div>"
+        );
+      }
+      function panel(t, body, sub) {
+        return (
+          '<section class="vx-panel"><div class="vx-ph2"><h3>' +
+          t +
+          (sub ? '<span class="sub">' + sub + "</span>" : "") +
+          '</h3></div><div class="vx-body">' +
+          body +
+          "</div></section>"
+        );
+      }
+      function costChart(S) {
+        var data = [];
+        for (var m = 1; m <= 12; m++) {
+          var k = st.year + "-" + String(m).padStart(2, "0"),
+            t = S.filter(function (s) {
+              return (
+                s.status === "done" &&
+                String(s.doneDate || "").slice(0, 7) === k
+              );
+            }).reduce(function (a, s) {
+              return a + (s.cost || 0);
+            }, 0);
+          data.push({
+            label: VX.monthName(k).slice(0, 3),
+            full: VX.monthName(k),
+            value: t,
+            text: VX.money(t),
+          });
+        }
+        return VX.barChart({
+          data: data,
+          unit: "₹",
+          label: "Maintenance cost per month in rupees",
+          yName: "rupees",
+          empty: "No costs recorded in " + st.year,
+          emptySub:
+            "Costs appear when a service or repair is marked done with a cost.",
+        });
+      }
+      function render() {
+        var v = VX.vehicle(id);
+        if (!v) {
+          pg.innerHTML =
+            '<div class="vx-head"><div>' +
+            "<h2>Vehicle not found</h2></div></div>";
+          return;
+        }
+        var S = VX.services(id),
+          up = S.filter(function (s) {
+            return s.status !== "done";
+          }).sort(function (a, b) {
+            return (a.scheduledDate || "9999") < (b.scheduledDate || "9999")
+              ? -1
+              : 1;
+          }),
+          done = S.filter(function (s) {
+            return s.status === "done";
+          }).sort(function (a, b) {
+            return (a.doneDate || "") < (b.doneDate || "") ? 1 : -1;
+          });
+        var over = up.filter(function (s) {
+            return VX.isOverdue(s, v);
+          }),
+          svcDone = done.filter(function (s) {
+            return s.kind !== "repair";
+          }),
+          last = svcDone[0],
+          next = up.filter(function (s) {
+            return s.kind !== "repair";
+          })[0];
+        var tiles =
+          '<div class="vx-tiles"><div class="vx-tile"><span class="chip c-i">' +
+          DP.icon("wrench") +
+          "</span><div><b>" +
+          svcDone.length +
+          '</b><span class="lbl">Total services</span></div></div><div class="vx-tile"><span class="chip c-s">' +
+          GA.icon("check") +
+          "</span><div><b>" +
+          (last && last.doneDate
+            ? VX.relDays(VX.daysBetween(T, last.doneDate))
+            : "-") +
+          '</b><span class="lbl">Last service</span></div></div><div class="vx-tile"><span class="chip c-a">' +
+          GA.icon("cal") +
+          "</span><div><b>" +
+          (next
+            ? next.scheduledDate
+              ? VX.date(next.scheduledDate)
+              : VX.num(next.dueKm) + " km"
+            : "-") +
+          '</b><span class="lbl">Next service</span></div></div><div class="vx-tile"><span class="chip ' +
+          (over.length ? "c-d" : "c-s") +
+          '">' +
+          GA.icon("alert") +
+          "</span><div><b>" +
+          over.length +
+          '</b><span class="lbl">Overdue</span></div></div></div>';
+        var rem = VX.reminders(v),
+          remH = rem.length
+            ? '<ul class="vx-rem">' +
+              rem
+                .slice(0, 8)
+                .map(function (r) {
+                  return (
+                    '<li><i class="' +
+                    (r.days < 0 ? "late" : r.days <= 30 ? "soon" : "") +
+                    '"></i><div>' +
+                    esc(r.title) +
+                    "<small>" +
+                    esc(r.sub) +
+                    "</small></div></li>"
+                  );
+                })
+                .join("") +
+              "</ul>"
+            : VX.empty(
+                "No reminders",
+                "Scheduled services and document expiries show here.",
+              );
+        var nextH = next
+          ? '<b style="font-size:16px">' +
+            esc(next.type) +
+            '</b><div class="mu" style="font-size:13px;margin:4px 0 10px">' +
+            (next.scheduledDate
+              ? VX.date(next.scheduledDate) +
+                " (" +
+                VX.relDays(VX.daysBetween(T, next.scheduledDate)) +
+                ")"
+              : "") +
+            (next.dueKm
+              ? " · at " +
+                VX.num(next.dueKm) +
+                " km, " +
+                (v.lastKm >= next.dueKm
+                  ? "reached"
+                  : VX.num(next.dueKm - v.lastKm) + " km to go")
+              : "") +
+            '</div><button type="button" class="btn a-btn" data-done="' +
+            next.id +
+            '">Mark as done</button>'
+          : VX.empty(
+              "No service scheduled",
+              "Add a service record to plan the next one.",
+            );
+        var body;
+        if (st.tab === "overview")
+          body =
+            tiles +
+            '<div class="vx-cols"><div class="vx-c8" style="grid-column:span 8;display:flex;flex-direction:column;gap:14px;min-width:0">' +
+            panel(
+              "Upcoming services",
+              table(up.slice(0, 5), v, false),
+              "The next five",
+            ) +
+            panel(
+              "Service cost",
+              '<div class="field a-f" style="width:140px;margin-bottom:8px"><select id="sYear" aria-label="Year">' +
+                yrs(S) +
+                "</select></div>" +
+                costChart(S),
+            ) +
+            '</div><div class="vx-c4" style="grid-column:span 4;display:flex;flex-direction:column;gap:14px;min-width:0">' +
+            panel("Next service", nextH) +
+            panel("Maintenance reminders", remH) +
+            "</div></div>";
+        else if (st.tab === "history")
+          body = panel(
+            "Service history",
+            table(
+              done.filter(function (s) {
+                return s.kind !== "repair";
+              }),
+              v,
+              true,
+            ),
+          );
+        else if (st.tab === "upcoming")
+          body = panel(
+            "Upcoming services",
+            table(
+              up.filter(function (s) {
+                return s.kind !== "repair";
+              }),
+              v,
+              false,
+            ),
+          );
+        else if (st.tab === "repairs")
+          body = panel(
+            "Repairs",
+            table(
+              S.filter(function (s) {
+                return s.kind === "repair";
+              }).sort(function (a, b) {
+                return (sd(b) || "9999") > (sd(a) || "9999") ? 1 : -1;
+              }),
+              v,
+              false,
+            ),
+            "Open and completed repairs",
+          );
+        else if (st.tab === "odo") {
+          var ev = VX.odoEvents(v);
+          body = panel(
+            "Odometer history",
+            VX.lineChart({
+              data: ev.map(function (e) {
+                return {
+                  label: VX.date(e.date, true),
+                  full: VX.date(e.date) + " · " + e.source,
+                  value: e.km,
+                  text: VX.num(e.km) + " km",
+                };
+              }),
+              unit: "km",
+              label: "Odometer reading over time",
+              yName: "kilometres",
+              empty: "Not enough readings yet",
+              emptySub: "Readings come from fuel, service and trip entries.",
+            }) +
+              (ev.length
+                ? '<div class="a-scroll" style="margin-top:12px"><table class="vx-table stack"><thead><tr><th>Date</th><th>Source</th><th class="r">Reading</th><th class="r">Added</th></tr></thead><tbody>' +
+                  ev
+                    .slice()
+                    .reverse()
+                    .slice(0, 100)
+                    .map(function (e) {
+                      return (
+                        '<tr><td data-l="Date">' +
+                        VX.date(e.date) +
+                        '</td><td data-l="Source">' +
+                        e.source +
+                        '</td><td class="r" data-l="Reading">' +
+                        VX.num(e.km) +
+                        ' km</td><td class="r" data-l="Added">' +
+                        (e.added == null
+                          ? "-"
+                          : "+" + VX.num(e.added) + " km") +
+                        "</td></tr>"
+                      );
+                    })
+                    .join("") +
+                  "</tbody></table></div>"
+                : ""),
+          );
+        } else if (st.tab === "costs") {
+          var tot = done.reduce(function (a, s) {
+              return a + (s.cost || 0);
+            }, 0),
+            yr = done
+              .filter(function (s) {
+                return String(s.doneDate).slice(0, 4) === st.year;
+              })
+              .reduce(function (a, s) {
+                return a + (s.cost || 0);
+              }, 0);
+          body =
+            '<div class="vx-tiles" style="grid-template-columns:repeat(2,1fr)"><div class="vx-tile"><span class="chip c-p">' +
+            DP.icon("chart") +
+            "</span><div><b>" +
+            VX.money(yr) +
+            '</b><span class="lbl">Spent in ' +
+            st.year +
+            '</span></div></div><div class="vx-tile"><span class="chip c-i">' +
+            DP.icon("chart") +
+            "</span><div><b>" +
+            VX.money(tot) +
+            '</b><span class="lbl">Spent in total</span></div></div></div>' +
+            panel(
+              "Cost per month",
+              '<div class="field a-f" style="width:140px;margin-bottom:8px"><select id="sYear" aria-label="Year">' +
+                yrs(S) +
+                "</select></div>" +
+                costChart(S),
+            );
+        } else
+          body = panel(
+            "Maintenance notes",
+            (v.mnote
+              ? '<p style="font-size:14px;white-space:pre-wrap">' +
+                esc(v.mnote) +
+                "</p>"
+              : VX.empty(
+                  "No maintenance notes",
+                  "Keep reminders about parts, vendors or warranties here.",
+                )) +
+              '<button type="button" class="btn btn-secondary a-btn" style="margin-top:10px" id="sNote">Edit notes</button>',
+          );
+        pg.innerHTML = head(v) + tabs() + '<div id="sBody">' + body + "</div>";
+        document.title = v.number + " - Maintenance - General Traders Admin";
+      }
+      function yrs(S) {
+        var y = {};
+        y[T.slice(0, 4)] = 1;
+        S.forEach(function (s) {
+          if (s.doneDate) y[s.doneDate.slice(0, 4)] = 1;
+        });
+        return Object.keys(y)
+          .sort()
+          .reverse()
+          .map(function (k) {
+            return (
+              "<option" +
+              (k === st.year ? " selected" : "") +
+              ">" +
+              k +
+              "</option>"
+            );
+          })
+          .join("");
+      }
+
+      function form(rec) {
+        rec = rec || {};
+        var v = VX.vehicle(id),
+          kind = rec.kind || "service";
+        function f(k, l, val, t, x) {
+          return (
+            '<div class="a-fg"><label for="sf_' +
+            k +
+            '">' +
+            l +
+            '</label><div class="field a-f"><input id="sf_' +
+            k +
+            '" type="' +
+            (t || "text") +
+            '" value="' +
+            esc(val == null ? "" : val) +
+            '" ' +
+            (x || "") +
+            ' autocomplete="off"></div></div>'
+          );
+        }
+        DP.dialog({
+          title: rec.id ? "Edit record" : "Add service record",
+          wide: true,
+          html:
+            '<div class="vx-form" style="grid-template-columns:1fr 1fr"><div class="a-fg"><label for="sf_kind">Kind</label><div class="field a-f"><select id="sf_kind"><option value="service"' +
+            (kind === "service" ? " selected" : "") +
+            '>Service</option><option value="repair"' +
+            (kind === "repair" ? " selected" : "") +
+            ">Repair</option></select></div></div>" +
+            '<div class="a-fg"><label for="sf_type">Service type *</label><div class="field a-f"><select id="sf_type">' +
+            VX.SERVICE_TYPES.map(function (x) {
+              return (
+                "<option" +
+                (x === rec.type ? " selected" : "") +
+                ">" +
+                x +
+                "</option>"
+              );
+            }).join("") +
+            "</select></div></div>" +
+            f("date", "Scheduled date", rec.scheduledDate, "date") +
+            f(
+              "km",
+              "Due at km",
+              rec.dueKm,
+              "number",
+              'min="0" step="1" inputmode="numeric"',
+            ) +
+            f(
+              "vendor",
+              "Vendor / workshop",
+              rec.vendor,
+              "text",
+              'maxlength="60"',
+            ) +
+            f(
+              "cost",
+              "Cost (₹)",
+              rec.cost,
+              "number",
+              'min="0" step="any" inputmode="decimal"',
+            ) +
+            '<div class="a-fg" style="grid-column:1/-1"><label for="sf_notes">Notes</label><div class="field a-f"><input id="sf_notes" value="' +
+            esc(rec.notes || "") +
+            '" maxlength="200"></div></div>' +
+            '<label style="grid-column:1/-1;display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="sf_ws"' +
+            (rec.status === "open" ? " checked" : "") +
+            '> Vehicle is in the workshop now (removes it from Daily plan choices)</label></div><div class="vx-fe" id="sf_err" role="alert"></div><div class="dp-foot"><button type="button" class="btn btn-secondary" data-no>Cancel</button><button type="button" class="btn" data-ok>Save record</button></div>',
+          onOpen: function (api) {
+            var q = function (s) {
+              return api.q(s);
+            };
+            q("[data-no]").onclick = function () {
+              api.close();
+            };
+            q("[data-ok]").onclick = function () {
+              var d = q("#sf_date").value,
+                km = q("#sf_km").value,
+                c = q("#sf_cost").value,
+                ws = q("#sf_ws").checked;
+              if (!d && !km && !ws) {
+                q("#sf_err").textContent =
+                  "Enter a scheduled date, a due km, or mark the vehicle as in the workshop.";
+                return;
+              }
+              if (km !== "" && !(Number(km) > 0)) {
+                q("#sf_err").textContent = "Due km must be above 0.";
+                return;
+              }
+              if (c !== "" && !(Number(c) >= 0)) {
+                q("#sf_err").textContent = "Enter a valid cost.";
+                return;
+              }
+              var r = VX.saveService(
+                Object.assign({}, rec, {
+                  vehicleId: id,
+                  kind: q("#sf_kind").value,
+                  type: q("#sf_type").value,
+                  scheduledDate: d,
+                  dueKm: km === "" ? 0 : Number(km),
+                  vendor: q("#sf_vendor").value.trim(),
+                  cost: c === "" ? 0 : Number(c),
+                  notes: q("#sf_notes").value.trim(),
+                  status: ws
+                    ? "open"
+                    : rec.status === "done"
+                      ? "done"
+                      : "upcoming",
+                }),
+              );
+              if (!r) {
+                q("#sf_err").textContent = "Could not save on this computer.";
+                return;
+              }
+              if (ws && v.status === "active") VX.setStatus(id, "repair");
+              else if (
+                !ws &&
+                rec.status === "open" &&
+                VX.vehicle(id).status === "repair"
+              )
+                VX.setStatus(id, "active");
+              api.close();
+              DP.toast("Record saved.", "ok");
+              render();
+            };
+          },
+        });
+      }
+      function markDone(sid) {
+        var s = VX.services(id).filter(function (x) {
+            return x.id === sid;
+          })[0],
+          v = VX.vehicle(id);
+        if (!s) return;
+        DP.dialog({
+          title: "Mark as done",
+          html:
+            '<p style="font-size:14px;margin-bottom:10px">' +
+            esc(s.type) +
+            '</p><div class="vx-form" style="grid-template-columns:1fr 1fr"><div class="a-fg"><label for="md_d">Done on *</label><div class="field a-f"><input type="date" id="md_d" value="' +
+            T +
+            '" max="' +
+            T +
+            '"></div></div><div class="a-fg"><label for="md_k">Odometer (km)</label><div class="field a-f"><input type="number" id="md_k" min="0" value="' +
+            v.lastKm +
+            '" inputmode="numeric"></div></div><div class="a-fg"><label for="md_c">Cost (₹)</label><div class="field a-f"><input type="number" id="md_c" min="0" step="any" value="' +
+            (s.cost || "") +
+            '" inputmode="decimal"></div></div></div>' +
+            (v.status === "repair"
+              ? '<label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:10px"><input type="checkbox" id="md_a" checked> Make the vehicle active again</label>'
+              : "") +
+            '<div class="vx-fe" id="md_err" role="alert"></div><div class="dp-foot"><button type="button" class="btn btn-secondary" data-no>Cancel</button><button type="button" class="btn" data-ok>Mark done</button></div>',
+          onOpen: function (api) {
+            var q = function (x) {
+              return api.q(x);
+            };
+            q("[data-no]").onclick = function () {
+              api.close();
+            };
+            q("[data-ok]").onclick = function () {
+              var d = q("#md_d").value,
+                k = q("#md_k").value,
+                c = q("#md_c").value;
+              if (!d || d > T) {
+                q("#md_err").textContent =
+                  "Choose a done date that is not in the future.";
+                return;
+              }
+              if (k !== "" && !(Number(k) >= 0)) {
+                q("#md_err").textContent = "Enter a valid odometer reading.";
+                return;
+              }
+              if (c !== "" && !(Number(c) >= 0)) {
+                q("#md_err").textContent = "Enter a valid cost.";
+                return;
+              }
+              if (
+                !VX.saveService(
+                  Object.assign({}, s, {
+                    status: "done",
+                    doneDate: d,
+                    odometer: k === "" ? 0 : Number(k),
+                    cost: c === "" ? 0 : Number(c),
+                  }),
+                )
+              ) {
+                q("#md_err").textContent = "Could not save on this computer.";
+                return;
+              }
+              var a = q("#md_a");
+              if (a && a.checked) VX.setStatus(id, "active");
+              api.close();
+              DP.toast("Marked as done.", "ok");
+              render();
+            };
+          },
+        });
+      }
+      function note() {
+        var v = VX.vehicle(id);
+        DP.dialog({
+          title: "Maintenance notes",
+          html:
+            '<div class="field a-f" style="height:auto"><textarea id="mn" rows="5" maxlength="500" style="padding:10px 12px;width:100%" aria-label="Maintenance notes">' +
+            esc(v.mnote || "") +
+            '</textarea></div><div class="dp-foot"><button type="button" class="btn btn-secondary" data-no>Cancel</button><button type="button" class="btn" data-ok>Save notes</button></div>',
+          onOpen: function (api) {
+            api.q("[data-no]").onclick = function () {
+              api.close();
+            };
+            api.q("[data-ok]").onclick = function () {
+              if (
+                VX.patch(
+                  id,
+                  { mnote: api.q("#mn").value.trim() },
+                  "Maintenance notes updated",
+                )
+              ) {
+                api.close();
+                DP.toast("Notes saved.", "ok");
+                render();
+              } else DP.toast("Could not save on this computer.", "err");
+            };
+          },
+        });
+      }
+      document.addEventListener("click", function (e) {
+        var t;
+        if ((t = e.target.closest("[data-tab]"))) {
+          st.tab = t.dataset.tab;
+          history.replaceState(
+            null,
+            "",
+            location.pathname + location.search + "#" + st.tab,
+          );
+          render();
+          return;
+        }
+        if (e.target.closest("#sAdd")) {
+          e.preventDefault();
+          form();
+          return;
+        }
+        if (e.target.closest("#sNote")) {
+          note();
+          return;
+        }
+        if ((t = e.target.closest("[data-done]"))) {
+          markDone(t.dataset.done);
+          return;
+        }
+        if ((t = e.target.closest("[data-edit]"))) {
+          form(
+            VX.services(id).filter(function (x) {
+              return x.id === t.dataset.edit;
+            })[0],
+          );
+          return;
+        }
+        if ((t = e.target.closest("[data-del]"))) {
+          var rid = t.dataset.del;
+          DP.dialog({
+            title: "Delete this record?",
+            html: '<p style="font-size:14px">This cannot be undone.</p><div class="dp-foot"><button type="button" class="btn btn-secondary" data-no>Keep it</button><button type="button" class="btn btn-danger" data-ok>Delete</button></div>',
+            onOpen: function (api) {
+              api.q("[data-no]").onclick = function () {
+                api.close();
+              };
+              api.q("[data-ok]").onclick = function () {
+                VX.removeService(rid);
+                api.close();
+                DP.toast("Record deleted.", "ok");
+                render();
+              };
+            },
+          });
+        }
+      });
+      document.addEventListener("change", function (e) {
+        if (e.target.id === "sYear") {
+          st.year = e.target.value;
+          render();
+        }
+      });
+      render();
+    </script>
+  </body>
 </html>

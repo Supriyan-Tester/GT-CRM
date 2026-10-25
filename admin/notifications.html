@@ -1,35 +1,137 @@
-﻿<!DOCTYPE html>
+﻿<!doctype html>
 <html lang="en">
-<head><script src="../shared/sync.js"></script>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>General Traders - Admin</title>
-<link rel="stylesheet" href="../shared/theme.css">
-<link rel="stylesheet" href="../shared/admin.css">
-<script src="../shared/theme.js"></script>  <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-32.png"><link rel="apple-touch-icon" href="/assets/icon-180.png">
-</head>
-<body>
-<script src="../shared/mock-data.js"></script>
-<script src="../shared/admin.js"></script>
-<script>
-GA.guard();
-var $ = function (i) { return document.getElementById(i); }, esc = GA.esc;
-var pg = GA.mount('notifications.html', 'Notifications'), filter = 'all';
-var FILTERS = [['all', 'All'], ['delivered', 'Delivered'], ['problem', 'Problems'], ['cancelled', 'Cancelled'], ['return', 'Returns'], ['punch', 'Punch in/out'], ['pin', 'Shop locations']];
-pg.innerHTML = '<div class="a-filters" id="fl"></div><div class="btn-group no-print" style="margin-bottom:14px;flex-wrap:wrap"><button class="btn btn-secondary a-btn" id="mr" data-act>' + GA.icon('check') + ' Mark all read</button><button class="btn btn-secondary a-btn" id="cl" data-act>' + GA.icon('trash') + ' Clear all</button></div><div class="a-feed" id="feed"></div>';
-function draw() {
-  var all = GA.notifs.list();
-  var l = all.filter(function (n) { return filter === 'all' || n.type === filter || (filter === 'punch' && (n.type === 'punchin' || n.type === 'punchout')); });
-  $('fl').innerHTML = FILTERS.map(function (f) { return '<button data-f="' + f[0] + '" class="' + (f[0] === filter ? 'on' : '') + '">' + f[1] + '</button>'; }).join('');
-  [].forEach.call($('fl').children, function (b) { b.onclick = function () { filter = b.getAttribute('data-f'); draw(); }; });
-  $('feed').innerHTML = l.length ? l.map(function (n) {
-    var m = GA.notifs.meta(n.type);
-    return '<div class="a-n' + (n.read ? '' : ' un') + '" data-id="' + esc(n.id) + '"><span class="chip c-' + m[1] + '">' + GA.icon(m[0]) + '</span><div style="flex:1"><b>' + esc(n.title) + '</b><span>' + esc(n.text) + '</span>' + (n.loc && typeof n.loc.lat === 'number' ? '<span><a href="https://www.google.com/maps?q=' + n.loc.lat + ',' + n.loc.lng + '" target="_blank" rel="noopener" style="color:var(--primary);font-weight:700">Where this happened (' + (n.loc.acc ? 'within ' + n.loc.acc + ' m' : 'map') + ')</a></span>' : '') + '<small>' + esc(n.worker || '') + ' \u00b7 ' + new Date(n.ts).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + '</small></div>' + (n.read ? '' : '<span class="badge b-info">New</span>') + '</div>';
-  }).join('') : '<div class="card"><div class="a-empty"><b>No notifications</b>You will see an alert here each time an employee delivers a shop, reports a problem, returns items or punches in or out.</div></div>';
-  [].forEach.call($('feed').querySelectorAll('.a-n.un'), function (e) { e.onclick = function () { GA.notifs.markRead(e.getAttribute('data-id')); draw(); }; });
-}
-$('mr').onclick = function () { GA.notifs.markAll(); draw(); };
-$('cl').onclick = function () { if (confirm('Delete all notifications?')) { GA.notifs.clear(); draw(); } };
-draw(); GA.onChange(draw);
-</script></body>
+  <head>
+    <script src="../shared/sync.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>General Traders - Admin</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="../shared/admin.css" />
+    <script src="../shared/theme.js"></script>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/icon-32.png"
+    />
+    <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+  </head>
+  <body>
+    <script src="../shared/mock-data.js"></script>
+    <script src="../shared/admin.js"></script>
+    <script>
+      GA.guard();
+      var $ = function (i) {
+          return document.getElementById(i);
+        },
+        esc = GA.esc;
+      var pg = GA.mount("notifications.html", "Notifications"),
+        filter = "all";
+      var FILTERS = [
+        ["all", "All"],
+        ["delivered", "Delivered"],
+        ["problem", "Problems"],
+        ["cancelled", "Cancelled"],
+        ["return", "Returns"],
+        ["punch", "Punch in/out"],
+        ["pin", "Shop locations"],
+      ];
+      pg.innerHTML =
+        '<div class="a-filters" id="fl"></div><div class="btn-group no-print" style="margin-bottom:14px;flex-wrap:wrap"><button class="btn btn-secondary a-btn" id="mr" data-act>' +
+        GA.icon("check") +
+        ' Mark all read</button><button class="btn btn-secondary a-btn" id="cl" data-act>' +
+        GA.icon("trash") +
+        ' Clear all</button></div><div class="a-feed" id="feed"></div>';
+      function draw() {
+        var all = GA.notifs.list();
+        var l = all.filter(function (n) {
+          return (
+            filter === "all" ||
+            n.type === filter ||
+            (filter === "punch" &&
+              (n.type === "punchin" || n.type === "punchout"))
+          );
+        });
+        $("fl").innerHTML = FILTERS.map(function (f) {
+          return (
+            '<button data-f="' +
+            f[0] +
+            '" class="' +
+            (f[0] === filter ? "on" : "") +
+            '">' +
+            f[1] +
+            "</button>"
+          );
+        }).join("");
+        [].forEach.call($("fl").children, function (b) {
+          b.onclick = function () {
+            filter = b.getAttribute("data-f");
+            draw();
+          };
+        });
+        $("feed").innerHTML = l.length
+          ? l
+              .map(function (n) {
+                var m = GA.notifs.meta(n.type);
+                return (
+                  '<div class="a-n' +
+                  (n.read ? "" : " un") +
+                  '" data-id="' +
+                  esc(n.id) +
+                  '"><span class="chip c-' +
+                  m[1] +
+                  '">' +
+                  GA.icon(m[0]) +
+                  '</span><div style="flex:1"><b>' +
+                  esc(n.title) +
+                  "</b><span>" +
+                  esc(n.text) +
+                  "</span>" +
+                  (n.loc && typeof n.loc.lat === "number"
+                    ? '<span><a href="https://www.google.com/maps?q=' +
+                      n.loc.lat +
+                      "," +
+                      n.loc.lng +
+                      '" target="_blank" rel="noopener" style="color:var(--primary);font-weight:700">Where this happened (' +
+                      (n.loc.acc ? "within " + n.loc.acc + " m" : "map") +
+                      ")</a></span>"
+                    : "") +
+                  "<small>" +
+                  esc(n.worker || "") +
+                  " \u00b7 " +
+                  new Date(n.ts).toLocaleString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }) +
+                  "</small></div>" +
+                  (n.read ? "" : '<span class="badge b-info">New</span>') +
+                  "</div>"
+                );
+              })
+              .join("")
+          : '<div class="card"><div class="a-empty"><b>No notifications</b>You will see an alert here each time an employee delivers a shop, reports a problem, returns items or punches in or out.</div></div>';
+        [].forEach.call($("feed").querySelectorAll(".a-n.un"), function (e) {
+          e.onclick = function () {
+            GA.notifs.markRead(e.getAttribute("data-id"));
+            draw();
+          };
+        });
+      }
+      $("mr").onclick = function () {
+        GA.notifs.markAll();
+        draw();
+      };
+      $("cl").onclick = function () {
+        if (confirm("Delete all notifications?")) {
+          GA.notifs.clear();
+          draw();
+        }
+      };
+      draw();
+      GA.onChange(draw);
+    </script>
+  </body>
 </html>

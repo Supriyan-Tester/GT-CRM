@@ -1,212 +1,746 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head><script src="../shared/sync.js"></script>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>General Traders - Admin</title>
-<link rel="stylesheet" href="../shared/theme.css">
-<link rel="stylesheet" href="../shared/admin.css">
-<link rel="stylesheet" href="../shared/vendor/leaflet/leaflet.css">
-<script src="../shared/theme.js"></script>
-<style>
-.pf2-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:16px;align-items:start}
-.pf2-grid>.card{margin:0;min-width:0}
-@media(max-width:1000px){.pf2-grid{grid-template-columns:1fr}}
-.pf2-me{display:flex;align-items:center;gap:14px;margin-bottom:14px}
-.pf2-me .chip{width:56px;height:56px;border-radius:50%;font-size:22px;font-weight:700}
-.pf2-me b{display:block;font-size:18px}.pf2-me span{color:var(--muted);font-size:13px}
-.pf2-kv{display:grid;grid-template-columns:110px 1fr;gap:10px 12px;font-size:14px}.pf2-kv small{color:var(--muted);font-size:12.5px;align-self:center}.pf2-kv b{font-weight:600}
-.pf2-two{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
-@media(max-width:560px){.pf2-two{grid-template-columns:1fr}}
-.pf2-hint{color:var(--muted);font-size:12.5px;margin:-4px 0 12px}
-.pf2-map{height:340px;border-radius:12px;border:1px solid var(--border);overflow:hidden;margin:6px 0 12px;background:var(--bg)}
-.pf2-st{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;border-radius:999px;padding:3px 10px}
-.pf2-st.set{background:var(--t-success);color:var(--success)}.pf2-st.unset{background:var(--t-accent);color:var(--accent)}
-.pf2-acts{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-.pf2-pin{background:none;border:0;filter:drop-shadow(0 3px 4px rgba(15,23,42,.35))}
-.pf2-msg{font-size:13px;min-height:18px;margin-top:10px}.pf2-msg.ok{color:var(--success)}.pf2-msg.err{color:var(--danger)}
+  <head>
+    <script src="../shared/sync.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>General Traders - Admin</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="../shared/admin.css" />
+    <link rel="stylesheet" href="../shared/vendor/leaflet/leaflet.css" />
+    <script src="../shared/theme.js"></script>
+    <style>
+      .pf2-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+        gap: 16px;
+        align-items: start;
+      }
+      .pf2-grid > .card {
+        margin: 0;
+        min-width: 0;
+      }
+      @media (max-width: 1000px) {
+        .pf2-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .pf2-me {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+      .pf2-me .chip {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        font-size: 22px;
+        font-weight: 700;
+      }
+      .pf2-me b {
+        display: block;
+        font-size: 18px;
+      }
+      .pf2-me span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .pf2-kv {
+        display: grid;
+        grid-template-columns: 110px 1fr;
+        gap: 10px 12px;
+        font-size: 14px;
+      }
+      .pf2-kv small {
+        color: var(--muted);
+        font-size: 12.5px;
+        align-self: center;
+      }
+      .pf2-kv b {
+        font-weight: 600;
+      }
+      .pf2-two {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 12px;
+      }
+      @media (max-width: 560px) {
+        .pf2-two {
+          grid-template-columns: 1fr;
+        }
+      }
+      .pf2-hint {
+        color: var(--muted);
+        font-size: 12.5px;
+        margin: -4px 0 12px;
+      }
+      .pf2-map {
+        height: 340px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+        margin: 6px 0 12px;
+        background: var(--bg);
+      }
+      .pf2-st {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12.5px;
+        font-weight: 600;
+        border-radius: 999px;
+        padding: 3px 10px;
+      }
+      .pf2-st.set {
+        background: var(--t-success);
+        color: var(--success);
+      }
+      .pf2-st.unset {
+        background: var(--t-accent);
+        color: var(--accent);
+      }
+      .pf2-acts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+      .pf2-pin {
+        background: none;
+        border: 0;
+        filter: drop-shadow(0 3px 4px rgba(15, 23, 42, 0.35));
+      }
+      .pf2-msg {
+        font-size: 13px;
+        min-height: 18px;
+        margin-top: 10px;
+      }
+      .pf2-msg.ok {
+        color: var(--success);
+      }
+      .pf2-msg.err {
+        color: var(--danger);
+      }
 
-.pf2-sub{color:var(--muted);font-size:14px;margin:-4px 0 14px}
-.pf2-col{display:flex;flex-direction:column;gap:16px;min-width:0}
-.pf2-hd{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.pf2-av{width:60px;height:60px;border-radius:50%;font-size:24px;font-weight:700;flex:none}
-.pf2-hdt{flex:1;min-width:140px}.pf2-hdt b{display:block;font-size:19px}.pf2-hdt span{color:var(--muted);font-size:14px;display:block}
-.pf2-act{display:inline-block;margin-top:6px;font-style:normal;font-size:12px;font-weight:700;color:var(--success);background:var(--t-success);border-radius:999px;padding:2px 10px}
-.pf2-hd .a-btn{display:inline-flex;align-items:center;gap:8px}.pf2-hd .a-btn svg{width:16px;height:16px}
-.pf2-dsum{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg)}
-.pf2-dsum b{display:block;font-size:14px}.pf2-dsum small{color:var(--muted);font-size:12.5px}
-#dEdit{margin-top:14px}
-</style>  <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-32.png"><link rel="apple-touch-icon" href="/assets/icon-180.png">
-</head>
-<body>
-<script src="../shared/mock-data.js"></script>
-<script src="../shared/admin.js"></script>
-<script src="../shared/vendor/leaflet/leaflet.js"></script>
-<script>
-GA.guard();
-var $ = function (i) { return document.getElementById(i); }, esc = GA.esc, KEY = 'gm_depot_v1';
-var pg = GA.mount('profile.html', 'My profile'), me = GA.session() || {};
-var admin = (function () { try { var a = JSON.parse(localStorage.getItem('gm_admin_workers_v1')); return (a && a.admins && a.admins[0]) || {}; } catch (e) { return {}; } })();
-function loadDepot() { try { var d = JSON.parse(localStorage.getItem(KEY)); if (d && isFinite(d.lat) && isFinite(d.lng)) return d; } catch (e) {} return null; }
-var saved = loadDepot(), map, marker, ring;
-// Own pin (the library's image files are not part of this project)
-var PIN = L.divIcon({ className: 'pf2-pin', iconSize: [30, 40], iconAnchor: [15, 38], html: '<svg viewBox="0 0 30 40" width="30" height="40"><path d="M15 1C7.3 1 1 7.2 1 14.8 1 25 15 39 15 39s14-14 14-24.2C29 7.2 22.7 1 15 1z" fill="#0F766E" stroke="#fff" stroke-width="2"/><circle cx="15" cy="14.5" r="5.2" fill="#fff"/></svg>' });
+      .pf2-sub {
+        color: var(--muted);
+        font-size: 14px;
+        margin: -4px 0 14px;
+      }
+      .pf2-col {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        min-width: 0;
+      }
+      .pf2-hd {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+      }
+      .pf2-av {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        font-size: 24px;
+        font-weight: 700;
+        flex: none;
+      }
+      .pf2-hdt {
+        flex: 1;
+        min-width: 140px;
+      }
+      .pf2-hdt b {
+        display: block;
+        font-size: 19px;
+      }
+      .pf2-hdt span {
+        color: var(--muted);
+        font-size: 14px;
+        display: block;
+      }
+      .pf2-act {
+        display: inline-block;
+        margin-top: 6px;
+        font-style: normal;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--success);
+        background: var(--t-success);
+        border-radius: 999px;
+        padding: 2px 10px;
+      }
+      .pf2-hd .a-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .pf2-hd .a-btn svg {
+        width: 16px;
+        height: 16px;
+      }
+      .pf2-dsum {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--bg);
+      }
+      .pf2-dsum b {
+        display: block;
+        font-size: 14px;
+      }
+      .pf2-dsum small {
+        color: var(--muted);
+        font-size: 12.5px;
+      }
+      #dEdit {
+        margin-top: 14px;
+      }
+    </style>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/icon-32.png"
+    />
+    <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+  </head>
+  <body>
+    <script src="../shared/mock-data.js"></script>
+    <script src="../shared/admin.js"></script>
+    <script src="../shared/vendor/leaflet/leaflet.js"></script>
+    <script>
+      GA.guard();
+      var $ = function (i) {
+          return document.getElementById(i);
+        },
+        esc = GA.esc,
+        KEY = "gm_depot_v1";
+      var pg = GA.mount("profile.html", "My profile"),
+        me = GA.session() || {};
+      var admin = (function () {
+        try {
+          var a = JSON.parse(localStorage.getItem("gm_admin_workers_v1"));
+          return (a && a.admins && a.admins[0]) || {};
+        } catch (e) {
+          return {};
+        }
+      })();
+      function loadDepot() {
+        try {
+          var d = JSON.parse(localStorage.getItem(KEY));
+          if (d && isFinite(d.lat) && isFinite(d.lng)) return d;
+        } catch (e) {}
+        return null;
+      }
+      var saved = loadDepot(),
+        map,
+        marker,
+        ring;
+      // Own pin (the library's image files are not part of this project)
+      var PIN = L.divIcon({
+        className: "pf2-pin",
+        iconSize: [30, 40],
+        iconAnchor: [15, 38],
+        html: '<svg viewBox="0 0 30 40" width="30" height="40"><path d="M15 1C7.3 1 1 7.2 1 14.8 1 25 15 39 15 39s14-14 14-24.2C29 7.2 22.7 1 15 1z" fill="#0F766E" stroke="#fff" stroke-width="2"/><circle cx="15" cy="14.5" r="5.2" fill="#fff"/></svg>',
+      });
 
-var ST = GM.settings();
-function consentCard() {
-  var ws = [], C = {}; try { ws = GA.workers() || []; } catch (e) {} try { C = JSON.parse(localStorage.getItem('gm_admin_consent_v1')) || {}; } catch (e) {}
-  var ok = 0, rows = ws.map(function (w) {
-    var at = C[w.id] && C[w.id].at || '';
-    if (at) ok++;
-    var d = at ? new Date(at) : null, txt = d && !isNaN(d) ? d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '';
-    return '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--border)"><span>' + esc(w.name || w.id) + '</span><span class="mu" style="white-space:nowrap">' + (txt ? '\u2713 ' + esc(txt) : 'Not yet') + '</span></div>';
-  }).join('');
-  return '<div class="card" style="margin:0"><div class="card-title">Privacy notice accepted</div>' +
-    '<p class="pf2-hint">Employees see the notice once, the first time they open the app. The time is written by the server, so it cannot be changed from a phone. ' + (ws.length ? ok + ' of ' + ws.length + ' have accepted.' : 'No employees yet.') + '</p>' + rows + '</div>';
-}
-var rulesCard = '<div class="card" style="margin:0"><div class="card-title">2. Work Rules</div>' +
-  '<p class="pf2-hint">These rules apply to every employee phone. Changes show on their phones within a minute.</p>' +
-  '<div class="pf2-two"><div class="a-fg"><label for="rLate">Late after (time)</label><div class="field a-f"><input id="rLate" type="time" value="' + esc(('0' + ST.lateAfter).slice(-5)) + '"></div></div>' +
-  '<div class="a-fg"><label for="rHigh">Warn if driven more than (km a day)</label><div class="field a-f"><input id="rHigh" inputmode="numeric" value="' + ST.highKm + '"></div></div></div>' +
-  '<div class="a-fg"><label for="rJump">Warn if morning KM is more than (km) above last evening KM</label><div class="field a-f"><input id="rJump" inputmode="numeric" value="' + ST.jumpKm + '"></div></div>' +
-  '<label style="display:flex;gap:10px;align-items:flex-start;margin:4px 0 14px;cursor:pointer"><input type="checkbox" id="rDepot"' + (ST.requireDepot ? ' checked' : '') + ' style="width:20px;height:20px;margin-top:2px"><span><b>Employees must be at the depot to punch in and out</b><br><small style="color:var(--muted)">When off, the app only shows a warning. This works only after you save the depot location.</small></span></label>' +
-  '<div class="a-fg"><label for="rReasons">Reasons for returned goods (one on each line, up to 20)</label><div class="field a-f"><textarea id="rReasons" rows="8" style="width:100%">' + esc(ST.returnReasons.join('\n')) + '</textarea></div></div>' +
-  '<div class="pf2-acts"><button class="btn a-btn" id="rSave" type="button">Save work rules</button><button class="btn btn-secondary a-btn" id="rReset" type="button">Back to standard</button></div><div class="pf2-msg" id="rMsg" role="status"></div></div>';
-pg.innerHTML =
-  '<p class="pf2-sub">View and manage your account details.</p><div class="pf2-col">' +
-  '<div class="card pf2-hd" style="margin:0"><span class="chip c-p pf2-av">' + esc((me.name || 'A').charAt(0).toUpperCase()) + '</span><div class="pf2-hdt"><b>' + esc(me.name || 'Admin') + '</b><span>' + esc(me.role || 'Admin') + '</span><em class="pf2-act">&#9679; Active</em></div>' +
-    '<button class="btn btn-secondary a-btn" id="pwOpen" type="button">' + GA.icon('key') + ' Change Password</button></div>' +
-  '<div class="card" id="pwCard" style="margin:0" hidden><div class="card-title">Change my password</div>' +
-    '<div class="a-fg"><label for="pwCur">Current password</label><div class="field a-f"><input id="pwCur" type="password" autocomplete="current-password"></div></div>' +
-    '<div class="a-fg"><label for="pwNew">New password <small>(at least 8 characters)</small></label><div class="field a-f"><input id="pwNew" type="password" autocomplete="new-password"></div></div>' +
-    '<div class="a-fg"><label for="pwNew2">Repeat new password</label><div class="field a-f"><input id="pwNew2" type="password" autocomplete="new-password"></div></div>' +
-    '<div class="pf2-acts"><button class="btn a-btn" id="pwGo" type="button">Change password</button></div><div class="pf2-msg" id="pwMsg" role="status"></div></div>' +
-  '<div class="card" style="margin:0"><div class="card-title">1. Account Details</div>' +
-    '<div class="a-fg"><label>Full Name</label><div class="field a-f"><input id="acName" value="' + esc(me.name || '') + '" readonly></div></div>' +
-    '<div class="a-fg"><label>Phone Number (Login ID)</label><div class="field a-f"><input id="acPhone" value="' + (admin.phone ? esc(String(admin.phone)) : '') + '" readonly></div></div>' +
-    '<div class="a-fg"><label>Email Address</label><div class="field a-f"><input id="acMail" placeholder="Not set" readonly></div></div>' +
-  '</div>' +
-  rulesCard +
-  '<div class="card" style="margin:0"><div class="card-title"><span>3. Depot / Godown Location</span><span class="pf2-st" id="dSt"></span></div>' +
-    '<div class="pf2-dsum"><div><b id="dSumT">No depot location set</b><small id="dSumS">Set your depot location to enable location-based attendance.</small></div><button class="btn a-btn" id="dOpen" type="button">Set Location</button></div>' +
-    '<div id="dEdit" hidden>' + '<p class="pf2-hint">Employees can punch in and out only when their phone is inside this circle. Click the map, drag the pin, type the coordinates, or stand at the godown and use your current location.</p>' +
-    '<div class="a-fg"><label for="dName">Depot name</label><div class="field a-f"><input id="dName" placeholder="e.g. General Traders Godown"></div></div>' +
-    '<div class="a-fg"><label for="dAddr">Address (optional)</label><div class="field a-f"><input id="dAddr" placeholder="Street, area, town"></div></div>' +
-    '<div class="pf2-two"><div class="a-fg"><label for="dLat">Latitude</label><div class="field a-f"><input id="dLat" inputmode="decimal" placeholder="e.g. 10.6593"></div></div>' +
-    '<div class="a-fg"><label for="dLng">Longitude</label><div class="field a-f"><input id="dLng" inputmode="decimal" placeholder="e.g. 77.0089"></div></div></div>' +
-    '<div class="a-fg"><label for="dRad">Allowed distance from the depot (metres)</label><div class="field a-f"><input id="dRad" inputmode="numeric" placeholder="200"></div></div>' +
-    '<div class="pf2-map" id="dMap"></div>' +
-    '<div class="pf2-acts"><button class="btn btn-secondary a-btn" id="dHere" type="button">Use my current location</button><button class="btn a-btn" id="dSave" type="button">Save depot location</button><button class="btn btn-secondary a-btn" id="dClear" type="button">Remove</button></div>' +
-    '<div class="pf2-msg" id="dMsg" role="status"></div>' +
-  '</div></div>' +
-  GA.backupCard() + consentCard() +
-  '<p class="mu" style="margin:4px 4px 12px;font-size:13px"><a href="../privacy.html" style="color:var(--primary);font-weight:600">Privacy notice</a> &middot; shown to drivers on the sign-in page and in their profile.</p></div>';
-GA.bindBackup(); GA.bindImport();
-(function () {
-  var bk = document.querySelector('#bkCard .card-title'); if (bk) bk.textContent = '4. Backup';
-  var cc = [].filter.call(document.querySelectorAll('.card-title'), function (t) { return t.textContent === 'Privacy notice accepted'; })[0]; if (cc) cc.textContent = '5. Privacy notice accepted';
-  $('pwOpen').onclick = function () { var c = $('pwCard'); c.hidden = !c.hidden; if (!c.hidden) { c.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); $('pwCur').focus(); } };
-  if (location.hash === '#password') { $('pwCard').hidden = false; }
-  // email comes from the server (the sign-in record), because the browser session does not keep it
-  fetch('/api/me', { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) { if (j && j.email) $('acMail').value = j.email; if (j && j.phone && !$('acPhone').value) $('acPhone').value = j.phone; }).catch(function () {});
-})();
-$('pwGo').onclick = function () {
-  var m = $('pwMsg'), c = $('pwCur').value, n = $('pwNew').value, n2 = $('pwNew2').value;
-  function say(t, k) { m.textContent = t; m.className = 'pf2-msg' + (k ? ' ' + k : ''); }
-  if (!c) return say('Enter your current password.', 'err');
-  if (n !== n2) return say('The two new passwords do not match.', 'err');
-  var r = GA.changePassword((GA.session() || {}).id, c, n);
-  if (!r.ok) return say(r.error, 'err');
-  $('pwCur').value = $('pwNew').value = $('pwNew2').value = ''; say('Password changed. Other devices were signed out.', 'ok');
-};
-function rmsg(t, k) { var m = $('rMsg'); m.textContent = t || ''; m.className = 'pf2-msg' + (k ? ' ' + k : ''); }
-$('rSave').onclick = function () {
-  var late = $('rLate').value, hi = parseInt($('rHigh').value, 10), jp = parseInt($('rJump').value, 10);
-  var rs = $('rReasons').value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
-  var seen = {}; rs = rs.filter(function (x) { var k = x.toLowerCase(); if (seen[k]) return false; seen[k] = 1; return true; });
-  if (!/^\d{2}:\d{2}$/.test(late)) { rmsg('Choose the time after which a punch-in counts as late.', 'err'); return; }
-  if (!(hi >= 20 && hi <= 2000)) { rmsg('Daily km warning must be between 20 and 2000.', 'err'); return; }
-  if (!(jp >= 20 && jp <= 5000)) { rmsg('Morning KM warning must be between 20 and 5000.', 'err'); return; }
-  if (!rs.length) { rmsg('Add at least one reason for returned goods.', 'err'); return; }
-  if (rs.length > 20) { rmsg('Use at most 20 reasons.', 'err'); return; }
-  if (rs.some(function (x) { return x.length > 40; })) { rmsg('Each reason must be 40 letters or fewer, so it fits on the phone.', 'err'); return; }
-  try { localStorage.setItem('gm_admin_settings_v1', JSON.stringify({ lateAfter: late, highKm: hi, jumpKm: jp, requireDepot: $('rDepot').checked, returnReasons: rs, updated: new Date().toISOString() })); } catch (e) { rmsg('Could not save in this browser.', 'err'); return; }
-  rmsg('Saved. Employees get the new rules on their phones within a minute.', 'ok');
-};
-$('rReset').onclick = function () {
-  if (!confirm('Go back to the standard rules and reasons?')) return;
-  try { localStorage.removeItem('gm_admin_settings_v1'); } catch (e) {}
-  var D = GM.settingsDefault; $('rLate').value = D.lateAfter; $('rHigh').value = D.highKm; $('rJump').value = D.jumpKm; $('rDepot').checked = false; $('rReasons').value = D.returnReasons.join('\n'); rmsg('Standard rules restored.', 'ok');
-};
+      var ST = GM.settings();
+      function consentCard() {
+        var ws = [],
+          C = {};
+        try {
+          ws = GA.workers() || [];
+        } catch (e) {}
+        try {
+          C = JSON.parse(localStorage.getItem("gm_admin_consent_v1")) || {};
+        } catch (e) {}
+        var ok = 0,
+          rows = ws
+            .map(function (w) {
+              var at = (C[w.id] && C[w.id].at) || "";
+              if (at) ok++;
+              var d = at ? new Date(at) : null,
+                txt =
+                  d && !isNaN(d)
+                    ? d.toLocaleDateString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      }) +
+                      ", " +
+                      d.toLocaleTimeString("en-IN", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : "";
+              return (
+                '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--border)"><span>' +
+                esc(w.name || w.id) +
+                '</span><span class="mu" style="white-space:nowrap">' +
+                (txt ? "\u2713 " + esc(txt) : "Not yet") +
+                "</span></div>"
+              );
+            })
+            .join("");
+        return (
+          '<div class="card" style="margin:0"><div class="card-title">Privacy notice accepted</div>' +
+          '<p class="pf2-hint">Employees see the notice once, the first time they open the app. The time is written by the server, so it cannot be changed from a phone. ' +
+          (ws.length
+            ? ok + " of " + ws.length + " have accepted."
+            : "No employees yet.") +
+          "</p>" +
+          rows +
+          "</div>"
+        );
+      }
+      var rulesCard =
+        '<div class="card" style="margin:0"><div class="card-title">2. Work Rules</div>' +
+        '<p class="pf2-hint">These rules apply to every employee phone. Changes show on their phones within a minute.</p>' +
+        '<div class="pf2-two"><div class="a-fg"><label for="rLate">Late after (time)</label><div class="field a-f"><input id="rLate" type="time" value="' +
+        esc(("0" + ST.lateAfter).slice(-5)) +
+        '"></div></div>' +
+        '<div class="a-fg"><label for="rHigh">Warn if driven more than (km a day)</label><div class="field a-f"><input id="rHigh" inputmode="numeric" value="' +
+        ST.highKm +
+        '"></div></div></div>' +
+        '<div class="a-fg"><label for="rJump">Warn if morning KM is more than (km) above last evening KM</label><div class="field a-f"><input id="rJump" inputmode="numeric" value="' +
+        ST.jumpKm +
+        '"></div></div>' +
+        '<label style="display:flex;gap:10px;align-items:flex-start;margin:4px 0 14px;cursor:pointer"><input type="checkbox" id="rDepot"' +
+        (ST.requireDepot ? " checked" : "") +
+        ' style="width:20px;height:20px;margin-top:2px"><span><b>Employees must be at the depot to punch in and out</b><br><small style="color:var(--muted)">When off, the app only shows a warning. This works only after you save the depot location.</small></span></label>' +
+        '<div class="a-fg"><label for="rReasons">Reasons for returned goods (one on each line, up to 20)</label><div class="field a-f"><textarea id="rReasons" rows="8" style="width:100%">' +
+        esc(ST.returnReasons.join("\n")) +
+        "</textarea></div></div>" +
+        '<div class="pf2-acts"><button class="btn a-btn" id="rSave" type="button">Save work rules</button><button class="btn btn-secondary a-btn" id="rReset" type="button">Back to standard</button></div><div class="pf2-msg" id="rMsg" role="status"></div></div>';
+      pg.innerHTML =
+        '<p class="pf2-sub">View and manage your account details.</p><div class="pf2-col">' +
+        '<div class="card pf2-hd" style="margin:0"><span class="chip c-p pf2-av">' +
+        esc((me.name || "A").charAt(0).toUpperCase()) +
+        '</span><div class="pf2-hdt"><b>' +
+        esc(me.name || "Admin") +
+        "</b><span>" +
+        esc(me.role || "Admin") +
+        '</span><em class="pf2-act">&#9679; Active</em></div>' +
+        '<button class="btn btn-secondary a-btn" id="pwOpen" type="button">' +
+        GA.icon("key") +
+        " Change Password</button></div>" +
+        '<div class="card" id="pwCard" style="margin:0" hidden><div class="card-title">Change my password</div>' +
+        '<div class="a-fg"><label for="pwCur">Current password</label><div class="field a-f"><input id="pwCur" type="password" autocomplete="current-password"></div></div>' +
+        '<div class="a-fg"><label for="pwNew">New password <small>(at least 8 characters)</small></label><div class="field a-f"><input id="pwNew" type="password" autocomplete="new-password"></div></div>' +
+        '<div class="a-fg"><label for="pwNew2">Repeat new password</label><div class="field a-f"><input id="pwNew2" type="password" autocomplete="new-password"></div></div>' +
+        '<div class="pf2-acts"><button class="btn a-btn" id="pwGo" type="button">Change password</button></div><div class="pf2-msg" id="pwMsg" role="status"></div></div>' +
+        '<div class="card" style="margin:0"><div class="card-title">1. Account Details</div>' +
+        '<div class="a-fg"><label>Full Name</label><div class="field a-f"><input id="acName" value="' +
+        esc(me.name || "") +
+        '" readonly></div></div>' +
+        '<div class="a-fg"><label>Phone Number (Login ID)</label><div class="field a-f"><input id="acPhone" value="' +
+        (admin.phone ? esc(String(admin.phone)) : "") +
+        '" readonly></div></div>' +
+        '<div class="a-fg"><label>Email Address</label><div class="field a-f"><input id="acMail" placeholder="Not set" readonly></div></div>' +
+        "</div>" +
+        rulesCard +
+        '<div class="card" style="margin:0"><div class="card-title"><span>3. Depot / Godown Location</span><span class="pf2-st" id="dSt"></span></div>' +
+        '<div class="pf2-dsum"><div><b id="dSumT">No depot location set</b><small id="dSumS">Set your depot location to enable location-based attendance.</small></div><button class="btn a-btn" id="dOpen" type="button">Set Location</button></div>' +
+        '<div id="dEdit" hidden>' +
+        '<p class="pf2-hint">Employees can punch in and out only when their phone is inside this circle. Click the map, drag the pin, type the coordinates, or stand at the godown and use your current location.</p>' +
+        '<div class="a-fg"><label for="dName">Depot name</label><div class="field a-f"><input id="dName" placeholder="e.g. General Traders Godown"></div></div>' +
+        '<div class="a-fg"><label for="dAddr">Address (optional)</label><div class="field a-f"><input id="dAddr" placeholder="Street, area, town"></div></div>' +
+        '<div class="pf2-two"><div class="a-fg"><label for="dLat">Latitude</label><div class="field a-f"><input id="dLat" inputmode="decimal" placeholder="e.g. 10.6593"></div></div>' +
+        '<div class="a-fg"><label for="dLng">Longitude</label><div class="field a-f"><input id="dLng" inputmode="decimal" placeholder="e.g. 77.0089"></div></div></div>' +
+        '<div class="a-fg"><label for="dRad">Allowed distance from the depot (metres)</label><div class="field a-f"><input id="dRad" inputmode="numeric" placeholder="200"></div></div>' +
+        '<div class="pf2-map" id="dMap"></div>' +
+        '<div class="pf2-acts"><button class="btn btn-secondary a-btn" id="dHere" type="button">Use my current location</button><button class="btn a-btn" id="dSave" type="button">Save depot location</button><button class="btn btn-secondary a-btn" id="dClear" type="button">Remove</button></div>' +
+        '<div class="pf2-msg" id="dMsg" role="status"></div>' +
+        "</div></div>" +
+        GA.backupCard() +
+        consentCard() +
+        '<p class="mu" style="margin:4px 4px 12px;font-size:13px"><a href="../privacy.html" style="color:var(--primary);font-weight:600">Privacy notice</a> &middot; shown to drivers on the sign-in page and in their profile.</p></div>';
+      GA.bindBackup();
+      GA.bindImport();
+      (function () {
+        var bk = document.querySelector("#bkCard .card-title");
+        if (bk) bk.textContent = "4. Backup";
+        var cc = [].filter.call(
+          document.querySelectorAll(".card-title"),
+          function (t) {
+            return t.textContent === "Privacy notice accepted";
+          },
+        )[0];
+        if (cc) cc.textContent = "5. Privacy notice accepted";
+        $("pwOpen").onclick = function () {
+          var c = $("pwCard");
+          c.hidden = !c.hidden;
+          if (!c.hidden) {
+            c.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            $("pwCur").focus();
+          }
+        };
+        if (location.hash === "#password") {
+          $("pwCard").hidden = false;
+        }
+        // email comes from the server (the sign-in record), because the browser session does not keep it
+        fetch("/api/me", { credentials: "same-origin", cache: "no-store" })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (j) {
+            if (j && j.email) $("acMail").value = j.email;
+            if (j && j.phone && !$("acPhone").value)
+              $("acPhone").value = j.phone;
+          })
+          .catch(function () {});
+      })();
+      $("pwGo").onclick = function () {
+        var m = $("pwMsg"),
+          c = $("pwCur").value,
+          n = $("pwNew").value,
+          n2 = $("pwNew2").value;
+        function say(t, k) {
+          m.textContent = t;
+          m.className = "pf2-msg" + (k ? " " + k : "");
+        }
+        if (!c) return say("Enter your current password.", "err");
+        if (n !== n2) return say("The two new passwords do not match.", "err");
+        var r = GA.changePassword((GA.session() || {}).id, c, n);
+        if (!r.ok) return say(r.error, "err");
+        $("pwCur").value = $("pwNew").value = $("pwNew2").value = "";
+        say("Password changed. Other devices were signed out.", "ok");
+      };
+      function rmsg(t, k) {
+        var m = $("rMsg");
+        m.textContent = t || "";
+        m.className = "pf2-msg" + (k ? " " + k : "");
+      }
+      $("rSave").onclick = function () {
+        var late = $("rLate").value,
+          hi = parseInt($("rHigh").value, 10),
+          jp = parseInt($("rJump").value, 10);
+        var rs = $("rReasons")
+          .value.split("\n")
+          .map(function (x) {
+            return x.trim();
+          })
+          .filter(Boolean);
+        var seen = {};
+        rs = rs.filter(function (x) {
+          var k = x.toLowerCase();
+          if (seen[k]) return false;
+          seen[k] = 1;
+          return true;
+        });
+        if (!/^\d{2}:\d{2}$/.test(late)) {
+          rmsg("Choose the time after which a punch-in counts as late.", "err");
+          return;
+        }
+        if (!(hi >= 20 && hi <= 2000)) {
+          rmsg("Daily km warning must be between 20 and 2000.", "err");
+          return;
+        }
+        if (!(jp >= 20 && jp <= 5000)) {
+          rmsg("Morning KM warning must be between 20 and 5000.", "err");
+          return;
+        }
+        if (!rs.length) {
+          rmsg("Add at least one reason for returned goods.", "err");
+          return;
+        }
+        if (rs.length > 20) {
+          rmsg("Use at most 20 reasons.", "err");
+          return;
+        }
+        if (
+          rs.some(function (x) {
+            return x.length > 40;
+          })
+        ) {
+          rmsg(
+            "Each reason must be 40 letters or fewer, so it fits on the phone.",
+            "err",
+          );
+          return;
+        }
+        try {
+          localStorage.setItem(
+            "gm_admin_settings_v1",
+            JSON.stringify({
+              lateAfter: late,
+              highKm: hi,
+              jumpKm: jp,
+              requireDepot: $("rDepot").checked,
+              returnReasons: rs,
+              updated: new Date().toISOString(),
+            }),
+          );
+        } catch (e) {
+          rmsg("Could not save in this browser.", "err");
+          return;
+        }
+        rmsg(
+          "Saved. Employees get the new rules on their phones within a minute.",
+          "ok",
+        );
+      };
+      $("rReset").onclick = function () {
+        if (!confirm("Go back to the standard rules and reasons?")) return;
+        try {
+          localStorage.removeItem("gm_admin_settings_v1");
+        } catch (e) {}
+        var D = GM.settingsDefault;
+        $("rLate").value = D.lateAfter;
+        $("rHigh").value = D.highKm;
+        $("rJump").value = D.jumpKm;
+        $("rDepot").checked = false;
+        $("rReasons").value = D.returnReasons.join("\n");
+        rmsg("Standard rules restored.", "ok");
+      };
 
+      function msg(t, kind) {
+        var m = $("dMsg");
+        m.textContent = t || "";
+        m.className = "pf2-msg" + (kind ? " " + kind : "");
+      }
+      function status() {
+        var s = $("dSt");
+        if (saved) {
+          s.className = "pf2-st set";
+          s.textContent = "Saved";
+        } else {
+          s.className = "pf2-st unset";
+          s.textContent = "Not set";
+        }
+        $("dSumT").textContent = saved
+          ? saved.name || "Depot"
+          : "No depot location set";
+        $("dSumS").textContent = saved
+          ? (saved.address ? saved.address + " \u00b7 " : "") +
+            saved.lat +
+            ", " +
+            saved.lng +
+            " \u00b7 within " +
+            saved.radiusMeters +
+            " m"
+          : "Set your depot location to enable location-based attendance.";
+        $("dOpen").textContent = saved ? "Change Location" : "Set Location";
+      }
+      $("dOpen").onclick = function () {
+        var e = $("dEdit");
+        e.hidden = !e.hidden;
+        if (!e.hidden && map)
+          setTimeout(function () {
+            map.invalidateSize();
+            if (marker)
+              map.setView(marker.getLatLng(), Math.max(map.getZoom(), 16));
+          }, 60);
+      };
+      function num(v) {
+        var n = parseFloat(String(v).trim());
+        return isFinite(n) ? n : null;
+      }
+      function validPt(lat, lng) {
+        return (
+          lat != null &&
+          lng != null &&
+          lat >= -90 &&
+          lat <= 90 &&
+          lng >= -180 &&
+          lng <= 180
+        );
+      }
 
-function msg(t, kind) { var m = $('dMsg'); m.textContent = t || ''; m.className = 'pf2-msg' + (kind ? ' ' + kind : ''); }
-function status() {
-  var s = $('dSt'); if (saved) { s.className = 'pf2-st set'; s.textContent = 'Saved'; } else { s.className = 'pf2-st unset'; s.textContent = 'Not set'; }
-  $('dSumT').textContent = saved ? (saved.name || 'Depot') : 'No depot location set';
-  $('dSumS').textContent = saved ? (saved.address ? saved.address + ' \u00b7 ' : '') + saved.lat + ', ' + saved.lng + ' \u00b7 within ' + saved.radiusMeters + ' m' : 'Set your depot location to enable location-based attendance.';
-  $('dOpen').textContent = saved ? 'Change Location' : 'Set Location';
-}
-$('dOpen').onclick = function () { var e = $('dEdit'); e.hidden = !e.hidden; if (!e.hidden && map) setTimeout(function () { map.invalidateSize(); if (marker) map.setView(marker.getLatLng(), Math.max(map.getZoom(), 16)); }, 60); };
-function num(v) { var n = parseFloat(String(v).trim()); return isFinite(n) ? n : null; }
-function validPt(lat, lng) { return lat != null && lng != null && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180; }
+      function putPin(lat, lng, pan) {
+        if (!map) return;
+        if (!marker) {
+          marker = L.marker([lat, lng], { draggable: true, icon: PIN }).addTo(
+            map,
+          );
+          marker.on("dragend", function () {
+            var p = marker.getLatLng();
+            setFields(p.lat, p.lng);
+            drawRing();
+          });
+        } else marker.setLatLng([lat, lng]);
+        drawRing();
+        if (pan) map.setView([lat, lng], Math.max(map.getZoom(), 16));
+      }
+      function drawRing() {
+        var p = marker && marker.getLatLng(),
+          r = num($("dRad").value) || 200;
+        if (!p) return;
+        if (!ring)
+          ring = L.circle(p, {
+            radius: r,
+            color: "#0F766E",
+            weight: 2,
+            fillColor: "#14B8A6",
+            fillOpacity: 0.15,
+          }).addTo(map);
+        else {
+          ring.setLatLng(p);
+          ring.setRadius(r);
+        }
+      }
+      function setFields(lat, lng) {
+        $("dLat").value = lat.toFixed(6);
+        $("dLng").value = lng.toFixed(6);
+      }
 
-function putPin(lat, lng, pan) {
-  if (!map) return;
-  if (!marker) {
-    marker = L.marker([lat, lng], { draggable: true, icon: PIN }).addTo(map);
-    marker.on('dragend', function () { var p = marker.getLatLng(); setFields(p.lat, p.lng); drawRing(); });
-  } else marker.setLatLng([lat, lng]);
-  drawRing(); if (pan) map.setView([lat, lng], Math.max(map.getZoom(), 16));
-}
-function drawRing() {
-  var p = marker && marker.getLatLng(), r = num($('dRad').value) || 200; if (!p) return;
-  if (!ring) ring = L.circle(p, { radius: r, color: '#0F766E', weight: 2, fillColor: '#14B8A6', fillOpacity: .15 }).addTo(map);
-  else { ring.setLatLng(p); ring.setRadius(r); }
-}
-function setFields(lat, lng) { $('dLat').value = lat.toFixed(6); $('dLng').value = lng.toFixed(6); }
+      // Map. Starts at the saved depot, else at the first customer with a location, else over India.
+      var start = saved ? [saved.lat, saved.lng] : null;
+      if (!start) {
+        try {
+          var cs =
+            (JSON.parse(localStorage.getItem("gm_admin_v1")) || {}).customers ||
+            [];
+          var c = cs.filter(function (x) {
+            return typeof x.lat === "number" && typeof x.lng === "number";
+          })[0];
+          if (c) start = [c.lat, c.lng];
+        } catch (e) {}
+      }
+      try {
+        map = L.map("dMap", { zoomControl: true }).setView(
+          start || [20.59, 78.96],
+          saved ? 16 : start ? 12 : 5,
+        );
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: "&copy; OpenStreetMap",
+        }).addTo(map);
+        map.on("click", function (e) {
+          setFields(e.latlng.lat, e.latlng.lng);
+          putPin(e.latlng.lat, e.latlng.lng);
+          msg("");
+        });
+      } catch (e) {
+        $("dMap").innerHTML =
+          '<div class="a-empty"><b>Map could not load</b>You can still type the latitude and longitude above.</div>';
+      }
 
-// Map. Starts at the saved depot, else at the first customer with a location, else over India.
-var start = saved ? [saved.lat, saved.lng] : null;
-if (!start) { try { var cs = (JSON.parse(localStorage.getItem('gm_admin_v1')) || {}).customers || []; var c = cs.filter(function (x) { return typeof x.lat === 'number' && typeof x.lng === 'number'; })[0]; if (c) start = [c.lat, c.lng]; } catch (e) {} }
-try {
-  map = L.map('dMap', { zoomControl: true }).setView(start || [20.59, 78.96], saved ? 16 : (start ? 12 : 5));
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
-  map.on('click', function (e) { setFields(e.latlng.lat, e.latlng.lng); putPin(e.latlng.lat, e.latlng.lng); msg(''); });
-} catch (e) { $('dMap').innerHTML = '<div class="a-empty"><b>Map could not load</b>You can still type the latitude and longitude above.</div>'; }
+      $("dName").value = (saved && saved.name) || "";
+      $("dAddr").value = (saved && saved.address) || "";
+      $("dRad").value = (saved && saved.radiusMeters) || 200;
+      if (saved) {
+        setFields(saved.lat, saved.lng);
+        putPin(saved.lat, saved.lng);
+      }
+      status();
 
-$('dName').value = (saved && saved.name) || ''; $('dAddr').value = (saved && saved.address) || ''; $('dRad').value = (saved && saved.radiusMeters) || 200;
-if (saved) { setFields(saved.lat, saved.lng); putPin(saved.lat, saved.lng); }
-status();
+      function typed() {
+        var la = num($("dLat").value),
+          ln = num($("dLng").value);
+        if (validPt(la, ln)) putPin(la, ln, true);
+      }
+      $("dLat").onchange = $("dLng").onchange = typed;
+      $("dRad").oninput = drawRing;
 
-function typed() { var la = num($('dLat').value), ln = num($('dLng').value); if (validPt(la, ln)) putPin(la, ln, true); }
-$('dLat').onchange = $('dLng').onchange = typed;
-$('dRad').oninput = drawRing;
+      $("dHere").onclick = function () {
+        if (!navigator.geolocation) {
+          msg(
+            "This browser cannot share its location. Click the map or type the coordinates instead.",
+            "err",
+          );
+          return;
+        }
+        msg("Finding your location...");
+        navigator.geolocation.getCurrentPosition(
+          function (p) {
+            setFields(p.coords.latitude, p.coords.longitude);
+            putPin(p.coords.latitude, p.coords.longitude, true);
+            msg(
+              "Location found (accurate to about " +
+                Math.round(p.coords.accuracy) +
+                " m). Check the pin, then save.",
+              "ok",
+            );
+          },
+          function (err) {
+            msg(
+              err && err.code === 1
+                ? "Location is blocked. Allow location for this site in the browser, or click the map instead."
+                : "Could not get your location (phones and browsers only share it on https or localhost). Click the map or type the coordinates instead.",
+              "err",
+            );
+          },
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+        );
+      };
 
-$('dHere').onclick = function () {
-  if (!navigator.geolocation) { msg('This browser cannot share its location. Click the map or type the coordinates instead.', 'err'); return; }
-  msg('Finding your location...');
-  navigator.geolocation.getCurrentPosition(function (p) { setFields(p.coords.latitude, p.coords.longitude); putPin(p.coords.latitude, p.coords.longitude, true); msg('Location found (accurate to about ' + Math.round(p.coords.accuracy) + ' m). Check the pin, then save.', 'ok'); },
-    function (err) { msg(err && err.code === 1 ? 'Location is blocked. Allow location for this site in the browser, or click the map instead.' : 'Could not get your location (phones and browsers only share it on https or localhost). Click the map or type the coordinates instead.', 'err'); },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
-};
-
-$('dSave').onclick = function () {
-  var la = num($('dLat').value), ln = num($('dLng').value), r = num($('dRad').value);
-  if (!validPt(la, ln)) { msg('Pick the depot on the map or enter a valid latitude (-90 to 90) and longitude (-180 to 180).', 'err'); return; }
-  if (r == null || r < 20 || r > 5000) { msg('Allowed distance must be between 20 and 5000 metres.', 'err'); return; }
-  saved = { name: $('dName').value.trim() || 'Depot', address: $('dAddr').value.trim(), lat: +la.toFixed(6), lng: +ln.toFixed(6), radiusMeters: Math.round(r), updated: new Date().toISOString() };
-  try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) { msg('Could not save in this browser.', 'err'); return; }
-  status(); msg('Depot location saved. Employees now punch in and out against this spot.', 'ok');
-};
-$('dClear').onclick = function () {
-  if (!saved) { msg('No depot location is saved.'); return; }
-  if (!confirm('Remove the depot location? Employees will not be checked against a location until you save a depot again.')) return;
-  try { localStorage.removeItem(KEY); } catch (e) {}
-  saved = null; $('dLat').value = $('dLng').value = $('dName').value = $('dAddr').value = ''; $('dRad').value = 200;
-  if (marker) { map.removeLayer(marker); marker = null; } if (ring) { map.removeLayer(ring); ring = null; }
-  status(); msg('Depot location removed.');
-};
-</script>
-</body>
+      $("dSave").onclick = function () {
+        var la = num($("dLat").value),
+          ln = num($("dLng").value),
+          r = num($("dRad").value);
+        if (!validPt(la, ln)) {
+          msg(
+            "Pick the depot on the map or enter a valid latitude (-90 to 90) and longitude (-180 to 180).",
+            "err",
+          );
+          return;
+        }
+        if (r == null || r < 20 || r > 5000) {
+          msg("Allowed distance must be between 20 and 5000 metres.", "err");
+          return;
+        }
+        saved = {
+          name: $("dName").value.trim() || "Depot",
+          address: $("dAddr").value.trim(),
+          lat: +la.toFixed(6),
+          lng: +ln.toFixed(6),
+          radiusMeters: Math.round(r),
+          updated: new Date().toISOString(),
+        };
+        try {
+          localStorage.setItem(KEY, JSON.stringify(saved));
+        } catch (e) {
+          msg("Could not save in this browser.", "err");
+          return;
+        }
+        status();
+        msg(
+          "Depot location saved. Employees now punch in and out against this spot.",
+          "ok",
+        );
+      };
+      $("dClear").onclick = function () {
+        if (!saved) {
+          msg("No depot location is saved.");
+          return;
+        }
+        if (
+          !confirm(
+            "Remove the depot location? Employees will not be checked against a location until you save a depot again.",
+          )
+        )
+          return;
+        try {
+          localStorage.removeItem(KEY);
+        } catch (e) {}
+        saved = null;
+        $("dLat").value =
+          $("dLng").value =
+          $("dName").value =
+          $("dAddr").value =
+            "";
+        $("dRad").value = 200;
+        if (marker) {
+          map.removeLayer(marker);
+          marker = null;
+        }
+        if (ring) {
+          map.removeLayer(ring);
+          ring = null;
+        }
+        status();
+        msg("Depot location removed.");
+      };
+    </script>
+  </body>
 </html>

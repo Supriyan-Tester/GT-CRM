@@ -1,132 +1,625 @@
-﻿<!DOCTYPE html>
+﻿<!doctype html>
 <html lang="en">
-<head><script src="../shared/sync.js"></script>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vehicles - General Traders Admin</title>
-<link rel="stylesheet" href="../shared/theme.css">
-<link rel="stylesheet" href="../shared/admin.css">
-<link rel="stylesheet" href="../shared/plan.css">
-<link rel="stylesheet" href="../shared/vehicles.css">
-<script src="../shared/theme.js"></script>  <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-32.png"><link rel="apple-touch-icon" href="/assets/icon-180.png">
-</head>
-<body>
-<script src="../shared/mock-data.js"></script>
-<script src="../shared/admin.js"></script>
-<script src="../shared/plan-core.js"></script>
-<script src="../shared/vehicles.js"></script>
-<script>
-GA.guard();
-var $ = function (i) { return document.getElementById(i); }, esc = GA.esc, date = VX.viewDate(), st = { q: '', flt: 'all', sort: 'number', sel: '', tab: 'overview', ready: false };
-var pg = GA.mount('vehicles.html', 'Vehicles');
-pg.innerHTML =
-  '<div class="vx-head"><div><p>Manage your fleet, track usage and keep vehicles in good condition.</p></div>' +
-  '<div class="vx-tools"><div class="field a-f" data-act style="width:190px;height:38px"><input type="search" id="vQ" placeholder="Search vehicle..." aria-label="Search vehicle number" autocomplete="off"></div>' + VX.dateBox('vDate', date) +
-  '<a class="btn a-btn" id="vAdd" data-act href="vehicle-edit.html">' + GA.icon('plus') + ' Add vehicle</a></div></div>' +
-  '<div id="vBanner"></div><div class="vx-tiles" id="vTiles"></div>' +
-  '<div class="vx-grid2"><section class="vx-panel" aria-label="Vehicle list"><div class="vx-ph2"><h3>Vehicle list<span class="sub">View and manage all your vehicles</span></h3>' +
-  '<div class="field"><select id="vFlt" aria-label="Filter by status"><option value="all">All status</option><option value="active">Active</option><option value="repair">In service / repair</option><option value="inactive">Inactive</option></select></div>' +
-  '<div class="field"><select id="vSort" aria-label="Sort vehicles"><option value="number">Vehicle number</option><option value="km">Odometer (high first)</option><option value="used">Last used</option><option value="status">Status</option></select></div></div>' +
-  '<div class="vx-list" id="vList"></div></section><aside class="vx-panel" id="vSide" aria-label="Selected vehicle"></aside></div>';
-VX.initTips();
+  <head>
+    <script src="../shared/sync.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vehicles - General Traders Admin</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="../shared/admin.css" />
+    <link rel="stylesheet" href="../shared/plan.css" />
+    <link rel="stylesheet" href="../shared/vehicles.css" />
+    <script src="../shared/theme.js"></script>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/icon-32.png"
+    />
+    <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+  </head>
+  <body>
+    <script src="../shared/mock-data.js"></script>
+    <script src="../shared/admin.js"></script>
+    <script src="../shared/plan-core.js"></script>
+    <script src="../shared/vehicles.js"></script>
+    <script>
+      GA.guard();
+      var $ = function (i) {
+          return document.getElementById(i);
+        },
+        esc = GA.esc,
+        date = VX.viewDate(),
+        st = {
+          q: "",
+          flt: "all",
+          sort: "number",
+          sel: "",
+          tab: "overview",
+          ready: false,
+        };
+      var pg = GA.mount("vehicles.html", "Vehicles");
+      pg.innerHTML =
+        '<div class="vx-head"><div><p>Manage your fleet, track usage and keep vehicles in good condition.</p></div>' +
+        '<div class="vx-tools"><div class="field a-f" data-act style="width:190px;height:38px"><input type="search" id="vQ" placeholder="Search vehicle..." aria-label="Search vehicle number" autocomplete="off"></div>' +
+        VX.dateBox("vDate", date) +
+        '<a class="btn a-btn" id="vAdd" data-act href="vehicle-edit.html">' +
+        GA.icon("plus") +
+        " Add vehicle</a></div></div>" +
+        '<div id="vBanner"></div><div class="vx-tiles" id="vTiles"></div>' +
+        '<div class="vx-grid2"><section class="vx-panel" aria-label="Vehicle list"><div class="vx-ph2"><h3>Vehicle list<span class="sub">View and manage all your vehicles</span></h3>' +
+        '<div class="field"><select id="vFlt" aria-label="Filter by status"><option value="all">All status</option><option value="active">Active</option><option value="repair">In service / repair</option><option value="inactive">Inactive</option></select></div>' +
+        '<div class="field"><select id="vSort" aria-label="Sort vehicles"><option value="number">Vehicle number</option><option value="km">Odometer (high first)</option><option value="used">Last used</option><option value="status">Status</option></select></div></div>' +
+        '<div class="vx-list" id="vList"></div></section><aside class="vx-panel" id="vSide" aria-label="Selected vehicle"></aside></div>';
+      VX.initTips();
 
-function usedLast(v) { var u = VX.uses(v)[0]; return u ? u.date : ''; }
-function filtered() {
-  var q = st.q.toLowerCase().replace(/\s+/g, ''), L = VX.vehicles().filter(function (v) {
-    return (st.flt === 'all' || v.status === st.flt) && (!q || (v.number + v.code + (v.type || '')).toLowerCase().replace(/\s+/g, '').indexOf(q) > -1);
-  });
-  var rank = { active: 0, repair: 1, inactive: 2 };
-  L.sort(function (a, b) {
-    if (st.sort === 'km') return b.lastKm - a.lastKm;
-    if (st.sort === 'used') return (usedLast(b) || '').localeCompare(usedLast(a) || '');
-    if (st.sort === 'status') return rank[a.status] - rank[b.status] || a.number.localeCompare(b.number);
-    return a.number.localeCompare(b.number);
-  });
-  return L;
-}
-function tiles(all) {
-  function T(cls, icon, n, label, sub) { return '<div class="vx-tile"><span class="chip ' + cls + '">' + GA.icon(icon) + '</span><div><span class="lbl">' + label + '</span><b>' + n + '</b><span>' + sub + '</span></div></div>'; }
-  var c = { active: 0, repair: 0, inactive: 0 }; all.forEach(function (v) { c[v.status]++; });
-  $('vTiles').innerHTML = T('c-i', 'truck', all.length, 'Total vehicles', 'All vehicles in system') + T('c-s', 'check', c.active, 'Active vehicles', 'Available for assignment') + T('c-a', 'edit', c.repair, 'In service / repair', 'Under maintenance') + T('c-d', 'x', c.inactive, 'Inactive vehicles', 'Not in service');
-}
-function card(v) {
-  var a = VX.avail(v, date), u = VX.uses(v)[0], asg = a.key === 'assigned' || a.key === 'road' || a.key === 'returned';
-  return '<div class="vx-card' + (v.id === st.sel ? ' on' : '') + '" data-id="' + esc(v.id) + '" role="link" tabindex="0" title="Open vehicle details">' + VX.photo(v, 'md') +
-    '<div><div class="vx-card-top"><b><a class="a-vl" href="' + VX.link('vehicle.html', v.id, date) + '" title="Open full details">' + esc(v.number) + '</a></b>' + VX.badge(v.status) + '</div><div class="mu" style="font-size:13px">' + esc(v.code) + (v.type ? ' · ' + esc(v.type) : '') + '</div>' +
-    '<div class="vx-meta"><span>' + DP.icon('fuel') + esc(v.fuel || '-') + '</span><span>' + DP.icon('gauge') + VX.num(v.lastKm) + ' km</span><span>' + GA.icon('cal') + (u ? 'Last used ' + VX.date(u.date) : 'Not used yet') + '</span><span>' + GA.icon('users') + (asg ? esc(a.worker || a.sub) : 'Not assigned') + '</span></div></div>' +
-    '<span class="vx-kebab"><button type="button" class="vx-ib" data-kebab="' + esc(v.id) + '" aria-haspopup="menu" aria-expanded="false" aria-label="Actions for ' + esc(v.number) + '">' + DP.icon('dots') + '</button></span></div>';
-}
-function side(v) {
-  var box = $('vSide');
-  if (!v) { box.innerHTML = VX.empty('Select a vehicle', 'Choose a vehicle from the list to see its details.'); return; }
-  var a = VX.avail(v, date), t = VX.today(), mk = VX.monthKey(t), mu = VX.monthUsage(v, mk), uses = VX.uses(v), tot = 0; uses.forEach(function (x) { tot += x.e.km || 0; });
-  var last = uses[0], svc = VX.services(v.id), fuel = VX.fuelAll(v.id);
-  var head = '<div class="vx-ph2" style="gap:14px">' + VX.photo(v, 'md') + '<div style="flex:1;min-width:0"><h3 style="font-size:18px"><a class="a-vl" href="' + VX.link('vehicle.html', v.id, date) + '" title="Open full details">' + esc(v.number) + '</a></h3><span class="mu" style="font-size:13px">' + esc(v.code) + (v.type ? ' · ' + esc(v.type) : '') + '</span></div>' + VX.badge(v.status) + '</div>';
-  var info = '<div class="vx-body"><div class="vx-t4" style="grid-template-columns:repeat(3,1fr)"><div><span>Fuel type</span><b style="font-size:14px">' + esc(v.fuel || '-') + '</b></div><div><span>Odometer</span><b style="font-size:14px">' + VX.num(v.lastKm) + ' km</b></div><div><span>Last used</span><b style="font-size:14px">' + (last ? VX.date(last.date, true) : 'Not used yet') + '</b></div>' +
-    '<div style="grid-column:span 2"><span>Assignment ' + (date === t ? 'today' : 'on ' + VX.date(date, true)) + '</span><b style="font-size:14px">' + esc(a.label) + (a.key === 'assigned' || a.key === 'road' ? ' · ' + esc(a.worker) : '') + '</b></div><div><span>Status</span><b style="font-size:14px">' + esc(VX.ST[v.status][0]) + '</b></div></div></div>';
-  var tabs = [['overview', 'Overview'], ['usage', 'Usage history'], ['maint', 'Maintenance'], ['docs', 'Documents']];
-  var body = '';
-  if (st.tab === 'overview') {
-    var week = [], mon = new Date(date + 'T00:00:00'); mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
-    for (var i = 0; i < 7; i++) {
-      var d = VX.addDays(mon.getFullYear() + '-' + String(mon.getMonth() + 1).padStart(2, '0') + '-' + String(mon.getDate()).padStart(2, '0'), i), av = VX.avail(v, d), cls = (av.key === 'assigned' || av.key === 'road' || av.key === 'returned') ? (av.key === 'road' ? 'road' : 'busy') : '';
-      week.push('<div class="' + cls + (d === date ? ' on' : '') + '" title="' + esc(av.label) + '"><span>' + ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i] + '</span><b>' + VX.date(d, true) + '</b><i></i>' + (d === t ? '<small>Today</small>' : '') + '</div>');
-    }
-    var act = VX.activity(v).slice(0, 4);
-    body = '<div class="vx-t4" style="grid-template-columns:repeat(3,1fr)"><div class="g"><b>' + VX.num(tot) + ' km</b><span>Total distance</span></div><div class="i"><b>' + mu.days + ' days</b><span>Used this month</span></div><div class="a"><b>' + svc.filter(function (s) { return s.status === 'done'; }).length + '</b><span>Service records</span></div><div class="a"><b>' + fuel.length + '</b><span>Fuel records</span></div><div class="p"><b>' + VX.planDays(v).filter(function (x) { return !x.cancelled; }).length + '</b><span>Assignments</span></div><div><b style="font-size:15px">' + esc(v.vtype || v.type || '-') + '</b><span>Vehicle type</span></div></div>' +
-      '<h4 style="margin:16px 0 8px;font-size:14px">Assignment calendar</h4><div class="vx-week">' + week.join('') + '</div>' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin:16px 0 4px"><h4 style="font-size:14px">Recent activity</h4><a class="btn btn-secondary a-btn" style="min-height:32px;font-size:12px" href="' + VX.link('vehicle.html', v.id, date) + '">View all</a></div>' +
-      (act.length ? '<ul class="vx-feed">' + act.map(function (x) { return '<li><i class="' + x.tone + '"></i><span class="d">' + VX.date(new Date(x.ts).toISOString().slice(0, 10), true) + '</span><span>' + esc(x.text) + '</span></li>'; }).join('') + '</ul>' : '<p class="mu" style="font-size:13px">No activity yet.</p>');
-  } else if (st.tab === 'usage') {
-    body = uses.length ? '<table class="vx-table"><thead><tr><th>Date</th><th>Employee</th><th class="r">Km</th></tr></thead><tbody>' + uses.slice(0, 8).map(function (x) { return '<tr><td>' + VX.date(x.date) + '</td><td>' + esc(VX.wname(x.wid)) + '</td><td class="r">' + (x.e.km || 0) + '</td></tr>'; }).join('') + '</tbody></table>' : VX.empty('No trips recorded yet', 'Trips appear after an employee closes a day with this vehicle.');
-    body += '<a class="btn btn-secondary a-btn" style="margin-top:10px" href="' + VX.link('vehicle.html', v.id, date) + '#usage">Open full usage history</a>';
-  } else if (st.tab === 'maint') {
-    var rem = VX.reminders(v).slice(0, 4);
-    body = (rem.length ? '<ul class="vx-rem">' + rem.map(function (r) { return '<li><i class="' + (r.days < 0 ? 'late' : r.days <= 30 ? 'soon' : '') + '"></i><div>' + esc(r.title) + '<small>' + esc(r.sub) + '</small></div></li>'; }).join('') + '</ul>' : VX.empty('Nothing scheduled', 'Add a service or fill in document expiry dates.')) +
-      '<a class="btn btn-secondary a-btn" style="margin-top:10px" href="' + VX.link('vehicle-maintenance.html', v.id, date) + '">Open maintenance</a>';
-  } else {
-    body = '<div class="vx-docs">' + VX.DOCS.map(function (d) { var m = v.files && v.files[d[0]]; return '<div class="vx-doc"><span class="chip ' + (m ? 'c-s' : 'c-a') + '">' + DP.icon('doc') + '</span><div><b>' + d[1] + '</b><small>' + (m ? esc(m.name) : 'Not uploaded') + '</small></div></div>'; }).join('') + '</div><a class="btn btn-secondary a-btn" style="margin-top:10px" href="' + VX.link('vehicle.html', v.id, date) + '#docs">Manage documents</a>';
-  }
-  box.innerHTML = head + info + '<div class="vx-tabs" style="border:0;border-bottom:1px solid var(--border);border-radius:0;margin:0" role="tablist">' + tabs.map(function (t) { return '<button type="button" class="vx-tab' + (st.tab === t[0] ? ' on' : '') + '" role="tab" aria-selected="' + (st.tab === t[0]) + '" data-tab="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div><div class="vx-body">' + body + '</div>' +
-    '<div class="vx-body" style="padding-top:0"><a class="btn a-btn" style="width:100%" href="' + VX.link('vehicle.html', v.id, date) + '">View full details</a></div>';
-}
-function render() {
-  var all = VX.vehicles(); tiles(all);
-  $('vBanner').innerHTML = VX.online === false ? '<div class="dp-banner"><span class="grow">The server is not reachable, so trips and last-used dates from the employees are not shown.</span></div>' : '';
-  var L = filtered();
-  if (!L.some(function (v) { return v.id === st.sel; })) st.sel = L[0] ? L[0].id : '';
-  $('vList').innerHTML = !st.ready ? '<div class="dp-skel"></div><div class="dp-skel"></div>' : L.length ? L.map(card).join('') : '<div class="vx-empty"><b>' + (all.length ? 'No vehicles match' : 'No vehicles yet') + '</b>' + (all.length ? 'Try a different search or filter.' : 'Add your first vehicle. You pick it in the Daily plan, and the employee sees it on their phone.') + '<br><a class="btn a-btn" style="margin-top:12px" href="vehicle-edit.html">' + GA.icon('plus') + ' Add vehicle</a></div>';
-  side(st.ready ? VX.vehicle(st.sel) : null);
-}
-function confirmStatus(v, next) {
-  var label = VX.ST[next][0], t = VX.today();
-  var plans = VX.planDays(v).filter(function (x) { return !x.cancelled && x.date >= t; });
-  DP.dialog({ title: 'Mark ' + v.number + ' as ' + label.toLowerCase() + '?', html: '<p style="font-size:14px">' + (next === 'active' ? 'It will appear in the Daily plan again.' : 'It will not appear in the Daily plan while it is ' + label.toLowerCase() + '.') + '</p>' +
-    (next !== 'active' && plans.length ? '<div class="dp-banner" style="margin-top:10px">Already on ' + plans.length + ' plan' + (plans.length > 1 ? 's' : '') + ' (' + esc(plans.slice(0, 3).map(function (x) { return VX.date(x.date, true) + ' ' + (x.plan.worker || ''); }).join(', ')) + '). Those plans keep this vehicle until you change it in the Daily plan.</div>' : '') +
-    '<div class="dp-foot"><button type="button" class="btn btn-secondary" data-no>Cancel</button><button type="button" class="btn' + (next === 'inactive' ? ' btn-danger' : '') + '" data-ok>Mark ' + esc(label.toLowerCase()) + '</button></div>',
-    onOpen: function (api) { api.q('[data-no]').onclick = function () { api.close(); }; api.q('[data-ok]').onclick = function () { if (VX.setStatus(v.id, next)) { api.close(); DP.toast(v.number + ' is now ' + label.toLowerCase() + '.', 'ok'); render(); } else DP.toast('Could not save the change on this computer.', 'err'); }; } });
-}
-function menu(btn, v) {
-  var it = [{ label: 'View details', icon: 'eye', run: function () { location.href = VX.link('vehicle.html', v.id, date); } }, { label: 'Edit vehicle', icon: 'edit', run: function () { location.href = 'vehicle-edit.html?id=' + encodeURIComponent(v.id); } },
-    { label: 'Fuel records', icon: 'fuel', run: function () { location.href = VX.link('vehicle-fuel.html', v.id, date); } }, { label: 'Maintenance', icon: 'wrench', run: function () { location.href = VX.link('vehicle-maintenance.html', v.id, date); } }, 'hr'];
-  if (v.status !== 'active') it.push({ label: 'Mark active', icon: 'check', run: function () { confirmStatus(v, 'active'); } });
-  if (v.status !== 'repair') it.push({ label: 'Mark in service / repair', icon: 'wrench', run: function () { confirmStatus(v, 'repair'); } });
-  if (v.status !== 'inactive') it.push({ label: 'Mark inactive', icon: 'power', danger: true, run: function () { confirmStatus(v, 'inactive'); } });
-  DP.menu(btn, it);
-}
-document.addEventListener('click', function (e) {
-  var kb = e.target.closest('[data-kebab]'); if (kb) { menu(kb, VX.vehicle(kb.dataset.kebab)); return; }
-  if (e.target.closest('a')) return;
-  var c = e.target.closest('.vx-card[data-id]'); if (c) { if (e.target.closest('.vx-kebab,.dp-menu,[data-kebab]')) return; location.href = VX.link('vehicle.html', c.dataset.id, date); return; }
-  var t = e.target.closest('[data-tab]'); if (t) { st.tab = t.dataset.tab; render(); }
-});
-document.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('vx-card')) { e.preventDefault(); location.href = VX.link('vehicle.html', e.target.dataset.id, date); } });
-$('vQ').oninput = function () { st.q = this.value.trim(); render(); };
-$('vFlt').onchange = function () { st.flt = this.value; render(); };
-$('vSort').onchange = function () { st.sort = this.value; render(); };
-$('vDate').onchange = function () { date = this.value || VX.today(); history.replaceState(null, '', date === VX.today() ? 'vehicles.html' : 'vehicles.html?d=' + date); render(); };
-function refresh() { VX.loadRecs().then(function () { VX.syncOdometers(); st.ready = true; if (!DP.dialogOpen() && !DP.menuOpen()) render(); }); }
-render(); refresh(); setInterval(function () { if (!document.hidden) refresh(); }, 6000);
-window.addEventListener('gm-sync', function () { if (!DP.dialogOpen() && !DP.menuOpen()) render(); });
-</script></body>
+      function usedLast(v) {
+        var u = VX.uses(v)[0];
+        return u ? u.date : "";
+      }
+      function filtered() {
+        var q = st.q.toLowerCase().replace(/\s+/g, ""),
+          L = VX.vehicles().filter(function (v) {
+            return (
+              (st.flt === "all" || v.status === st.flt) &&
+              (!q ||
+                (v.number + v.code + (v.type || ""))
+                  .toLowerCase()
+                  .replace(/\s+/g, "")
+                  .indexOf(q) > -1)
+            );
+          });
+        var rank = { active: 0, repair: 1, inactive: 2 };
+        L.sort(function (a, b) {
+          if (st.sort === "km") return b.lastKm - a.lastKm;
+          if (st.sort === "used")
+            return (usedLast(b) || "").localeCompare(usedLast(a) || "");
+          if (st.sort === "status")
+            return (
+              rank[a.status] - rank[b.status] ||
+              a.number.localeCompare(b.number)
+            );
+          return a.number.localeCompare(b.number);
+        });
+        return L;
+      }
+      function tiles(all) {
+        function T(cls, icon, n, label, sub) {
+          return (
+            '<div class="vx-tile"><span class="chip ' +
+            cls +
+            '">' +
+            GA.icon(icon) +
+            '</span><div><span class="lbl">' +
+            label +
+            "</span><b>" +
+            n +
+            "</b><span>" +
+            sub +
+            "</span></div></div>"
+          );
+        }
+        var c = { active: 0, repair: 0, inactive: 0 };
+        all.forEach(function (v) {
+          c[v.status]++;
+        });
+        $("vTiles").innerHTML =
+          T(
+            "c-i",
+            "truck",
+            all.length,
+            "Total vehicles",
+            "All vehicles in system",
+          ) +
+          T(
+            "c-s",
+            "check",
+            c.active,
+            "Active vehicles",
+            "Available for assignment",
+          ) +
+          T(
+            "c-a",
+            "edit",
+            c.repair,
+            "In service / repair",
+            "Under maintenance",
+          ) +
+          T("c-d", "x", c.inactive, "Inactive vehicles", "Not in service");
+      }
+      function card(v) {
+        var a = VX.avail(v, date),
+          u = VX.uses(v)[0],
+          asg =
+            a.key === "assigned" || a.key === "road" || a.key === "returned";
+        return (
+          '<div class="vx-card' +
+          (v.id === st.sel ? " on" : "") +
+          '" data-id="' +
+          esc(v.id) +
+          '" role="link" tabindex="0" title="Open vehicle details">' +
+          VX.photo(v, "md") +
+          '<div><div class="vx-card-top"><b><a class="a-vl" href="' +
+          VX.link("vehicle.html", v.id, date) +
+          '" title="Open full details">' +
+          esc(v.number) +
+          "</a></b>" +
+          VX.badge(v.status) +
+          '</div><div class="mu" style="font-size:13px">' +
+          esc(v.code) +
+          (v.type ? " · " + esc(v.type) : "") +
+          "</div>" +
+          '<div class="vx-meta"><span>' +
+          DP.icon("fuel") +
+          esc(v.fuel || "-") +
+          "</span><span>" +
+          DP.icon("gauge") +
+          VX.num(v.lastKm) +
+          " km</span><span>" +
+          GA.icon("cal") +
+          (u ? "Last used " + VX.date(u.date) : "Not used yet") +
+          "</span><span>" +
+          GA.icon("users") +
+          (asg ? esc(a.worker || a.sub) : "Not assigned") +
+          "</span></div></div>" +
+          '<span class="vx-kebab"><button type="button" class="vx-ib" data-kebab="' +
+          esc(v.id) +
+          '" aria-haspopup="menu" aria-expanded="false" aria-label="Actions for ' +
+          esc(v.number) +
+          '">' +
+          DP.icon("dots") +
+          "</button></span></div>"
+        );
+      }
+      function side(v) {
+        var box = $("vSide");
+        if (!v) {
+          box.innerHTML = VX.empty(
+            "Select a vehicle",
+            "Choose a vehicle from the list to see its details.",
+          );
+          return;
+        }
+        var a = VX.avail(v, date),
+          t = VX.today(),
+          mk = VX.monthKey(t),
+          mu = VX.monthUsage(v, mk),
+          uses = VX.uses(v),
+          tot = 0;
+        uses.forEach(function (x) {
+          tot += x.e.km || 0;
+        });
+        var last = uses[0],
+          svc = VX.services(v.id),
+          fuel = VX.fuelAll(v.id);
+        var head =
+          '<div class="vx-ph2" style="gap:14px">' +
+          VX.photo(v, "md") +
+          '<div style="flex:1;min-width:0"><h3 style="font-size:18px"><a class="a-vl" href="' +
+          VX.link("vehicle.html", v.id, date) +
+          '" title="Open full details">' +
+          esc(v.number) +
+          '</a></h3><span class="mu" style="font-size:13px">' +
+          esc(v.code) +
+          (v.type ? " · " + esc(v.type) : "") +
+          "</span></div>" +
+          VX.badge(v.status) +
+          "</div>";
+        var info =
+          '<div class="vx-body"><div class="vx-t4" style="grid-template-columns:repeat(3,1fr)"><div><span>Fuel type</span><b style="font-size:14px">' +
+          esc(v.fuel || "-") +
+          '</b></div><div><span>Odometer</span><b style="font-size:14px">' +
+          VX.num(v.lastKm) +
+          ' km</b></div><div><span>Last used</span><b style="font-size:14px">' +
+          (last ? VX.date(last.date, true) : "Not used yet") +
+          "</b></div>" +
+          '<div style="grid-column:span 2"><span>Assignment ' +
+          (date === t ? "today" : "on " + VX.date(date, true)) +
+          '</span><b style="font-size:14px">' +
+          esc(a.label) +
+          (a.key === "assigned" || a.key === "road"
+            ? " · " + esc(a.worker)
+            : "") +
+          '</b></div><div><span>Status</span><b style="font-size:14px">' +
+          esc(VX.ST[v.status][0]) +
+          "</b></div></div></div>";
+        var tabs = [
+          ["overview", "Overview"],
+          ["usage", "Usage history"],
+          ["maint", "Maintenance"],
+          ["docs", "Documents"],
+        ];
+        var body = "";
+        if (st.tab === "overview") {
+          var week = [],
+            mon = new Date(date + "T00:00:00");
+          mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
+          for (var i = 0; i < 7; i++) {
+            var d = VX.addDays(
+                mon.getFullYear() +
+                  "-" +
+                  String(mon.getMonth() + 1).padStart(2, "0") +
+                  "-" +
+                  String(mon.getDate()).padStart(2, "0"),
+                i,
+              ),
+              av = VX.avail(v, d),
+              cls =
+                av.key === "assigned" ||
+                av.key === "road" ||
+                av.key === "returned"
+                  ? av.key === "road"
+                    ? "road"
+                    : "busy"
+                  : "";
+            week.push(
+              '<div class="' +
+                cls +
+                (d === date ? " on" : "") +
+                '" title="' +
+                esc(av.label) +
+                '"><span>' +
+                ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i] +
+                "</span><b>" +
+                VX.date(d, true) +
+                "</b><i></i>" +
+                (d === t ? "<small>Today</small>" : "") +
+                "</div>",
+            );
+          }
+          var act = VX.activity(v).slice(0, 4);
+          body =
+            '<div class="vx-t4" style="grid-template-columns:repeat(3,1fr)"><div class="g"><b>' +
+            VX.num(tot) +
+            ' km</b><span>Total distance</span></div><div class="i"><b>' +
+            mu.days +
+            ' days</b><span>Used this month</span></div><div class="a"><b>' +
+            svc.filter(function (s) {
+              return s.status === "done";
+            }).length +
+            '</b><span>Service records</span></div><div class="a"><b>' +
+            fuel.length +
+            '</b><span>Fuel records</span></div><div class="p"><b>' +
+            VX.planDays(v).filter(function (x) {
+              return !x.cancelled;
+            }).length +
+            '</b><span>Assignments</span></div><div><b style="font-size:15px">' +
+            esc(v.vtype || v.type || "-") +
+            "</b><span>Vehicle type</span></div></div>" +
+            '<h4 style="margin:16px 0 8px;font-size:14px">Assignment calendar</h4><div class="vx-week">' +
+            week.join("") +
+            "</div>" +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin:16px 0 4px"><h4 style="font-size:14px">Recent activity</h4><a class="btn btn-secondary a-btn" style="min-height:32px;font-size:12px" href="' +
+            VX.link("vehicle.html", v.id, date) +
+            '">View all</a></div>' +
+            (act.length
+              ? '<ul class="vx-feed">' +
+                act
+                  .map(function (x) {
+                    return (
+                      '<li><i class="' +
+                      x.tone +
+                      '"></i><span class="d">' +
+                      VX.date(new Date(x.ts).toISOString().slice(0, 10), true) +
+                      "</span><span>" +
+                      esc(x.text) +
+                      "</span></li>"
+                    );
+                  })
+                  .join("") +
+                "</ul>"
+              : '<p class="mu" style="font-size:13px">No activity yet.</p>');
+        } else if (st.tab === "usage") {
+          body = uses.length
+            ? '<table class="vx-table"><thead><tr><th>Date</th><th>Employee</th><th class="r">Km</th></tr></thead><tbody>' +
+              uses
+                .slice(0, 8)
+                .map(function (x) {
+                  return (
+                    "<tr><td>" +
+                    VX.date(x.date) +
+                    "</td><td>" +
+                    esc(VX.wname(x.wid)) +
+                    '</td><td class="r">' +
+                    (x.e.km || 0) +
+                    "</td></tr>"
+                  );
+                })
+                .join("") +
+              "</tbody></table>"
+            : VX.empty(
+                "No trips recorded yet",
+                "Trips appear after an employee closes a day with this vehicle.",
+              );
+          body +=
+            '<a class="btn btn-secondary a-btn" style="margin-top:10px" href="' +
+            VX.link("vehicle.html", v.id, date) +
+            '#usage">Open full usage history</a>';
+        } else if (st.tab === "maint") {
+          var rem = VX.reminders(v).slice(0, 4);
+          body =
+            (rem.length
+              ? '<ul class="vx-rem">' +
+                rem
+                  .map(function (r) {
+                    return (
+                      '<li><i class="' +
+                      (r.days < 0 ? "late" : r.days <= 30 ? "soon" : "") +
+                      '"></i><div>' +
+                      esc(r.title) +
+                      "<small>" +
+                      esc(r.sub) +
+                      "</small></div></li>"
+                    );
+                  })
+                  .join("") +
+                "</ul>"
+              : VX.empty(
+                  "Nothing scheduled",
+                  "Add a service or fill in document expiry dates.",
+                )) +
+            '<a class="btn btn-secondary a-btn" style="margin-top:10px" href="' +
+            VX.link("vehicle-maintenance.html", v.id, date) +
+            '">Open maintenance</a>';
+        } else {
+          body =
+            '<div class="vx-docs">' +
+            VX.DOCS.map(function (d) {
+              var m = v.files && v.files[d[0]];
+              return (
+                '<div class="vx-doc"><span class="chip ' +
+                (m ? "c-s" : "c-a") +
+                '">' +
+                DP.icon("doc") +
+                "</span><div><b>" +
+                d[1] +
+                "</b><small>" +
+                (m ? esc(m.name) : "Not uploaded") +
+                "</small></div></div>"
+              );
+            }).join("") +
+            '</div><a class="btn btn-secondary a-btn" style="margin-top:10px" href="' +
+            VX.link("vehicle.html", v.id, date) +
+            '#docs">Manage documents</a>';
+        }
+        box.innerHTML =
+          head +
+          info +
+          '<div class="vx-tabs" style="border:0;border-bottom:1px solid var(--border);border-radius:0;margin:0" role="tablist">' +
+          tabs
+            .map(function (t) {
+              return (
+                '<button type="button" class="vx-tab' +
+                (st.tab === t[0] ? " on" : "") +
+                '" role="tab" aria-selected="' +
+                (st.tab === t[0]) +
+                '" data-tab="' +
+                t[0] +
+                '">' +
+                t[1] +
+                "</button>"
+              );
+            })
+            .join("") +
+          '</div><div class="vx-body">' +
+          body +
+          "</div>" +
+          '<div class="vx-body" style="padding-top:0"><a class="btn a-btn" style="width:100%" href="' +
+          VX.link("vehicle.html", v.id, date) +
+          '">View full details</a></div>';
+      }
+      function render() {
+        var all = VX.vehicles();
+        tiles(all);
+        $("vBanner").innerHTML =
+          VX.online === false
+            ? '<div class="dp-banner"><span class="grow">The server is not reachable, so trips and last-used dates from the employees are not shown.</span></div>'
+            : "";
+        var L = filtered();
+        if (
+          !L.some(function (v) {
+            return v.id === st.sel;
+          })
+        )
+          st.sel = L[0] ? L[0].id : "";
+        $("vList").innerHTML = !st.ready
+          ? '<div class="dp-skel"></div><div class="dp-skel"></div>'
+          : L.length
+            ? L.map(card).join("")
+            : '<div class="vx-empty"><b>' +
+              (all.length ? "No vehicles match" : "No vehicles yet") +
+              "</b>" +
+              (all.length
+                ? "Try a different search or filter."
+                : "Add your first vehicle. You pick it in the Daily plan, and the employee sees it on their phone.") +
+              '<br><a class="btn a-btn" style="margin-top:12px" href="vehicle-edit.html">' +
+              GA.icon("plus") +
+              " Add vehicle</a></div>";
+        side(st.ready ? VX.vehicle(st.sel) : null);
+      }
+      function confirmStatus(v, next) {
+        var label = VX.ST[next][0],
+          t = VX.today();
+        var plans = VX.planDays(v).filter(function (x) {
+          return !x.cancelled && x.date >= t;
+        });
+        DP.dialog({
+          title: "Mark " + v.number + " as " + label.toLowerCase() + "?",
+          html:
+            '<p style="font-size:14px">' +
+            (next === "active"
+              ? "It will appear in the Daily plan again."
+              : "It will not appear in the Daily plan while it is " +
+                label.toLowerCase() +
+                ".") +
+            "</p>" +
+            (next !== "active" && plans.length
+              ? '<div class="dp-banner" style="margin-top:10px">Already on ' +
+                plans.length +
+                " plan" +
+                (plans.length > 1 ? "s" : "") +
+                " (" +
+                esc(
+                  plans
+                    .slice(0, 3)
+                    .map(function (x) {
+                      return (
+                        VX.date(x.date, true) + " " + (x.plan.worker || "")
+                      );
+                    })
+                    .join(", "),
+                ) +
+                "). Those plans keep this vehicle until you change it in the Daily plan.</div>"
+              : "") +
+            '<div class="dp-foot"><button type="button" class="btn btn-secondary" data-no>Cancel</button><button type="button" class="btn' +
+            (next === "inactive" ? " btn-danger" : "") +
+            '" data-ok>Mark ' +
+            esc(label.toLowerCase()) +
+            "</button></div>",
+          onOpen: function (api) {
+            api.q("[data-no]").onclick = function () {
+              api.close();
+            };
+            api.q("[data-ok]").onclick = function () {
+              if (VX.setStatus(v.id, next)) {
+                api.close();
+                DP.toast(
+                  v.number + " is now " + label.toLowerCase() + ".",
+                  "ok",
+                );
+                render();
+              } else
+                DP.toast("Could not save the change on this computer.", "err");
+            };
+          },
+        });
+      }
+      function menu(btn, v) {
+        var it = [
+          {
+            label: "View details",
+            icon: "eye",
+            run: function () {
+              location.href = VX.link("vehicle.html", v.id, date);
+            },
+          },
+          {
+            label: "Edit vehicle",
+            icon: "edit",
+            run: function () {
+              location.href =
+                "vehicle-edit.html?id=" + encodeURIComponent(v.id);
+            },
+          },
+          {
+            label: "Fuel records",
+            icon: "fuel",
+            run: function () {
+              location.href = VX.link("vehicle-fuel.html", v.id, date);
+            },
+          },
+          {
+            label: "Maintenance",
+            icon: "wrench",
+            run: function () {
+              location.href = VX.link("vehicle-maintenance.html", v.id, date);
+            },
+          },
+          "hr",
+        ];
+        if (v.status !== "active")
+          it.push({
+            label: "Mark active",
+            icon: "check",
+            run: function () {
+              confirmStatus(v, "active");
+            },
+          });
+        if (v.status !== "repair")
+          it.push({
+            label: "Mark in service / repair",
+            icon: "wrench",
+            run: function () {
+              confirmStatus(v, "repair");
+            },
+          });
+        if (v.status !== "inactive")
+          it.push({
+            label: "Mark inactive",
+            icon: "power",
+            danger: true,
+            run: function () {
+              confirmStatus(v, "inactive");
+            },
+          });
+        DP.menu(btn, it);
+      }
+      document.addEventListener("click", function (e) {
+        var kb = e.target.closest("[data-kebab]");
+        if (kb) {
+          menu(kb, VX.vehicle(kb.dataset.kebab));
+          return;
+        }
+        if (e.target.closest("a")) return;
+        var c = e.target.closest(".vx-card[data-id]");
+        if (c) {
+          if (e.target.closest(".vx-kebab,.dp-menu,[data-kebab]")) return;
+          location.href = VX.link("vehicle.html", c.dataset.id, date);
+          return;
+        }
+        var t = e.target.closest("[data-tab]");
+        if (t) {
+          st.tab = t.dataset.tab;
+          render();
+        }
+      });
+      document.addEventListener("keydown", function (e) {
+        if (
+          (e.key === "Enter" || e.key === " ") &&
+          e.target.classList &&
+          e.target.classList.contains("vx-card")
+        ) {
+          e.preventDefault();
+          location.href = VX.link("vehicle.html", e.target.dataset.id, date);
+        }
+      });
+      $("vQ").oninput = function () {
+        st.q = this.value.trim();
+        render();
+      };
+      $("vFlt").onchange = function () {
+        st.flt = this.value;
+        render();
+      };
+      $("vSort").onchange = function () {
+        st.sort = this.value;
+        render();
+      };
+      $("vDate").onchange = function () {
+        date = this.value || VX.today();
+        history.replaceState(
+          null,
+          "",
+          date === VX.today() ? "vehicles.html" : "vehicles.html?d=" + date,
+        );
+        render();
+      };
+      function refresh() {
+        VX.loadRecs().then(function () {
+          VX.syncOdometers();
+          st.ready = true;
+          if (!DP.dialogOpen() && !DP.menuOpen()) render();
+        });
+      }
+      render();
+      refresh();
+      setInterval(function () {
+        if (!document.hidden) refresh();
+      }, 6000);
+      window.addEventListener("gm-sync", function () {
+        if (!DP.dialogOpen() && !DP.menuOpen()) render();
+      });
+    </script>
+  </body>
 </html>

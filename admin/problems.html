@@ -1,52 +1,243 @@
-﻿<!DOCTYPE html>
+﻿<!doctype html>
 <html lang="en">
-<head><script src="../shared/sync.js"></script>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>General Traders - Admin</title>
-<link rel="stylesheet" href="../shared/theme.css">
-<link rel="stylesheet" href="../shared/admin.css">
-<script src="../shared/theme.js"></script>  <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-32.png"><link rel="apple-touch-icon" href="/assets/icon-180.png">
-</head>
-<body>
-<script src="../shared/mock-data.js"></script>
-<script src="../shared/admin.js"></script>
-<script>
-GA.guard();
-var $ = function (i) { return document.getElementById(i); }, esc = GA.esc, R = GA.ops.rupee, NS = "gm_crm_data_v5__", recs = {}, online = null;
-// Reads every employee record from the server (not just the one chosen on Attendance)
-function load(cb) {
-  fetch("/api/state?since=0", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (r) {
-    recs = {}; for (var k in r.items) if (k.indexOf(NS) === 0 && r.items[k].v !== null) { try { recs[k.slice(NS.length)] = JSON.parse(r.items[k].v); } catch (e) {} }
-    online = true; cb();
-  }).catch(function () { online = false; cb(); });
-}
-function nameOf(id) { var w = GA.workers().filter(function (x) { return x.id === id; })[0]; return w ? w.name : (recs[id] && recs[id].worker && recs[id].worker.name) || id; }
-function ids() { var a = GA.workers().map(function (w) { return w.id; }); Object.keys(recs).forEach(function (i) { if (a.indexOf(i) < 0 && i !== "GT-W104") a.push(i); }); return a; }
-function logOf(id, d) { var l = recs[id] && recs[id].attendanceLog || {}; return (l[d.slice(0, 7)] || {})[+d.slice(8)] || null; }
-// Today's shops for one employee; empty unless the record belongs to today's plan
-function todayShops(id) { var r = recs[id], t = GA.today(); if (!r || !r.appliedPlan || r.appliedPlan.indexOf(t + ":") !== 0 || r.crewRole === "helper") return []; return (r.shops || []).map(function (s) { return Object.assign({ wid: id, worker: nameOf(id) }, s); }); }
-function todayReturns(id) { var r = recs[id], t = GA.today(); if (!r || !r.appliedPlan || r.appliedPlan.indexOf(t + ":") !== 0) return []; return (r.returns || []).filter(function (x) { return !x.shared; }).map(function (x) { return Object.assign({ worker: nameOf(id) }, x); }); }
-function banner() { return online === false ? "<div class=\"a-warn\" style=\"margin:0 0 12px\">Server not reachable. Nothing is shown until it is back.</div>" : ""; }
-var who = "all", pg = GA.mount("problems.html", "Problems");
-pg.innerHTML = "<div class=\"a-bar\"><label class=\"mu\" for=\"wk\">Employee</label><div class=\"field a-f\" style=\"width:210px\"><select id=\"wk\"></select></div></div><div id=\"out\"></div>";
-function fillWorkers() { var cur = $("wk").value || who; $("wk").innerHTML = "<option value=\"all\">All employees</option>" + ids().map(function (i) { return "<option value=\"" + esc(i) + "\">" + esc(nameOf(i)) + " (" + esc(GA.empCode(i)) + ")</option>"; }).join(""); $("wk").value = cur; who = $("wk").value || "all"; }
-function draw() {
-  var L = who === "all" ? ids() : [who], shops = [], rets = [];
-  L.forEach(function (i) { shops = shops.concat(todayShops(i)); rets = rets.concat(todayReturns(i)); });
-  var late = shops.filter(function (s) { return s.status === "retry" || s.status === "cancelled"; }), done = shops.filter(function (s) { return s.status === "delivered"; }).length, pend = shops.filter(function (s) { return s.status === "pending"; }).length;
-  var ded = rets.reduce(function (a, r) { return a + (Number(r.deductionAmount) || 0); }, 0);
-  $("out").innerHTML = banner() + "<p class=\"mu\" style=\"margin-bottom:14px\">Today, " + (who === "all" ? "all employees" : "<b>" + esc(nameOf(who)) + "</b>") + "</p>" +
-    "<div class=\"a-stats\">" + GA.tile("s-s", "store", done + " of " + shops.length, "Delivered") + GA.tile("s-a", "alert", late.length, "Not delivered") + GA.tile("s-i", "map", pend, "Still pending") + GA.tile("s-p", "coin", R(ded), "Return deductions") + "</div>" +
-    "<div class=\"card\"><div class=\"card-title\">Not delivered</div><div class=\"a-scroll\"><table class=\"a-table\"><thead><tr><th>Employee</th><th>Shop</th><th>Bill</th><th>Boxes</th><th>Result</th><th>Reason</th><th>Time</th></tr></thead><tbody>" +
-    (late.length ? late.map(function (s) { var c = s.status === "cancelled"; return "<tr><td>" + esc(s.worker) + "</td><td><b>" + esc(s.name) + "</b></td><td><span class=\"badge b-info\">" + esc(s.billNo) + "</span></td><td>" + (c ? (s.boxesToReturn || s.boxes) + " to return" : esc(s.boxes)) + "</td><td><span class=\"badge " + (c ? "b-danger" : "b-accent") + "\">" + (c ? "Cancelled today" : "Retry later") + "</span></td><td>" + esc(s.problemReason || "-") + (s.problemNotes ? "<div class=\"mu\">" + esc(s.problemNotes) + "</div>" : "") + "</td><td>" + esc(s.cancelledAt || s.reportedAt || "-") + "</td></tr>"; }).join("") : "<tr><td colspan=\"7\"><div class=\"a-empty\"><b>No problems so far</b>Shops an employee could not deliver appear here with the reason.</div></td></tr>") + "</tbody></table></div></div>" +
-    "<div class=\"card\"><div class=\"card-title\">Returned items</div><div class=\"a-scroll\"><table class=\"a-table\"><thead><tr><th>Employee</th><th>Shop</th><th>Item</th><th>Qty</th><th>Deduction</th><th>Reason</th><th>Time</th></tr></thead><tbody>" +
-    (rets.length ? rets.map(function (r) { return "<tr><td>" + esc(r.worker) + "</td><td><b>" + esc(r.shopName) + "</b><div class=\"mu\">" + esc(r.billNo) + "</div></td><td>" + esc(r.productName) + "</td><td>" + esc(r.quantity) + "</td><td><b>" + R(r.deductionAmount) + "</b></td><td>" + esc(r.reason || "-") + "</td><td>" + esc(r.time || "-") + "</td></tr>"; }).join("") : "<tr><td colspan=\"7\"><div class=\"a-empty\"><b>No returns</b>Items employees bring back appear here.</div></td></tr>") + "</tbody></table></div></div>";
-}
-$("wk").onchange = function () { who = this.value; draw(); };
-function refresh() { load(function () { fillWorkers(); draw(); }); }
-fillWorkers(); draw(); refresh(); setInterval(refresh, 5000);
-</script></body>
+  <head>
+    <script src="../shared/sync.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>General Traders - Admin</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="../shared/admin.css" />
+    <script src="../shared/theme.js"></script>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/icon-32.png"
+    />
+    <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+  </head>
+  <body>
+    <script src="../shared/mock-data.js"></script>
+    <script src="../shared/admin.js"></script>
+    <script>
+      GA.guard();
+      var $ = function (i) {
+          return document.getElementById(i);
+        },
+        esc = GA.esc,
+        R = GA.ops.rupee,
+        NS = "gm_crm_data_v5__",
+        recs = {},
+        online = null;
+      // Reads every employee record from the server (not just the one chosen on Attendance)
+      function load(cb) {
+        fetch("/api/state?since=0", { cache: "no-store" })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (r) {
+            recs = {};
+            for (var k in r.items)
+              if (k.indexOf(NS) === 0 && r.items[k].v !== null) {
+                try {
+                  recs[k.slice(NS.length)] = JSON.parse(r.items[k].v);
+                } catch (e) {}
+              }
+            online = true;
+            cb();
+          })
+          .catch(function () {
+            online = false;
+            cb();
+          });
+      }
+      function nameOf(id) {
+        var w = GA.workers().filter(function (x) {
+          return x.id === id;
+        })[0];
+        return w
+          ? w.name
+          : (recs[id] && recs[id].worker && recs[id].worker.name) || id;
+      }
+      function ids() {
+        var a = GA.workers().map(function (w) {
+          return w.id;
+        });
+        Object.keys(recs).forEach(function (i) {
+          if (a.indexOf(i) < 0 && i !== "GT-W104") a.push(i);
+        });
+        return a;
+      }
+      function logOf(id, d) {
+        var l = (recs[id] && recs[id].attendanceLog) || {};
+        return (l[d.slice(0, 7)] || {})[+d.slice(8)] || null;
+      }
+      // Today's shops for one employee; empty unless the record belongs to today's plan
+      function todayShops(id) {
+        var r = recs[id],
+          t = GA.today();
+        if (
+          !r ||
+          !r.appliedPlan ||
+          r.appliedPlan.indexOf(t + ":") !== 0 ||
+          r.crewRole === "helper"
+        )
+          return [];
+        return (r.shops || []).map(function (s) {
+          return Object.assign({ wid: id, worker: nameOf(id) }, s);
+        });
+      }
+      function todayReturns(id) {
+        var r = recs[id],
+          t = GA.today();
+        if (!r || !r.appliedPlan || r.appliedPlan.indexOf(t + ":") !== 0)
+          return [];
+        return (r.returns || [])
+          .filter(function (x) {
+            return !x.shared;
+          })
+          .map(function (x) {
+            return Object.assign({ worker: nameOf(id) }, x);
+          });
+      }
+      function banner() {
+        return online === false
+          ? '<div class="a-warn" style="margin:0 0 12px">Server not reachable. Nothing is shown until it is back.</div>'
+          : "";
+      }
+      var who = "all",
+        pg = GA.mount("problems.html", "Problems");
+      pg.innerHTML =
+        '<div class="a-bar"><label class="mu" for="wk">Employee</label><div class="field a-f" style="width:210px"><select id="wk"></select></div></div><div id="out"></div>';
+      function fillWorkers() {
+        var cur = $("wk").value || who;
+        $("wk").innerHTML =
+          '<option value="all">All employees</option>' +
+          ids()
+            .map(function (i) {
+              return (
+                '<option value="' +
+                esc(i) +
+                '">' +
+                esc(nameOf(i)) +
+                " (" +
+                esc(GA.empCode(i)) +
+                ")</option>"
+              );
+            })
+            .join("");
+        $("wk").value = cur;
+        who = $("wk").value || "all";
+      }
+      function draw() {
+        var L = who === "all" ? ids() : [who],
+          shops = [],
+          rets = [];
+        L.forEach(function (i) {
+          shops = shops.concat(todayShops(i));
+          rets = rets.concat(todayReturns(i));
+        });
+        var late = shops.filter(function (s) {
+            return s.status === "retry" || s.status === "cancelled";
+          }),
+          done = shops.filter(function (s) {
+            return s.status === "delivered";
+          }).length,
+          pend = shops.filter(function (s) {
+            return s.status === "pending";
+          }).length;
+        var ded = rets.reduce(function (a, r) {
+          return a + (Number(r.deductionAmount) || 0);
+        }, 0);
+        $("out").innerHTML =
+          banner() +
+          '<p class="mu" style="margin-bottom:14px">Today, ' +
+          (who === "all"
+            ? "all employees"
+            : "<b>" + esc(nameOf(who)) + "</b>") +
+          "</p>" +
+          '<div class="a-stats">' +
+          GA.tile("s-s", "store", done + " of " + shops.length, "Delivered") +
+          GA.tile("s-a", "alert", late.length, "Not delivered") +
+          GA.tile("s-i", "map", pend, "Still pending") +
+          GA.tile("s-p", "coin", R(ded), "Return deductions") +
+          "</div>" +
+          '<div class="card"><div class="card-title">Not delivered</div><div class="a-scroll"><table class="a-table"><thead><tr><th>Employee</th><th>Shop</th><th>Bill</th><th>Boxes</th><th>Result</th><th>Reason</th><th>Time</th></tr></thead><tbody>' +
+          (late.length
+            ? late
+                .map(function (s) {
+                  var c = s.status === "cancelled";
+                  return (
+                    "<tr><td>" +
+                    esc(s.worker) +
+                    "</td><td><b>" +
+                    esc(s.name) +
+                    '</b></td><td><span class="badge b-info">' +
+                    esc(s.billNo) +
+                    "</span></td><td>" +
+                    (c
+                      ? (s.boxesToReturn || s.boxes) + " to return"
+                      : esc(s.boxes)) +
+                    '</td><td><span class="badge ' +
+                    (c ? "b-danger" : "b-accent") +
+                    '">' +
+                    (c ? "Cancelled today" : "Retry later") +
+                    "</span></td><td>" +
+                    esc(s.problemReason || "-") +
+                    (s.problemNotes
+                      ? '<div class="mu">' + esc(s.problemNotes) + "</div>"
+                      : "") +
+                    "</td><td>" +
+                    esc(s.cancelledAt || s.reportedAt || "-") +
+                    "</td></tr>"
+                  );
+                })
+                .join("")
+            : '<tr><td colspan="7"><div class="a-empty"><b>No problems so far</b>Shops an employee could not deliver appear here with the reason.</div></td></tr>') +
+          "</tbody></table></div></div>" +
+          '<div class="card"><div class="card-title">Returned items</div><div class="a-scroll"><table class="a-table"><thead><tr><th>Employee</th><th>Shop</th><th>Item</th><th>Qty</th><th>Deduction</th><th>Reason</th><th>Time</th></tr></thead><tbody>' +
+          (rets.length
+            ? rets
+                .map(function (r) {
+                  return (
+                    "<tr><td>" +
+                    esc(r.worker) +
+                    "</td><td><b>" +
+                    esc(r.shopName) +
+                    '</b><div class="mu">' +
+                    esc(r.billNo) +
+                    "</div></td><td>" +
+                    esc(r.productName) +
+                    "</td><td>" +
+                    esc(r.quantity) +
+                    "</td><td><b>" +
+                    R(r.deductionAmount) +
+                    "</b></td><td>" +
+                    esc(r.reason || "-") +
+                    "</td><td>" +
+                    esc(r.time || "-") +
+                    "</td></tr>"
+                  );
+                })
+                .join("")
+            : '<tr><td colspan="7"><div class="a-empty"><b>No returns</b>Items employees bring back appear here.</div></td></tr>') +
+          "</tbody></table></div></div>";
+      }
+      $("wk").onchange = function () {
+        who = this.value;
+        draw();
+      };
+      function refresh() {
+        load(function () {
+          fillWorkers();
+          draw();
+        });
+      }
+      fillWorkers();
+      draw();
+      refresh();
+      setInterval(refresh, 5000);
+    </script>
+  </body>
 </html>
-
-

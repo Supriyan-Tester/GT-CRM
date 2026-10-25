@@ -647,6 +647,35 @@
           transition: none !important;
         }
       }
+    
+      .legal-note {
+        text-align: center;
+        margin: 14px 0 0;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .legal-links {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0 16px;
+        margin: 2px 0 0;
+        font-size: 13px;
+      }
+      .legal-links a {
+        color: var(--primary);
+        font-weight: 600;
+        text-decoration: none;
+        padding: 8px 2px;
+      }
+      .legal-links a:hover {
+        text-decoration: underline;
+      }
+      .legal-links a:focus-visible {
+        outline: 3px solid var(--ring);
+        outline-offset: 2px;
+        border-radius: 4px;
+      }
     </style>
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link
@@ -814,24 +843,10 @@
             </svg>
             <span
               ><b>Need help?</b>Contact Fleet Admin at
-              <strong data-admin-phone></strong
+              <strong >General Traders</strong
             ></span>
           </div>
-          <p
-            style="
-              text-align: center;
-              margin: 14px 0 0;
-              font-size: 13px;
-              color: var(--muted);
-            "
-          >
-            By signing in you accept the
-            <a
-              href="privacy.html"
-              style="color: var(--primary); font-weight: 600"
-              >Privacy notice</a
-            >
-          </p>
+          <p class="legal-note">By signing in you agree to our policies.</p>
         </div>
       </section>
     </main>
@@ -961,9 +976,8 @@
         msg.className = "msg";
         msg.style.color = "var(--primary)";
         msg.textContent =
-          "Please WhatsApp Fleet Admin at " +
-          GM.getWorker().adminPhone +
-          " to reset your password.";
+          "Please WhatsApp Fleet Admin at "+ 
+          "General Traders " + "to reset your password.";
       });
 
       function post(url, obj, cb) {

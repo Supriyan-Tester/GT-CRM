@@ -1,286 +1,1064 @@
-﻿<!DOCTYPE html>
+﻿<!doctype html>
 <html lang="en">
-<head><script src="../shared/sync.js"></script>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>General Traders - Today's Route</title>
-<link rel="stylesheet" href="../shared/theme.css">
-<link rel="stylesheet" href="../shared/vendor/leaflet/leaflet.css">
-<style>
-  .app{ background:none; padding:14px 16px 170px; gap:14px; }
-  body{ background:var(--bg); }
-  html[data-theme="dark"] body{ background:#0B1316; }
-  .app > *{ flex-shrink:0; }
-  .rt-head{ display:flex; align-items:center; gap:10px; padding-top:2px; }
-  .rt-head .t{ flex:1; min-width:0; }
-  .rt-head h1{ font:800 20px/1.2 'Plus Jakarta Sans','Inter',sans-serif; }
-  .rt-head p{ font-size:12.5px; color:var(--muted); margin-top:2px; }
-  .rt-head .gt-switch{ box-shadow:none; }
-  .rt-head .gt-switch button{ width:32px; height:30px; }
-  .rt-refresh{ display:inline-flex; align-items:center; gap:6px; height:38px; padding:0 13px; border-radius:12px; border:1px solid var(--border); background:var(--card); color:var(--primary); font:700 12.5px Inter,sans-serif; cursor:pointer; }
-  .rt-refresh svg{ width:15px; height:15px; }
-  .rt-refresh.spin svg{ animation:rtspin .6s linear; }
-  @keyframes rtspin{ to{ transform:rotate(360deg); } }
-
-  .rt-grid{ display:flex; flex-direction:column; gap:14px; }
-  .a-sum{ order:1; } .a-chips{ order:2; } .a-list{ order:3; } .a-map{ order:4; display:none; } .a-open{ order:5; }
-
-  .rt-sum{ border-radius:22px; padding:15px; background:linear-gradient(135deg,var(--t-primary),var(--card) 85%); border:1px solid var(--border); box-shadow:var(--shadow); }
-  .rt-sum .top{ display:flex; gap:12px; align-items:center; }
-  .rt-sum .ch2{ width:44px; height:44px; border-radius:13px; background:var(--primary); color:var(--on-primary); display:grid; place-items:center; flex-shrink:0; }
-  .rt-sum .nm{ flex:1; min-width:0; }
-  .rt-sum .nm b{ font:800 17px 'Plus Jakarta Sans','Inter',sans-serif; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .rt-sum .nm small{ font-size:12.5px; color:var(--muted); }
-  .rt-viewmap{ display:inline-flex; gap:6px; align-items:center; height:36px; padding:0 12px; border-radius:11px; border:1.5px solid var(--primary); color:var(--primary); font:700 12.5px Inter,sans-serif; background:var(--card); text-decoration:none; }
-  .rt-viewmap svg{ width:15px; height:15px; }
-  .rt-bar{ height:9px; border-radius:9px; background:var(--border); margin:13px 0 7px; overflow:hidden; }
-  .rt-bar i{ display:block; height:100%; width:0; border-radius:9px; background:linear-gradient(90deg,var(--primary),var(--success)); transition:width .3s; }
-  .rt-bt{ display:flex; justify-content:space-between; font-size:12px; color:var(--muted); }
-  .rt-bt b{ color:var(--text); font-weight:700; }
-
-  .rt-chips{ display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; }
-  .rt-chips::-webkit-scrollbar{ display:none; }
-  .chp{ height:34px; padding:0 11px; border-radius:99px; border:1px solid var(--border); background:var(--card); font:600 12.5px Inter,sans-serif; color:var(--muted); display:flex; align-items:center; gap:6px; white-space:nowrap; cursor:pointer; flex-shrink:0; }
-  .chp em{ font-style:normal; font:700 11px Inter,sans-serif; background:var(--bg); padding:1px 7px; border-radius:99px; }
-  .chp.on{ background:var(--primary); color:var(--on-primary); border-color:var(--primary); }
-  .chp.on em{ background:rgba(255,255,255,.22); color:inherit; }
-
-  .tl{ display:flex; flex-direction:column; }
-  .st2{ display:flex; gap:12px; position:relative; padding-bottom:10px; }
-  .st2:before{ content:""; position:absolute; left:15px; top:32px; bottom:-4px; width:2px; background:var(--border); }
-  .st2:last-child:before{ display:none; }
-  .st2.dn:before{ background:var(--success); opacity:.5; }
-  .nd{ width:32px; height:32px; border-radius:50%; display:grid; place-items:center; font:800 13px 'Plus Jakarta Sans','Inter',sans-serif; flex-shrink:0; background:var(--card); border:2px solid var(--border); color:var(--muted); z-index:1; }
-  .nd svg{ width:16px; height:16px; stroke-width:3; }
-  .dn .nd{ background:var(--success); border-color:var(--success); color:#fff; }
-  .nx .nd{ background:var(--primary); border-color:var(--primary); color:var(--on-primary); box-shadow:0 0 0 5px var(--t-primary); }
-  .rt .nd{ background:#F59E0B; border-color:#F59E0B; color:#fff; }
-  .cn .nd{ background:var(--danger); border-color:var(--danger); color:#fff; }
-  .rc{ flex:1; min-width:0; background:var(--card); border:1px solid var(--border); border-radius:18px; padding:11px 12px; box-shadow:var(--shadow); cursor:pointer; }
-  .rc:active{ background:var(--t-primary); }
-  .nx .rc{ border-color:var(--primary); background:linear-gradient(135deg,var(--t-primary),var(--card) 90%); }
-  .rc .r1{ display:flex; align-items:center; gap:8px; }
-  .rc b{ font:700 14px Inter,sans-serif; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .rc small{ display:block; font-size:12px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .bd2{ font:700 10.5px Inter,sans-serif; padding:3px 9px; border-radius:99px; white-space:nowrap; }
-  .bd2.p{ background:var(--bg); color:var(--muted); border:1px solid var(--border); }
-  .bd2.d{ background:var(--t-success); color:var(--success); }
-  .bd2.a{ background:var(--t-accent); color:var(--accent); }
-  .bd2.c{ background:var(--t-danger); color:var(--danger); }
-  .bd2.n{ background:var(--primary); color:var(--on-primary); }
-  .rc .act{ display:flex; gap:8px; margin-top:9px; }
-  .rc .act a{ flex:1; height:36px; border-radius:11px; display:flex; align-items:center; justify-content:center; gap:6px; font:700 12px Inter,sans-serif; text-decoration:none; }
-  .rc .act svg{ width:14px; height:14px; }
-  .rc .act .a1{ background:var(--primary); color:var(--on-primary); }
-  .rc .act .a2{ border:1.5px solid var(--border); color:var(--text); background:var(--card); }
-  .rt-pin{ width:30px; height:30px; border-radius:10px; background:var(--t-primary); color:var(--primary); display:grid; place-items:center; flex-shrink:0; }
-  .rt-pin svg{ width:15px; height:15px; }
-
-  .rt-empty{ display:flex; flex-direction:column; align-items:center; text-align:center; padding:40px 24px; gap:10px; color:var(--muted); font-size:13.5px; line-height:1.5; }
-  .rt-empty .ic{ width:84px; height:84px; border-radius:26px; background:var(--t-primary); color:var(--primary); display:grid; place-items:center; }
-  .rt-empty .ic svg{ width:40px; height:40px; }
-  .rt-empty b{ font:800 18px 'Plus Jakarta Sans','Inter',sans-serif; color:var(--text); }
-
-  .rt-open{ position:fixed; left:16px; right:16px; bottom:calc(76px + env(safe-area-inset-bottom,0)); max-width:448px; margin:0 auto; height:48px; border-radius:15px; background:var(--primary); color:var(--on-primary); display:flex; align-items:center; justify-content:center; gap:9px; font:700 14.5px Inter,sans-serif; text-decoration:none; box-shadow:0 8px 20px rgba(15,118,110,.32); z-index:40; }
-  .rt-open svg{ width:19px; height:19px; }
-  .rt-mapcard{ background:var(--card); border:1px solid var(--border); border-radius:22px; padding:15px; box-shadow:var(--shadow); }
-  .rt-mapcard .hd{ display:flex; justify-content:space-between; align-items:center; margin-bottom:11px; }
-  .rt-mapcard .hd b{ font:800 16px 'Plus Jakarta Sans','Inter',sans-serif; }
-  #rtMap{ height:260px; border-radius:16px; overflow:hidden; background:var(--t-primary); position:relative; z-index:0; }
-  .mpn{ width:26px; height:26px; border-radius:50%; display:grid; place-items:center; font:800 11px 'Plus Jakarta Sans','Inter',sans-serif; color:#fff; border:2.5px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.3); }
-
-  .nav a.brand-side{ display:none; }
-  @media (min-width:900px){
-    .app{ max-width:1120px; padding:28px 32px 48px; }
-    .rt-head h1{ font-size:26px; }
-    .rt-grid{ display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); grid-template-areas:"chips sum" "list sum" "list map" "list open"; grid-template-rows:auto auto auto 1fr; gap:16px; align-items:start; }
-    .a-sum{ grid-area:sum; } .a-chips{ grid-area:chips; } .a-list{ grid-area:list; } .a-map{ grid-area:map; } .a-open{ grid-area:open; }
-    .a-map.on{ display:block; }
-    .rt-open{ position:static; max-width:none; margin:0; box-shadow:none; }
-    .nav a.brand-side{ display:flex; flex-direction:row; align-items:center; gap:12px; min-height:0; padding:4px 8px 20px; margin-bottom:12px; border-radius:0; border-bottom:1px solid var(--border); color:var(--text); background:none; }
-    .nav a.brand-side:hover{ background:none; }
-    .brand-name{ font:800 16px 'Plus Jakarta Sans','Inter',sans-serif; display:block; }
-    .brand-sub{ display:block; font-size:11.5px; color:var(--muted); font-weight:500; }
-    .brand-logo{ width:44px; height:44px; border-radius:12px; background:#fff; border:1px solid var(--border); display:grid; place-items:center; overflow:hidden; flex-shrink:0; }
-    .brand-logo img{ width:40px; display:block; }
-    .nav a{ font-weight:600; }
-  }
-</style>
-<style>
-
-/* GM-WORKER-FULL-WIDTH-v1 */
-.app {
-    width: 100% !important;
-    max-width: none !important;
-    box-sizing: border-box !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-}
-</style>
-  <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-32.png"><link rel="apple-touch-icon" href="/assets/icon-180.png">
-</head>
-<body>
-<main class="app">
-  <div id="leaveStrip"></div>
-  <header class="rt-head">
-    <div class="t">
-      <h1>Today's Route</h1>
-      <p id="rtDate">&nbsp;</p>
-    </div>
-    <button class="rt-refresh" id="rtRefresh" type="button"><svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg> Refresh</button>
-    <button class="icon-btn" id="themeToggle" aria-label="Switch light or dark theme"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
-  </header>
-
-  <div class="rt-grid">
-    <section class="rt-sum a-sum" id="rtCard">
-      <div class="top">
-        <span class="ch2"><svg class="icon" viewBox="0 0 24 24"><path d="M9 20l-6-2V4l6 2 6-2 6 2v14l-6-2-6 2zM9 6v14M15 4v14"/></svg></span>
-        <div class="nm"><b id="rtName">Route</b><small id="rtSub">&nbsp;</small></div>
-        <a class="rt-viewmap" id="rtViewMap" href="#" target="_blank" rel="noopener"><svg class="icon" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>Map</a>
-      </div>
-      <div class="rt-bar"><i id="rtFill"></i></div>
-      <div class="rt-bt"><span id="rtBarText">&nbsp;</span><span><b id="rtPct">0%</b></span></div>
-    </section>
-    <div class="rt-chips a-chips" id="rtChips"></div>
-    <section class="tl a-list" id="rtList"></section>
-    <section class="rt-mapcard a-map" id="rtMapCard">
-      <div class="hd"><b>Route map</b></div>
-      <div id="rtMap"></div>
-    </section>
-    <a class="rt-open a-open" id="rtOpen" href="#" target="_blank" rel="noopener"><svg class="icon" viewBox="0 0 24 24"><path d="M9 20l-6-2V4l6 2 6-2 6 2v14l-6-2-6 2zM9 6v14M15 4v14"/></svg> Open Route in Maps</a>
-  </div>
-</main>
-
-<nav class="nav" aria-label="Main Navigation">
-  <a href="home.html" class="brand-side" aria-label="General Traders">
-    <span class="brand-logo"><img src="../assets/logo.png" alt=""></span>
-    <span><b class="brand-name">General Traders</b><small class="brand-sub">Distribution &amp; Delivery</small></span>
-  </a>
-  <div>
-    <a href="home.html"><svg class="icon" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Home</a>
-    <a href="route.html" aria-current="page"><svg class="icon" viewBox="0 0 24 24"><path d="M9 20l-6-2V4l6 2 6-2 6 2v14l-6-2-6 2zM9 6v14M15 4v14"/></svg>Route</a>
-    <a href="advances.html"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14.8 9A2 2 0 0 0 13 8h-2a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4h-2a2 2 0 0 1-1.8-1M12 6v12"/></svg>Account</a>
-    <a href="attendance.html"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Attendance</a>
-    <a href="profile.html"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</a>
-  </div>
-</nav>
-<script src="../shared/theme.js"></script>
-<script src="../shared/mock-data.js"></script>
-<script src="../shared/visit.js"></script>
-<script src="../shared/vendor/leaflet/leaflet.js"></script>
-<script>
-  if (!localStorage.getItem('gm_logged_in')) { window.location.href = 'login.html'; }
-  GMVisit.strip(document.getElementById('leaveStrip'));
-  GM.applyTodayPlan();
-  window.addEventListener('gm-sync', function () { if (GM.applyTodayPlan()) location.reload(); });
-  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-  var $ = function (id) { return document.getElementById(id); };
-  var IC = {
-    chk: '<svg class="icon" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>',
-    dir: '<svg class="icon" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>',
-    pin: '<svg class="icon" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>',
-    map: '<svg class="icon" viewBox="0 0 24 24"><path d="M9 20l-6-2V4l6 2 6-2 6 2v14l-6-2-6 2zM9 6v14M15 4v14"/></svg>',
-    refresh: '<svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg>'
-  };
-  var filter = 'all';
-  var BADGE = { pending: ['p', 'Pending'], delivered: ['d', 'Delivered'], retry: ['a', 'Retry later'], cancelled: ['c', 'Cancelled'] };
-  // Rough straight-line distance between consecutive pinned stops
-  function km(a, b) {
-    var R = 6371, r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLng = (b.lng - a.lng) * r;
-    var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    return 2 * R * Math.asin(Math.sqrt(h));
-  }
-  // One Google Maps link through all stops still to visit (maps allows 9 stops in between)
-  function routeUrl(list) {
-    function pt(s) { var p = GM.shopPin(s); return p ? p.lat + ',' + p.lng : encodeURIComponent((s.name || '') + ' ' + (s.address || '')); }
-    var todo = list.filter(function (s) { return s.status === 'pending' || s.status === 'retry'; });
-    if (!todo.length) todo = list;
-    if (!todo.length) return '#';
-    todo = todo.slice(0, 10);
-    var url = 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' + pt(todo[todo.length - 1]);
-    if (todo.length > 1) url += '&waypoints=' + todo.slice(0, -1).map(pt).join('%7C');
-    return url;
-  }
-  var map = null, mapLayer = null;
-  function drawMap(shops, next) {
-    var card = $('rtMapCard'), pts = [];
-    shops.forEach(function (s, i) { var p = GM.shopPin(s); if (p) pts.push({ p: p, s: s, i: i }); });
-    if (!pts.length || !window.L || !window.matchMedia('(min-width:900px)').matches) { card.classList.remove('on'); return; }
-    card.classList.add('on');
-    try {
-      if (!map) {
-        map = L.map('rtMap', { zoomControl: false, attributionControl: false });
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+  <head>
+    <script src="../shared/sync.js"></script>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>General Traders - Today's Route</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="../shared/vendor/leaflet/leaflet.css" />
+    <style>
+      .app {
+        background: none;
+        padding: 14px 16px 170px;
+        gap: 14px;
       }
-      if (mapLayer) mapLayer.remove();
-      mapLayer = L.layerGroup().addTo(map);
-      var COL = { delivered: '#16A34A', retry: '#F59E0B', cancelled: '#DC2626', pending: '#94A3B8' };
-      L.polyline(pts.map(function (x) { return [x.p.lat, x.p.lng]; }), { color: '#0F766E', weight: 4, dashArray: '8 6', opacity: .85 }).addTo(mapLayer);
-      pts.forEach(function (x) {
-        var isNext = next && next.id === x.s.id, bg = isNext ? '#0F766E' : (COL[x.s.status] || COL.pending);
-        var txt = x.s.status === 'delivered' ? '\u2713' : (x.i + 1);
-        L.marker([x.p.lat, x.p.lng], { icon: L.divIcon({ className: '', html: '<div class="mpn" style="background:' + bg + '">' + txt + '</div>', iconSize: [26, 26], iconAnchor: [13, 13] }) }).addTo(mapLayer);
+      body {
+        background: var(--bg);
+      }
+      html[data-theme="dark"] body {
+        background: #0b1316;
+      }
+      .app > * {
+        flex-shrink: 0;
+      }
+      .rt-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-top: 2px;
+      }
+      .rt-head .t {
+        flex: 1;
+        min-width: 0;
+      }
+      .rt-head h1 {
+        font:
+          800 20px/1.2 "Plus Jakarta Sans",
+          "Inter",
+          sans-serif;
+      }
+      .rt-head p {
+        font-size: 12.5px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+      .rt-head .gt-switch {
+        box-shadow: none;
+      }
+      .rt-head .gt-switch button {
+        width: 32px;
+        height: 30px;
+      }
+      .rt-refresh {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 38px;
+        padding: 0 13px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--primary);
+        font:
+          700 12.5px Inter,
+          sans-serif;
+        cursor: pointer;
+      }
+      .rt-refresh svg {
+        width: 15px;
+        height: 15px;
+      }
+      .rt-refresh.spin svg {
+        animation: rtspin 0.6s linear;
+      }
+      @keyframes rtspin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .rt-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .a-sum {
+        order: 1;
+      }
+      .a-chips {
+        order: 2;
+      }
+      .a-list {
+        order: 3;
+      }
+      .a-map {
+        order: 4;
+        display: none;
+      }
+      .a-open {
+        order: 5;
+      }
+
+      .rt-sum {
+        border-radius: 22px;
+        padding: 15px;
+        background: linear-gradient(135deg, var(--t-primary), var(--card) 85%);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+      }
+      .rt-sum .top {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      .rt-sum .ch2 {
+        width: 44px;
+        height: 44px;
+        border-radius: 13px;
+        background: var(--primary);
+        color: var(--on-primary);
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+      }
+      .rt-sum .nm {
+        flex: 1;
+        min-width: 0;
+      }
+      .rt-sum .nm b {
+        font:
+          800 17px "Plus Jakarta Sans",
+          "Inter",
+          sans-serif;
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .rt-sum .nm small {
+        font-size: 12.5px;
+        color: var(--muted);
+      }
+      .rt-viewmap {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+        height: 36px;
+        padding: 0 12px;
+        border-radius: 11px;
+        border: 1.5px solid var(--primary);
+        color: var(--primary);
+        font:
+          700 12.5px Inter,
+          sans-serif;
+        background: var(--card);
+        text-decoration: none;
+      }
+      .rt-viewmap svg {
+        width: 15px;
+        height: 15px;
+      }
+      .rt-bar {
+        height: 9px;
+        border-radius: 9px;
+        background: var(--border);
+        margin: 13px 0 7px;
+        overflow: hidden;
+      }
+      .rt-bar i {
+        display: block;
+        height: 100%;
+        width: 0;
+        border-radius: 9px;
+        background: linear-gradient(90deg, var(--primary), var(--success));
+        transition: width 0.3s;
+      }
+      .rt-bt {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .rt-bt b {
+        color: var(--text);
+        font-weight: 700;
+      }
+
+      .rt-chips {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .rt-chips::-webkit-scrollbar {
+        display: none;
+      }
+      .chp {
+        height: 34px;
+        padding: 0 11px;
+        border-radius: 99px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        font:
+          600 12.5px Inter,
+          sans-serif;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .chp em {
+        font-style: normal;
+        font:
+          700 11px Inter,
+          sans-serif;
+        background: var(--bg);
+        padding: 1px 7px;
+        border-radius: 99px;
+      }
+      .chp.on {
+        background: var(--primary);
+        color: var(--on-primary);
+        border-color: var(--primary);
+      }
+      .chp.on em {
+        background: rgba(255, 255, 255, 0.22);
+        color: inherit;
+      }
+
+      .tl {
+        display: flex;
+        flex-direction: column;
+      }
+      .st2 {
+        display: flex;
+        gap: 12px;
+        position: relative;
+        padding-bottom: 10px;
+      }
+      .st2:before {
+        content: "";
+        position: absolute;
+        left: 15px;
+        top: 32px;
+        bottom: -4px;
+        width: 2px;
+        background: var(--border);
+      }
+      .st2:last-child:before {
+        display: none;
+      }
+      .st2.dn:before {
+        background: var(--success);
+        opacity: 0.5;
+      }
+      .nd {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font:
+          800 13px "Plus Jakarta Sans",
+          "Inter",
+          sans-serif;
+        flex-shrink: 0;
+        background: var(--card);
+        border: 2px solid var(--border);
+        color: var(--muted);
+        z-index: 1;
+      }
+      .nd svg {
+        width: 16px;
+        height: 16px;
+        stroke-width: 3;
+      }
+      .dn .nd {
+        background: var(--success);
+        border-color: var(--success);
+        color: #fff;
+      }
+      .nx .nd {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: var(--on-primary);
+        box-shadow: 0 0 0 5px var(--t-primary);
+      }
+      .rt .nd {
+        background: #f59e0b;
+        border-color: #f59e0b;
+        color: #fff;
+      }
+      .cn .nd {
+        background: var(--danger);
+        border-color: var(--danger);
+        color: #fff;
+      }
+      .rc {
+        flex: 1;
+        min-width: 0;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 11px 12px;
+        box-shadow: var(--shadow);
+        cursor: pointer;
+      }
+      .rc:active {
+        background: var(--t-primary);
+      }
+      .nx .rc {
+        border-color: var(--primary);
+        background: linear-gradient(135deg, var(--t-primary), var(--card) 90%);
+      }
+      .rc .r1 {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .rc b {
+        font:
+          700 14px Inter,
+          sans-serif;
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .rc small {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .bd2 {
+        font:
+          700 10.5px Inter,
+          sans-serif;
+        padding: 3px 9px;
+        border-radius: 99px;
+        white-space: nowrap;
+      }
+      .bd2.p {
+        background: var(--bg);
+        color: var(--muted);
+        border: 1px solid var(--border);
+      }
+      .bd2.d {
+        background: var(--t-success);
+        color: var(--success);
+      }
+      .bd2.a {
+        background: var(--t-accent);
+        color: var(--accent);
+      }
+      .bd2.c {
+        background: var(--t-danger);
+        color: var(--danger);
+      }
+      .bd2.n {
+        background: var(--primary);
+        color: var(--on-primary);
+      }
+      .rc .act {
+        display: flex;
+        gap: 8px;
+        margin-top: 9px;
+      }
+      .rc .act a {
+        flex: 1;
+        height: 36px;
+        border-radius: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        font:
+          700 12px Inter,
+          sans-serif;
+        text-decoration: none;
+      }
+      .rc .act svg {
+        width: 14px;
+        height: 14px;
+      }
+      .rc .act .a1 {
+        background: var(--primary);
+        color: var(--on-primary);
+      }
+      .rc .act .a2 {
+        border: 1.5px solid var(--border);
+        color: var(--text);
+        background: var(--card);
+      }
+      .rt-pin {
+        width: 30px;
+        height: 30px;
+        border-radius: 10px;
+        background: var(--t-primary);
+        color: var(--primary);
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+      }
+      .rt-pin svg {
+        width: 15px;
+        height: 15px;
+      }
+
+      .rt-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 40px 24px;
+        gap: 10px;
+        color: var(--muted);
+        font-size: 13.5px;
+        line-height: 1.5;
+      }
+      .rt-empty .ic {
+        width: 84px;
+        height: 84px;
+        border-radius: 26px;
+        background: var(--t-primary);
+        color: var(--primary);
+        display: grid;
+        place-items: center;
+      }
+      .rt-empty .ic svg {
+        width: 40px;
+        height: 40px;
+      }
+      .rt-empty b {
+        font:
+          800 18px "Plus Jakarta Sans",
+          "Inter",
+          sans-serif;
+        color: var(--text);
+      }
+
+      .rt-open {
+        position: fixed;
+        left: 16px;
+        right: 16px;
+        bottom: calc(76px + env(safe-area-inset-bottom, 0));
+        max-width: 448px;
+        margin: 0 auto;
+        height: 48px;
+        border-radius: 15px;
+        background: var(--primary);
+        color: var(--on-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        font:
+          700 14.5px Inter,
+          sans-serif;
+        text-decoration: none;
+        box-shadow: 0 8px 20px rgba(15, 118, 110, 0.32);
+        z-index: 40;
+      }
+      .rt-open svg {
+        width: 19px;
+        height: 19px;
+      }
+      .rt-mapcard {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        padding: 15px;
+        box-shadow: var(--shadow);
+      }
+      .rt-mapcard .hd {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 11px;
+      }
+      .rt-mapcard .hd b {
+        font:
+          800 16px "Plus Jakarta Sans",
+          "Inter",
+          sans-serif;
+      }
+      #rtMap {
+        height: 260px;
+        border-radius: 16px;
+        overflow: hidden;
+        background: var(--t-primary);
+        position: relative;
+        z-index: 0;
+      }
+      .mpn {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font:
+          800 11px "Plus Jakarta Sans",
+          "Inter",
+          sans-serif;
+        color: #fff;
+        border: 2.5px solid #fff;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      }
+
+      .nav a.brand-side {
+        display: none;
+      }
+      @media (min-width: 900px) {
+        .app {
+          max-width: 1120px;
+          padding: 28px 32px 48px;
+        }
+        .rt-head h1 {
+          font-size: 26px;
+        }
+        .rt-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+          grid-template-areas: "chips sum" "list sum" "list map" "list open";
+          grid-template-rows: auto auto auto 1fr;
+          gap: 16px;
+          align-items: start;
+        }
+        .a-sum {
+          grid-area: sum;
+        }
+        .a-chips {
+          grid-area: chips;
+        }
+        .a-list {
+          grid-area: list;
+        }
+        .a-map {
+          grid-area: map;
+        }
+        .a-open {
+          grid-area: open;
+        }
+        .a-map.on {
+          display: block;
+        }
+        .rt-open {
+          position: static;
+          max-width: none;
+          margin: 0;
+          box-shadow: none;
+        }
+        .nav a.brand-side {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          gap: 12px;
+          min-height: 0;
+          padding: 4px 8px 20px;
+          margin-bottom: 12px;
+          border-radius: 0;
+          border-bottom: 1px solid var(--border);
+          color: var(--text);
+          background: none;
+        }
+        .nav a.brand-side:hover {
+          background: none;
+        }
+        .brand-name {
+          font:
+            800 16px "Plus Jakarta Sans",
+            "Inter",
+            sans-serif;
+          display: block;
+        }
+        .brand-sub {
+          display: block;
+          font-size: 11.5px;
+          color: var(--muted);
+          font-weight: 500;
+        }
+        .brand-logo {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          background: #fff;
+          border: 1px solid var(--border);
+          display: grid;
+          place-items: center;
+          overflow: hidden;
+          flex-shrink: 0;
+        }
+        .brand-logo img {
+          width: 40px;
+          display: block;
+        }
+        .nav a {
+          font-weight: 600;
+        }
+      }
+    </style>
+    <style>
+      /* GM-WORKER-FULL-WIDTH-v1 */
+      .app {
+        width: 100% !important;
+        max-width: none !important;
+        box-sizing: border-box !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+      }
+    </style>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/icon-32.png"
+    />
+    <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+  </head>
+  <body>
+    <main class="app">
+      <div id="leaveStrip"></div>
+      <header class="rt-head">
+        <div class="t">
+          <h1>Today's Route</h1>
+          <p id="rtDate">&nbsp;</p>
+        </div>
+        <button class="rt-refresh" id="rtRefresh" type="button">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5" />
+          </svg>
+          Refresh
+        </button>
+        <button
+          class="icon-btn"
+          id="themeToggle"
+          aria-label="Switch light or dark theme"
+        >
+          <svg class="icon" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="4" />
+            <path
+              d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+            />
+          </svg>
+        </button>
+      </header>
+
+      <div class="rt-grid">
+        <section class="rt-sum a-sum" id="rtCard">
+          <div class="top">
+            <span class="ch2"
+              ><svg class="icon" viewBox="0 0 24 24">
+                <path
+                  d="M9 20l-6-2V4l6 2 6-2 6 2v14l-6-2-6 2zM9 6v14M15 4v14"
+                /></svg
+            ></span>
+            <div class="nm">
+              <b id="rtName">Route</b><small id="rtSub">&nbsp;</small>
+            </div>
+            <a
+              class="rt-viewmap"
+              id="rtViewMap"
+              href="#"
+              target="_blank"
+              rel="noopener"
+              ><svg class="icon" viewBox="0 0 24 24">
+                <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z" />
+                <circle cx="12" cy="10" r="3" /></svg
+              >Map</a
+            >
+          </div>
+          <div class="rt-bar"><i id="rtFill"></i></div>
+          <div class="rt-bt">
+            <span id="rtBarText">&nbsp;</span><span><b id="rtPct">0%</b></span>
+          </div>
+        </section>
+        <div class="rt-chips a-chips" id="rtChips"></div>
+        <section class="tl a-list" id="rtList"></section>
+        <section class="rt-mapcard a-map" id="rtMapCard">
+          <div class="hd"><b>Route map</b></div>
+          <div id="rtMap"></div>
+        </section>
+        <a
+          class="rt-open a-open"
+          id="rtOpen"
+          href="#"
+          target="_blank"
+          rel="noopener"
+          ><svg class="icon" viewBox="0 0 24 24">
+            <path d="M9 20l-6-2V4l6 2 6-2 6 2v14l-6-2-6 2zM9 6v14M15 4v14" />
+          </svg>
+          Open Route in Maps</a
+        >
+      </div>
+    </main>
+
+    <nav class="nav" aria-label="Main Navigation">
+      <a href="home.html" class="brand-side" aria-label="General Traders">
+        <span class="brand-logo"><img src="../assets/logo.png" alt="" /></span>
+        <span
+          ><b class="brand-name">General Traders</b
+          ><small class="brand-sub">Distribution &amp; Delivery</small></span
+        >
+      </a>
+      <div>
+        <a href="home.html"
+          ><svg class="icon" viewBox="0 0 24 24">
+            <path d="M3 11l9-8 9 8M5 10v10h14V10" /></svg
+          >Home</a
+        >
+        <a href="route.html" aria-current="page"
+          ><svg class="icon" viewBox="0 0 24 24">
+            <path
+              d="M9 20l-6-2V4l6 2 6-2 6 2v14l-6-2-6 2zM9 6v14M15 4v14"
+            /></svg
+          >Route</a
+        >
+        <a href="advances.html"
+          ><svg class="icon" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9" />
+            <path
+              d="M14.8 9A2 2 0 0 0 13 8h-2a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4h-2a2 2 0 0 1-1.8-1M12 6v12"
+            /></svg
+          >Account</a
+        >
+        <a href="attendance.html"
+          ><svg class="icon" viewBox="0 0 24 24">
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <path d="M16 2v4M8 2v4M3 10h18" /></svg
+          >Attendance</a
+        >
+        <a href="profile.html"
+          ><svg class="icon" viewBox="0 0 24 24">
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 21a8 8 0 0 1 16 0" /></svg
+          >Profile</a
+        >
+      </div>
+    </nav>
+    <script src="../shared/theme.js"></script>
+    <script src="../shared/mock-data.js"></script>
+    <script src="../shared/visit.js"></script>
+    <script src="../shared/vendor/leaflet/leaflet.js"></script>
+    <script>
+      if (!localStorage.getItem("gm_logged_in")) {
+        window.location.href = "login.html";
+      }
+      GMVisit.strip(document.getElementById("leaveStrip"));
+      GM.applyTodayPlan();
+      window.addEventListener("gm-sync", function () {
+        if (GM.applyTodayPlan()) location.reload();
       });
-      map.fitBounds(pts.map(function (x) { return [x.p.lat, x.p.lng]; }), { padding: [30, 30], maxZoom: 16 });
-      setTimeout(function () { map.invalidateSize(); }, 50);
-    } catch (e) { card.classList.remove('on'); }
-  }
-  function render() {
-    var shops = GM.getShops() || [], next = GM.getNextShop();
-    var now = new Date();
-    $('rtDate').textContent = now.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-    var cnt = { all: shops.length, pending: 0, delivered: 0, retry: 0 };
-    shops.forEach(function (s) { if (cnt[s.status] != null) cnt[s.status]++; });
-    var pct = shops.length ? Math.round(cnt.delivered / shops.length * 100) : 0;
-    $('rtName').textContent = (shops[0] && shops[0].owner) || 'No route today';
-    var pins = shops.map(function (s) { return GM.shopPin(s); }).filter(Boolean), dist = 0;
-    for (var i = 1; i < pins.length; i++) dist += km(pins[i - 1], pins[i]);
-    $('rtSub').textContent = shops.length + (shops.length === 1 ? ' customer' : ' customers') + (pins.length > 1 ? ' \u00b7 ' + Math.round(dist) + ' km' : '');
-    $('rtFill').style.width = pct + '%';
-    $('rtBarText').innerHTML = '<b>' + cnt.delivered + '</b> of ' + shops.length + ' delivered';
-    $('rtPct').textContent = pct + '%';
-    var url = routeUrl(shops);
-    $('rtViewMap').href = url; $('rtOpen').href = url;
-    $('rtOpen').style.display = $('rtViewMap').style.display = shops.length ? '' : 'none';
-    $('rtCard').style.display = $('rtChips').style.display = shops.length ? '' : 'none';
-    if (!shops.length) {
-      $('rtList').innerHTML = '<div class="rt-empty"><div class="ic">' + IC.map + '</div><b>No deliveries planned</b><span>Nothing is planned for today yet.<br>Tap Refresh to check for a new plan.</span></div>';
-      $('rtMapCard').classList.remove('on');
-      return;
-    }
-    $('rtChips').innerHTML = [['all', 'All'], ['pending', 'Pending'], ['delivered', 'Done'], ['retry', 'Retry']].map(function (c) {
-      return '<button type="button" class="chp' + (filter === c[0] ? ' on' : '') + '" data-f="' + c[0] + '">' + c[1] + ' <em>' + cnt[c[0]] + '</em></button>';
-    }).join('');
-    var rows = shops.map(function (s, i) { return { s: s, i: i }; }).filter(function (x) { return filter === 'all' || x.s.status === filter; });
-    if (!rows.length) { $('rtList').innerHTML = '<div class="rt-empty" style="padding:24px"><span>No stops in this list.</span></div>'; }
-    else $('rtList').innerHTML = rows.map(function (x) {
-      var s = x.s, isNext = next && next.id === s.id;
-      var cls = s.status === 'delivered' ? 'dn' : s.status === 'retry' ? 'rt' : s.status === 'cancelled' ? 'cn' : isNext ? 'nx' : '';
-      if (isNext && s.status === 'pending') cls = 'nx';
-      var b = isNext && s.status === 'pending' ? ['n', 'Next stop'] : (BADGE[s.status] || BADGE.pending);
-      return '<div class="st2 ' + cls + '"><div class="nd">' + (s.status === 'delivered' ? IC.chk : (x.i + 1)) + '</div>' +
-        '<div class="rc" data-id="' + esc(s.id) + '"><div class="r1"><b>' + esc(s.name) + '</b><span class="bd2 ' + b[0] + '">' + b[1] + '</span>' +
-        '<a class="rt-pin" href="' + esc(GM.mapsUrl(s)) + '" target="_blank" rel="noopener" aria-label="Open in Maps">' + IC.pin + '</a></div>' +
-        '<small>' + esc(s.address) + '</small>' +
-        (isNext ? '<div class="act"><a class="a1" href="' + esc(GM.mapsUrl(s)) + '" target="_blank" rel="noopener">' + IC.dir + 'Directions</a><a class="a2" href="delivery.html?id=' + encodeURIComponent(s.id) + '">' + IC.chk + 'Start delivery</a></div>' : '') +
-        '</div></div>';
-    }).join('');
-    drawMap(shops, next);
-  }
-  $('rtList').addEventListener('click', function (e) {
-    if (e.target.closest('.rt-pin') || e.target.closest('.act')) return;
-    var row = e.target.closest('.rc');
-    if (row) location.href = 'delivery.html?id=' + encodeURIComponent(row.getAttribute('data-id'));
-  });
-  $('rtChips').addEventListener('click', function (e) {
-    var c = e.target.closest('.chp'); if (!c) return;
-    filter = c.getAttribute('data-f'); render();
-  });
-  $('rtRefresh').addEventListener('click', function () {
-    var btn = this; btn.classList.add('spin');
-    if (GM.applyTodayPlan()) { location.reload(); return; }
-    render(); setTimeout(function () { btn.classList.remove('spin'); }, 600);
-  });
-  render();
-</script></body>
+      function esc(t) {
+        return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+        });
+      }
+      var $ = function (id) {
+        return document.getElementById(id);
+      };
+      var IC = {
+        chk: '<svg class="icon" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>',
+        dir: '<svg class="icon" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>',
+        pin: '<svg class="icon" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+        map: '<svg class="icon" viewBox="0 0 24 24"><path d="M9 20l-6-2V4l6 2 6-2 6 2v14l-6-2-6 2zM9 6v14M15 4v14"/></svg>',
+        refresh:
+          '<svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg>',
+      };
+      var filter = "all";
+      var BADGE = {
+        pending: ["p", "Pending"],
+        delivered: ["d", "Delivered"],
+        retry: ["a", "Retry later"],
+        cancelled: ["c", "Cancelled"],
+      };
+      // Rough straight-line distance between consecutive pinned stops
+      function km(a, b) {
+        var R = 6371,
+          r = Math.PI / 180,
+          dLat = (b.lat - a.lat) * r,
+          dLng = (b.lng - a.lng) * r;
+        var h =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(a.lat * r) *
+            Math.cos(b.lat * r) *
+            Math.sin(dLng / 2) *
+            Math.sin(dLng / 2);
+        return 2 * R * Math.asin(Math.sqrt(h));
+      }
+      // One Google Maps link through all stops still to visit (maps allows 9 stops in between)
+      function routeUrl(list) {
+        function pt(s) {
+          var p = GM.shopPin(s);
+          return p
+            ? p.lat + "," + p.lng
+            : encodeURIComponent((s.name || "") + " " + (s.address || ""));
+        }
+        var todo = list.filter(function (s) {
+          return s.status === "pending" || s.status === "retry";
+        });
+        if (!todo.length) todo = list;
+        if (!todo.length) return "#";
+        todo = todo.slice(0, 10);
+        var url =
+          "https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=" +
+          pt(todo[todo.length - 1]);
+        if (todo.length > 1)
+          url += "&waypoints=" + todo.slice(0, -1).map(pt).join("%7C");
+        return url;
+      }
+      var map = null,
+        mapLayer = null;
+      function drawMap(shops, next) {
+        var card = $("rtMapCard"),
+          pts = [];
+        shops.forEach(function (s, i) {
+          var p = GM.shopPin(s);
+          if (p) pts.push({ p: p, s: s, i: i });
+        });
+        if (
+          !pts.length ||
+          !window.L ||
+          !window.matchMedia("(min-width:900px)").matches
+        ) {
+          card.classList.remove("on");
+          return;
+        }
+        card.classList.add("on");
+        try {
+          if (!map) {
+            map = L.map("rtMap", {
+              zoomControl: false,
+              attributionControl: false,
+            });
+            L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+              maxZoom: 19,
+            }).addTo(map);
+          }
+          if (mapLayer) mapLayer.remove();
+          mapLayer = L.layerGroup().addTo(map);
+          var COL = {
+            delivered: "#16A34A",
+            retry: "#F59E0B",
+            cancelled: "#DC2626",
+            pending: "#94A3B8",
+          };
+          L.polyline(
+            pts.map(function (x) {
+              return [x.p.lat, x.p.lng];
+            }),
+            { color: "#0F766E", weight: 4, dashArray: "8 6", opacity: 0.85 },
+          ).addTo(mapLayer);
+          pts.forEach(function (x) {
+            var isNext = next && next.id === x.s.id,
+              bg = isNext ? "#0F766E" : COL[x.s.status] || COL.pending;
+            var txt = x.s.status === "delivered" ? "\u2713" : x.i + 1;
+            L.marker([x.p.lat, x.p.lng], {
+              icon: L.divIcon({
+                className: "",
+                html:
+                  '<div class="mpn" style="background:' +
+                  bg +
+                  '">' +
+                  txt +
+                  "</div>",
+                iconSize: [26, 26],
+                iconAnchor: [13, 13],
+              }),
+            }).addTo(mapLayer);
+          });
+          map.fitBounds(
+            pts.map(function (x) {
+              return [x.p.lat, x.p.lng];
+            }),
+            { padding: [30, 30], maxZoom: 16 },
+          );
+          setTimeout(function () {
+            map.invalidateSize();
+          }, 50);
+        } catch (e) {
+          card.classList.remove("on");
+        }
+      }
+      function render() {
+        var shops = GM.getShops() || [],
+          next = GM.getNextShop();
+        var now = new Date();
+        $("rtDate").textContent = now.toLocaleDateString("en-IN", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+        var cnt = { all: shops.length, pending: 0, delivered: 0, retry: 0 };
+        shops.forEach(function (s) {
+          if (cnt[s.status] != null) cnt[s.status]++;
+        });
+        var pct = shops.length
+          ? Math.round((cnt.delivered / shops.length) * 100)
+          : 0;
+        $("rtName").textContent =
+          (shops[0] && shops[0].owner) || "No route today";
+        var pins = shops
+            .map(function (s) {
+              return GM.shopPin(s);
+            })
+            .filter(Boolean),
+          dist = 0;
+        for (var i = 1; i < pins.length; i++) dist += km(pins[i - 1], pins[i]);
+        $("rtSub").textContent =
+          shops.length +
+          (shops.length === 1 ? " customer" : " customers") +
+          (pins.length > 1 ? " \u00b7 " + Math.round(dist) + " km" : "");
+        $("rtFill").style.width = pct + "%";
+        $("rtBarText").innerHTML =
+          "<b>" + cnt.delivered + "</b> of " + shops.length + " delivered";
+        $("rtPct").textContent = pct + "%";
+        var url = routeUrl(shops);
+        $("rtViewMap").href = url;
+        $("rtOpen").href = url;
+        $("rtOpen").style.display = $("rtViewMap").style.display = shops.length
+          ? ""
+          : "none";
+        $("rtCard").style.display = $("rtChips").style.display = shops.length
+          ? ""
+          : "none";
+        if (!shops.length) {
+          $("rtList").innerHTML =
+            '<div class="rt-empty"><div class="ic">' +
+            IC.map +
+            "</div><b>No deliveries planned</b><span>Nothing is planned for today yet.<br>Tap Refresh to check for a new plan.</span></div>";
+          $("rtMapCard").classList.remove("on");
+          return;
+        }
+        $("rtChips").innerHTML = [
+          ["all", "All"],
+          ["pending", "Pending"],
+          ["delivered", "Done"],
+          ["retry", "Retry"],
+        ]
+          .map(function (c) {
+            return (
+              '<button type="button" class="chp' +
+              (filter === c[0] ? " on" : "") +
+              '" data-f="' +
+              c[0] +
+              '">' +
+              c[1] +
+              " <em>" +
+              cnt[c[0]] +
+              "</em></button>"
+            );
+          })
+          .join("");
+        var rows = shops
+          .map(function (s, i) {
+            return { s: s, i: i };
+          })
+          .filter(function (x) {
+            return filter === "all" || x.s.status === filter;
+          });
+        if (!rows.length) {
+          $("rtList").innerHTML =
+            '<div class="rt-empty" style="padding:24px"><span>No stops in this list.</span></div>';
+        } else
+          $("rtList").innerHTML = rows
+            .map(function (x) {
+              var s = x.s,
+                isNext = next && next.id === s.id;
+              var cls =
+                s.status === "delivered"
+                  ? "dn"
+                  : s.status === "retry"
+                    ? "rt"
+                    : s.status === "cancelled"
+                      ? "cn"
+                      : isNext
+                        ? "nx"
+                        : "";
+              if (isNext && s.status === "pending") cls = "nx";
+              var b =
+                isNext && s.status === "pending"
+                  ? ["n", "Next stop"]
+                  : BADGE[s.status] || BADGE.pending;
+              return (
+                '<div class="st2 ' +
+                cls +
+                '"><div class="nd">' +
+                (s.status === "delivered" ? IC.chk : x.i + 1) +
+                "</div>" +
+                '<div class="rc" data-id="' +
+                esc(s.id) +
+                '"><div class="r1"><b>' +
+                esc(s.name) +
+                '</b><span class="bd2 ' +
+                b[0] +
+                '">' +
+                b[1] +
+                "</span>" +
+                '<a class="rt-pin" href="' +
+                esc(GM.mapsUrl(s)) +
+                '" target="_blank" rel="noopener" aria-label="Open in Maps">' +
+                IC.pin +
+                "</a></div>" +
+                "<small>" +
+                esc(s.address) +
+                "</small>" +
+                (isNext
+                  ? '<div class="act"><a class="a1" href="' +
+                    esc(GM.mapsUrl(s)) +
+                    '" target="_blank" rel="noopener">' +
+                    IC.dir +
+                    'Directions</a><a class="a2" href="delivery.html?id=' +
+                    encodeURIComponent(s.id) +
+                    '">' +
+                    IC.chk +
+                    "Start delivery</a></div>"
+                  : "") +
+                "</div></div>"
+              );
+            })
+            .join("");
+        drawMap(shops, next);
+      }
+      $("rtList").addEventListener("click", function (e) {
+        if (e.target.closest(".rt-pin") || e.target.closest(".act")) return;
+        var row = e.target.closest(".rc");
+        if (row)
+          location.href =
+            "delivery.html?id=" +
+            encodeURIComponent(row.getAttribute("data-id"));
+      });
+      $("rtChips").addEventListener("click", function (e) {
+        var c = e.target.closest(".chp");
+        if (!c) return;
+        filter = c.getAttribute("data-f");
+        render();
+      });
+      $("rtRefresh").addEventListener("click", function () {
+        var btn = this;
+        btn.classList.add("spin");
+        if (GM.applyTodayPlan()) {
+          location.reload();
+          return;
+        }
+        render();
+        setTimeout(function () {
+          btn.classList.remove("spin");
+        }, 600);
+      });
+      render();
+    </script>
+  </body>
 </html>

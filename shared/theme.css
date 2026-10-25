@@ -1,42 +1,90 @@
 /* Fonts: Inter is loaded from shared/fonts on EVERY page (admin, delivery app, login), not only the pages that load plan.css */
-@font-face{font-family:"Inter";font-style:normal;font-weight:400;font-display:swap;src:url(fonts/inter-latin-400-normal.woff2) format("woff2")}
-@font-face{font-family:"Inter";font-style:normal;font-weight:500;font-display:swap;src:url(fonts/inter-latin-500-normal.woff2) format("woff2")}
-@font-face{font-family:"Inter";font-style:normal;font-weight:600;font-display:swap;src:url(fonts/inter-latin-600-normal.woff2) format("woff2")}
-@font-face{font-family:"Inter";font-style:normal;font-weight:700;font-display:swap;src:url(fonts/inter-latin-700-normal.woff2) format("woff2")}
-@font-face{font-family:"Plus Jakarta Sans";font-style:normal;font-weight:600;font-display:swap;src:url(fonts/plus-jakarta-sans-latin-600-normal.woff2) format("woff2")}
-@font-face{font-family:"Plus Jakarta Sans";font-style:normal;font-weight:700;font-display:swap;src:url(fonts/plus-jakarta-sans-latin-700-normal.woff2) format("woff2")}
-@font-face{font-family:"Plus Jakarta Sans";font-style:normal;font-weight:800;font-display:swap;src:url(fonts/plus-jakarta-sans-latin-800-normal.woff2) format("woff2")}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(fonts/inter-latin-400-normal.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(fonts/inter-latin-500-normal.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(fonts/inter-latin-600-normal.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(fonts/inter-latin-700-normal.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(fonts/plus-jakarta-sans-latin-600-normal.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(fonts/plus-jakarta-sans-latin-700-normal.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url(fonts/plus-jakarta-sans-latin-800-normal.woff2) format("woff2");
+}
 /* Browsers draw buttons, inputs and selects in Arial unless told otherwise */
-button,input,select,textarea,optgroup{font-family:inherit}
+button,
+input,
+select,
+textarea,
+optgroup {
+  font-family: inherit;
+}
 /* General Traders (GM-CRM) - Shared Design System
    Mobile-first design system for delivery staff app.
 */
 :root {
-  --bg: #F7F8FA;
-  --card: #FFFFFF;
-  --border: #E3E7EC;
-  --primary: #0F766E;
-  --on-primary: #FFFFFF;
-  --accent: #F59E0B;
-  --text: #0F172A;
-  --muted: #64748B;
-  --success: #16A34A;
-  --danger: #DC2626;
-  --info: #2563EB;
-  
-  --hero1: #0F766E;
-  --hero2: #14B8A6;
-  --on-hero: #FFFFFF;
-  --btn-hero-bg: #FFFFFF;
-  --btn-hero-text: #0F766E;
-  
-  --t-primary: #E6F4F1;
-  --t-accent: #FEF3DC;
-  --t-info: #E7EEFC;
-  --t-success: #E5F5EA;
-  --t-danger: #FEE2E2;
-  --glow: #CCF0EA;
-  
+  --bg: #f7f8fa;
+  --card: #ffffff;
+  --border: #e3e7ec;
+  --primary: #0f766e;
+  --on-primary: #ffffff;
+  --accent: #f59e0b;
+  --text: #0f172a;
+  --muted: #64748b;
+  --success: #16a34a;
+  --danger: #dc2626;
+  --info: #2563eb;
+
+  --hero1: #0f766e;
+  --hero2: #14b8a6;
+  --on-hero: #ffffff;
+  --btn-hero-bg: #ffffff;
+  --btn-hero-text: #0f766e;
+
+  --t-primary: #e6f4f1;
+  --t-accent: #fef3dc;
+  --t-info: #e7eefc;
+  --t-success: #e5f5ea;
+  --t-danger: #fee2e2;
+  --glow: #ccf0ea;
+
   --logo-bg: transparent;
   --ring: rgba(15, 118, 110, 0.25);
   --shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
@@ -45,32 +93,32 @@ button,input,select,textarea,optgroup{font-family:inherit}
 }
 
 [data-theme="dark"] {
-  --bg: #0F1418;
+  --bg: #0f1418;
   --card: #182027;
-  --border: #26313A;
-  --primary: #2DD4BF;
-  --on-primary: #06201D;
-  --accent: #FBBF24;
-  --text: #F1F5F9;
-  --muted: #94A3B8;
-  --success: #4ADE80;
-  --danger: #F87171;
-  --info: #60A5FA;
-  
-  --hero1: #0F766E;
-  --hero2: #115E59;
-  --on-hero: #FFFFFF;
-  --btn-hero-bg: #2DD4BF;
-  --btn-hero-text: #0F1418;
-  
-  --t-primary: #12332F;
-  --t-accent: #3A2E12;
-  --t-info: #16253F;
-  --t-success: #12301D;
-  --t-danger: #3B1818;
-  --glow: #123A36;
-  
-  --logo-bg: #F7F8FA;
+  --border: #26313a;
+  --primary: #2dd4bf;
+  --on-primary: #06201d;
+  --accent: #fbbf24;
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+  --success: #4ade80;
+  --danger: #f87171;
+  --info: #60a5fa;
+
+  --hero1: #0f766e;
+  --hero2: #115e59;
+  --on-hero: #ffffff;
+  --btn-hero-bg: #2dd4bf;
+  --btn-hero-text: #0f1418;
+
+  --t-primary: #12332f;
+  --t-accent: #3a2e12;
+  --t-info: #16253f;
+  --t-success: #12301d;
+  --t-danger: #3b1818;
+  --glow: #123a36;
+
+  --logo-bg: #f7f8fa;
   --ring: rgba(45, 212, 191, 0.3);
   --shadow: none;
 }
@@ -81,18 +129,28 @@ button,input,select,textarea,optgroup{font-family:inherit}
   padding: 0;
 }
 
-html, body {
+html,
+body {
   min-height: 100%;
 }
 
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
   font-size: 15px;
   line-height: 1.5;
   -webkit-tap-highlight-color: transparent;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 /* Mobile App Screen Shell */
@@ -194,7 +252,8 @@ svg.icon {
   box-shadow: 0 4px 12px rgba(15, 118, 110, 0.15);
 }
 
-.hero::before, .hero::after {
+.hero::before,
+.hero::after {
   content: "";
   position: absolute;
   border-radius: 50%;
@@ -237,11 +296,11 @@ svg.icon {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #FBBF24;
+  background: #fbbf24;
 }
 
 .pill.green i {
-  background: #4ADE80;
+  background: #4ade80;
 }
 
 /* Cards */
@@ -280,7 +339,9 @@ svg.icon {
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
-  transition: opacity 0.15s, transform 0.05s;
+  transition:
+    opacity 0.15s,
+    transform 0.05s;
 }
 
 .btn:active {
@@ -312,12 +373,12 @@ svg.icon {
 
 .btn-danger {
   background: var(--danger);
-  color: #FFFFFF;
+  color: #ffffff;
 }
 
 .btn-success {
   background: var(--success);
-  color: #FFFFFF;
+  color: #ffffff;
 }
 
 .btn-group {
@@ -330,7 +391,8 @@ svg.icon {
 }
 
 /* Inputs & Forms */
-label, .label {
+label,
+.label {
   display: block;
   font-size: 13px;
   font-weight: 600;
@@ -345,7 +407,9 @@ label, .label {
   border-radius: var(--radius-btn);
   height: 52px;
   background: var(--bg);
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 
 .field:focus-within {
@@ -357,7 +421,9 @@ label, .label {
   border-color: var(--danger);
 }
 
-.field input, .field select, .field textarea {
+.field input,
+.field select,
+.field textarea {
   flex: 1;
   min-width: 0;
   height: 100%;
@@ -392,11 +458,26 @@ label, .label {
   font-weight: 600;
 }
 
-.b-success { background: var(--t-success); color: var(--success); }
-.b-accent  { background: var(--t-accent);  color: var(--accent); }
-.b-info    { background: var(--t-info);    color: var(--info); }
-.b-danger  { background: var(--t-danger);  color: var(--danger); }
-.b-muted   { background: var(--border);    color: var(--muted); }
+.b-success {
+  background: var(--t-success);
+  color: var(--success);
+}
+.b-accent {
+  background: var(--t-accent);
+  color: var(--accent);
+}
+.b-info {
+  background: var(--t-info);
+  color: var(--info);
+}
+.b-danger {
+  background: var(--t-danger);
+  color: var(--danger);
+}
+.b-muted {
+  background: var(--border);
+  color: var(--muted);
+}
 
 .chip {
   width: 40px;
@@ -407,11 +488,26 @@ label, .label {
   flex-shrink: 0;
 }
 
-.c-p { background: var(--t-primary); color: var(--primary); }
-.c-a { background: var(--t-accent);  color: var(--accent); }
-.c-i { background: var(--t-info);    color: var(--info); }
-.c-s { background: var(--t-success); color: var(--success); }
-.c-d { background: var(--t-danger);  color: var(--danger); }
+.c-p {
+  background: var(--t-primary);
+  color: var(--primary);
+}
+.c-a {
+  background: var(--t-accent);
+  color: var(--accent);
+}
+.c-i {
+  background: var(--t-info);
+  color: var(--info);
+}
+.c-s {
+  background: var(--t-success);
+  color: var(--success);
+}
+.c-d {
+  background: var(--t-danger);
+  color: var(--danger);
+}
 
 /* Navigation Bar */
 .nav {
@@ -508,56 +604,160 @@ label, .label {
 /* ===== Laptop / desktop layout (phones keep the layout above) ===== */
 @media (min-width: 900px) {
   /* Bottom bar becomes a left sidebar */
-  body:has(.nav) { padding-left: 232px; }
-  .nav { top: 0; right: auto; width: 232px; border-top: 0; border-right: 1px solid var(--border); padding: 24px 12px; }
-  .nav div { max-width: none; display: flex; flex-direction: column; gap: 4px; padding: 0; }
-  .nav a { flex-direction: row; justify-content: flex-start; gap: 12px; min-height: 46px; padding: 0 14px; border-radius: 12px; font-size: 14px; }
-  .nav a:hover { background: var(--t-primary); }
-  .nav a[aria-current="page"] { background: var(--t-primary); }
-  .nav a[aria-current="page"] svg { background: none; width: 24px; height: 24px; padding: 0; border-radius: 0; }
+  body:has(.nav) {
+    padding-left: 232px;
+  }
+  .nav {
+    top: 0;
+    right: auto;
+    width: 232px;
+    border-top: 0;
+    border-right: 1px solid var(--border);
+    padding: 24px 12px;
+  }
+  .nav div {
+    max-width: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 0;
+  }
+  .nav a {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    min-height: 46px;
+    padding: 0 14px;
+    border-radius: 12px;
+    font-size: 14px;
+  }
+  .nav a:hover {
+    background: var(--t-primary);
+  }
+  .nav a[aria-current="page"] {
+    background: var(--t-primary);
+  }
+  .nav a[aria-current="page"] svg {
+    background: none;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border-radius: 0;
+  }
 
   /* Wider content area */
-  .app { max-width: 960px; padding: 28px 32px 48px; }
-  body:not(:has(.nav)) .app { max-width: 640px; }
-  .menu-grid { grid-template-columns: repeat(4, 1fr) !important; }
+  .app {
+    max-width: 960px;
+    padding: 28px 32px 48px;
+  }
+  body:not(:has(.nav)) .app {
+    max-width: 640px;
+  }
+  .menu-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
 
   /* Sign-in and other full-screen forms sit in the middle */
-  .screen { justify-content: center; }
+  .screen {
+    justify-content: center;
+  }
 
   /* Bottom sheets open as centred dialogs */
-  .modal-overlay:not(.a-c) { align-items: center !important; padding: 24px; }
-  .modal-overlay:not(.a-c) .modal-sheet { border-radius: 20px !important; max-width: 520px !important; margin: 0 auto !important; }
-  .modal-handle { display: none; }
+  .modal-overlay:not(.a-c) {
+    align-items: center !important;
+    padding: 24px;
+  }
+  .modal-overlay:not(.a-c) .modal-sheet {
+    border-radius: 20px !important;
+    max-width: 520px !important;
+    margin: 0 auto !important;
+  }
+  .modal-handle {
+    display: none;
+  }
 }
 
-
 /* FIX-WORKER-LAYOUT START */
-.app > * { flex-shrink: 0; }
-.badge, .pill, .tab-btn { white-space: nowrap; }
-.badge { flex-shrink: 0; }
-.app .route-top { gap: 10px; }
-.app .next-card > div:first-child { gap: 6px 8px; flex-wrap: wrap; }
-.app .next-card > div:first-child > span:last-child { white-space: nowrap; }
-.app .shop-item-info > div:first-child { gap: 8px; }
-.app .shop-item-title { flex: 1; min-width: 0; }
-.app .shop-item-meta { flex-wrap: wrap; gap: 2px 8px; }
-.app .shop-item-meta span { white-space: nowrap; }
-.app .filter-tabs { overflow-x: auto; scrollbar-width: none; }
-.app .tab-btn { flex-shrink: 0; }
-.app .card-title .link { white-space: nowrap; flex-shrink: 0; }
-.app .km-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-.app .admin-call-card { flex-wrap: wrap; }
-.app .summary-grid { grid-template-columns: minmax(0, 1fr); }
-.app .f-tab { white-space: nowrap; flex-shrink: 0; }
-.app .filter-row { overflow-x: auto; scrollbar-width: none; }
-.app .in-out-pill { flex-wrap: wrap; }
-.app .in-out-pill span { white-space: nowrap; }
-.app .hero > div:first-child { flex-wrap: wrap; gap: 6px 10px; }
-.app .hero > div:first-child > span:last-child { white-space: nowrap; }
-.app .hero .pill { white-space: normal; }
+.app > * {
+  flex-shrink: 0;
+}
+.badge,
+.pill,
+.tab-btn {
+  white-space: nowrap;
+}
+.badge {
+  flex-shrink: 0;
+}
+.app .route-top {
+  gap: 10px;
+}
+.app .next-card > div:first-child {
+  gap: 6px 8px;
+  flex-wrap: wrap;
+}
+.app .next-card > div:first-child > span:last-child {
+  white-space: nowrap;
+}
+.app .shop-item-info > div:first-child {
+  gap: 8px;
+}
+.app .shop-item-title {
+  flex: 1;
+  min-width: 0;
+}
+.app .shop-item-meta {
+  flex-wrap: wrap;
+  gap: 2px 8px;
+}
+.app .shop-item-meta span {
+  white-space: nowrap;
+}
+.app .filter-tabs {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.app .tab-btn {
+  flex-shrink: 0;
+}
+.app .card-title .link {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.app .km-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.app .admin-call-card {
+  flex-wrap: wrap;
+}
+.app .summary-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+.app .f-tab {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.app .filter-row {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.app .in-out-pill {
+  flex-wrap: wrap;
+}
+.app .in-out-pill span {
+  white-space: nowrap;
+}
+.app .hero > div:first-child {
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+.app .hero > div:first-child > span:last-child {
+  white-space: nowrap;
+}
+.app .hero .pill {
+  white-space: normal;
+}
 /* FIX-WORKER-LAYOUT END */
-
-
 
 /* ==========================================================
    GM-CALENDAR-CSS-CENTRALIZED
@@ -568,362 +768,358 @@ label, .label {
    GENERAL TRADERS - CUSTOM CALENDAR V2
    ============================================================ */
 
-.gt-cal{
-  position:relative;
-  display:block;
-  width:100%;
-  min-width:0;
+.gt-cal {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
 }
 
-.gt-cal-native{
-  position:absolute !important;
-  width:0 !important;
-  height:0 !important;
-  padding:0 !important;
-  margin:0 !important;
-  border:0 !important;
-  opacity:0 !important;
-  pointer-events:none !important;
-  overflow:hidden !important;
+.gt-cal-native {
+  position: absolute !important;
+  width: 0 !important;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
 }
 
-.gt-cal-trigger{
-  width:100%;
-  min-height:42px;
-  box-sizing:border-box;
-  padding:0 12px;
-  border:1px solid var(--border,#dbe3ea);
-  border-radius:12px;
-  background:var(--surface,#fff);
-  color:var(--text,#172033);
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  font:inherit;
-  font-size:14px;
-  text-align:left;
-  cursor:pointer;
+.gt-cal-trigger {
+  width: 100%;
+  min-height: 42px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 1px solid var(--border, #dbe3ea);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  color: var(--text, #172033);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
   transition:
-    border-color .15s ease,
-    box-shadow .15s ease,
-    background .15s ease;
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
 }
 
-.gt-cal-trigger:hover{
-  border-color:var(--primary,#087f78);
+.gt-cal-trigger:hover {
+  border-color: var(--primary, #087f78);
 }
 
-.gt-cal-trigger:focus-visible{
-  outline:2px solid var(--primary,#087f78);
-  outline-offset:1px;
+.gt-cal-trigger:focus-visible {
+  outline: 2px solid var(--primary, #087f78);
+  outline-offset: 1px;
 }
 
-.gt-cal.open .gt-cal-trigger{
-  border-color:var(--primary,#087f78);
-  box-shadow:0 0 0 3px rgba(8,127,120,.12);
+.gt-cal.open .gt-cal-trigger {
+  border-color: var(--primary, #087f78);
+  box-shadow: 0 0 0 3px rgba(8, 127, 120, 0.12);
 }
 
-.gt-cal-label{
-  flex:1;
-  min-width:0;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
+.gt-cal-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.gt-cal-icon{
-  position:relative;
-  width:18px;
-  height:18px;
-  flex:0 0 18px;
-  color:var(--muted,#64748b);
+.gt-cal-icon {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  color: var(--muted, #64748b);
 }
 
-.gt-cal-icon::before{
-  content:"";
-  position:absolute;
-  left:2px;
-  top:4px;
-  width:14px;
-  height:12px;
-  box-sizing:border-box;
-  border:1.6px solid currentColor;
-  border-radius:3px;
+.gt-cal-icon::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 4px;
+  width: 14px;
+  height: 12px;
+  box-sizing: border-box;
+  border: 1.6px solid currentColor;
+  border-radius: 3px;
 }
 
-.gt-cal-icon::after{
-  content:"";
-  position:absolute;
-  left:5px;
-  top:1px;
-  width:8px;
-  height:6px;
-  box-sizing:border-box;
-  border-left:1.6px solid currentColor;
-  border-right:1.6px solid currentColor;
+.gt-cal-icon::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 8px;
+  height: 6px;
+  box-sizing: border-box;
+  border-left: 1.6px solid currentColor;
+  border-right: 1.6px solid currentColor;
 }
 
-.gt-cal.open .gt-cal-icon{
-  color:var(--primary,#087f78);
+.gt-cal.open .gt-cal-icon {
+  color: var(--primary, #087f78);
 }
 
 /* ------------------------------------------------------------
    POPUP
    ------------------------------------------------------------ */
 
-.gt-cal-pop{
-  position:fixed;
-  z-index:2147483000;
-  display:none;
-  width:320px;
-  max-width:calc(100vw - 20px);
-  box-sizing:border-box;
-  padding:14px;
-  border:1px solid #dbe3ea;
-  border-radius:16px;
-  background:#ffffff;
-  color:#172033;
+.gt-cal-pop {
+  position: fixed;
+  z-index: 2147483000;
+  display: none;
+  width: 320px;
+  max-width: calc(100vw - 20px);
+  box-sizing: border-box;
+  padding: 14px;
+  border: 1px solid #dbe3ea;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #172033;
   box-shadow:
-    0 20px 50px rgba(15,23,42,.18),
-    0 5px 14px rgba(15,23,42,.08);
+    0 20px 50px rgba(15, 23, 42, 0.18),
+    0 5px 14px rgba(15, 23, 42, 0.08);
 }
 
-.gt-cal-pop.open{
-  display:block;
+.gt-cal-pop.open {
+  display: block;
 }
 
 /* Dark mode - IMPORTANT: project uses html[data-theme="dark"] */
 
-html[data-theme="dark"] .gt-cal-trigger{
-  background:#111827;
-  color:#f8fafc;
-  border-color:#334155;
+html[data-theme="dark"] .gt-cal-trigger {
+  background: #111827;
+  color: #f8fafc;
+  border-color: #334155;
 }
 
-html[data-theme="dark"] .gt-cal-icon{
-  color:#cbd5e1;
+html[data-theme="dark"] .gt-cal-icon {
+  color: #cbd5e1;
 }
 
-html[data-theme="dark"] .gt-cal.open .gt-cal-icon{
-  color:#14b8a6;
+html[data-theme="dark"] .gt-cal.open .gt-cal-icon {
+  color: #14b8a6;
 }
 
-html[data-theme="dark"] .gt-cal-pop{
-  background:#111827;
-  color:#f8fafc;
-  border-color:#334155;
+html[data-theme="dark"] .gt-cal-pop {
+  background: #111827;
+  color: #f8fafc;
+  border-color: #334155;
   box-shadow:
-    0 20px 50px rgba(0,0,0,.45),
-    0 5px 14px rgba(0,0,0,.25);
+    0 20px 50px rgba(0, 0, 0, 0.45),
+    0 5px 14px rgba(0, 0, 0, 0.25);
 }
 
 /* ------------------------------------------------------------
    HEADER
    ------------------------------------------------------------ */
 
-.gt-cal-head{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-  margin-bottom:10px;
+.gt-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
-.gt-cal-title{
-  flex:1;
-  text-align:center;
-  font-size:15px;
-  font-weight:700;
-  color:inherit;
+.gt-cal-title {
+  flex: 1;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: inherit;
 }
 
-.gt-cal-nav{
-  width:34px;
-  height:34px;
-  padding:0;
-  border:0;
-  border-radius:9px;
-  background:transparent;
-  color:inherit;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  cursor:pointer;
-  font-size:22px;
-  line-height:1;
+.gt-cal-nav {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
 }
 
-.gt-cal-nav:hover{
-  background:rgba(8,127,120,.10);
-  color:var(--primary,#087f78);
+.gt-cal-nav:hover {
+  background: rgba(8, 127, 120, 0.1);
+  color: var(--primary, #087f78);
 }
 
-html[data-theme="dark"] .gt-cal-nav:hover{
-  background:rgba(20,184,166,.14);
-  color:#14b8a6;
+html[data-theme="dark"] .gt-cal-nav:hover {
+  background: rgba(20, 184, 166, 0.14);
+  color: #14b8a6;
 }
 
 /* ------------------------------------------------------------
    WEEKDAYS
    ------------------------------------------------------------ */
 
-.gt-cal-week{
-  display:grid;
-  grid-template-columns:repeat(7,1fr);
-  gap:3px;
-  margin-bottom:4px;
+.gt-cal-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  margin-bottom: 4px;
 }
 
-.gt-cal-week span{
-  text-align:center;
-  padding:5px 0;
-  color:#64748b;
-  font-size:11px;
-  font-weight:600;
+.gt-cal-week span {
+  text-align: center;
+  padding: 5px 0;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
 }
 
-html[data-theme="dark"] .gt-cal-week span{
-  color:#94a3b8;
+html[data-theme="dark"] .gt-cal-week span {
+  color: #94a3b8;
 }
 
 /* ------------------------------------------------------------
    DAYS
    ------------------------------------------------------------ */
 
-.gt-cal-days{
-  display:grid;
-  grid-template-columns:repeat(7,1fr);
-  gap:3px;
+.gt-cal-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
 }
 
-.gt-cal-day{
-  position:relative;
-  width:100%;
-  aspect-ratio:1;
-  min-height:34px;
-  padding:0;
-  border:0;
-  border-radius:9px;
-  background:transparent;
-  color:inherit;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font:inherit;
-  font-size:13px;
-  cursor:pointer;
+.gt-cal-day {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  min-height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
 }
 
-.gt-cal-day:hover{
-  background:rgba(8,127,120,.10);
-  color:var(--primary,#087f78);
+.gt-cal-day:hover {
+  background: rgba(8, 127, 120, 0.1);
+  color: var(--primary, #087f78);
 }
 
-.gt-cal-day.outside{
-  color:#94a3b8;
-  opacity:.45;
+.gt-cal-day.outside {
+  color: #94a3b8;
+  opacity: 0.45;
 }
 
-.gt-cal-day.disabled{
-  opacity:.22;
-  cursor:not-allowed;
-  pointer-events:none;
+.gt-cal-day.disabled {
+  opacity: 0.22;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
-.gt-cal-day.today::after{
-  content:"";
-  position:absolute;
-  bottom:3px;
-  width:4px;
-  height:4px;
-  border-radius:50%;
-  background:var(--primary,#087f78);
+.gt-cal-day.today::after {
+  content: "";
+  position: absolute;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--primary, #087f78);
 }
 
-.gt-cal-day.selected{
-  background:var(--primary,#087f78);
-  color:#fff;
-  font-weight:700;
+.gt-cal-day.selected {
+  background: var(--primary, #087f78);
+  color: #fff;
+  font-weight: 700;
 }
 
-.gt-cal-day.selected::after{
-  display:none;
+.gt-cal-day.selected::after {
+  display: none;
 }
 
-html[data-theme="dark"] .gt-cal-day:hover{
-  background:rgba(20,184,166,.14);
-  color:#14b8a6;
+html[data-theme="dark"] .gt-cal-day:hover {
+  background: rgba(20, 184, 166, 0.14);
+  color: #14b8a6;
 }
 
-html[data-theme="dark"] .gt-cal-day.outside{
-  color:#64748b;
+html[data-theme="dark"] .gt-cal-day.outside {
+  color: #64748b;
 }
 
 /* ------------------------------------------------------------
    FOOTER
    ------------------------------------------------------------ */
 
-.gt-cal-foot{
-  display:flex;
-  justify-content:flex-end;
-  margin-top:10px;
-  padding-top:9px;
-  border-top:1px solid #e2e8f0;
+.gt-cal-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid #e2e8f0;
 }
 
-.gt-cal-today{
-  border:0;
-  border-radius:8px;
-  padding:7px 10px;
-  background:transparent;
-  color:var(--primary,#087f78);
-  font:inherit;
-  font-size:13px;
-  font-weight:600;
-  cursor:pointer;
+.gt-cal-today {
+  border: 0;
+  border-radius: 8px;
+  padding: 7px 10px;
+  background: transparent;
+  color: var(--primary, #087f78);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.gt-cal-today:hover{
-  background:rgba(8,127,120,.09);
+.gt-cal-today:hover {
+  background: rgba(8, 127, 120, 0.09);
 }
 
-html[data-theme="dark"] .gt-cal-foot{
-  border-top-color:#334155;
+html[data-theme="dark"] .gt-cal-foot {
+  border-top-color: #334155;
 }
 
-html[data-theme="dark"] .gt-cal-today{
-  color:#14b8a6;
+html[data-theme="dark"] .gt-cal-today {
+  color: #14b8a6;
 }
 
-html[data-theme="dark"] .gt-cal-today:hover{
-  background:rgba(20,184,166,.14);
+html[data-theme="dark"] .gt-cal-today:hover {
+  background: rgba(20, 184, 166, 0.14);
 }
 
 /* ------------------------------------------------------------
    MOBILE
    ------------------------------------------------------------ */
 
-@media(max-width:640px){
-
-  .gt-cal-trigger{
-    min-height:44px;
+@media (max-width: 640px) {
+  .gt-cal-trigger {
+    min-height: 44px;
   }
 
-  .gt-cal-pop{
-    width:min(340px,calc(100vw - 20px));
-    padding:12px;
+  .gt-cal-pop {
+    width: min(340px, calc(100vw - 20px));
+    padding: 12px;
   }
 
-  .gt-cal-day{
-    min-height:38px;
+  .gt-cal-day {
+    min-height: 38px;
   }
 }
 
-
 /* END GM-CALENDAR-CSS-CENTRALIZED */
-
-
 
 /* ==========================================================
    GM-DROPDOWNS-CSS-CENTRALIZED
@@ -934,904 +1130,899 @@ html[data-theme="dark"] .gt-cal-today:hover{
    GENERAL TRADERS - GLOBAL CUSTOM DROPDOWNS
    ============================================================ */
 
-.gt-dd{
-  position:relative;
-  display:block;
-  width:100%;
-  min-width:0;
+.gt-dd {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
 }
 
-.gt-dd-native{
-  position:absolute !important;
-  width:1px !important;
-  height:1px !important;
-  padding:0 !important;
-  margin:-1px !important;
-  overflow:hidden !important;
-  clip:rect(0,0,0,0) !important;
-  white-space:nowrap !important;
-  border:0 !important;
-  opacity:0 !important;
-  pointer-events:none !important;
+.gt-dd-native {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
-.gt-dd-trigger{
-  appearance:none;
-  -webkit-appearance:none;
-  box-sizing:border-box;
-  width:100%;
-  min-height:42px;
-  border:1px solid var(--border, #dbe3ea);
-  border-radius:12px;
-  background:var(--surface, #fff);
-  color:var(--text, #172033);
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  padding:0 13px;
-  font:inherit;
-  font-size:14px;
-  line-height:1.2;
-  text-align:left;
-  cursor:pointer;
+.gt-dd-trigger {
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--border, #dbe3ea);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  color: var(--text, #172033);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 13px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
   transition:
-    border-color .16s ease,
-    box-shadow .16s ease,
-    background-color .16s ease;
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background-color 0.16s ease;
 }
 
-.gt-dd-trigger:hover{
-  border-color:var(--primary, #087f78);
+.gt-dd-trigger:hover {
+  border-color: var(--primary, #087f78);
 }
 
-.gt-dd-trigger:focus-visible{
-  outline:2px solid var(--primary, #087f78);
-  outline-offset:1px;
+.gt-dd-trigger:focus-visible {
+  outline: 2px solid var(--primary, #087f78);
+  outline-offset: 1px;
 }
 
-.gt-dd.open .gt-dd-trigger{
-  border-color:var(--primary, #087f78);
-  box-shadow:0 0 0 3px color-mix(in srgb, var(--primary, #087f78) 12%, transparent);
+.gt-dd.open .gt-dd-trigger {
+  border-color: var(--primary, #087f78);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--primary, #087f78) 12%, transparent);
 }
 
-.gt-dd-label{
-  min-width:0;
-  flex:1;
-  overflow:hidden;
-  white-space:nowrap;
-  text-overflow:ellipsis;
-  color:inherit;
+.gt-dd-label {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: inherit;
 }
 
-.gt-dd-chevron{
-  width:18px;
-  height:18px;
-  flex:0 0 18px;
-  position:relative;
-  opacity:.75;
+.gt-dd-chevron {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  position: relative;
+  opacity: 0.75;
 }
 
 .gt-dd-chevron::before,
-.gt-dd-chevron::after{
-  content:"";
-  position:absolute;
-  top:8px;
-  width:7px;
-  height:1.7px;
-  border-radius:2px;
-  background:currentColor;
-  transition:transform .16s ease;
+.gt-dd-chevron::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  width: 7px;
+  height: 1.7px;
+  border-radius: 2px;
+  background: currentColor;
+  transition: transform 0.16s ease;
 }
 
-.gt-dd-chevron::before{
-  left:3px;
-  transform:rotate(45deg);
+.gt-dd-chevron::before {
+  left: 3px;
+  transform: rotate(45deg);
 }
 
-.gt-dd-chevron::after{
-  right:3px;
-  transform:rotate(-45deg);
+.gt-dd-chevron::after {
+  right: 3px;
+  transform: rotate(-45deg);
 }
 
-.gt-dd.open .gt-dd-chevron::before{
-  transform:rotate(-45deg);
+.gt-dd.open .gt-dd-chevron::before {
+  transform: rotate(-45deg);
 }
 
-.gt-dd.open .gt-dd-chevron::after{
-  transform:rotate(45deg);
+.gt-dd.open .gt-dd-chevron::after {
+  transform: rotate(45deg);
 }
 
 /* Floating menu */
-.gt-dd-menu{
-  position:fixed;
-  z-index:99999;
-  display:none;
-  box-sizing:border-box;
-  padding:6px;
-  border:1px solid var(--border, #dbe3ea);
-  border-radius:14px;
-  background:var(--surface, #fff);
+.gt-dd-menu {
+  position: fixed;
+  z-index: 99999;
+  display: none;
+  box-sizing: border-box;
+  padding: 6px;
+  border: 1px solid var(--border, #dbe3ea);
+  border-radius: 14px;
+  background: var(--surface, #fff);
   box-shadow:
-    0 18px 45px rgba(15,23,42,.14),
-    0 4px 12px rgba(15,23,42,.08);
-  overflow:auto;
-  max-height:min(360px, calc(100vh - 24px));
-  overscroll-behavior:contain;
+    0 18px 45px rgba(15, 23, 42, 0.14),
+    0 4px 12px rgba(15, 23, 42, 0.08);
+  overflow: auto;
+  max-height: min(360px, calc(100vh - 24px));
+  overscroll-behavior: contain;
 }
 
-.gt-dd-menu.open{
-  display:block;
+.gt-dd-menu.open {
+  display: block;
 }
 
-.gt-dd-option{
-  width:100%;
-  min-height:40px;
-  border:0;
-  border-radius:9px;
-  background:transparent;
-  color:var(--text, #172033);
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  padding:9px 11px;
-  font:inherit;
-  font-size:14px;
-  line-height:1.25;
-  text-align:left;
-  cursor:pointer;
-  box-sizing:border-box;
+.gt-dd-option {
+  width: 100%;
+  min-height: 40px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text, #172033);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 11px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
 }
 
 .gt-dd-option:hover,
-.gt-dd-option.active{
-  background:color-mix(in srgb, var(--primary, #087f78) 10%, var(--surface, #fff));
+.gt-dd-option.active {
+  background: color-mix(
+    in srgb,
+    var(--primary, #087f78) 10%,
+    var(--surface, #fff)
+  );
 }
 
-.gt-dd-option.selected{
-  color:var(--primary, #087f78);
-  font-weight:600;
-  background:color-mix(in srgb, var(--primary, #087f78) 9%, var(--surface, #fff));
+.gt-dd-option.selected {
+  color: var(--primary, #087f78);
+  font-weight: 600;
+  background: color-mix(
+    in srgb,
+    var(--primary, #087f78) 9%,
+    var(--surface, #fff)
+  );
 }
 
-.gt-dd-check{
-  width:18px;
-  min-width:18px;
-  height:18px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:var(--primary, #087f78);
-  font-weight:700;
-  font-size:15px;
+.gt-dd-check {
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary, #087f78);
+  font-weight: 700;
+  font-size: 15px;
 }
 
-.gt-dd-option:not(.selected) .gt-dd-check{
-  visibility:hidden;
+.gt-dd-option:not(.selected) .gt-dd-check {
+  visibility: hidden;
 }
 
 /* Disabled */
-.gt-dd.disabled .gt-dd-trigger{
-  opacity:.55;
-  cursor:not-allowed;
+.gt-dd.disabled .gt-dd-trigger {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 /* Dark mode */
 [data-theme="dark"] .gt-dd-trigger,
-[data-theme="dark"] .gt-dd-menu{
-  background:var(--surface, #111827);
-  border-color:var(--border, #334155);
+[data-theme="dark"] .gt-dd-menu {
+  background: var(--surface, #111827);
+  border-color: var(--border, #334155);
 }
 
 [data-theme="dark"] .gt-dd-option:hover,
-[data-theme="dark"] .gt-dd-option.active{
-  background:color-mix(in srgb, var(--primary, #14b8a6) 14%, var(--surface, #111827));
+[data-theme="dark"] .gt-dd-option.active {
+  background: color-mix(
+    in srgb,
+    var(--primary, #14b8a6) 14%,
+    var(--surface, #111827)
+  );
 }
 
-[data-theme="dark"] .gt-dd-option.selected{
-  background:color-mix(in srgb, var(--primary, #14b8a6) 14%, var(--surface, #111827));
+[data-theme="dark"] .gt-dd-option.selected {
+  background: color-mix(
+    in srgb,
+    var(--primary, #14b8a6) 14%,
+    var(--surface, #111827)
+  );
 }
 
 /* Mobile */
-@media (max-width:640px){
-  .gt-dd-trigger{
-    min-height:44px;
+@media (max-width: 640px) {
+  .gt-dd-trigger {
+    min-height: 44px;
   }
 
-  .gt-dd-menu{
-    max-width:calc(100vw - 20px);
-    max-height:55vh;
+  .gt-dd-menu {
+    max-width: calc(100vw - 20px);
+    max-height: 55vh;
   }
 
-  .gt-dd-option{
-    min-height:44px;
+  .gt-dd-option {
+    min-height: 44px;
   }
 }
 
-
 /* END GM-DROPDOWNS-CSS-CENTRALIZED */
-
-
 
 /* ============================================================
    GT-CALENDAR-THEME-v1
    General Traders shared calendar
    ============================================================ */
 
-.gt-calendar-host{
-  position:relative !important;
-  display:inline-block !important;
-  width:100% !important;
+.gt-calendar-host {
+  position: relative !important;
+  display: inline-block !important;
+  width: 100% !important;
 }
 
-.gt-calendar-native{
-  position:absolute !important;
-  width:1px !important;
-  height:1px !important;
-  opacity:0 !important;
-  pointer-events:none !important;
-  overflow:hidden !important;
-  clip:rect(0 0 0 0) !important;
+.gt-calendar-native {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
 }
 
-.gt-calendar-trigger{
-  width:100% !important;
-  height:46px !important;
-  min-height:46px !important;
+.gt-calendar-trigger {
+  width: 100% !important;
+  height: 46px !important;
+  min-height: 46px !important;
 
-  display:flex !important;
-  align-items:center !important;
-  justify-content:space-between !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
 
-  box-sizing:border-box !important;
+  box-sizing: border-box !important;
 
-  padding:0 13px !important;
-  margin:0 !important;
+  padding: 0 13px !important;
+  margin: 0 !important;
 
-  border:1px solid var(--border) !important;
-  border-radius:12px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
 
-  background:var(--card) !important;
-  color:var(--text) !important;
+  background: var(--card) !important;
+  color: var(--text) !important;
 
-  font:inherit !important;
-  font-size:14px !important;
-  font-weight:500 !important;
+  font: inherit !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
 
-  cursor:pointer !important;
+  cursor: pointer !important;
 
-  appearance:none !important;
-  -webkit-appearance:none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
 
   transition:
-    border-color .15s ease,
-    background-color .15s ease,
-    box-shadow .15s ease !important;
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease !important;
 }
 
-.gt-calendar-trigger:hover{
-  border-color:var(--primary) !important;
+.gt-calendar-trigger:hover {
+  border-color: var(--primary) !important;
 }
 
 .gt-calendar-trigger:focus,
-.gt-calendar-trigger:focus-visible{
-  outline:2px solid var(--primary) !important;
-  outline-offset:1px !important;
-  border-color:var(--primary) !important;
-  box-shadow:0 0 0 3px var(--ring) !important;
+.gt-calendar-trigger:focus-visible {
+  outline: 2px solid var(--primary) !important;
+  outline-offset: 1px !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px var(--ring) !important;
 }
 
-.gt-calendar-trigger-text{
-  overflow:hidden !important;
-  text-overflow:ellipsis !important;
-  white-space:nowrap !important;
+.gt-calendar-trigger-text {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 
-.gt-calendar-trigger-icon{
-  width:18px !important;
-  height:18px !important;
-  min-width:18px !important;
+.gt-calendar-trigger-icon {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
 
-  color:var(--muted) !important;
+  color: var(--muted) !important;
 
-  display:flex !important;
-  align-items:center !important;
-  justify-content:center !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
-.gt-calendar-trigger:hover .gt-calendar-trigger-icon{
-  color:var(--primary) !important;
+.gt-calendar-trigger:hover .gt-calendar-trigger-icon {
+  color: var(--primary) !important;
 }
-
 
 /* ============================================================
    POPUP
    ============================================================ */
 
-.gt-calendar-popup{
-  position:fixed !important;
-  z-index:999999 !important;
+.gt-calendar-popup {
+  position: fixed !important;
+  z-index: 999999 !important;
 
-  width:318px !important;
-  max-width:calc(100vw - 24px) !important;
+  width: 318px !important;
+  max-width: calc(100vw - 24px) !important;
 
-  box-sizing:border-box !important;
+  box-sizing: border-box !important;
 
-  padding:14px !important;
+  padding: 14px !important;
 
-  background:var(--card) !important;
-  color:var(--text) !important;
+  background: var(--card) !important;
+  color: var(--text) !important;
 
-  border:1px solid var(--border) !important;
-  border-radius:16px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 16px !important;
 
   box-shadow:
-    0 22px 55px rgba(15,23,42,.18),
-    0 6px 18px rgba(15,23,42,.10) !important;
+    0 22px 55px rgba(15, 23, 42, 0.18),
+    0 6px 18px rgba(15, 23, 42, 0.1) !important;
 }
 
-html[data-theme="dark"] .gt-calendar-popup{
+html[data-theme="dark"] .gt-calendar-popup {
   box-shadow:
-    0 24px 60px rgba(0,0,0,.48),
-    0 8px 22px rgba(0,0,0,.30) !important;
+    0 24px 60px rgba(0, 0, 0, 0.48),
+    0 8px 22px rgba(0, 0, 0, 0.3) !important;
 }
-
 
 /* ============================================================
    HEADER
    ============================================================ */
 
-.gt-calendar-head{
-  display:flex !important;
-  align-items:center !important;
-  justify-content:space-between !important;
+.gt-calendar-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
 
-  margin-bottom:12px !important;
+  margin-bottom: 12px !important;
 }
 
-.gt-calendar-month{
-  font-size:15px !important;
-  font-weight:700 !important;
-  color:var(--text) !important;
+.gt-calendar-month {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: var(--text) !important;
 }
 
-.gt-calendar-nav{
-  display:flex !important;
-  gap:5px !important;
+.gt-calendar-nav {
+  display: flex !important;
+  gap: 5px !important;
 }
 
-.gt-calendar-nav button{
-  width:34px !important;
-  height:34px !important;
+.gt-calendar-nav button {
+  width: 34px !important;
+  height: 34px !important;
 
-  display:flex !important;
-  align-items:center !important;
-  justify-content:center !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 
-  padding:0 !important;
+  padding: 0 !important;
 
-  border:1px solid transparent !important;
-  border-radius:9px !important;
+  border: 1px solid transparent !important;
+  border-radius: 9px !important;
 
-  background:transparent !important;
-  color:var(--muted) !important;
+  background: transparent !important;
+  color: var(--muted) !important;
 
-  cursor:pointer !important;
+  cursor: pointer !important;
 
-  font-size:18px !important;
+  font-size: 18px !important;
 }
 
-.gt-calendar-nav button:hover{
-  background:var(--primary-soft,rgba(20,184,166,.10)) !important;
-  color:var(--primary) !important;
-  border-color:var(--border) !important;
+.gt-calendar-nav button:hover {
+  background: var(--primary-soft, rgba(20, 184, 166, 0.1)) !important;
+  color: var(--primary) !important;
+  border-color: var(--border) !important;
 }
-
 
 /* ============================================================
    WEEK DAYS
    ============================================================ */
 
-.gt-calendar-week{
-  display:grid !important;
-  grid-template-columns:repeat(7,1fr) !important;
-  gap:3px !important;
+.gt-calendar-week {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  gap: 3px !important;
 
-  margin-bottom:4px !important;
+  margin-bottom: 4px !important;
 }
 
-.gt-calendar-week span{
-  height:28px !important;
+.gt-calendar-week span {
+  height: 28px !important;
 
-  display:flex !important;
-  align-items:center !important;
-  justify-content:center !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 
-  color:var(--muted) !important;
+  color: var(--muted) !important;
 
-  font-size:11px !important;
-  font-weight:600 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
 }
-
 
 /* ============================================================
    DAYS
    ============================================================ */
 
-.gt-calendar-days{
-  display:grid !important;
-  grid-template-columns:repeat(7,1fr) !important;
-  gap:3px !important;
+.gt-calendar-days {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  gap: 3px !important;
 }
 
-.gt-calendar-day{
-  height:36px !important;
+.gt-calendar-day {
+  height: 36px !important;
 
-  display:flex !important;
-  align-items:center !important;
-  justify-content:center !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 
-  border:0 !important;
-  border-radius:9px !important;
+  border: 0 !important;
+  border-radius: 9px !important;
 
-  background:transparent !important;
-  color:var(--text) !important;
+  background: transparent !important;
+  color: var(--text) !important;
 
-  font:inherit !important;
-  font-size:13px !important;
+  font: inherit !important;
+  font-size: 13px !important;
 
-  cursor:pointer !important;
+  cursor: pointer !important;
 }
 
-.gt-calendar-day:hover{
-  background:var(--primary-soft,rgba(20,184,166,.10)) !important;
-  color:var(--primary) !important;
+.gt-calendar-day:hover {
+  background: var(--primary-soft, rgba(20, 184, 166, 0.1)) !important;
+  color: var(--primary) !important;
 }
 
-.gt-calendar-day.other-month{
-  color:var(--muted) !important;
-  opacity:.45 !important;
+.gt-calendar-day.other-month {
+  color: var(--muted) !important;
+  opacity: 0.45 !important;
 }
 
-.gt-calendar-day.today{
-  box-shadow:inset 0 0 0 1px var(--primary) !important;
+.gt-calendar-day.today {
+  box-shadow: inset 0 0 0 1px var(--primary) !important;
 }
 
-.gt-calendar-day.selected{
-  background:var(--primary) !important;
-  color:#fff !important;
-  font-weight:700 !important;
+.gt-calendar-day.selected {
+  background: var(--primary) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
 }
 
-.gt-calendar-day.selected:hover{
-  background:var(--primary) !important;
-  color:#fff !important;
+.gt-calendar-day.selected:hover {
+  background: var(--primary) !important;
+  color: #fff !important;
 }
-
 
 /* ============================================================
    FOOTER
    ============================================================ */
 
-.gt-calendar-footer{
-  display:flex !important;
-  align-items:center !important;
-  justify-content:space-between !important;
+.gt-calendar-footer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
 
-  margin-top:10px !important;
-  padding-top:10px !important;
+  margin-top: 10px !important;
+  padding-top: 10px !important;
 
-  border-top:1px solid var(--border) !important;
+  border-top: 1px solid var(--border) !important;
 }
 
-.gt-calendar-footer button{
-  border:0 !important;
-  background:transparent !important;
+.gt-calendar-footer button {
+  border: 0 !important;
+  background: transparent !important;
 
-  color:var(--primary) !important;
+  color: var(--primary) !important;
 
-  font:inherit !important;
-  font-size:13px !important;
-  font-weight:600 !important;
+  font: inherit !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
 
-  cursor:pointer !important;
+  cursor: pointer !important;
 
-  padding:6px 8px !important;
-  border-radius:7px !important;
+  padding: 6px 8px !important;
+  border-radius: 7px !important;
 }
 
-.gt-calendar-footer button:hover{
-  background:var(--primary-soft,rgba(20,184,166,.10)) !important;
+.gt-calendar-footer button:hover {
+  background: var(--primary-soft, rgba(20, 184, 166, 0.1)) !important;
 }
-
 
 /* ============================================================
    MOBILE
    ============================================================ */
 
-@media(max-width:640px){
-
-  .gt-calendar-popup{
-    width:calc(100vw - 20px) !important;
-    max-width:calc(100vw - 20px) !important;
-    padding:13px !important;
+@media (max-width: 640px) {
+  .gt-calendar-popup {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    padding: 13px !important;
   }
 
-  .gt-calendar-day{
-    height:40px !important;
+  .gt-calendar-day {
+    height: 40px !important;
   }
-
 }
-
-
-
 
 /* ============================================================
    GT FINAL DATE / CALENDAR UI
    ============================================================ */
 
 /* Date field host */
-.gt-calendar-host{
-  position:relative !important;
-  display:block !important;
-  width:100% !important;
-  min-width:0 !important;
+.gt-calendar-host {
+  position: relative !important;
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
 }
 
 /* Hide native date input but preserve its value/events */
-.gt-calendar-native{
-  position:absolute !important;
-  width:1px !important;
-  height:1px !important;
-  opacity:0 !important;
-  pointer-events:none !important;
-  clip:rect(0 0 0 0) !important;
+.gt-calendar-native {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  clip: rect(0 0 0 0) !important;
 }
 
 /* GT date button */
-.gt-calendar-trigger{
-  width:100% !important;
-  min-width:0 !important;
-  height:44px !important;
+.gt-calendar-trigger {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 44px !important;
 
-  display:flex !important;
-  align-items:center !important;
-  justify-content:space-between !important;
-  gap:10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
 
-  box-sizing:border-box !important;
+  box-sizing: border-box !important;
 
-  padding:0 12px !important;
+  padding: 0 12px !important;
 
-  border:1px solid var(--border) !important;
-  border-radius:12px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
 
-  background:var(--card) !important;
-  color:var(--text) !important;
+  background: var(--card) !important;
+  color: var(--text) !important;
 
-  font-family:inherit !important;
-  font-size:14px !important;
-  font-weight:500 !important;
+  font-family: inherit !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
 
-  cursor:pointer !important;
+  cursor: pointer !important;
 
-  appearance:none !important;
-  -webkit-appearance:none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
 
-  box-shadow:none !important;
+  box-shadow: none !important;
 
   transition:
-    border-color .15s ease,
-    box-shadow .15s ease,
-    background .15s ease !important;
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease !important;
 }
 
-.gt-calendar-trigger:hover{
-  border-color:var(--primary) !important;
+.gt-calendar-trigger:hover {
+  border-color: var(--primary) !important;
 }
 
 .gt-calendar-trigger:focus,
-.gt-calendar-trigger:focus-visible{
-  outline:none !important;
-  border-color:var(--primary) !important;
-  box-shadow:0 0 0 3px var(--ring) !important;
+.gt-calendar-trigger:focus-visible {
+  outline: none !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px var(--ring) !important;
 }
 
-.gt-calendar-trigger-text{
-  min-width:0 !important;
-  overflow:hidden !important;
-  text-overflow:ellipsis !important;
-  white-space:nowrap !important;
+.gt-calendar-trigger-text {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 
-.gt-calendar-trigger-icon{
-  width:18px !important;
-  height:18px !important;
-  min-width:18px !important;
+.gt-calendar-trigger-icon {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
 
-  display:flex !important;
-  align-items:center !important;
-  justify-content:center !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 
-  color:var(--muted) !important;
+  color: var(--muted) !important;
 }
 
-.gt-calendar-trigger-icon svg{
-  width:18px !important;
-  height:18px !important;
-  display:block !important;
+.gt-calendar-trigger-icon svg {
+  width: 18px !important;
+  height: 18px !important;
+  display: block !important;
 }
-
 
 /* ============================================================
    SUMMARY TOP FILTER BAR
    ============================================================ */
 
-.a-bar{
-  display:flex !important;
-  align-items:center !important;
-  flex-wrap:wrap !important;
-  gap:10px 8px !important;
+.a-bar {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 10px 8px !important;
 }
 
-.a-bar .mu{
-  flex:0 0 auto !important;
-  white-space:nowrap !important;
+.a-bar .mu {
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
 }
 
-.a-bar .field.a-f{
-  flex:0 1 230px !important;
-  min-width:190px !important;
-  width:230px !important;
-  max-width:100% !important;
+.a-bar .field.a-f {
+  flex: 0 1 230px !important;
+  min-width: 190px !important;
+  width: 230px !important;
+  max-width: 100% !important;
 }
 
-.a-bar .field.a-f .gt-calendar-trigger{
-  width:100% !important;
+.a-bar .field.a-f .gt-calendar-trigger {
+  width: 100% !important;
 }
 
-.a-bar .field.a-f select{
-  width:100% !important;
+.a-bar .field.a-f select {
+  width: 100% !important;
 }
-
 
 /* ============================================================
    GT CALENDAR POPUP
    ============================================================ */
 
-.gt-calendar-popup{
-  position:fixed !important;
-  z-index:999999 !important;
+.gt-calendar-popup {
+  position: fixed !important;
+  z-index: 999999 !important;
 
-  width:318px !important;
-  max-width:calc(100vw - 20px) !important;
+  width: 318px !important;
+  max-width: calc(100vw - 20px) !important;
 
-  box-sizing:border-box !important;
+  box-sizing: border-box !important;
 
-  padding:14px !important;
+  padding: 14px !important;
 
-  background:var(--card) !important;
-  color:var(--text) !important;
+  background: var(--card) !important;
+  color: var(--text) !important;
 
-  border:1px solid var(--border) !important;
-  border-radius:16px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 16px !important;
 
   box-shadow:
-    0 18px 45px rgba(15,23,42,.18),
-    0 4px 14px rgba(15,23,42,.08) !important;
+    0 18px 45px rgba(15, 23, 42, 0.18),
+    0 4px 14px rgba(15, 23, 42, 0.08) !important;
 }
 
-html[data-theme="dark"] .gt-calendar-popup{
+html[data-theme="dark"] .gt-calendar-popup {
   box-shadow:
-    0 22px 55px rgba(0,0,0,.48),
-    0 5px 18px rgba(0,0,0,.30) !important;
+    0 22px 55px rgba(0, 0, 0, 0.48),
+    0 5px 18px rgba(0, 0, 0, 0.3) !important;
 }
 
-.gt-calendar-head{
-  display:flex !important;
-  align-items:center !important;
-  justify-content:space-between !important;
+.gt-calendar-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
 
-  margin-bottom:10px !important;
+  margin-bottom: 10px !important;
 }
 
-.gt-calendar-month{
-  color:var(--text) !important;
-  font-size:14px !important;
-  font-weight:700 !important;
+.gt-calendar-month {
+  color: var(--text) !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
 }
 
-.gt-calendar-nav{
-  display:flex !important;
-  gap:4px !important;
+.gt-calendar-nav {
+  display: flex !important;
+  gap: 4px !important;
 }
 
-.gt-calendar-nav button{
-  width:32px !important;
-  height:32px !important;
+.gt-calendar-nav button {
+  width: 32px !important;
+  height: 32px !important;
 
-  display:flex !important;
-  align-items:center !important;
-  justify-content:center !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 
-  padding:0 !important;
+  padding: 0 !important;
 
-  border:1px solid transparent !important;
-  border-radius:8px !important;
+  border: 1px solid transparent !important;
+  border-radius: 8px !important;
 
-  background:transparent !important;
-  color:var(--muted) !important;
+  background: transparent !important;
+  color: var(--muted) !important;
 
-  font:inherit !important;
-  font-size:18px !important;
+  font: inherit !important;
+  font-size: 18px !important;
 
-  cursor:pointer !important;
+  cursor: pointer !important;
 }
 
-.gt-calendar-nav button:hover{
-  background:var(--primary-soft,rgba(20,184,166,.10)) !important;
-  color:var(--primary) !important;
-  border-color:var(--border) !important;
+.gt-calendar-nav button:hover {
+  background: var(--primary-soft, rgba(20, 184, 166, 0.1)) !important;
+  color: var(--primary) !important;
+  border-color: var(--border) !important;
 }
 
 .gt-calendar-week,
-.gt-calendar-days{
-  display:grid !important;
-  grid-template-columns:repeat(7,1fr) !important;
-  gap:3px !important;
+.gt-calendar-days {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  gap: 3px !important;
 }
 
-.gt-calendar-week{
-  margin-bottom:4px !important;
+.gt-calendar-week {
+  margin-bottom: 4px !important;
 }
 
-.gt-calendar-week span{
-  height:27px !important;
+.gt-calendar-week span {
+  height: 27px !important;
 
-  display:flex !important;
-  align-items:center !important;
-  justify-content:center !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 
-  color:var(--muted) !important;
+  color: var(--muted) !important;
 
-  font-size:11px !important;
-  font-weight:600 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
 }
 
-.gt-calendar-day{
-  height:36px !important;
+.gt-calendar-day {
+  height: 36px !important;
 
-  display:flex !important;
-  align-items:center !important;
-  justify-content:center !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 
-  padding:0 !important;
+  padding: 0 !important;
 
-  border:0 !important;
-  border-radius:9px !important;
+  border: 0 !important;
+  border-radius: 9px !important;
 
-  background:transparent !important;
-  color:var(--text) !important;
+  background: transparent !important;
+  color: var(--text) !important;
 
-  font:inherit !important;
-  font-size:13px !important;
+  font: inherit !important;
+  font-size: 13px !important;
 
-  cursor:pointer !important;
+  cursor: pointer !important;
 }
 
-.gt-calendar-day:hover{
-  background:var(--primary-soft,rgba(20,184,166,.10)) !important;
-  color:var(--primary) !important;
+.gt-calendar-day:hover {
+  background: var(--primary-soft, rgba(20, 184, 166, 0.1)) !important;
+  color: var(--primary) !important;
 }
 
-.gt-calendar-day.other-month{
-  color:var(--muted) !important;
-  opacity:.42 !important;
+.gt-calendar-day.other-month {
+  color: var(--muted) !important;
+  opacity: 0.42 !important;
 }
 
-.gt-calendar-day.today{
-  box-shadow:inset 0 0 0 1px var(--primary) !important;
+.gt-calendar-day.today {
+  box-shadow: inset 0 0 0 1px var(--primary) !important;
 }
 
-.gt-calendar-day.selected{
-  background:var(--primary) !important;
-  color:#fff !important;
-  font-weight:700 !important;
+.gt-calendar-day.selected {
+  background: var(--primary) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
 }
 
-.gt-calendar-footer{
-  display:flex !important;
-  align-items:center !important;
-  justify-content:space-between !important;
+.gt-calendar-footer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
 
-  margin-top:9px !important;
-  padding-top:9px !important;
+  margin-top: 9px !important;
+  padding-top: 9px !important;
 
-  border-top:1px solid var(--border) !important;
+  border-top: 1px solid var(--border) !important;
 }
 
-.gt-calendar-footer button{
-  border:0 !important;
-  border-radius:7px !important;
+.gt-calendar-footer button {
+  border: 0 !important;
+  border-radius: 7px !important;
 
-  padding:6px 8px !important;
+  padding: 6px 8px !important;
 
-  background:transparent !important;
-  color:var(--primary) !important;
+  background: transparent !important;
+  color: var(--primary) !important;
 
-  font:inherit !important;
-  font-size:13px !important;
-  font-weight:600 !important;
+  font: inherit !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
 
-  cursor:pointer !important;
+  cursor: pointer !important;
 }
 
-.gt-calendar-footer button:hover{
-  background:var(--primary-soft,rgba(20,184,166,.10)) !important;
+.gt-calendar-footer button:hover {
+  background: var(--primary-soft, rgba(20, 184, 166, 0.1)) !important;
 }
-
 
 /* ============================================================
    SIDEBAR ACCOUNT — REMOVE F AVATAR
    ============================================================ */
 
 .sidebar-user-dot,
-#header-dot{
-  display:none !important;
+#header-dot {
+  display: none !important;
 }
 
-.sidebar-footer{
-  display:flex !important;
-  align-items:center !important;
-  gap:10px !important;
+.sidebar-footer {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
 }
 
-.sidebar-user-name{
-  min-width:0 !important;
-  flex:1 1 auto !important;
+.sidebar-user-name {
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
 }
 
-.sidebar-logout-btn{
-  flex:0 0 auto !important;
+.sidebar-logout-btn {
+  flex: 0 0 auto !important;
 }
-
 
 /* ============================================================
    RESPONSIVE
    ============================================================ */
 
-@media(max-width:700px){
-
-  .a-bar{
-    align-items:stretch !important;
+@media (max-width: 700px) {
+  .a-bar {
+    align-items: stretch !important;
   }
 
-  .a-bar .mu{
-    width:100% !important;
+  .a-bar .mu {
+    width: 100% !important;
   }
 
-  .a-bar .field.a-f{
-    width:100% !important;
-    flex:1 1 100% !important;
+  .a-bar .field.a-f {
+    width: 100% !important;
+    flex: 1 1 100% !important;
   }
 
-  .a-bar .btn{
-    flex:0 0 auto !important;
+  .a-bar .btn {
+    flex: 0 0 auto !important;
   }
 
-  .gt-calendar-popup{
-    width:calc(100vw - 20px) !important;
-    max-width:calc(100vw - 20px) !important;
+  .gt-calendar-popup {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
   }
 
-  .gt-calendar-day{
-    height:40px !important;
+  .gt-calendar-day {
+    height: 40px !important;
   }
-
 }
-
-
 
 /* ============================================================
    GT-CALENDAR-FINAL-CSS
@@ -1888,9 +2079,9 @@ html[data-theme="dark"] .gt-calendar-popup{
   -webkit-appearance: none !important;
 
   transition:
-    border-color .16s ease,
-    box-shadow .16s ease,
-    background .16s ease !important;
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease !important;
 }
 
 /* Light theme */
@@ -1916,7 +2107,7 @@ html[data-theme="dark"] .gt-calendar-trigger {
 .gt-calendar-trigger:focus,
 .gt-calendar-trigger:focus-visible {
   outline: none !important;
-  box-shadow: 0 0 0 3px rgba(20, 184, 166, .14) !important;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.14) !important;
 }
 
 /* Date text */
@@ -1971,8 +2162,7 @@ html[data-theme="dark"] .gt-calendar-trigger-icon {
   background: var(--card) !important;
   color: var(--text) !important;
 
-  box-shadow:
-    0 18px 45px rgba(0, 0, 0, .16) !important;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.16) !important;
 
   box-sizing: border-box !important;
 }
@@ -1983,8 +2173,7 @@ html[data-theme="dark"] .gt-calendar-popup {
   border-color: #2c3948 !important;
   color: #f1f5f9 !important;
 
-  box-shadow:
-    0 22px 50px rgba(0, 0, 0, .48) !important;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.48) !important;
 }
 
 /* Header */
@@ -2038,7 +2227,7 @@ html[data-theme="dark"] .gt-calendar-popup {
 
 .gt-calendar-day.other-month {
   color: var(--muted) !important;
-  opacity: .45 !important;
+  opacity: 0.45 !important;
 }
 
 .gt-calendar-day.today {
@@ -2112,7 +2301,7 @@ html[data-theme="dark"] .gt-calendar-popup {
   padding: 0 !important;
   margin: -1px !important;
   overflow: hidden !important;
-  clip: rect(0,0,0,0) !important;
+  clip: rect(0, 0, 0, 0) !important;
   white-space: nowrap !important;
   border: 0 !important;
   opacity: 0 !important;
@@ -2150,9 +2339,9 @@ html[data-theme="dark"] .gt-calendar-popup {
   box-sizing: border-box !important;
 
   transition:
-    border-color .16s ease,
-    box-shadow .16s ease,
-    background .16s ease !important;
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease !important;
 }
 
 .gt-cal > button:hover,
@@ -2186,7 +2375,7 @@ html[data-theme="dark"] .gt-calendar-popup {
   background: var(--card) !important;
   color: var(--text) !important;
 
-  box-shadow: 0 18px 50px rgba(0,0,0,.22) !important;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22) !important;
 }
 
 /* Calendar header */
@@ -2221,7 +2410,7 @@ html[data-theme="dark"] .gt-calendar-popup {
 /* Week labels */
 .gt-cal-pop .gt-cal-week {
   display: grid !important;
-  grid-template-columns: repeat(7,1fr) !important;
+  grid-template-columns: repeat(7, 1fr) !important;
   gap: 4px !important;
   margin-bottom: 5px !important;
 }
@@ -2236,7 +2425,7 @@ html[data-theme="dark"] .gt-calendar-popup {
 /* Days */
 .gt-cal-pop .gt-cal-days {
   display: grid !important;
-  grid-template-columns: repeat(7,1fr) !important;
+  grid-template-columns: repeat(7, 1fr) !important;
   gap: 4px !important;
 }
 
@@ -2267,7 +2456,7 @@ html[data-theme="dark"] .gt-calendar-popup {
 }
 
 .gt-cal-pop .gt-cal-day:disabled {
-  opacity: .35 !important;
+  opacity: 0.35 !important;
   cursor: not-allowed !important;
 }
 
@@ -2302,7 +2491,6 @@ html[data-theme="dark"] .gt-calendar-popup {
 
 /* Mobile */
 @media (max-width: 640px) {
-
   .gt-cal-pop {
     width: min(310px, calc(100vw - 24px)) !important;
   }
@@ -2311,173 +2499,895 @@ html[data-theme="dark"] .gt-calendar-popup {
   .gt-cal-trigger {
     min-height: 42px !important;
   }
-
 }
 
 /* END GT-CALENDAR-V2-FINAL-CSS */
 
-
 /* GM-DD-OPTION-COLORS-v1: hover is a soft neutral, the selected option is clearly teal */
 html[data-theme] .gt-dd-option:hover,
-html[data-theme] .gt-dd-option.active{
-  background:color-mix(in srgb, var(--text, #172033) 8%, transparent);
+html[data-theme] .gt-dd-option.active {
+  background: color-mix(in srgb, var(--text, #172033) 8%, transparent);
 }
-html[data-theme] .gt-dd-option.selected{
-  background:color-mix(in srgb, var(--primary, #14b8a6) 22%, transparent);
-  color:var(--primary, #14b8a6);
-  font-weight:700;
+html[data-theme] .gt-dd-option.selected {
+  background: color-mix(in srgb, var(--primary, #14b8a6) 22%, transparent);
+  color: var(--primary, #14b8a6);
+  font-weight: 700;
 }
 html[data-theme] .gt-dd-option.selected:hover,
-html[data-theme] .gt-dd-option.selected.active{
-  background:color-mix(in srgb, var(--primary, #14b8a6) 30%, transparent);
+html[data-theme] .gt-dd-option.selected.active {
+  background: color-mix(in srgb, var(--primary, #14b8a6) 30%, transparent);
 }
 
 /* GM-DD-COMPACT-v1: smaller option highlights with a gap between them (desktop only, phones keep big tap targets) */
-@media (min-width:641px){
-  .gt-dd-menu{padding:5px !important}
-  .gt-dd-option{min-height:34px !important;padding:6px 10px !important;border-radius:8px !important;font-size:13.5px !important}
-  .gt-dd-option + .gt-dd-option{margin-top:3px !important}
+@media (min-width: 641px) {
+  .gt-dd-menu {
+    padding: 5px !important;
+  }
+  .gt-dd-option {
+    min-height: 34px !important;
+    padding: 6px 10px !important;
+    border-radius: 8px !important;
+    font-size: 13.5px !important;
+  }
+  .gt-dd-option + .gt-dd-option {
+    margin-top: 3px !important;
+  }
 }
 /* Month picker (shares the date calendar look) */
-.gt-mo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:6px 2px 10px}
-.gt-mo{height:42px;border:0;border-radius:10px;background:transparent;color:inherit;font:inherit;font-size:14px;font-weight:600;cursor:pointer}
-.gt-mo:hover:not(:disabled){background:rgba(8,127,120,.10);color:var(--primary,#087f78)}
-.gt-mo.today{box-shadow:inset 0 0 0 1px var(--primary,#087f78)}
-.gt-mo.selected{background:var(--primary,#087f78);color:var(--on-primary,#fff)}
-.gt-mo:disabled{opacity:.35;cursor:default}
-.gt-mo:focus-visible{outline:2px solid var(--primary,#087f78);outline-offset:2px}
-.gt-mo-pop{height:auto}
+.gt-mo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 6px 2px 10px;
+}
+.gt-mo {
+  height: 42px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.gt-mo:hover:not(:disabled) {
+  background: rgba(8, 127, 120, 0.1);
+  color: var(--primary, #087f78);
+}
+.gt-mo.today {
+  box-shadow: inset 0 0 0 1px var(--primary, #087f78);
+}
+.gt-mo.selected {
+  background: var(--primary, #087f78);
+  color: var(--on-primary, #fff);
+}
+.gt-mo:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.gt-mo:focus-visible {
+  outline: 2px solid var(--primary, #087f78);
+  outline-offset: 2px;
+}
+.gt-mo-pop {
+  height: auto;
+}
 
 /* ===== Compact buttons (worker app) =====
    Main action buttons 46px, other buttons 42px, icon buttons 40px. Phone-friendly tap size. */
-body:not(:has(.a-main)) :is(.btn,.btn-hero,.btn-success,.btn-danger,.dv-markbtn,.po-out,.rt-open,.pm-go){height:46px!important;min-height:46px!important;font-size:15px!important;border-radius:12px}
-body:not(:has(.a-main)) :is(.btn.btn-secondary,.btn.btn-outline,.btn-problem,.at-btn,.dv-two a,.dv-problem,.po-wa,.pf-btn,.pf-help a,.pf-seg button,.pf-sheet .btns button){height:42px!important;min-height:42px!important;font-size:14px!important;border-radius:12px}
-body:not(:has(.a-main)) :is(.pf-act){height:44px!important;min-height:44px!important;font-size:14px!important}
-body:not(:has(.a-main)) :is(.pf-tab){height:40px!important;min-height:40px!important;font-size:13.5px!important}
-body:not(:has(.a-main)) :is(.icon-btn,.back-btn){width:40px!important;height:40px!important}
-body:not(:has(.a-main)) .at-btn{min-width:0!important}
+body:not(:has(.a-main))
+  :is(
+    .btn,
+    .btn-hero,
+    .btn-success,
+    .btn-danger,
+    .dv-markbtn,
+    .po-out,
+    .rt-open,
+    .pm-go
+  ) {
+  height: 46px !important;
+  min-height: 46px !important;
+  font-size: 15px !important;
+  border-radius: 12px;
+}
+body:not(:has(.a-main))
+  :is(
+    .btn.btn-secondary,
+    .btn.btn-outline,
+    .btn-problem,
+    .at-btn,
+    .dv-two a,
+    .dv-problem,
+    .po-wa,
+    .pf-btn,
+    .pf-help a,
+    .pf-seg button,
+    .pf-sheet .btns button
+  ) {
+  height: 42px !important;
+  min-height: 42px !important;
+  font-size: 14px !important;
+  border-radius: 12px;
+}
+body:not(:has(.a-main)) :is(.pf-act) {
+  height: 44px !important;
+  min-height: 44px !important;
+  font-size: 14px !important;
+}
+body:not(:has(.a-main)) :is(.pf-tab) {
+  height: 40px !important;
+  min-height: 40px !important;
+  font-size: 13.5px !important;
+}
+body:not(:has(.a-main)) :is(.icon-btn, .back-btn) {
+  width: 40px !important;
+  height: 40px !important;
+}
+body:not(:has(.a-main)) .at-btn {
+  min-width: 0 !important;
+}
 /* ===== Delivery app: same sizes and motion as the admin pages ===== */
 /* Odd-sized buttons brought to the standard: main 46, secondary 42, close/icon 40 */
-body:not(:has(.a-main)) :is(.rt-refresh,.rt-viewmap,.btn-call-admin){height:42px!important;min-height:42px!important;font-size:14px!important;border-radius:12px!important}
-body:not(:has(.a-main)) .modal-close-btn{width:40px!important;height:40px!important}
+body:not(:has(.a-main)) :is(.rt-refresh, .rt-viewmap, .btn-call-admin) {
+  height: 42px !important;
+  min-height: 42px !important;
+  font-size: 14px !important;
+  border-radius: 12px !important;
+}
+body:not(:has(.a-main)) .modal-close-btn {
+  width: 40px !important;
+  height: 40px !important;
+}
 /* Same easing as admin */
-:root{--w-ease:cubic-bezier(.22,.8,.3,1)}
-@keyframes wUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:no-preference){
+:root {
+  --w-ease: cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+@keyframes wUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
   /* the page slides up once on load (the container is never re-rendered, so live refreshes do not replay it) */
-  body:not(:has(.a-main)) .app{animation:wUp .5s var(--w-ease) backwards}
+  body:not(:has(.a-main)) .app {
+    animation: wUp 0.5s var(--w-ease) backwards;
+  }
 }
-body:not(:has(.a-main)) :is(.btn,.btn-hero,.btn-success,.btn-danger,.btn-secondary,.btn-outline,.icon-btn,.back-btn,.menu-card,.po-out,.po-wa,.rt-open,.rt-refresh,.rt-viewmap,.at-btn,.pf-btn,.pf-act,.btn-call-admin){transition:transform .22s var(--w-ease),box-shadow .22s var(--w-ease),background-color .2s,border-color .2s,color .2s,opacity .2s}
-body:not(:has(.a-main)) :is(.btn,.btn-hero,.btn-success,.btn-danger,.btn-secondary,.btn-outline,.icon-btn,.back-btn,.menu-card,.po-out,.po-wa,.rt-open,.rt-refresh,.rt-viewmap,.at-btn,.pf-btn,.pf-act,.btn-call-admin):not(:disabled):active{transform:scale(.96)}
-@media (hover:hover){
-  body:not(:has(.a-main)) :is(.btn,.btn-hero,.btn-success,.btn-danger,.po-out,.rt-open):not(:disabled):hover{transform:translateY(-2px);box-shadow:0 8px 20px -8px rgba(15,118,110,.55)}
-  body:not(:has(.a-main)) :is(.btn-secondary,.btn-outline,.po-wa,.rt-refresh,.rt-viewmap,.at-btn,.pf-btn,.pf-act,.btn-call-admin):not(:disabled):hover{transform:translateY(-2px);box-shadow:0 8px 18px -10px rgba(15,23,42,.35);border-color:var(--primary)}
-  body:not(:has(.a-main)) :is(.icon-btn,.back-btn):hover{transform:translateY(-2px);box-shadow:0 8px 16px -8px rgba(15,23,42,.35)}
-  body:not(:has(.a-main)) .menu-card:hover{transform:translateY(-4px);box-shadow:0 2px 4px rgba(15,23,42,.05),0 18px 34px -14px rgba(15,118,110,.30)}
+body:not(:has(.a-main))
+  :is(
+    .btn,
+    .btn-hero,
+    .btn-success,
+    .btn-danger,
+    .btn-secondary,
+    .btn-outline,
+    .icon-btn,
+    .back-btn,
+    .menu-card,
+    .po-out,
+    .po-wa,
+    .rt-open,
+    .rt-refresh,
+    .rt-viewmap,
+    .at-btn,
+    .pf-btn,
+    .pf-act,
+    .btn-call-admin
+  ) {
+  transition:
+    transform 0.22s var(--w-ease),
+    box-shadow 0.22s var(--w-ease),
+    background-color 0.2s,
+    border-color 0.2s,
+    color 0.2s,
+    opacity 0.2s;
 }
-@media (prefers-reduced-motion:reduce){body:not(:has(.a-main)) *{animation:none!important;transition:none!important}}
+body:not(:has(.a-main))
+  :is(
+    .btn,
+    .btn-hero,
+    .btn-success,
+    .btn-danger,
+    .btn-secondary,
+    .btn-outline,
+    .icon-btn,
+    .back-btn,
+    .menu-card,
+    .po-out,
+    .po-wa,
+    .rt-open,
+    .rt-refresh,
+    .rt-viewmap,
+    .at-btn,
+    .pf-btn,
+    .pf-act,
+    .btn-call-admin
+  ):not(:disabled):active {
+  transform: scale(0.96);
+}
+@media (hover: hover) {
+  body:not(:has(.a-main))
+    :is(.btn, .btn-hero, .btn-success, .btn-danger, .po-out, .rt-open):not(
+      :disabled
+    ):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px -8px rgba(15, 118, 110, 0.55);
+  }
+  body:not(:has(.a-main))
+    :is(
+      .btn-secondary,
+      .btn-outline,
+      .po-wa,
+      .rt-refresh,
+      .rt-viewmap,
+      .at-btn,
+      .pf-btn,
+      .pf-act,
+      .btn-call-admin
+    ):not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px -10px rgba(15, 23, 42, 0.35);
+    border-color: var(--primary);
+  }
+  body:not(:has(.a-main)) :is(.icon-btn, .back-btn):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px -8px rgba(15, 23, 42, 0.35);
+  }
+  body:not(:has(.a-main)) .menu-card:hover {
+    transform: translateY(-4px);
+    box-shadow:
+      0 2px 4px rgba(15, 23, 42, 0.05),
+      0 18px 34px -14px rgba(15, 118, 110, 0.3);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body:not(:has(.a-main)) * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
 /* Calendar header: month + year dropdowns */
-.gt-cal-title{display:flex;align-items:center;justify-content:center;gap:6px;min-width:0}
-.gt-cal-sel{appearance:auto;-webkit-appearance:menulist;height:34px;min-width:0;padding:0 6px;border:1px solid var(--border,#dbe3ea);border-radius:9px;background:var(--card,#fff);color:var(--text,#172033);font:inherit;font-size:14px;font-weight:700;cursor:pointer}
-.gt-cal-sel-m{flex:1 1 auto}
-.gt-cal-sel-y{flex:0 0 76px;width:76px}
-.gt-cal-sel:focus-visible{outline:2px solid var(--primary,#087f78);outline-offset:1px}
-html[data-theme="dark"] .gt-cal-sel{background:#111827;color:#f8fafc;border-color:rgba(255,255,255,.16)}
+.gt-cal-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+.gt-cal-sel {
+  appearance: auto;
+  -webkit-appearance: menulist;
+  height: 34px;
+  min-width: 0;
+  padding: 0 6px;
+  border: 1px solid var(--border, #dbe3ea);
+  border-radius: 9px;
+  background: var(--card, #fff);
+  color: var(--text, #172033);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.gt-cal-sel-m {
+  flex: 1 1 auto;
+}
+.gt-cal-sel-y {
+  flex: 0 0 76px;
+  width: 76px;
+}
+.gt-cal-sel:focus-visible {
+  outline: 2px solid var(--primary, #087f78);
+  outline-offset: 1px;
+}
+html[data-theme="dark"] .gt-cal-sel {
+  background: #111827;
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.16);
+}
 
 /* GT theme switch: same sliding light/dark pill as the sign-in page */
-.gt-switch{position:relative;display:inline-grid;grid-template-columns:1fr 1fr;flex:none;padding:4px;border-radius:999px;background:color-mix(in srgb,var(--card) 82%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid var(--border);box-shadow:0 6px 20px rgba(15,23,42,.10);vertical-align:middle}
-html[data-theme="dark"] .gt-switch{box-shadow:0 6px 20px rgba(0,0,0,.4)}
-.gt-switch::before{content:"";position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:999px;background:linear-gradient(135deg,var(--primary),color-mix(in srgb,var(--primary) 72%,#22d3ee));box-shadow:0 4px 12px color-mix(in srgb,var(--primary) 45%,transparent);transition:transform .28s cubic-bezier(.4,.1,.2,1)}
-.gt-switch:has([data-set="dark"][aria-pressed="true"])::before{transform:translateX(100%)}
-.gt-switch button{position:relative;z-index:1;width:38px;height:32px;padding:0;border:0;border-radius:999px;background:none;color:var(--muted);display:grid;place-items:center;cursor:pointer;transition:color .2s}
-.gt-switch button:hover{color:var(--text)}
-.gt-switch button[aria-pressed="true"]{color:var(--on-primary);background:none}
-.gt-switch button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
-.gt-switch svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .3s}
-#themeToggle.gt-switch:hover svg{transform:none}
-.a-top .gt-switch{margin-left:4px}
-.a-top .gt-switch button{width:34px;height:26px}
-.a-top .gt-switch svg{width:16px;height:16px}
+.gt-switch {
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  flex: none;
+  padding: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.1);
+  vertical-align: middle;
+}
+html[data-theme="dark"] .gt-switch {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+.gt-switch::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 999px;
+  background: linear-gradient(
+    135deg,
+    var(--primary),
+    color-mix(in srgb, var(--primary) 72%, #22d3ee)
+  );
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 45%, transparent);
+  transition: transform 0.28s cubic-bezier(0.4, 0.1, 0.2, 1);
+}
+.gt-switch:has([data-set="dark"][aria-pressed="true"])::before {
+  transform: translateX(100%);
+}
+.gt-switch button {
+  position: relative;
+  z-index: 1;
+  width: 38px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.gt-switch button:hover {
+  color: var(--text);
+}
+.gt-switch button[aria-pressed="true"] {
+  color: var(--on-primary);
+  background: none;
+}
+.gt-switch button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.gt-switch svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.3s;
+}
+#themeToggle.gt-switch:hover svg {
+  transform: none;
+}
+.a-top .gt-switch {
+  margin-left: 4px;
+}
+.a-top .gt-switch button {
+  width: 34px;
+  height: 26px;
+}
+.a-top .gt-switch svg {
+  width: 16px;
+  height: 16px;
+}
 /* ============================================================
    GT-PICKER (date + month fields)
    ============================================================ */
-.gtp{display:flex;align-items:center;flex:1;min-width:0;width:100%;height:100%;position:relative}
-.gtp-native{position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important;margin:0!important;padding:0!important;border:0!important;left:0;bottom:0}
-.gtp-btn{flex:1;min-width:0;height:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 14px;border:0;background:none;color:var(--text);font:inherit;font-size:inherit;text-align:left;cursor:pointer;border-radius:inherit}
-.field .gtp-btn{font-size:16px}
-.gtp-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.gtp-btn.empty .gtp-label{color:var(--muted)}
-.gtp-ic{display:grid;place-items:center;color:var(--primary);flex:none}
-.gtp-btn:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
-.gtp.open .gtp-ic{color:var(--primary)}
-/* toolbar fields: just a compact button, no extra box around it */
-.a-acts .field:has(.gtp),.at-filters .field:has(.gtp),.vx-tools .field:has(.gtp),.a-bar .field:has(.gtp),.vx-datebox:has(.gtp){border:0!important;background:none!important;box-shadow:none!important;padding:0!important;width:auto!important;min-width:0!important;height:auto!important;flex:0 0 auto}
-.vx-datebox:has(.gtp)>span:not(.gtp):not(.gtp *){display:none}
-.vx-tools .field.a-f:has(.gtp){gap:6px;padding:0 0 0 10px!important}
-.a-acts .gtp,.at-filters .gtp,.vx-tools .gtp,.a-bar .gtp,.vx-datebox .gtp{width:auto;height:auto}
-.a-acts .gtp-btn,.at-filters .gtp-btn,.vx-tools .gtp-btn,.a-bar .gtp-btn,.vx-datebox .gtp-btn{height:38px;min-width:140px;padding:0 10px 0 12px;gap:8px;font-size:13px;border:1px solid var(--border);border-radius:10px;background:var(--card);flex:none}
-.a-acts .gtp-btn:hover,.at-filters .gtp-btn:hover,.vx-tools .gtp-btn:hover,.a-bar .gtp-btn:hover,.vx-datebox .gtp-btn:hover,.gtp.open .gtp-btn{border-color:var(--primary)}
-.a-acts .gtp-ic svg,.at-filters .gtp-ic svg,.vx-tools .gtp-ic svg,.a-bar .gtp-ic svg,.vx-datebox .gtp-ic svg{width:16px;height:16px}
-
-.gtp-back{position:fixed;inset:0;z-index:2147482999;background:rgba(15,23,42,.35);display:none}
-.gtp-back.on{display:block}
-.gtp-pop{position:fixed;z-index:2147483000;display:none;box-sizing:border-box;width:304px;padding:14px;border:1px solid var(--border);border-radius:18px;background:var(--card);color:var(--text);box-shadow:0 22px 54px rgba(15,23,42,.22),0 6px 16px rgba(15,23,42,.10)}
-.gtp-pop.open{display:block;animation:gtpIn .16s ease both}
-@keyframes gtpIn{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:none}}
-.gtp-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:10px}
-.gtp-nav{width:36px;height:36px;border:0;border-radius:10px;background:none;color:var(--muted);font-size:22px;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0}
-.gtp-nav:hover{background:var(--t-primary);color:var(--primary)}
-.gtp-title{flex:1;height:36px;border:0;border-radius:10px;background:none;color:var(--text);font:inherit;font-size:15px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px}
-.gtp-title:hover:not([data-a="none"]){background:var(--t-primary);color:var(--primary)}
-.gtp-title[data-a="none"]{cursor:default}
-.gtp-title i{width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translateY(-2px);opacity:.7}
-.gtp-week,.gtp-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
-.gtp-week span{height:28px;display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--muted)}
-.gtp-day{height:38px;border:0;border-radius:50%;background:none;color:var(--text);font:inherit;font-size:14px;cursor:pointer;display:grid;place-items:center;padding:0;position:relative}
-.gtp-day:hover:not(:disabled):not(.on){background:var(--t-primary);color:var(--primary)}
-.gtp-day.out{color:var(--muted);opacity:.55}
-.gtp-day.td:not(.on){box-shadow:inset 0 0 0 1.5px var(--primary);color:var(--primary);font-weight:700}
-.gtp-day.on,.gtp-cell.on{background:var(--primary);color:#fff;font-weight:700;opacity:1}
-.gtp-day:disabled,.gtp-cell:disabled{opacity:.3;cursor:not-allowed}
-.gtp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:4px 0 2px}
-.gtp-cell{height:46px;border:0;border-radius:12px;background:none;color:var(--text);font:inherit;font-size:14.5px;font-weight:500;cursor:pointer;padding:0}
-.gtp-cell:hover:not(:disabled):not(.on){background:var(--t-primary);color:var(--primary)}
-.gtp-cell.td:not(.on){box-shadow:inset 0 0 0 1.5px var(--primary);color:var(--primary);font-weight:700}
-.gtp-foot{display:flex;justify-content:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
-.gtp-link{border:0;background:none;color:var(--primary);font:inherit;font-size:14px;font-weight:700;cursor:pointer;padding:4px 8px;border-radius:8px}
-.gtp-link:hover{background:var(--t-primary)}
-@media (max-width:520px){
-  .gtp-pop.sheet{left:12px!important;right:12px;bottom:12px;top:auto!important;width:auto;padding:16px;border-radius:20px}
-  .gtp-day{height:42px}.gtp-cell{height:50px}
+.gtp {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  position: relative;
 }
-@media (prefers-reduced-motion:reduce){.gtp-pop.open{animation:none}}
+.gtp-native {
+  position: absolute !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  left: 0;
+  bottom: 0;
+}
+.gtp-btn {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 14px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: inherit;
+}
+.field .gtp-btn {
+  font-size: 16px;
+}
+.gtp-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gtp-btn.empty .gtp-label {
+  color: var(--muted);
+}
+.gtp-ic {
+  display: grid;
+  place-items: center;
+  color: var(--primary);
+  flex: none;
+}
+.gtp-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+.gtp.open .gtp-ic {
+  color: var(--primary);
+}
+/* toolbar fields: just a compact button, no extra box around it */
+.a-acts .field:has(.gtp),
+.at-filters .field:has(.gtp),
+.vx-tools .field:has(.gtp),
+.a-bar .field:has(.gtp),
+.vx-datebox:has(.gtp) {
+  border: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: auto !important;
+  flex: 0 0 auto;
+}
+.vx-datebox:has(.gtp) > span:not(.gtp):not(.gtp *) {
+  display: none;
+}
+.vx-tools .field.a-f:has(.gtp) {
+  gap: 6px;
+  padding: 0 0 0 10px !important;
+}
+.a-acts .gtp,
+.at-filters .gtp,
+.vx-tools .gtp,
+.a-bar .gtp,
+.vx-datebox .gtp {
+  width: auto;
+  height: auto;
+}
+.a-acts .gtp-btn,
+.at-filters .gtp-btn,
+.vx-tools .gtp-btn,
+.a-bar .gtp-btn,
+.vx-datebox .gtp-btn {
+  height: 38px;
+  min-width: 140px;
+  padding: 0 10px 0 12px;
+  gap: 8px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  flex: none;
+}
+.a-acts .gtp-btn:hover,
+.at-filters .gtp-btn:hover,
+.vx-tools .gtp-btn:hover,
+.a-bar .gtp-btn:hover,
+.vx-datebox .gtp-btn:hover,
+.gtp.open .gtp-btn {
+  border-color: var(--primary);
+}
+.a-acts .gtp-ic svg,
+.at-filters .gtp-ic svg,
+.vx-tools .gtp-ic svg,
+.a-bar .gtp-ic svg,
+.vx-datebox .gtp-ic svg {
+  width: 16px;
+  height: 16px;
+}
+
+.gtp-back {
+  position: fixed;
+  inset: 0;
+  z-index: 2147482999;
+  background: rgba(15, 23, 42, 0.35);
+  display: none;
+}
+.gtp-back.on {
+  display: block;
+}
+.gtp-pop {
+  position: fixed;
+  z-index: 2147483000;
+  display: none;
+  box-sizing: border-box;
+  width: 304px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--card);
+  color: var(--text);
+  box-shadow:
+    0 22px 54px rgba(15, 23, 42, 0.22),
+    0 6px 16px rgba(15, 23, 42, 0.1);
+}
+.gtp-pop.open {
+  display: block;
+  animation: gtpIn 0.16s ease both;
+}
+@keyframes gtpIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.gtp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.gtp-nav {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.gtp-nav:hover {
+  background: var(--t-primary);
+  color: var(--primary);
+}
+.gtp-title {
+  flex: 1;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.gtp-title:hover:not([data-a="none"]) {
+  background: var(--t-primary);
+  color: var(--primary);
+}
+.gtp-title[data-a="none"] {
+  cursor: default;
+}
+.gtp-title i {
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+  opacity: 0.7;
+}
+.gtp-week,
+.gtp-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.gtp-week span {
+  height: 28px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.gtp-day {
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  position: relative;
+}
+.gtp-day:hover:not(:disabled):not(.on) {
+  background: var(--t-primary);
+  color: var(--primary);
+}
+.gtp-day.out {
+  color: var(--muted);
+  opacity: 0.55;
+}
+.gtp-day.td:not(.on) {
+  box-shadow: inset 0 0 0 1.5px var(--primary);
+  color: var(--primary);
+  font-weight: 700;
+}
+.gtp-day.on,
+.gtp-cell.on {
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  opacity: 1;
+}
+.gtp-day:disabled,
+.gtp-cell:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.gtp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 4px 0 2px;
+}
+.gtp-cell {
+  height: 46px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+}
+.gtp-cell:hover:not(:disabled):not(.on) {
+  background: var(--t-primary);
+  color: var(--primary);
+}
+.gtp-cell.td:not(.on) {
+  box-shadow: inset 0 0 0 1.5px var(--primary);
+  color: var(--primary);
+  font-weight: 700;
+}
+.gtp-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.gtp-link {
+  border: 0;
+  background: none;
+  color: var(--primary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+.gtp-link:hover {
+  background: var(--t-primary);
+}
+@media (max-width: 520px) {
+  .gtp-pop.sheet {
+    left: 12px !important;
+    right: 12px;
+    bottom: 12px;
+    top: auto !important;
+    width: auto;
+    padding: 16px;
+    border-radius: 20px;
+  }
+  .gtp-day {
+    height: 42px;
+  }
+  .gtp-cell {
+    height: 50px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gtp-pop.open {
+    animation: none;
+  }
+}
 
 /* ============================================================
    ADMIN BUTTON SIZES: one size for every button.
    Action buttons 36px, small controls (page numbers, List/Cards switches) 32px, filter dropdowns 36px.
    ============================================================ */
-body:has(.a-main) :is(.btn,.btn.a-btn,.gce-btn,.lv-btn,.al-btn,.gtc-clear,.at-seg button){height:36px!important;min-height:36px!important;padding:0 14px!important;font-size:13px!important;border-radius:10px!important;line-height:1}
-body:has(.a-main) :is(.btn,.lv-btn,.al-btn,.gce-btn) svg{width:16px;height:16px}
-body:has(.a-main) :is(.wk-pg button,.wk-tg button,.at-pg button,.rt-pg button,.pr-pages button,.gp-pages button,.gtc-pager button,#cPager button,.gtc-view-switch button,.rt-views button){height:32px!important;min-height:32px!important;min-width:32px;padding:0 10px;font-size:13px!important;border-radius:9px!important;line-height:1}
-body:has(.a-main) .a-seg button,body:has(.a-main) .rt-views button{padding:0 12px}
-body:has(.a-main) .gtc-view-switch{display:inline-flex;gap:4px}
+body:has(.a-main)
+  :is(
+    .btn,
+    .btn.a-btn,
+    .gce-btn,
+    .lv-btn,
+    .al-btn,
+    .gtc-clear,
+    .at-seg button
+  ) {
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 14px !important;
+  font-size: 13px !important;
+  border-radius: 10px !important;
+  line-height: 1;
+}
+body:has(.a-main) :is(.btn, .lv-btn, .al-btn, .gce-btn) svg {
+  width: 16px;
+  height: 16px;
+}
+body:has(.a-main)
+  :is(
+    .wk-pg button,
+    .wk-tg button,
+    .at-pg button,
+    .rt-pg button,
+    .pr-pages button,
+    .gp-pages button,
+    .gtc-pager button,
+    #cPager button,
+    .gtc-view-switch button,
+    .rt-views button
+  ) {
+  height: 32px !important;
+  min-height: 32px !important;
+  min-width: 32px;
+  padding: 0 10px;
+  font-size: 13px !important;
+  border-radius: 9px !important;
+  line-height: 1;
+}
+body:has(.a-main) .a-seg button,
+body:has(.a-main) .rt-views button {
+  padding: 0 12px;
+}
+body:has(.a-main) .gtc-view-switch {
+  display: inline-flex;
+  gap: 4px;
+}
 /* filter dropdowns in toolbars line up with the buttons beside them */
-body:has(.a-main) :is(.a-bar,.a-acts,.wk-filters,.at-filters,.vx-tools,.gtc-filters,.gtc-toolbar,.pr-filters,.pr-bar,.pr-tools,.rt-tools) .gt-dd-trigger{min-height:36px!important;height:36px!important;font-size:13px!important;border-radius:10px!important}
-body:has(.a-main) :is(.a-bar,.a-acts,.wk-filters,.at-filters,.vx-tools,.gtc-filters,.gtc-toolbar,.pr-filters,.pr-bar,.pr-tools,.rt-tools) .gtp-btn{height:36px;min-height:36px}
-body:has(.a-main) :is(.a-bar,.a-acts,.at-filters,.vx-tools) .gtp-btn{height:36px}
-body:has(.a-main) :is(.pr-foot,.rt-page-size,.gtc-pager,.pr-pg,.rt-foot) .gt-dd-trigger{min-height:32px!important;height:32px!important;font-size:13px!important;border-radius:9px!important}
-body:has(.a-main) .vx-ph2 .gt-dd-trigger{min-height:36px!important;height:36px!important;border-radius:10px!important}
-body:has(.a-main) .a-dn .a-dnb{height:36px;width:30px}
+body:has(.a-main)
+  :is(
+    .a-bar,
+    .a-acts,
+    .wk-filters,
+    .at-filters,
+    .vx-tools,
+    .gtc-filters,
+    .gtc-toolbar,
+    .pr-filters,
+    .pr-bar,
+    .pr-tools,
+    .rt-tools
+  )
+  .gt-dd-trigger {
+  min-height: 36px !important;
+  height: 36px !important;
+  font-size: 13px !important;
+  border-radius: 10px !important;
+}
+body:has(.a-main)
+  :is(
+    .a-bar,
+    .a-acts,
+    .wk-filters,
+    .at-filters,
+    .vx-tools,
+    .gtc-filters,
+    .gtc-toolbar,
+    .pr-filters,
+    .pr-bar,
+    .pr-tools,
+    .rt-tools
+  )
+  .gtp-btn {
+  height: 36px;
+  min-height: 36px;
+}
+body:has(.a-main) :is(.a-bar, .a-acts, .at-filters, .vx-tools) .gtp-btn {
+  height: 36px;
+}
+body:has(.a-main)
+  :is(.pr-foot, .rt-page-size, .gtc-pager, .pr-pg, .rt-foot)
+  .gt-dd-trigger {
+  min-height: 32px !important;
+  height: 32px !important;
+  font-size: 13px !important;
+  border-radius: 9px !important;
+}
+body:has(.a-main) .vx-ph2 .gt-dd-trigger {
+  min-height: 36px !important;
+  height: 36px !important;
+  border-radius: 10px !important;
+}
+body:has(.a-main) .a-dn .a-dnb {
+  height: 36px;
+  width: 30px;
+}
 
 /* GM-SCROLL-v1: one slim, rounded scrollbar everywhere (page, dropdown lists, tables, pop-ups). No arrow buttons. */
-*::-webkit-scrollbar{width:12px;height:12px}
-*::-webkit-scrollbar-track{background:transparent}
-*::-webkit-scrollbar-thumb{background-color:color-mix(in srgb,var(--muted,#64748b) 38%,transparent);border:3.5px solid transparent;background-clip:content-box;border-radius:999px;min-height:36px;transition:background-color .2s}
-*::-webkit-scrollbar-thumb:hover{background-color:color-mix(in srgb,var(--primary,#0f766e) 75%,transparent)}
-*::-webkit-scrollbar-thumb:active{background-color:var(--primary,#0f766e)}
-*::-webkit-scrollbar-button{display:none;width:0;height:0}
-*::-webkit-scrollbar-corner{background:transparent}
-.gt-dd-menu::-webkit-scrollbar{width:14px}
-.gt-dd-menu::-webkit-scrollbar-track{margin:8px 0}
-.gt-dd-menu::-webkit-scrollbar-thumb{border-width:4px}
-@supports (-moz-appearance:none){*{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--muted,#64748b) 45%,transparent) transparent}}
+*::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--muted, #64748b) 38%, transparent);
+  border: 3.5px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+  min-height: 36px;
+  transition: background-color 0.2s;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(
+    in srgb,
+    var(--primary, #0f766e) 75%,
+    transparent
+  );
+}
+*::-webkit-scrollbar-thumb:active {
+  background-color: var(--primary, #0f766e);
+}
+*::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+.gt-dd-menu::-webkit-scrollbar {
+  width: 14px;
+}
+.gt-dd-menu::-webkit-scrollbar-track {
+  margin: 8px 0;
+}
+.gt-dd-menu::-webkit-scrollbar-thumb {
+  border-width: 4px;
+}
+@supports (-moz-appearance: none) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--muted, #64748b) 45%, transparent)
+      transparent;
+  }
+}

@@ -1,151 +1,477 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head><script src="../shared/sync.js"></script>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>General Traders - Admin</title>
-<link rel="stylesheet" href="../shared/theme.css">
-<link rel="stylesheet" href="../shared/admin.css">
-<link rel="stylesheet" href="../shared/vendor/leaflet/leaflet.css">
-<script src="../shared/theme.js"></script>
-<style>
-.pf2-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:16px;align-items:start}
-.pf2-grid>.card,.pf2-col>.card{min-width:0}.pf2-grid>.card{margin:0}.pf2-col{display:flex;flex-direction:column;gap:16px;min-width:0}.pf2-col>.card{margin:0}
-@media(max-width:1000px){.pf2-grid{grid-template-columns:1fr}}
-.pf2-me{display:flex;align-items:center;gap:14px;margin-bottom:14px}
-.pf2-me .chip{width:56px;height:56px;border-radius:50%;font-size:22px;font-weight:700}
-.pf2-me b{display:block;font-size:18px}.pf2-me span{color:var(--muted);font-size:13px}
-.pf2-kv{display:grid;grid-template-columns:110px 1fr;gap:10px 12px;font-size:14px}.pf2-kv small{color:var(--muted);font-size:12.5px;align-self:center}.pf2-kv b{font-weight:600}
-.pf2-two{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
-@media(max-width:560px){.pf2-two{grid-template-columns:1fr}}
-.pf2-hint{color:var(--muted);font-size:12.5px;margin:-4px 0 12px}
-.pf2-map{height:340px;border-radius:12px;border:1px solid var(--border);overflow:hidden;margin:6px 0 12px;background:var(--bg)}
-.pf2-st{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;border-radius:999px;padding:3px 10px}
-.pf2-st.set{background:var(--t-success);color:var(--success)}.pf2-st.unset{background:var(--t-accent);color:var(--accent)}
-.pf2-acts{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-.pf2-pin{background:none;border:0;filter:drop-shadow(0 3px 4px rgba(15,23,42,.35))}
-.pf2-msg{font-size:13px;min-height:18px;margin-top:10px}.pf2-msg.ok{color:var(--success)}.pf2-msg.err{color:var(--danger)}
-</style>  <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-32.png"><link rel="apple-touch-icon" href="/assets/icon-180.png">
-</head>
-<body>
-<script src="../shared/mock-data.js"></script>
-<script src="../shared/admin.js"></script>
-<script src="../shared/vendor/leaflet/leaflet.js"></script>
-<script>
-GA.guard();
-var $ = function (i) { return document.getElementById(i); }, esc = GA.esc, KEY = 'gm_depot_v1';
-var me = GA.account(), pg = GA.mount('profile.html', 'My profile');
-function loadDepot() { try { var d = JSON.parse(localStorage.getItem(KEY)); if (d && isFinite(d.lat) && isFinite(d.lng)) return d; } catch (e) {} return null; }
-var saved = loadDepot(), map, marker, ring;
-// Own pin (the library's image files are not part of this project)
-var PIN = L.divIcon({ className: 'pf2-pin', iconSize: [30, 40], iconAnchor: [15, 38], html: '<svg viewBox="0 0 30 40" width="30" height="40"><path d="M15 1C7.3 1 1 7.2 1 14.8 1 25 15 39 15 39s14-14 14-24.2C29 7.2 22.7 1 15 1z" fill="#0F766E" stroke="#fff" stroke-width="2"/><circle cx="15" cy="14.5" r="5.2" fill="#fff"/></svg>' });
+  <head>
+    <script src="../shared/sync.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>General Traders - Admin</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="../shared/admin.css" />
+    <link rel="stylesheet" href="../shared/vendor/leaflet/leaflet.css" />
+    <script src="../shared/theme.js"></script>
+    <style>
+      .pf2-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+        gap: 16px;
+        align-items: start;
+      }
+      .pf2-grid > .card,
+      .pf2-col > .card {
+        min-width: 0;
+      }
+      .pf2-grid > .card {
+        margin: 0;
+      }
+      .pf2-col {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        min-width: 0;
+      }
+      .pf2-col > .card {
+        margin: 0;
+      }
+      @media (max-width: 1000px) {
+        .pf2-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .pf2-me {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+      .pf2-me .chip {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        font-size: 22px;
+        font-weight: 700;
+      }
+      .pf2-me b {
+        display: block;
+        font-size: 18px;
+      }
+      .pf2-me span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .pf2-kv {
+        display: grid;
+        grid-template-columns: 110px 1fr;
+        gap: 10px 12px;
+        font-size: 14px;
+      }
+      .pf2-kv small {
+        color: var(--muted);
+        font-size: 12.5px;
+        align-self: center;
+      }
+      .pf2-kv b {
+        font-weight: 600;
+      }
+      .pf2-two {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 12px;
+      }
+      @media (max-width: 560px) {
+        .pf2-two {
+          grid-template-columns: 1fr;
+        }
+      }
+      .pf2-hint {
+        color: var(--muted);
+        font-size: 12.5px;
+        margin: -4px 0 12px;
+      }
+      .pf2-map {
+        height: 340px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+        margin: 6px 0 12px;
+        background: var(--bg);
+      }
+      .pf2-st {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12.5px;
+        font-weight: 600;
+        border-radius: 999px;
+        padding: 3px 10px;
+      }
+      .pf2-st.set {
+        background: var(--t-success);
+        color: var(--success);
+      }
+      .pf2-st.unset {
+        background: var(--t-accent);
+        color: var(--accent);
+      }
+      .pf2-acts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+      .pf2-pin {
+        background: none;
+        border: 0;
+        filter: drop-shadow(0 3px 4px rgba(15, 23, 42, 0.35));
+      }
+      .pf2-msg {
+        font-size: 13px;
+        min-height: 18px;
+        margin-top: 10px;
+      }
+      .pf2-msg.ok {
+        color: var(--success);
+      }
+      .pf2-msg.err {
+        color: var(--danger);
+      }
+    </style>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/icon-32.png"
+    />
+    <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+  </head>
+  <body>
+    <script src="../shared/mock-data.js"></script>
+    <script src="../shared/admin.js"></script>
+    <script src="../shared/vendor/leaflet/leaflet.js"></script>
+    <script>
+      GA.guard();
+      var $ = function (i) {
+          return document.getElementById(i);
+        },
+        esc = GA.esc,
+        KEY = "gm_depot_v1";
+      var me = GA.account(),
+        pg = GA.mount("profile.html", "My profile");
+      function loadDepot() {
+        try {
+          var d = JSON.parse(localStorage.getItem(KEY));
+          if (d && isFinite(d.lat) && isFinite(d.lng)) return d;
+        } catch (e) {}
+        return null;
+      }
+      var saved = loadDepot(),
+        map,
+        marker,
+        ring;
+      // Own pin (the library's image files are not part of this project)
+      var PIN = L.divIcon({
+        className: "pf2-pin",
+        iconSize: [30, 40],
+        iconAnchor: [15, 38],
+        html: '<svg viewBox="0 0 30 40" width="30" height="40"><path d="M15 1C7.3 1 1 7.2 1 14.8 1 25 15 39 15 39s14-14 14-24.2C29 7.2 22.7 1 15 1z" fill="#0F766E" stroke="#fff" stroke-width="2"/><circle cx="15" cy="14.5" r="5.2" fill="#fff"/></svg>',
+      });
 
-pg.innerHTML =
-  '<div class="pf2-grid">' +
-  '<div class="pf2-col"><div class="card"><div class="card-title">Account</div>' +
-    '<div class="pf2-me"><span class="chip c-p" id="aAv"></span><div><b id="aNm"></b><span id="aRl"></span></div></div>' +
-    '<div class="a-fg"><label for="aName">Name</label><div class="field a-f"><input id="aName" autocomplete="name"></div></div>' +
-    '<div class="a-fg"><label for="aPhone">Mobile number (used to sign in)</label><div class="field a-f"><input id="aPhone" inputmode="numeric" maxlength="10" autocomplete="tel"></div></div>' +
-    '<div class="a-fg"><label>Role</label><div class="field a-f"><input id="aRole" disabled></div></div>' +
-    '<div class="pf2-acts"><button class="btn a-btn" id="aSave" type="button">Save account</button></div><div class="pf2-msg" id="aMsg" role="status"></div></div>' +
-  '<div class="card"><div class="card-title">Change password</div>' +
-    '<div class="a-fg"><label for="pCur">Current password</label><div class="field a-f"><input id="pCur" type="password" autocomplete="current-password"></div></div>' +
-    '<div class="a-fg"><label for="pNew">New password (at least 8 characters)</label><div class="field a-f"><input id="pNew" type="password" autocomplete="new-password"></div></div>' +
-    '<div class="a-fg"><label for="pNew2">Repeat new password</label><div class="field a-f"><input id="pNew2" type="password" autocomplete="new-password"></div></div>' +
-    '<div class="pf2-acts"><button class="btn a-btn" id="pSave" type="button">Change password</button></div><div class="pf2-msg" id="pMsg" role="status"></div></div>' + GA.backupCard() + '</div>' +
-  '<div class="card"><div class="card-title"><span>Depot / godown location</span><span class="pf2-st" id="dSt"></span></div>' +
-    '<p class="pf2-hint">Employees can punch in and out only when their phone is inside this circle. Click the map, drag the pin, type the coordinates, or stand at the godown and use your current location.</p>' +
-    '<div class="a-fg"><label for="dName">Depot name</label><div class="field a-f"><input id="dName" placeholder="e.g. General Traders Godown"></div></div>' +
-    '<div class="a-fg"><label for="dAddr">Address (optional)</label><div class="field a-f"><input id="dAddr" placeholder="Street, area, town"></div></div>' +
-    '<div class="pf2-two"><div class="a-fg"><label for="dLat">Latitude</label><div class="field a-f"><input id="dLat" inputmode="decimal" placeholder="e.g. 10.6593"></div></div>' +
-    '<div class="a-fg"><label for="dLng">Longitude</label><div class="field a-f"><input id="dLng" inputmode="decimal" placeholder="e.g. 77.0089"></div></div></div>' +
-    '<div class="a-fg"><label for="dRad">Allowed distance from the depot (metres)</label><div class="field a-f"><input id="dRad" inputmode="numeric" placeholder="200"></div></div>' +
-    '<div class="pf2-map" id="dMap"></div>' +
-    '<div class="pf2-acts"><button class="btn btn-secondary a-btn" id="dHere" type="button">Use my current location</button><button class="btn a-btn" id="dSave" type="button">Save depot location</button><button class="btn btn-secondary a-btn" id="dClear" type="button">Remove</button></div>' +
-    '<div class="pf2-msg" id="dMsg" role="status"></div>' +
-  '</div></div>';
-GA.bindBackup();
+      pg.innerHTML =
+        '<div class="pf2-grid">' +
+        '<div class="pf2-col"><div class="card"><div class="card-title">Account</div>' +
+        '<div class="pf2-me"><span class="chip c-p" id="aAv"></span><div><b id="aNm"></b><span id="aRl"></span></div></div>' +
+        '<div class="a-fg"><label for="aName">Name</label><div class="field a-f"><input id="aName" autocomplete="name"></div></div>' +
+        '<div class="a-fg"><label for="aPhone">Mobile number (used to sign in)</label><div class="field a-f"><input id="aPhone" inputmode="numeric" maxlength="10" autocomplete="tel"></div></div>' +
+        '<div class="a-fg"><label>Role</label><div class="field a-f"><input id="aRole" disabled></div></div>' +
+        '<div class="pf2-acts"><button class="btn a-btn" id="aSave" type="button">Save account</button></div><div class="pf2-msg" id="aMsg" role="status"></div></div>' +
+        '<div class="card"><div class="card-title">Change password</div>' +
+        '<div class="a-fg"><label for="pCur">Current password</label><div class="field a-f"><input id="pCur" type="password" autocomplete="current-password"></div></div>' +
+        '<div class="a-fg"><label for="pNew">New password (at least 8 characters)</label><div class="field a-f"><input id="pNew" type="password" autocomplete="new-password"></div></div>' +
+        '<div class="a-fg"><label for="pNew2">Repeat new password</label><div class="field a-f"><input id="pNew2" type="password" autocomplete="new-password"></div></div>' +
+        '<div class="pf2-acts"><button class="btn a-btn" id="pSave" type="button">Change password</button></div><div class="pf2-msg" id="pMsg" role="status"></div></div>' +
+        GA.backupCard() +
+        "</div>" +
+        '<div class="card"><div class="card-title"><span>Depot / godown location</span><span class="pf2-st" id="dSt"></span></div>' +
+        '<p class="pf2-hint">Employees can punch in and out only when their phone is inside this circle. Click the map, drag the pin, type the coordinates, or stand at the godown and use your current location.</p>' +
+        '<div class="a-fg"><label for="dName">Depot name</label><div class="field a-f"><input id="dName" placeholder="e.g. General Traders Godown"></div></div>' +
+        '<div class="a-fg"><label for="dAddr">Address (optional)</label><div class="field a-f"><input id="dAddr" placeholder="Street, area, town"></div></div>' +
+        '<div class="pf2-two"><div class="a-fg"><label for="dLat">Latitude</label><div class="field a-f"><input id="dLat" inputmode="decimal" placeholder="e.g. 10.6593"></div></div>' +
+        '<div class="a-fg"><label for="dLng">Longitude</label><div class="field a-f"><input id="dLng" inputmode="decimal" placeholder="e.g. 77.0089"></div></div></div>' +
+        '<div class="a-fg"><label for="dRad">Allowed distance from the depot (metres)</label><div class="field a-f"><input id="dRad" inputmode="numeric" placeholder="200"></div></div>' +
+        '<div class="pf2-map" id="dMap"></div>' +
+        '<div class="pf2-acts"><button class="btn btn-secondary a-btn" id="dHere" type="button">Use my current location</button><button class="btn a-btn" id="dSave" type="button">Save depot location</button><button class="btn btn-secondary a-btn" id="dClear" type="button">Remove</button></div>' +
+        '<div class="pf2-msg" id="dMsg" role="status"></div>' +
+        "</div></div>";
+      GA.bindBackup();
 
-function msg(t, kind) { var m = $('dMsg'); m.textContent = t || ''; m.className = 'pf2-msg' + (kind ? ' ' + kind : ''); }
-function status() { var s = $('dSt'); if (saved) { s.className = 'pf2-st set'; s.textContent = 'Saved'; } else { s.className = 'pf2-st unset'; s.textContent = 'Not set'; } }
-function num(v) { var n = parseFloat(String(v).trim()); return isFinite(n) ? n : null; }
-function validPt(lat, lng) { return lat != null && lng != null && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180; }
+      function msg(t, kind) {
+        var m = $("dMsg");
+        m.textContent = t || "";
+        m.className = "pf2-msg" + (kind ? " " + kind : "");
+      }
+      function status() {
+        var s = $("dSt");
+        if (saved) {
+          s.className = "pf2-st set";
+          s.textContent = "Saved";
+        } else {
+          s.className = "pf2-st unset";
+          s.textContent = "Not set";
+        }
+      }
+      function num(v) {
+        var n = parseFloat(String(v).trim());
+        return isFinite(n) ? n : null;
+      }
+      function validPt(lat, lng) {
+        return (
+          lat != null &&
+          lng != null &&
+          lat >= -90 &&
+          lat <= 90 &&
+          lng >= -180 &&
+          lng <= 180
+        );
+      }
 
-function putPin(lat, lng, pan) {
-  if (!map) return;
-  if (!marker) {
-    marker = L.marker([lat, lng], { draggable: true, icon: PIN }).addTo(map);
-    marker.on('dragend', function () { var p = marker.getLatLng(); setFields(p.lat, p.lng); drawRing(); });
-  } else marker.setLatLng([lat, lng]);
-  drawRing(); if (pan) map.setView([lat, lng], Math.max(map.getZoom(), 16));
-}
-function drawRing() {
-  var p = marker && marker.getLatLng(), r = num($('dRad').value) || 200; if (!p) return;
-  if (!ring) ring = L.circle(p, { radius: r, color: '#0F766E', weight: 2, fillColor: '#14B8A6', fillOpacity: .15 }).addTo(map);
-  else { ring.setLatLng(p); ring.setRadius(r); }
-}
-function setFields(lat, lng) { $('dLat').value = lat.toFixed(6); $('dLng').value = lng.toFixed(6); }
+      function putPin(lat, lng, pan) {
+        if (!map) return;
+        if (!marker) {
+          marker = L.marker([lat, lng], { draggable: true, icon: PIN }).addTo(
+            map,
+          );
+          marker.on("dragend", function () {
+            var p = marker.getLatLng();
+            setFields(p.lat, p.lng);
+            drawRing();
+          });
+        } else marker.setLatLng([lat, lng]);
+        drawRing();
+        if (pan) map.setView([lat, lng], Math.max(map.getZoom(), 16));
+      }
+      function drawRing() {
+        var p = marker && marker.getLatLng(),
+          r = num($("dRad").value) || 200;
+        if (!p) return;
+        if (!ring)
+          ring = L.circle(p, {
+            radius: r,
+            color: "#0F766E",
+            weight: 2,
+            fillColor: "#14B8A6",
+            fillOpacity: 0.15,
+          }).addTo(map);
+        else {
+          ring.setLatLng(p);
+          ring.setRadius(r);
+        }
+      }
+      function setFields(lat, lng) {
+        $("dLat").value = lat.toFixed(6);
+        $("dLng").value = lng.toFixed(6);
+      }
 
-// Map. Starts at the saved depot, else at the first customer with a location, else over India.
-var start = saved ? [saved.lat, saved.lng] : null;
-if (!start) { try { var cs = (JSON.parse(localStorage.getItem('gm_admin_v1')) || {}).customers || []; var c = cs.filter(function (x) { return typeof x.lat === 'number' && typeof x.lng === 'number'; })[0]; if (c) start = [c.lat, c.lng]; } catch (e) {} }
-try {
-  map = L.map('dMap', { zoomControl: true }).setView(start || [20.59, 78.96], saved ? 16 : (start ? 12 : 5));
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
-  map.on('click', function (e) { setFields(e.latlng.lat, e.latlng.lng); putPin(e.latlng.lat, e.latlng.lng); msg(''); });
-} catch (e) { $('dMap').innerHTML = '<div class="a-empty"><b>Map could not load</b>You can still type the latitude and longitude above.</div>'; }
+      // Map. Starts at the saved depot, else at the first customer with a location, else over India.
+      var start = saved ? [saved.lat, saved.lng] : null;
+      if (!start) {
+        try {
+          var cs =
+            (JSON.parse(localStorage.getItem("gm_admin_v1")) || {}).customers ||
+            [];
+          var c = cs.filter(function (x) {
+            return typeof x.lat === "number" && typeof x.lng === "number";
+          })[0];
+          if (c) start = [c.lat, c.lng];
+        } catch (e) {}
+      }
+      try {
+        map = L.map("dMap", { zoomControl: true }).setView(
+          start || [20.59, 78.96],
+          saved ? 16 : start ? 12 : 5,
+        );
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: "&copy; OpenStreetMap",
+        }).addTo(map);
+        map.on("click", function (e) {
+          setFields(e.latlng.lat, e.latlng.lng);
+          putPin(e.latlng.lat, e.latlng.lng);
+          msg("");
+        });
+      } catch (e) {
+        $("dMap").innerHTML =
+          '<div class="a-empty"><b>Map could not load</b>You can still type the latitude and longitude above.</div>';
+      }
 
-$('dName').value = (saved && saved.name) || ''; $('dAddr').value = (saved && saved.address) || ''; $('dRad').value = (saved && saved.radiusMeters) || 200;
-if (saved) { setFields(saved.lat, saved.lng); putPin(saved.lat, saved.lng); }
-status();
+      $("dName").value = (saved && saved.name) || "";
+      $("dAddr").value = (saved && saved.address) || "";
+      $("dRad").value = (saved && saved.radiusMeters) || 200;
+      if (saved) {
+        setFields(saved.lat, saved.lng);
+        putPin(saved.lat, saved.lng);
+      }
+      status();
 
-function typed() { var la = num($('dLat').value), ln = num($('dLng').value); if (validPt(la, ln)) putPin(la, ln, true); }
-$('dLat').onchange = $('dLng').onchange = typed;
-$('dRad').oninput = drawRing;
+      function typed() {
+        var la = num($("dLat").value),
+          ln = num($("dLng").value);
+        if (validPt(la, ln)) putPin(la, ln, true);
+      }
+      $("dLat").onchange = $("dLng").onchange = typed;
+      $("dRad").oninput = drawRing;
 
-$('dHere').onclick = function () {
-  if (!navigator.geolocation) { msg('This browser cannot share its location. Click the map or type the coordinates instead.', 'err'); return; }
-  msg('Finding your location...');
-  navigator.geolocation.getCurrentPosition(function (p) { setFields(p.coords.latitude, p.coords.longitude); putPin(p.coords.latitude, p.coords.longitude, true); msg('Location found (accurate to about ' + Math.round(p.coords.accuracy) + ' m). Check the pin, then save.', 'ok'); },
-    function (err) { msg(err && err.code === 1 ? 'Location is blocked. Allow location for this site in the browser, or click the map instead.' : 'Could not get your location (phones and browsers only share it on https or localhost). Click the map or type the coordinates instead.', 'err'); },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
-};
+      $("dHere").onclick = function () {
+        if (!navigator.geolocation) {
+          msg(
+            "This browser cannot share its location. Click the map or type the coordinates instead.",
+            "err",
+          );
+          return;
+        }
+        msg("Finding your location...");
+        navigator.geolocation.getCurrentPosition(
+          function (p) {
+            setFields(p.coords.latitude, p.coords.longitude);
+            putPin(p.coords.latitude, p.coords.longitude, true);
+            msg(
+              "Location found (accurate to about " +
+                Math.round(p.coords.accuracy) +
+                " m). Check the pin, then save.",
+              "ok",
+            );
+          },
+          function (err) {
+            msg(
+              err && err.code === 1
+                ? "Location is blocked. Allow location for this site in the browser, or click the map instead."
+                : "Could not get your location (phones and browsers only share it on https or localhost). Click the map or type the coordinates instead.",
+              "err",
+            );
+          },
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+        );
+      };
 
-$('dSave').onclick = function () {
-  var la = num($('dLat').value), ln = num($('dLng').value), r = num($('dRad').value);
-  if (!validPt(la, ln)) { msg('Pick the depot on the map or enter a valid latitude (-90 to 90) and longitude (-180 to 180).', 'err'); return; }
-  if (r == null || r < 20 || r > 5000) { msg('Allowed distance must be between 20 and 5000 metres.', 'err'); return; }
-  saved = { name: $('dName').value.trim() || 'Depot', address: $('dAddr').value.trim(), lat: +la.toFixed(6), lng: +ln.toFixed(6), radiusMeters: Math.round(r), updated: new Date().toISOString() };
-  try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) { msg('Could not save in this browser.', 'err'); return; }
-  status(); msg('Depot location saved. Employees now punch in and out against this spot.', 'ok');
-};
-$('dClear').onclick = function () {
-  if (!saved) { msg('No depot location is saved.'); return; }
-  if (!confirm('Remove the depot location? Employees will be checked against the sample location again.')) return;
-  try { localStorage.removeItem(KEY); } catch (e) {}
-  saved = null; $('dLat').value = $('dLng').value = $('dName').value = $('dAddr').value = ''; $('dRad').value = 200;
-  if (marker) { map.removeLayer(marker); marker = null; } if (ring) { map.removeLayer(ring); ring = null; }
-  status(); msg('Depot location removed.');
-};
+      $("dSave").onclick = function () {
+        var la = num($("dLat").value),
+          ln = num($("dLng").value),
+          r = num($("dRad").value);
+        if (!validPt(la, ln)) {
+          msg(
+            "Pick the depot on the map or enter a valid latitude (-90 to 90) and longitude (-180 to 180).",
+            "err",
+          );
+          return;
+        }
+        if (r == null || r < 20 || r > 5000) {
+          msg("Allowed distance must be between 20 and 5000 metres.", "err");
+          return;
+        }
+        saved = {
+          name: $("dName").value.trim() || "Depot",
+          address: $("dAddr").value.trim(),
+          lat: +la.toFixed(6),
+          lng: +ln.toFixed(6),
+          radiusMeters: Math.round(r),
+          updated: new Date().toISOString(),
+        };
+        try {
+          localStorage.setItem(KEY, JSON.stringify(saved));
+        } catch (e) {
+          msg("Could not save in this browser.", "err");
+          return;
+        }
+        status();
+        msg(
+          "Depot location saved. Employees now punch in and out against this spot.",
+          "ok",
+        );
+      };
+      $("dClear").onclick = function () {
+        if (!saved) {
+          msg("No depot location is saved.");
+          return;
+        }
+        if (
+          !confirm(
+            "Remove the depot location? Employees will be checked against the sample location again.",
+          )
+        )
+          return;
+        try {
+          localStorage.removeItem(KEY);
+        } catch (e) {}
+        saved = null;
+        $("dLat").value =
+          $("dLng").value =
+          $("dName").value =
+          $("dAddr").value =
+            "";
+        $("dRad").value = 200;
+        if (marker) {
+          map.removeLayer(marker);
+          marker = null;
+        }
+        if (ring) {
+          map.removeLayer(ring);
+          ring = null;
+        }
+        status();
+        msg("Depot location removed.");
+      };
 
-// ---- Account: name and mobile ----
-function showMe() { var a = GA.account(); $('aAv').textContent = (a.name || 'A').charAt(0).toUpperCase(); $('aNm').textContent = a.name || ''; $('aRl').textContent = a.role || 'Admin'; $('aName').value = a.name || ''; $('aPhone').value = a.phone || ''; $('aRole').value = a.role || 'Admin'; }
-function amsg(id, t, kind) { var m = $(id); m.textContent = t || ''; m.className = 'pf2-msg' + (kind ? ' ' + kind : ''); }
-showMe();
-$('aSave').onclick = function () {
-  var r = GA.updateAccount(me.id, $('aName').value, $('aPhone').value);
-  if (!r.ok) { amsg('aMsg', r.error, 'err'); return; }
-  showMe(); var side = document.querySelector('.a-user .a-me b'), ch = document.querySelector('.a-user .chip'), a = GA.account();
-  if (side) side.textContent = a.name; if (ch) ch.textContent = (a.name || 'A').charAt(0).toUpperCase();
-  amsg('aMsg', 'Account saved. Sign in with ' + a.phone + ' from now on.', 'ok');
-};
-// ---- Password ----
-$('pSave').onclick = function () {
-  if ($('pNew').value !== $('pNew2').value) { amsg('pMsg', 'The two new passwords do not match.', 'err'); return; }
-  var r = GA.changePassword(me.id, $('pCur').value, $('pNew').value);
-  if (!r.ok) { amsg('pMsg', r.error, 'err'); return; }
-  $('pCur').value = $('pNew').value = $('pNew2').value = ''; amsg('pMsg', 'Password changed. Use the new password the next time you sign in.', 'ok');
-};
-</script>
-</body>
+      // ---- Account: name and mobile ----
+      function showMe() {
+        var a = GA.account();
+        $("aAv").textContent = (a.name || "A").charAt(0).toUpperCase();
+        $("aNm").textContent = a.name || "";
+        $("aRl").textContent = a.role || "Admin";
+        $("aName").value = a.name || "";
+        $("aPhone").value = a.phone || "";
+        $("aRole").value = a.role || "Admin";
+      }
+      function amsg(id, t, kind) {
+        var m = $(id);
+        m.textContent = t || "";
+        m.className = "pf2-msg" + (kind ? " " + kind : "");
+      }
+      showMe();
+      $("aSave").onclick = function () {
+        var r = GA.updateAccount(me.id, $("aName").value, $("aPhone").value);
+        if (!r.ok) {
+          amsg("aMsg", r.error, "err");
+          return;
+        }
+        showMe();
+        var side = document.querySelector(".a-user .a-me b"),
+          ch = document.querySelector(".a-user .chip"),
+          a = GA.account();
+        if (side) side.textContent = a.name;
+        if (ch) ch.textContent = (a.name || "A").charAt(0).toUpperCase();
+        amsg(
+          "aMsg",
+          "Account saved. Sign in with " + a.phone + " from now on.",
+          "ok",
+        );
+      };
+      // ---- Password ----
+      $("pSave").onclick = function () {
+        if ($("pNew").value !== $("pNew2").value) {
+          amsg("pMsg", "The two new passwords do not match.", "err");
+          return;
+        }
+        var r = GA.changePassword(me.id, $("pCur").value, $("pNew").value);
+        if (!r.ok) {
+          amsg("pMsg", r.error, "err");
+          return;
+        }
+        $("pCur").value = $("pNew").value = $("pNew2").value = "";
+        amsg(
+          "pMsg",
+          "Password changed. Use the new password the next time you sign in.",
+          "ok",
+        );
+      };
+    </script>
+  </body>
 </html>
