@@ -227,8 +227,12 @@
       vehicle: "",
       remarks: "",
       edited: false,
+      startKm: null,
+      endKm: null,
     };
     if (b) {
+      o.startKm = b.startKm == null ? null : b.startKm;
+      o.endKm = b.endKm == null ? null : b.endKm;
       o.st = b.status;
       o.inT = b.inTime || "-";
       o.outT = b.outTime || "-";
@@ -1069,7 +1073,9 @@
       km = M.keep ? M.km : d.km || "",
       rt = M.keep ? M.rt : d.route,
       vh = M.keep ? M.vh : d.vehicle,
-      rm = M.keep ? M.rm : d.remarks;
+      rm = M.keep ? M.rm : d.remarks,
+      ek = M.keep ? M.ek : d.endKm || "";
+    M.sk = d.startKm;
     M.st = pre.st;
     M.keep = false;
     var wopts = DB.workers
@@ -1181,6 +1187,13 @@
       '<label class="at-lbl">Kilometres (optional)</label><div class="field"><input type="number" min="0" step="0.1" id="mKm" value="' +
       esc(km) +
       '"></div>' +
+      '<label class="at-lbl">End km, odometer (optional)</label><div class="field"><input type="number" min="0" step="1" id="mEk" placeholder="Closing odometer reading" value="' +
+      esc(ek) +
+      '"' +
+      (times ? "" : " disabled") +
+      '></div><p class="at-sub" style="margin:4px 0 10px">' +
+      (d.startKm != null ? "Start km was " + esc(d.startKm) + ". " : "") +
+      "Use this when the employee forgot to punch out: it closes the day in their record, so Vehicles shows it as returned and the odometer moves up. Needs a check-out time.</p>" +
       '<label class="at-lbl">Remarks (optional)</label><div class="field"><textarea id="mRm" rows="2" placeholder="Add any remarks...">' +
       esc(rm) +
       '</textarea></div><div class="at-err" id="mErr"></div>' +
@@ -1202,6 +1215,7 @@
       M.rt = $("mRt").value;
       M.vh = $("mVh").value;
       M.rm = $("mRm").value;
+      M.ek = $("mEk") ? $("mEk").value : "";
     }
     $("mX").onclick = $("mCan").onclick = closeEdit;
     $("mW").onchange = function () {
@@ -1268,6 +1282,63 @@
       return;
     }
     var times = st === "present" || st === "late";
+    var ek = M.ek === "" || M.ek == null ? 0 : Number(M.ek);
+    if (times && ek > 0) {
+      if (!outV) {
+        $("mErr").textContent = "Enter the check-out time to close the day with an end km.";
+        return;
+      }
+      $("mSave").disabled = true;
+      $("mErr").textContent = "";
+      fetch("/api/close-day", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: w.id,
+          date: M.ds,
+          endKm: ek,
+          outTime: t12(outV),
+          inTime: t12(inV),
+          km: km,
+          vehicle: M.vh,
+        }),
+      })
+        .then(function (r) {
+          return r.json().then(
+            function (j) {
+              return { ok: r.ok, j: j || {} };
+            },
+            function () {
+              return { ok: false, j: {} };
+            },
+          );
+        })
+        .then(
+          function (x) {
+            if (!x.ok) {
+              $("mSave").disabled = false;
+              $("mErr").textContent =
+                x.j.error || "Could not close the day. Try again.";
+              return;
+            }
+            // keep this page's copy of the employee's record in step with the server
+            var rr = (DB.rec[w.id] = DB.rec[w.id] || {});
+            rr.attendanceLog = rr.attendanceLog || {};
+            rr.attendanceLog[M.ds.slice(0, 7)] =
+              rr.attendanceLog[M.ds.slice(0, 7)] || {};
+            rr.attendanceLog[M.ds.slice(0, 7)][+M.ds.slice(8)] = x.j.entry;
+            finishEdit(w, st, inV, outV, x.j.entry && x.j.entry.km != null ? Number(x.j.entry.km) : km, times, ek);
+          },
+          function () {
+            $("mSave").disabled = false;
+            $("mErr").textContent = "No connection. Try again.";
+          },
+        );
+      return;
+    }
+    finishEdit(w, st, inV, outV, km, times, 0);
+  }
+  function finishEdit(w, st, inV, outV, km, times, ek) {
     if (st === "present" && mins(inV) > mins(LATE)) st = "late"; // checked in after the late time
     DB.edits.edits[w.id] = DB.edits.edits[w.id] || {};
     DB.edits.edits[w.id][M.ds] = {
@@ -1287,7 +1358,8 @@
         M.ds +
         " to " +
         (BADGE[st] || BADGE.none)[1] +
-        (times ? " (" + t12(inV) + (outV ? " - " + t12(outV) : "") + ")" : ""),
+        (times ? " (" + t12(inV) + (outV ? " - " + t12(outV) : "") + ")" : "") +
+        (ek > 0 ? ", end km " + ek : ""),
     );
     persist();
     closeEdit();

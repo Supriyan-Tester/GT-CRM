@@ -2695,6 +2695,112 @@ function api(req, res, url) {
       }));
     return send(res, 200, { month: mo, months, events });
   }
+  // The office closes a day the employee forgot to punch out. The check-out time and closing km are written into the employee's
+  // own record (the same place a real punch-out writes), so the Vehicles page shows the day as returned and moves the odometer.
+  if (p === "/api/close-day" && req.method === "POST")
+    return body(
+      req,
+      (err, b) => {
+        if (s.role !== "admin" || !hasAny(acctOf(s), ["helper"]))
+          return send(res, 403, { error: "Not allowed" });
+        if (err || !b || typeof b !== "object")
+          return send(res, 400, { error: "bad request" });
+        const id = typeof b.id === "string" ? b.id : "",
+          date = typeof b.date === "string" ? b.date : "",
+          endKm = Math.round(Number(b.endKm)),
+          tOut = /(\d{1,2}):(\d{2})\s*([ap]m)?/i.exec(String(b.outTime || ""));
+        if (
+          !/^[A-Za-z0-9_-]{1,40}$/.test(id) ||
+          !/^\d{4}-\d{2}-\d{2}$/.test(date)
+        )
+          return send(res, 400, { error: "bad request" });
+        if (!(endKm > 0))
+          return send(res, 400, { error: "Enter the end km (odometer reading)." });
+        if (!tOut)
+          return send(res, 400, { error: "Enter the check-out time too." });
+        const w = (workerData().workers || []).filter(
+          (x) => x && x.id === id,
+        )[0];
+        const rec = stored("gm_crm_data_v5__" + id);
+        if (!w || !rec || typeof rec !== "object")
+          return send(res, 404, {
+            error: "This employee has no saved record yet.",
+          });
+        const fmt = (n) => {
+          const h = Math.floor(n / 60);
+          return (
+            String(h % 12 || 12).padStart(2, "0") +
+            ":" +
+            String(n % 60).padStart(2, "0") +
+            (h >= 12 ? " pm" : " am")
+          );
+        };
+        const mk = date.slice(0, 7),
+          dk = String(+date.slice(8));
+        rec.attendanceLog = rec.attendanceLog || {};
+        rec.attendanceLog[mk] = rec.attendanceLog[mk] || {};
+        let e = rec.attendanceLog[mk][dk];
+        if (!e) {
+          // the phone never saved this day: build it from the check-in time the office entered
+          const im = clockMins(b.inTime);
+          if (im == null)
+            return send(res, 400, { error: "Enter the check-in time." });
+          const set = stored("gm_admin_settings_v1") || {},
+            late = clockMins(
+              /^\d{1,2}:\d{2}$/.test(set.lateAfter || "") ? set.lateAfter : "08:30",
+            );
+          e = rec.attendanceLog[mk][dk] = {
+            day: +date.slice(8),
+            weekday: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][
+              new Date(date + "T00:00:00Z").getUTCDay()
+            ],
+            status: im > late ? "late" : "present",
+            inTime: fmt(im),
+            outTime: "-",
+            hours: "-",
+            km: 0,
+            vehicle: "",
+            startKm: null,
+            endKm: null,
+          };
+        }
+        const sk = e.startKm == null ? null : Number(e.startKm);
+        if (sk != null && Number.isFinite(sk) && endKm < sk)
+          return send(res, 400, {
+            error:
+              "End km cannot be less than the start km (" + sk + " km).",
+          });
+        let om = clockMins(tOut[0]);
+        const im2 = clockMins(e.inTime);
+        if (om != null && im2 != null && om < im2)
+          return send(res, 400, {
+            error: "Check-out must be after check-in (" + e.inTime + ").",
+          });
+        e.outTime = fmt(om);
+        e.hours =
+          im2 != null ? Math.floor((om - im2) / 60) + "h " + String((om - im2) % 60).padStart(2, "0") + "m" : "-";
+        e.endKm = endKm;
+        e.km =
+          sk != null && Number.isFinite(sk)
+            ? endKm - sk
+            : Number.isFinite(Number(b.km)) && Number(b.km) >= 0
+              ? Number(b.km)
+              : Number(e.km) || 0;
+        if (!e.vehicle && typeof b.vehicle === "string")
+          e.vehicle = b.vehicle.slice(0, 80);
+        e.closedByOffice = true;
+        setItem("gm_crm_data_v5__" + id, JSON.stringify(rec));
+        logEvents(s, [
+          {
+            type: "employee",
+            text:
+              "Closed " + w.name + "'s day " + date + " from the office: " + e.outTime + ", end km " + endKm,
+          },
+        ]);
+        send(res, 200, { ok: true, entry: e });
+      },
+      8192,
+    );
   if (p === "/api/delete-employee" && req.method === "POST")
     return body(
       req,
