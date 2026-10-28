@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script src="../assets/icons.js"></script>
     <script src="../shared/sync.js"></script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -87,7 +88,7 @@
         '<button class="btn btn-secondary a-btn" id="pImp" data-act type="button">' +
         DP.icon("upload") +
         ' Import</button><button class="pr-ib" data-act id="pMore" type="button" aria-label="More actions" aria-haspopup="menu">' +
-        DP.icon("dots") +
+        DP.icon("dots-vertical") +
         "</button>" +
         '<a class="btn a-btn" id="pAdd" data-act href="product-edit.html">' +
         GA.icon("plus") +
@@ -252,7 +253,7 @@
           '" aria-label="Actions for ' +
           esc(p.name) +
           '" aria-haspopup="menu">' +
-          DP.icon("dots") +
+          DP.icon("dots-vertical") +
           "</button>"
         );
       }
@@ -457,7 +458,7 @@
           tl("all", "box", "c-i", L.length, "Total products") +
           tl("active", "check", "c-s", on, "Active products") +
           tl("inactive", "power", "c-d", L.length - on, "Inactive products") +
-          tl("np", "alert", "c-a", np, "Products without price");
+          tl("np", "alert-triangle", "c-a", np, "Products without price");
         $("pSeg").innerHTML = [
           ["all", "All products"],
           ["active", "Active"],

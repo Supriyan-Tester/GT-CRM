@@ -1786,7 +1786,7 @@
     }
     b.href = back[0];
     b.title = "Back to " + back[1];
-    b.innerHTML = GA.icon("back") + "<span>" + back[1] + "</span>";
+    b.innerHTML = GA.icon("chevron-left") + "<span>" + back[1] + "</span>";
   }
   function route() {
     if (lmap) {

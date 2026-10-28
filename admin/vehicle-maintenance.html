@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script src="../assets/icons.js"></script>
     <script src="../shared/sync.js"></script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -250,7 +251,7 @@
             ? VX.relDays(VX.daysBetween(T, last.doneDate))
             : "-") +
           '</b><span class="lbl">Last service</span></div></div><div class="vx-tile"><span class="chip c-a">' +
-          GA.icon("cal") +
+          GA.icon("calendar") +
           "</span><div><b>" +
           (next
             ? next.scheduledDate
@@ -260,7 +261,7 @@
           '</b><span class="lbl">Next service</span></div></div><div class="vx-tile"><span class="chip ' +
           (over.length ? "c-d" : "c-s") +
           '">' +
-          GA.icon("alert") +
+          GA.icon("alert-triangle") +
           "</span><div><b>" +
           over.length +
           '</b><span class="lbl">Overdue</span></div></div></div>';

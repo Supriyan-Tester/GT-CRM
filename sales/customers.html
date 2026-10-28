@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="robots" content="noindex" />
+    <title>My Customers - General Traders Sales</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/icon-32.png"
+    />
+    <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+    <link rel="stylesheet" href="sales.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="../assets/icons.js"></script>
+    <script src="sales.js"></script>
+    <script>
+      Sales.start("customers", function (me, hello, main) {
+        hello.innerHTML = '<h1>My Customers</h1><p id="sub">Loading shops…</p>';
+        main.innerHTML =
+          '<div class="srow"><label class="search"><span class="sr">Search shops</span>' +
+          Sales.ic("search") +
+          '<input id="q" type="search" placeholder="Search shop, place, code or phone" autocomplete="off" /></label>' +
+          '<select class="routesel" id="rt" aria-label="Route"><option value="">All routes</option></select></div>' +
+          '<div class="card" style="padding:0"><div class="shops" id="list" aria-live="polite"></div>' +
+          '<div class="more" id="more" hidden></div></div>';
+        var ALL = [],
+          ROUTES = [],
+          q = "",
+          route = "",
+          page = 1,
+          STEP = 50;
+        var list = document.getElementById("list"),
+          qi = document.getElementById("q"),
+          rt = document.getElementById("rt");
+        function norm(s) {
+          return String(s || "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, " ")
+            .trim();
+        }
+        function rows() {
+          var t = norm(q),
+            set = null;
+          if (route) {
+            set = {};
+            (
+              ROUTES.filter(function (r) {
+                return r.id === route;
+              })[0] || { codes: [] }
+            ).codes.forEach(function (c) {
+              set[c] = 1;
+            });
+          }
+          return ALL.filter(function (c) {
+            return (!set || set[c.code]) && (!t || c._k.indexOf(t) > -1);
+          });
+        }
+        function row(c, i) {
+          var sub =
+            [c.area, c.address].filter(Boolean).map(Sales.esc).join(" · ") ||
+            "No address yet";
+          return (
+            '<div class="shop"><div class="tile t' +
+            (i % 4) +
+            '">' +
+            Sales.esc(Sales.init(c.name)) +
+            "</div>" +
+            '<a class="nm" href="shop.html?c=' +
+            encodeURIComponent(c.code) +
+            '"><b>' +
+            Sales.esc(c.name) +
+            "</b><small>" +
+            sub +
+            "</small>" +
+            (c.phone ? "<small>" + Sales.esc(c.phone) + "</small>" : "") +
+            "</a>" +
+            '<div class="acts"><a class="btn teal sm" href="order.html?c=' +
+            encodeURIComponent(c.code) +
+            '">' +
+            Sales.ic("cart") +
+            "Take Order</a></div></div>"
+          );
+        }
+        function draw() {
+          var R = rows();
+          document.getElementById("sub").textContent =
+            R.length.toLocaleString("en-IN") +
+            (R.length === 1 ? " shop" : " shops") +
+            (q || route ? " found" : "");
+          list.innerHTML = R.length
+            ? R.slice((page - 1) * STEP, page * STEP)
+                .map(row)
+                .join("")
+            : '<div class="empty"><i>' +
+              Sales.ic("search") +
+              "</i><b>No shops found</b><span>Try a different name, place or route.</span></div>";
+          Sales.pager(
+            document.getElementById("more"),
+            R.length,
+            page,
+            STEP,
+            function (p) {
+              page = p;
+              draw();
+              window.scrollTo(0, 0);
+            },
+          );
+        }
+        var tm;
+        qi.oninput = function () {
+          clearTimeout(tm);
+          tm = setTimeout(function () {
+            q = qi.value;
+            page = 1;
+            draw();
+          }, 120);
+        };
+        rt.onchange = function () {
+          route = rt.value;
+          page = 1;
+          draw();
+        };
+        Sales.data()
+          .then(function (d) {
+            ALL = d.customers.filter(function (c) {
+              return c && c.code;
+            });
+            ALL.forEach(function (c) {
+              c._k = norm(
+                [c.name, c.area, c.address, c.code, c.phone].join(" "),
+              );
+            });
+            ALL.sort(function (a, b) {
+              return String(a.name).localeCompare(String(b.name), "en", {
+                sensitivity: "base",
+                numeric: true,
+              });
+            });
+            ROUTES = d.routes;
+            rt.innerHTML =
+              '<option value="">All routes</option>' +
+              ROUTES.map(function (r) {
+                return (
+                  '<option value="' +
+                  Sales.esc(r.id) +
+                  '">' +
+                  Sales.esc(r.name) +
+                  "</option>"
+                );
+              }).join("");
+            try {
+              qi.value = q =
+                new URLSearchParams(location.search).get("q") || "";
+            } catch (e) {}
+            draw();
+          })
+          .catch(function () {
+            document.getElementById("sub").textContent = "";
+            list.innerHTML =
+              '<div class="empty"><b>Could not load shops</b><span>Check your connection and refresh.</span></div>';
+          });
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,1345 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script src="../assets/icons.js"></script>
+    <script src="../shared/sync.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Order Management - General Traders Admin</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="../shared/admin.css" />
+    <script src="../shared/theme.js"></script>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/icon-32.png"
+    />
+    <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+    <style>
+      .om-sub {
+        color: var(--muted);
+        font-size: 14px;
+        margin: 0 0 14px;
+      }
+      .om-bar {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      .om-bar > * {
+        min-width: 0;
+      }
+      .om-bar input,
+      .om-bar select {
+        width: 100%;
+        height: 42px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0 12px;
+        background: var(--card);
+        color: var(--text);
+        font: inherit;
+        font-size: 14px;
+      }
+      .om-bar .om-q {
+        grid-column: 1 / -1;
+      }
+      .om-foot label {
+        white-space: nowrap;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin: 0;
+        font-weight: 400;
+      }
+      .om-foot select {
+        width: auto !important;
+        height: 36px;
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        background: var(--card);
+        color: var(--text);
+        padding: 0 8px;
+      }
+      @media (max-width: 700px) {
+        .om-bar {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .om-k {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .om-kc {
+          padding: 10px;
+        }
+        .om-ki {
+          display: none;
+        }
+      }
+      .om-k {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+      .om-kc {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 14px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        box-shadow: var(--shadow);
+      }
+      .om-ki {
+        width: 46px;
+        height: 46px;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        flex: none;
+      }
+      .om-ki svg {
+        width: 24px;
+        height: 24px;
+      }
+      .om-kc small {
+        display: block;
+        color: var(--muted);
+        font-size: 12.5px;
+      }
+      .om-kc b {
+        display: block;
+        font-size: 22px;
+        line-height: 1.25;
+      }
+      .om-kc em {
+        font-style: normal;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .om-up {
+        color: var(--success);
+      }
+      .om-dn {
+        color: var(--danger);
+      }
+      .om-mu {
+        color: var(--muted);
+        font-weight: 400;
+      }
+      .om-main {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 14px;
+        align-items: start;
+      }
+      .om-main.has-d {
+        grid-template-columns: minmax(0, 1fr) 380px;
+      }
+      .om-box {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 14px;
+        box-shadow: var(--shadow);
+        min-width: 0;
+      }
+      .om-tabs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      .om-tab {
+        border: 1px solid transparent;
+        background: var(--t-primary);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 9px 14px;
+        font: inherit;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      .om-tab.on {
+        background: var(--primary);
+        color: var(--on-primary);
+        font-weight: 600;
+      }
+      .om-sp {
+        flex: 1;
+      }
+      .om-ib {
+        height: 40px;
+        min-width: 40px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 0 12px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font: inherit;
+        font-size: 14px;
+      }
+      .om-ib svg {
+        width: 18px;
+        height: 18px;
+      }
+      .om-ib.danger {
+        color: var(--danger);
+      }
+      .om-scroll {
+        overflow-x: auto;
+      }
+      .om-t {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13.5px;
+      }
+      .om-t th {
+        text-align: left;
+        color: var(--muted);
+        font-weight: 600;
+        font-size: 12.5px;
+        padding: 10px 8px;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+      }
+      .om-t td {
+        padding: 10px 8px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+      }
+      .om-t tbody tr {
+        cursor: pointer;
+      }
+      .om-t tbody tr:hover,
+      .om-t tbody tr.sel {
+        background: var(--t-primary);
+      }
+      .om-t td.oc-id,
+      .om-t td.oc-dt {
+        white-space: nowrap;
+      }
+      .om-t .r {
+        text-align: right;
+      }
+      .om-av {
+        display: inline-grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--t-info);
+        color: var(--info);
+        font-size: 11px;
+        font-weight: 700;
+        margin-right: 8px;
+        vertical-align: middle;
+      }
+      .om-s small {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .om-st {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 8px;
+        font-size: 12.5px;
+        font-weight: 600;
+      }
+      .om-st.placed {
+        background: var(--t-success);
+        color: var(--success);
+      }
+      .om-st.draft {
+        background: var(--t-info);
+        color: var(--info);
+      }
+      .om-st.cancelled {
+        background: var(--t-danger);
+        color: var(--danger);
+      }
+      .om-acts {
+        display: flex;
+        gap: 6px;
+        justify-content: flex-end;
+      }
+      .om-acts button {
+        width: 34px;
+        height: 34px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--text);
+        border-radius: 9px;
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+      }
+      .om-acts svg {
+        width: 17px;
+        height: 17px;
+      }
+      .om-foot {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .om-pg {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .om-pg button {
+        min-width: 36px;
+        height: 36px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--text);
+        border-radius: 9px;
+        cursor: pointer;
+        font: inherit;
+        display: inline-grid;
+        place-items: center;
+      }
+      .om-pg button.on {
+        background: var(--primary);
+        color: var(--on-primary);
+        border-color: var(--primary);
+      }
+      .om-pg button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      .om-pg svg {
+        width: 16px;
+        height: 16px;
+      }
+      .om-empty {
+        padding: 36px 12px;
+        text-align: center;
+        color: var(--muted);
+      }
+      /* detail panel */
+      .om-d {
+        position: sticky;
+        top: 12px;
+      }
+      .om-dh {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .om-dh h2 {
+        font-size: 18px;
+        margin: 0;
+        flex: 1;
+      }
+      .om-dx {
+        width: 34px;
+        height: 34px;
+        border: 0;
+        background: transparent;
+        color: var(--text);
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+      }
+      .om-dx svg {
+        width: 20px;
+        height: 20px;
+      }
+      .om-dt {
+        display: flex;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 12px;
+      }
+      .om-dt button {
+        flex: 1;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        padding: 10px 4px;
+        font: inherit;
+        font-size: 13.5px;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+      }
+      .om-dt button.on {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+        font-weight: 600;
+      }
+      .om-dbody {
+        max-height: calc(100vh - 260px);
+        overflow-y: auto;
+      }
+      .om-sec {
+        margin-bottom: 16px;
+      }
+      .om-sec h3 {
+        font-size: 14px;
+        margin: 0 0 8px;
+      }
+      .om-g {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px 14px;
+      }
+      .om-g div small {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .om-g div b {
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .om-g .w {
+        grid-column: 1/-1;
+      }
+      .om-it {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      .om-it th {
+        text-align: left;
+        color: var(--muted);
+        font-size: 12px;
+        padding: 6px 4px;
+        border-bottom: 1px solid var(--border);
+      }
+      .om-it td {
+        padding: 7px 4px;
+        border-bottom: 1px solid var(--border);
+      }
+      .om-it .r {
+        text-align: right;
+      }
+      .om-tot {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 4px;
+        font-size: 14px;
+      }
+      .om-tot.big {
+        font-weight: 700;
+        font-size: 16px;
+      }
+      .om-hist {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .om-hist li {
+        padding: 8px 0 8px 16px;
+        border-left: 2px solid var(--border);
+        position: relative;
+        font-size: 13.5px;
+      }
+      .om-hist li::before {
+        content: "";
+        position: absolute;
+        left: -6px;
+        top: 13px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--primary);
+      }
+      .om-hist small {
+        display: block;
+        color: var(--muted);
+      }
+      .om-dact {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .om-dact button {
+        flex: 1;
+        justify-content: center;
+      }
+      .om-pri {
+        background: var(--primary) !important;
+        color: var(--on-primary) !important;
+        border-color: var(--primary) !important;
+      }
+      .om-scrim {
+        display: none;
+      }
+      @media (max-width: 1100px) {
+        .om-main.has-d {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .om-d {
+          position: fixed;
+          inset: 0;
+          z-index: 60;
+          background: var(--bg);
+          overflow-y: auto;
+          padding: 12px;
+        }
+        .om-d .om-box {
+          min-height: 100%;
+        }
+        .om-dbody {
+          max-height: none;
+        }
+      }
+      @media (max-width: 700px) {
+        .om-t thead {
+          display: none;
+        }
+        .om-t,
+        .om-t tbody,
+        .om-t tr,
+        .om-t td {
+          display: block;
+          width: 100%;
+        }
+        .om-t tr {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 2px 10px;
+          padding: 12px 4px;
+          border-bottom: 1px solid var(--border);
+        }
+        .om-t td {
+          border: 0;
+          padding: 0;
+        }
+        .om-t td.oc-n,
+        .om-t td.oc-a,
+        .om-t td.oc-i,
+        .om-t td.oc-ar,
+        .om-t td.oc-ac {
+          display: none;
+        }
+        .om-t td.oc-id {
+          font-weight: 700;
+        }
+        .om-t td.oc-amt {
+          text-align: right;
+          font-weight: 700;
+        }
+        .om-t td.oc-st {
+          text-align: right;
+        }
+        .om-t td.oc-sh {
+          grid-column: 1;
+        }
+        .om-t td.oc-dt {
+          color: var(--muted);
+          font-size: 12.5px;
+        }
+        .om-g {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      @media print {
+        body > *:not(#omPrint) {
+          display: none !important;
+        }
+        #omPrint {
+          display: block !important;
+        }
+      }
+      #omPrint {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="../shared/mock-data.js"></script>
+    <script src="../shared/admin.js"></script>
+    <script>
+      GA.guard();
+      var $ = function (i) {
+          return document.getElementById(i);
+        },
+        esc = GA.esc;
+      var pg = GA.mount("orders.html", "Order Management");
+
+      function rd(k, d) {
+        try {
+          var v = JSON.parse(localStorage.getItem(k));
+          return v == null ? d : v;
+        } catch (e) {
+          return d;
+        }
+      }
+      function istDay(t) {
+        return new Date((t == null ? Date.now() : t) + 5.5 * 3600e3)
+          .toISOString()
+          .slice(0, 10);
+      }
+      function addDays(ds, n) {
+        var d = new Date(ds + "T00:00:00Z");
+        d.setUTCDate(d.getUTCDate() + n);
+        return d.toISOString().slice(0, 10);
+      }
+      function daysBetween(a, b) {
+        return Math.round(
+          (new Date(b + "T00:00:00Z") - new Date(a + "T00:00:00Z")) / 864e5,
+        );
+      }
+      function money(n) {
+        return (
+          "₹" +
+          Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })
+        );
+      }
+      function when(t) {
+        return new Date(t).toLocaleString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+          timeZone: "Asia/Kolkata",
+        });
+      }
+      function initials(n) {
+        var p = String(n || "?")
+          .trim()
+          .split(/\s+/);
+        return (
+          (p[0] || "?").charAt(0) + (p.length > 1 ? p[1].charAt(0) : "")
+        ).toUpperCase();
+      }
+      var LABEL = {
+        placed: "Confirmed",
+        draft: "Draft",
+        cancelled: "Cancelled",
+      };
+      var I = function (n) {
+        return GMIcons.svg(n, "icon");
+      };
+
+      var st = {
+        from: addDays(istDay(), -29),
+        to: istDay(),
+        rep: "",
+        area: "",
+        status: "all",
+        q: "",
+        per: 10,
+        page: 1,
+        sel: "",
+        tab: "details",
+      };
+
+      pg.innerHTML =
+        '<p class="om-sub">View, manage and track all sales orders</p>' +
+        '<div class="om-bar">' +
+        '<input type="date" id="omFrom" aria-label="From date">' +
+        '<input type="date" id="omTo" aria-label="To date">' +
+        '<select id="omRep" aria-label="Sales person"></select>' +
+        '<select id="omArea" aria-label="Area"></select>' +
+        '<input class="om-q" id="omQ" type="search" placeholder="Search order ID, customer, shop, salesperson...">' +
+        "</div>" +
+        '<div class="om-k" id="omK"></div>' +
+        '<div class="om-main" id="omMain">' +
+        '<div class="om-box"><div class="om-tabs" id="omTabs"></div>' +
+        '<div class="om-scroll" id="omList"></div>' +
+        '<div class="om-foot" id="omFoot"></div></div>' +
+        '<div class="om-d" id="omD" hidden></div>' +
+        "</div>" +
+        '<div id="omPrint"></div>';
+
+      $("omFrom").value = st.from;
+      $("omTo").value = st.to;
+      $("omFrom").onchange = function () {
+        st.from = this.value || st.from;
+        if (st.from > st.to) st.to = st.from;
+        $("omTo").value = st.to;
+        st.page = 1;
+        draw();
+      };
+      $("omTo").onchange = function () {
+        st.to = this.value || st.to;
+        if (st.to < st.from) st.from = st.to;
+        $("omFrom").value = st.from;
+        st.page = 1;
+        draw();
+      };
+      $("omRep").onchange = function () {
+        st.rep = this.value;
+        st.page = 1;
+        draw();
+      };
+      $("omArea").onchange = function () {
+        st.area = this.value;
+        st.page = 1;
+        draw();
+      };
+      $("omQ").oninput = function () {
+        st.q = this.value.trim().toLowerCase();
+        st.page = 1;
+        draw();
+      };
+
+      function load() {
+        var ord = rd("gm_sales_orders_v1", []);
+        ord = Array.isArray(ord) ? ord.filter(Boolean) : [];
+        var names = {};
+        (rd("gm_admin_workers_v1", { workers: [] }).workers || []).forEach(
+          function (w) {
+            names[w.id] = w.name;
+          },
+        );
+        ord.forEach(function (o) {
+          o._rep = o.repName || names[o.rep] || o.rep || "";
+          o._items = Array.isArray(o.items) ? o.items : [];
+          o._day = o.date || istDay(o.t);
+        });
+        return ord;
+      }
+      function inRange(o, a, b) {
+        return o._day >= a && o._day <= b;
+      }
+      function fillSelects(all) {
+        var reps = {},
+          areas = {};
+        all.forEach(function (o) {
+          if (o.rep) reps[o.rep] = o._rep;
+          if (o.area) areas[o.area] = 1;
+        });
+        function opts(first, map, cur) {
+          return (
+            '<option value="">' +
+            first +
+            "</option>" +
+            Object.keys(map)
+              .sort()
+              .map(function (k) {
+                return (
+                  '<option value="' +
+                  esc(k) +
+                  '"' +
+                  (k === cur ? " selected" : "") +
+                  ">" +
+                  esc(map[k]) +
+                  "</option>"
+                );
+              })
+              .join("")
+          );
+        }
+        var A = {};
+        Object.keys(areas).forEach(function (a) {
+          A[a] = a;
+        });
+        $("omRep").innerHTML = opts("All Sales Persons", reps, st.rep);
+        $("omArea").innerHTML = opts("All Areas", A, st.area);
+      }
+      function change(cur, prev) {
+        if (!prev) return cur ? "" : "";
+        var p = Math.round(((cur - prev) / prev) * 100);
+        return (
+          '<em class="' +
+          (p >= 0 ? "om-up" : "om-dn") +
+          '">' +
+          (p >= 0 ? "▲ " : "▼ ") +
+          Math.abs(p) +
+          '%</em> <span class="om-mu">vs previous period</span>'
+        );
+      }
+      function base(all, a, b) {
+        return all.filter(function (o) {
+          return (
+            inRange(o, a, b) &&
+            (!st.rep || o.rep === st.rep) &&
+            (!st.area || o.area === st.area)
+          );
+        });
+      }
+      function draw() {
+        var all = load();
+        fillSelects(all);
+        var span = daysBetween(st.from, st.to) + 1,
+          cur = base(all, st.from, st.to),
+          prev = base(all, addDays(st.from, -span), addDays(st.from, -1));
+        function cnt(L, s) {
+          return L.filter(function (o) {
+            return o.status === s;
+          }).length;
+        }
+        function val(L) {
+          return L.filter(function (o) {
+            return o.status === "placed";
+          }).reduce(function (t, o) {
+            return t + (o.total || 0);
+          }, 0);
+        }
+        var nAll = cur.length,
+          nOk = cnt(cur, "placed"),
+          nDr = cnt(cur, "draft"),
+          nCa = cnt(cur, "cancelled");
+        function kc(icon, cls, label, v, sub) {
+          return (
+            '<div class="om-kc"><span class="om-ki" style="background:var(--t-' +
+            cls +
+            ");color:var(--" +
+            (cls === "primary" ? "primary" : cls) +
+            ')">' +
+            I(icon) +
+            "</span><div><small>" +
+            label +
+            "</small><b>" +
+            v +
+            "</b>" +
+            sub +
+            "</div></div>"
+          );
+        }
+        $("omK").innerHTML =
+          kc(
+            "cart",
+            "info",
+            "Total orders",
+            nAll,
+            change(nAll, prev.length) ||
+              '<em class="om-mu">in this period</em>',
+          ) +
+          kc(
+            "rupee",
+            "primary",
+            "Order value",
+            money(val(cur)),
+            change(val(cur), val(prev)) ||
+              '<em class="om-mu">confirmed orders</em>',
+          ) +
+          kc(
+            "check-circle",
+            "success",
+            "Confirmed orders",
+            nOk,
+            '<em class="om-mu">' +
+              (nAll ? Math.round((nOk / nAll) * 100) : 0) +
+              "% of total</em>",
+          ) +
+          kc(
+            "note",
+            "info",
+            "Draft orders",
+            nDr,
+            '<em class="om-mu">' +
+              (nAll ? Math.round((nDr / nAll) * 100) : 0) +
+              "% of total</em>",
+          ) +
+          kc(
+            "x-circle",
+            "danger",
+            "Cancelled orders",
+            nCa,
+            '<em class="om-mu">' +
+              (nAll ? Math.round((nCa / nAll) * 100) : 0) +
+              "% of total</em>",
+          );
+
+        $("omTabs").innerHTML =
+          [
+            ["all", "All Orders", nAll],
+            ["placed", "Confirmed", nOk],
+            ["draft", "Draft", nDr],
+            ["cancelled", "Cancelled", nCa],
+          ]
+            .map(function (t) {
+              return (
+                '<button type="button" class="om-tab' +
+                (st.status === t[0] ? " on" : "") +
+                '" data-s="' +
+                t[0] +
+                '">' +
+                t[1] +
+                " (" +
+                t[2] +
+                ")</button>"
+              );
+            })
+            .join("") +
+          '<span class="om-sp"></span><button type="button" class="om-ib" id="omExp">' +
+          I("download") +
+          'Export</button><button type="button" class="om-ib" id="omRf" aria-label="Refresh">' +
+          I("refresh") +
+          "</button>";
+        [].forEach.call($("omTabs").querySelectorAll(".om-tab"), function (b) {
+          b.onclick = function () {
+            st.status = b.dataset.s;
+            st.page = 1;
+            draw();
+          };
+        });
+        $("omRf").onclick = draw;
+
+        var L = cur
+          .filter(function (o) {
+            if (st.status !== "all" && o.status !== st.status) return false;
+            if (!st.q) return true;
+            return (
+              (o.id + " " + o.shop + " " + o.code + " " + o._rep + " " + o.area)
+                .toLowerCase()
+                .indexOf(st.q) > -1
+            );
+          })
+          .sort(function (a, b) {
+            return (b.t || 0) - (a.t || 0);
+          });
+        $("omExp").onclick = function () {
+          exportCsv(L);
+        };
+        var pages = Math.max(1, Math.ceil(L.length / st.per));
+        if (st.page > pages) st.page = pages;
+        var from = (st.page - 1) * st.per,
+          rows = L.slice(from, from + st.per);
+
+        $("omList").innerHTML = rows.length
+          ? '<table class="om-t"><thead><tr><th>#</th><th>Order ID</th><th>Date &amp; Time</th><th>Customer / Shop</th><th>Sales Person</th><th>Area</th><th class="r">Items</th><th class="r">Amount</th><th>Status</th><th class="r">Actions</th></tr></thead><tbody>' +
+            rows
+              .map(function (o, i) {
+                var can = o.status === "cancelled";
+                return (
+                  '<tr data-id="' +
+                  esc(o.id) +
+                  '"' +
+                  (st.sel === o.id ? ' class="sel"' : "") +
+                  '><td class="oc-n">' +
+                  (from + i + 1) +
+                  '</td><td class="oc-id">' +
+                  (can ? "<s>" + esc(o.id) + "</s>" : esc(o.id)) +
+                  '</td><td class="oc-dt">' +
+                  when(o.t) +
+                  '</td><td class="oc-sh om-s">' +
+                  esc(o.shop || o.code) +
+                  "<small>" +
+                  esc(o.area || "") +
+                  '</small></td><td class="oc-a"><span class="om-av">' +
+                  esc(initials(o._rep)) +
+                  "</span>" +
+                  esc(o._rep) +
+                  '</td><td class="oc-ar">' +
+                  esc(o.area || "-") +
+                  '</td><td class="oc-i r">' +
+                  o._items.length +
+                  '</td><td class="oc-amt r">' +
+                  (can ? "<s>" + money(o.total) + "</s>" : money(o.total)) +
+                  '</td><td class="oc-st"><span class="om-st ' +
+                  o.status +
+                  '">' +
+                  (LABEL[o.status] || esc(o.status)) +
+                  '</span></td><td class="oc-ac"><div class="om-acts"><button type="button" data-v="' +
+                  esc(o.id) +
+                  '" aria-label="View">' +
+                  I("eye") +
+                  '</button><button type="button" data-p="' +
+                  esc(o.id) +
+                  '" aria-label="Print">' +
+                  I("print") +
+                  "</button></div></td></tr>"
+                );
+              })
+              .join("") +
+            "</tbody></table>"
+          : '<div class="om-empty">No orders match these filters.</div>';
+
+        var pbtn = "";
+        var lo = Math.max(1, st.page - 2),
+          hi = Math.min(pages, lo + 4);
+        lo = Math.max(1, hi - 4);
+        for (var p = lo; p <= hi; p++)
+          pbtn +=
+            '<button type="button" data-pg="' +
+            p +
+            '"' +
+            (p === st.page ? ' class="on"' : "") +
+            ">" +
+            p +
+            "</button>";
+        $("omFoot").innerHTML =
+          "<span>Showing " +
+          (L.length ? from + 1 : 0) +
+          " to " +
+          Math.min(from + st.per, L.length) +
+          " of " +
+          L.length +
+          ' orders</span><div class="om-pg"><button type="button" data-pg="' +
+          (st.page - 1) +
+          '"' +
+          (st.page <= 1 ? " disabled" : "") +
+          ' aria-label="Previous">' +
+          I("chevron-left") +
+          "</button>" +
+          pbtn +
+          '<button type="button" data-pg="' +
+          (st.page + 1) +
+          '"' +
+          (st.page >= pages ? " disabled" : "") +
+          ' aria-label="Next">' +
+          I("chevron-right") +
+          '</button></div><label>Show <select id="omPer">' +
+          [10, 25, 50]
+            .map(function (n) {
+              return (
+                '<option value="' +
+                n +
+                '"' +
+                (n === st.per ? " selected" : "") +
+                ">" +
+                n +
+                "</option>"
+              );
+            })
+            .join("") +
+          "</select> per page</label>";
+        [].forEach.call(
+          $("omFoot").querySelectorAll("[data-pg]"),
+          function (b) {
+            b.onclick = function () {
+              st.page = +b.dataset.pg;
+              draw();
+            };
+          },
+        );
+        $("omPer").onchange = function () {
+          st.per = +this.value;
+          st.page = 1;
+          draw();
+        };
+        [].forEach.call($("omList").querySelectorAll("tbody tr"), function (r) {
+          r.onclick = function () {
+            st.sel = r.dataset.id;
+            st.tab = "details";
+            draw();
+          };
+        });
+        [].forEach.call($("omList").querySelectorAll("[data-v]"), function (b) {
+          b.onclick = function (e) {
+            e.stopPropagation();
+            st.sel = b.dataset.v;
+            st.tab = "details";
+            draw();
+          };
+        });
+        [].forEach.call($("omList").querySelectorAll("[data-p]"), function (b) {
+          b.onclick = function (e) {
+            e.stopPropagation();
+            printOrder(find(all, b.dataset.p));
+          };
+        });
+        drawDetail(all);
+      }
+      function find(all, id) {
+        return all.filter(function (o) {
+          return o.id === id;
+        })[0];
+      }
+
+      function drawDetail(all) {
+        var o = st.sel && find(all, st.sel),
+          D = $("omD");
+        $("omMain").className = "om-main" + (o ? " has-d" : "");
+        if (!o) {
+          D.hidden = true;
+          D.innerHTML = "";
+          return;
+        }
+        D.hidden = false;
+        var cu =
+          (rd("gm_admin_v1", {}).customers || []).filter(function (c) {
+            return c.code === o.code;
+          })[0] || {};
+        var body = "";
+        if (st.tab === "details") {
+          body =
+            '<div class="om-sec"><h3>Customer / Shop</h3><div class="om-g"><div class="w"><b>' +
+            esc(o.shop || o.code) +
+            "</b><small>" +
+            esc(o.area || "") +
+            "</small></div><div><small>Customer ID</small><b>" +
+            esc(o.code || "-") +
+            "</b></div><div><small>Phone</small><b>" +
+            esc(cu.phone || "-") +
+            '</b></div></div></div><div class="om-sec"><h3>Sales Person</h3><div class="om-g"><div><span class="om-av">' +
+            esc(initials(o._rep)) +
+            "</span><b>" +
+            esc(o._rep) +
+            "</b></div><div><small>Area</small><b>" +
+            esc(o.area || "-") +
+            '</b></div></div></div><div class="om-sec"><h3>Order Info</h3><div class="om-g"><div><small>Order date</small><b>' +
+            when(o.t) +
+            '</b></div><div><small>Status</small><span class="om-st ' +
+            o.status +
+            '">' +
+            (LABEL[o.status] || esc(o.status)) +
+            "</span></div><div><small>Items</small><b>" +
+            o._items.length +
+            " items</b></div><div><small>Total amount</small><b>" +
+            money(o.total) +
+            "</b></div></div></div>" +
+            '<div class="om-sec"><h3>Notes</h3><p style="margin:0;font-size:13.5px;color:var(--muted)">' +
+            (o.notes ? esc(o.notes) : "No notes.") +
+            "</p></div>" +
+            (o.status === "cancelled"
+              ? '<div class="om-sec"><h3>Cancelled</h3><p style="margin:0;font-size:13.5px">' +
+                esc(o.cancelReason || "") +
+                '<br><span style="color:var(--muted)">by ' +
+                esc(o.cancelBy || "") +
+                (o.cancelAt ? " · " + when(o.cancelAt) : "") +
+                "</span></p></div>"
+              : "");
+        } else if (st.tab === "items") {
+          body =
+            '<table class="om-it"><thead><tr><th>Product</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Amount</th></tr></thead><tbody>' +
+            o._items
+              .map(function (i) {
+                return (
+                  "<tr><td>" +
+                  esc(i.name || i.id) +
+                  (i.unit
+                    ? ' <small style="color:var(--muted)">' +
+                      esc(i.unit) +
+                      "</small>"
+                    : "") +
+                  '</td><td class="r">' +
+                  i.qty +
+                  '</td><td class="r">' +
+                  money(i.price) +
+                  '</td><td class="r">' +
+                  money(i.amount) +
+                  "</td></tr>"
+                );
+              })
+              .join("") +
+            '</tbody></table><div class="om-tot"><span>Subtotal</span><span>' +
+            money(o.subtotal) +
+            "</span></div>" +
+            (o.discount
+              ? '<div class="om-tot"><span>Discount</span><span>− ' +
+                money(o.discount) +
+                "</span></div>"
+              : "") +
+            '<div class="om-tot big"><span>Total</span><span>' +
+            money(o.total) +
+            "</span></div>";
+        } else {
+          var h = [
+            [
+              o.t,
+              "Order " + (o.status === "draft" ? "saved as draft" : "placed"),
+              "by " + o._rep,
+            ],
+          ];
+          if (o.replaces) h.push([o.t, "Replaces order " + o.replaces, ""]);
+          if (o.status === "cancelled")
+            h.push([
+              o.cancelAt,
+              "Order cancelled",
+              (o.cancelReason || "") + " — " + (o.cancelBy || ""),
+            ]);
+          body =
+            '<ul class="om-hist">' +
+            h
+              .map(function (x) {
+                return (
+                  "<li><b>" +
+                  esc(x[1]) +
+                  "</b><small>" +
+                  (x[0] ? when(x[0]) : "") +
+                  (x[2] ? " · " + esc(x[2]) : "") +
+                  "</small></li>"
+                );
+              })
+              .join("") +
+            "</ul>";
+        }
+        D.innerHTML =
+          '<div class="om-box"><div class="om-dh"><h2>Order #' +
+          esc(o.id) +
+          '</h2><span class="om-st ' +
+          o.status +
+          '">' +
+          (LABEL[o.status] || "") +
+          '</span><button type="button" class="om-dx" id="omClose" aria-label="Close">' +
+          I("close") +
+          '</button></div><div class="om-dt">' +
+          [
+            ["details", "Details"],
+            ["items", "Items (" + o._items.length + ")"],
+            ["history", "History"],
+          ]
+            .map(function (t) {
+              return (
+                '<button type="button" data-t="' +
+                t[0] +
+                '"' +
+                (st.tab === t[0] ? ' class="on"' : "") +
+                ">" +
+                t[1] +
+                "</button>"
+              );
+            })
+            .join("") +
+          '</div><div class="om-dbody">' +
+          body +
+          '</div><div class="om-dact"><button type="button" class="om-ib" id="omPr">' +
+          I("print") +
+          "Print</button>" +
+          (o.status === "placed"
+            ? '<button type="button" class="om-ib danger" id="omCx">' +
+              I("x-circle") +
+              "Cancel order</button>"
+            : "") +
+          "</div></div>";
+        $("omClose").onclick = function () {
+          st.sel = "";
+          draw();
+        };
+        [].forEach.call(D.querySelectorAll("[data-t]"), function (b) {
+          b.onclick = function () {
+            st.tab = b.dataset.t;
+            drawDetail(all);
+          };
+        });
+        $("omPr").onclick = function () {
+          printOrder(o);
+        };
+        if ($("omCx"))
+          $("omCx").onclick = function () {
+            cancel(o);
+          };
+      }
+
+      function cancel(o) {
+        var why = prompt("Why is order " + o.id + " being cancelled? (needed)");
+        if (!why || why.trim().length < 3) return;
+        fetch("/api/salesadmin/cancel", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: o.id, reason: why.trim() }),
+        })
+          .then(function (r) {
+            return r.json().then(function (j) {
+              if (!r.ok) throw new Error(j.error || "Could not cancel");
+            });
+          })
+          .then(function () {
+            alert("Order cancelled.");
+          })
+          .catch(function (e) {
+            alert(e.message);
+          });
+      }
+
+      function printOrder(o) {
+        if (!o) return;
+        $("omPrint").innerHTML =
+          '<h2 style="margin:0">General Traders</h2><p style="margin:2px 0 14px">Order ' +
+          esc(o.id) +
+          " · " +
+          when(o.t) +
+          "</p><p><b>" +
+          esc(o.shop || o.code) +
+          "</b><br>" +
+          esc(o.area || "") +
+          "<br>Sales person: " +
+          esc(o._rep) +
+          '</p><table style="width:100%;border-collapse:collapse" border="1" cellpadding="6"><tr><th align="left">Item</th><th>Qty</th><th>Price</th><th>Amount</th></tr>' +
+          o._items
+            .map(function (i) {
+              return (
+                "<tr><td>" +
+                esc(i.name || i.id) +
+                '</td><td align="center">' +
+                i.qty +
+                '</td><td align="right">' +
+                money(i.price) +
+                '</td><td align="right">' +
+                money(i.amount) +
+                "</td></tr>"
+              );
+            })
+            .join("") +
+          '</table><p style="text-align:right;font-size:18px"><b>Total ' +
+          money(o.total) +
+          "</b></p>";
+        window.print();
+      }
+
+      function exportCsv(L) {
+        function c(v) {
+          return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
+        }
+        var rows = [
+          [
+            "Order ID",
+            "Date",
+            "Shop",
+            "Customer ID",
+            "Sales person",
+            "Area",
+            "Items",
+            "Amount",
+            "Status",
+          ],
+        ].concat(
+          L.map(function (o) {
+            return [
+              o.id,
+              when(o.t),
+              o.shop,
+              o.code,
+              o._rep,
+              o.area,
+              o._items.length,
+              o.total,
+              LABEL[o.status] || o.status,
+            ];
+          }),
+        );
+        var blob = new Blob(
+          [
+            "﻿" +
+              rows
+                .map(function (r) {
+                  return r.map(c).join(",");
+                })
+                .join("\r\n"),
+          ],
+          {
+            type: "text/csv",
+          },
+        );
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "orders-" + st.from + "-to-" + st.to + ".csv";
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () {
+          URL.revokeObjectURL(a.href);
+          a.remove();
+        }, 500);
+      }
+
+      draw();
+      window.addEventListener("gm-sync", draw);
+    </script>
+  </body>
+</html>

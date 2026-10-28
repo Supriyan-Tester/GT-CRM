@@ -1,6 +1,7 @@
 ﻿<!doctype html>
 <html lang="en">
   <head>
+    <script src="../assets/icons.js"></script>
     <script src="../shared/sync.js"></script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -126,7 +127,7 @@
             "In service / repair",
             "Under maintenance",
           ) +
-          T("c-d", "x", c.inactive, "Inactive vehicles", "Not in service");
+          T("c-d", "close", c.inactive, "Inactive vehicles", "Not in service");
       }
       function card(v) {
         var a = VX.avail(v, date),
@@ -157,7 +158,7 @@
           DP.icon("gauge") +
           VX.num(v.lastKm) +
           " km</span><span>" +
-          GA.icon("cal") +
+          GA.icon("calendar") +
           (u ? "Last used " + VX.date(u.date) : "Not used yet") +
           "</span><span>" +
           GA.icon("users") +
@@ -168,7 +169,7 @@
           '" aria-haspopup="menu" aria-expanded="false" aria-label="Actions for ' +
           esc(v.number) +
           '">' +
-          DP.icon("dots") +
+          DP.icon("dots-vertical") +
           "</button></span></div>"
         );
       }
@@ -371,7 +372,7 @@
                 '<div class="vx-doc"><span class="chip ' +
                 (m ? "c-s" : "c-a") +
                 '">' +
-                DP.icon("doc") +
+                DP.icon("document") +
                 "</span><div><b>" +
                 d[1] +
                 "</b><small>" +

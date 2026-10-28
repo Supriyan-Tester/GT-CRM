@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script src="../assets/icons.js"></script>
     <script src="../shared/sync.js"></script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -407,30 +408,17 @@
         sortKey = "t",
         sortDir = -1,
         openKey = null;
-      // label, pill colour, icon path
-      var IC = {
-        customer:
-          '<path d="M4 8h16l-1.5-4h-13z"/><path d="M5 8v12h14V8"/><path d="M9 20v-6h6v6"/>',
-        user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
-        pin: '<path d="M12 21s7-6.2 7-11.5a7 7 0 0 0-14 0C5 14.800 12 21 12 21z"/><circle cx="12" cy="9.500" r="2.500"/>',
-        map: '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
-        cal: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
-        truck:
-          '<path d="M2 6h12v10H2zM14 10h4l3 3v3h-7"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>',
-        box: '<path d="m12 3 8 4.500v9L12 21l-8-4.500v-9z"/><path d="m4 7.500 8 4.500 8-4.500M12 12v9"/>',
-        gear: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.600 5.600l2.100 2.100M16.300 16.300l2.100 2.100M5.600 18.400l2.100-2.100M16.300 7.700l2.100-2.100"/>',
-        key: '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3"/>',
-      };
+      // label, pill colour, icon name (icons are drawn in assets/icons.js)
       var TYPES = {
         all: ["All"],
-        customer: ["Customers", "al-g", "customer"],
+        customer: ["Customers", "al-g", "store"],
         route: ["Routes", "al-t", "map"],
-        plan: ["Daily plan", "al-t", "cal"],
+        plan: ["Daily plan", "al-t", "calendar"],
         employee: ["Employees", "al-n", "user"],
-        shop: ["Live location", "al-o", "pin"],
+        shop: ["Live location", "al-o", "map-pin"],
         vehicle: ["Vehicles", "al-n", "truck"],
         product: ["Products", "al-n", "box"],
-        settings: ["Settings", "al-n", "gear"],
+        settings: ["Settings", "al-n", "settings"],
         login: ["Sign-in", "al-b", "user"],
         password: ["Passwords", "al-r", "key"],
       };
@@ -446,21 +434,16 @@
         settings: "Settings",
         password: "Password",
       };
-      var SVG = function (p) {
-        return '<svg viewBox="0 0 24 24" aria-hidden="true">' + p + "</svg>";
-      };
       var pg = GA.mount("activity.html", "Activity log");
       pg.innerHTML =
         '<p class="al-sub">Track all important changes and actions in your system.</p>' +
         '<div class="al-bar"><div class="al-f"><label for="mo">Month</label><div class="field"><select id="mo"></select></div></div>' +
         '<div class="al-f"><label for="ty">Type</label><div class="field"><select id="ty"></select></div></div>' +
         '<label class="al-search">' +
-        SVG('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.500-3.500"/>') +
+        GMIcons.svg("search") +
         '<input id="q" type="search" placeholder="Search name or keywords..."></label>' +
         '<button class="al-btn" id="rf" type="button">' +
-        SVG(
-          '<path d="M20 11a8 8 0 0 0-14.500-3.500L4 9M4 4v5h5M4 13a8 8 0 0 0 14.500 3.500L20 15M20 20v-5h-5"/>',
-        ) +
+        GMIcons.svg("sync") +
         'Refresh</button></div><div id="out"></div>';
       $("ty").innerHTML = Object.keys(TYPES)
         .map(function (k) {
@@ -519,7 +502,7 @@
           ? '<span class="al-pill ' +
               T[1] +
               '">' +
-              SVG(IC[T[2]]) +
+              GMIcons.svg(T[2]) +
               esc(PILL[type] || T[0]) +
               "</span>"
           : '<span class="al-pill al-n">' + esc(type) + "</span>";
@@ -587,10 +570,7 @@
               '<div class="c-what al-what">' +
               esc(e.text) +
               '</div><div class="c-chev">' +
-              SVG('<path d="m9 6 6 6-6 6"/>').replace(
-                "<svg",
-                '<svg class="al-chev"',
-              ) +
+              GMIcons.svg("chevron-right", "al-chev") +
               "</div></div>" +
               '<div class="al-det"><div><b>When</b>' +
               dp.d +
@@ -608,9 +588,7 @@
           .join("");
         $("out").innerHTML =
           '<div class="al-info">' +
-          SVG(
-            '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.500h.01"/>',
-          ) +
+          GMIcons.svg("info") +
           "<span>" +
           list.length +
           " change" +

@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script src="../assets/icons.js"></script>
     <script src="../shared/sync.js"></script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -180,7 +181,7 @@
           '<div class="vx-doc"><span class="chip ' +
           (f || m ? "c-s" : "c-a") +
           '">' +
-          DP.icon("doc") +
+          DP.icon("document") +
           "</span><div><b>" +
           label +
           "</b><small>" +
@@ -520,13 +521,13 @@
           '<div class="vx-foot"><div>' +
           (step
             ? '<button type="button" class="btn btn-secondary" id="wBack">' +
-              DP.icon("left") +
+              DP.icon("chevron-left") +
               " Back</button>"
             : '<a class="btn btn-secondary" href="' + back + '">Cancel</a>') +
           '</div><div style="display:flex;gap:8px">' +
           (step < 3
             ? '<button type="button" class="btn" id="wNext">Next ' +
-              DP.icon("right") +
+              DP.icon("chevron-right") +
               "</button>"
             : '<button type="button" class="btn" id="wSave"' +
               (saving ? " disabled" : "") +

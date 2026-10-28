@@ -3,6 +3,7 @@ const http = require("http"),
   path = require("path"),
   os = require("os"),
   crypto = require("crypto"),
+  util = require("util"),
   zlib = require("zlib");
 const ROOT = __dirname,
   DATA = path.join(ROOT, "data"),
@@ -125,9 +126,13 @@ function istMonth(t) {
 function actorOf(s) {
   try {
     if (!s) return { role: "system", name: "System" };
-    if (s.role === "admin") {
-      const a = adminList().filter((x) => x && x.id === s.id)[0];
-      return { role: "admin", id: s.id, name: (a && a.name) || "Admin" };
+    if (s.role === "admin" || s.role === "sales") {
+      const a = acctOf(s);
+      return {
+        role: s.role,
+        id: s.id,
+        name: (a && a.name) || (s.role === "sales" ? "Sales" : "Admin"),
+      };
     }
     const w = (workerData().workers || []).filter((x) => x && x.id === s.id)[0];
     return { role: "worker", id: s.id, name: (w && w.name) || "Employee" };
@@ -406,6 +411,89 @@ function cleanValue(key, raw) {
   return raw;
 }
 
+// One-time move: any old Users & Accounts login that is not a Super Admin or Admin (Sales, Billing, Inventory, Delivery, Helper)
+// becomes an employee with the same mobile number and password, and keeps its ticked options as access.
+function moveStaffToEmployees() {
+  const list = adminList(),
+    move = list.filter((a) => a && STAFF_ROLES.indexOf(a.role || "Admin") < 0);
+  if (!move.length) return;
+  const wd = Object.assign({ workers: [], leaves: [] }, workerData()),
+    prof = Object.assign({}, stored("gm_admin_wprofile_v1") || {}),
+    acc = Object.assign({}, accessData()),
+    label = {
+      Sales: "Sales",
+      Billing: "Billing",
+      Inventory: "Inventory",
+      Delivery: "Delivery / Driver",
+      Helper: "Helper",
+    };
+  wd.workers = (wd.workers || []).slice();
+  move.forEach((a) => {
+    if (wd.workers.some((w) => w && w.phone === a.phone)) return; // already an employee: leave this login alone
+    const n =
+        wd.workers.reduce(
+          (m, x) => Math.max(m, parseInt(String(x.id).slice(1), 10) || 0),
+          0,
+        ) + 1,
+      id = "W" + String(n).padStart(3, "0");
+    wd.workers.push({
+      id,
+      name: a.name,
+      phone: a.phone,
+      emergency: "",
+      active: a.status !== "inactive",
+      created: localDate(),
+    });
+    prof[id] = {
+      role: label[a.role] || "Delivery / Driver",
+      joinDate: localDate(),
+    };
+    if (auth.admins[a.id] && auth.admins[a.id].h)
+      auth.workers[id] = { h: auth.admins[a.id].h };
+    const mods = (a.perms || []).filter(
+      (m) => MODULES.indexOf(m) > -1 && m !== EMP_ROLE_MODULE[a.role],
+    );
+    if (mods.length && (a.role === "Billing" || a.role === "Inventory"))
+      acc[id] = mods;
+    delete auth.admins[a.id];
+    dropSessionsOf(a.id);
+    logEvents({ role: "system" }, [
+      {
+        type: "employee",
+        text:
+          "Login of " +
+          a.name +
+          " (" +
+          a.role +
+          ") moved to the Employees page",
+      },
+    ]);
+    a._moved = true;
+  });
+  const moved = move.filter((a) => a._moved).map((a) => a.id);
+  if (!moved.length) return;
+  setItem("gm_admin_workers_v1", JSON.stringify(wd));
+  setItem("gm_admin_wprofile_v1", JSON.stringify(prof));
+  setItem("gm_admin_access_v1", JSON.stringify(acc));
+  setItem(
+    "gm_admin_account_v1",
+    JSON.stringify(
+      list
+        .filter((a) => moved.indexOf(a.id) < 0)
+        .map((a) => {
+          const c = Object.assign({}, a);
+          delete c._moved;
+          return c;
+        }),
+    ),
+  );
+  saveAuth();
+  persist();
+  console.log(
+    "  Moved " + moved.length + " staff login(s) to the Employees page.",
+  );
+}
+
 // First start / upgrade: hash existing passwords, replace the default admin password with a one-time password, scrub db.json.
 function migrateAuth() {
   let changed = false,
@@ -500,10 +588,69 @@ const ROLE_MODULE = {
   Delivery: "delivery",
   Helper: "helper",
 };
+// ---- employees who sign in ----
+// Everyone except the Super Admin and Admin accounts is an EMPLOYEE (Employees page). The employee's role decides which panel opens:
+// Delivery / Helper / Loading -> delivery app, Sales -> Sales panel, Billing / Inventory / Admin -> admin side (limited by access).
+// The Users & Accounts page keeps only the Super Admin and Admin accounts.
+const STAFF_ROLES = ["Super Admin", "Admin"];
+const EMP_ROLE_MODULE = { Billing: "billing", Inventory: "inventory" };
+function empRoleOf(id) {
+  const p = stored("gm_admin_wprofile_v1"),
+    r = String((p && p[id] && p[id].role) || "").toLowerCase();
+  return (
+    {
+      sales: "Sales",
+      billing: "Billing",
+      inventory: "Inventory",
+      admin: "Admin",
+      helper: "Helper",
+      loading: "Loading",
+    }[r] || "Delivery"
+  );
+}
+function empPanel(role) {
+  return role === "Sales"
+    ? "sales"
+    : role === "Admin" || role === "Billing" || role === "Inventory"
+      ? "admin"
+      : "worker";
+}
+function accessData() {
+  const a = stored("gm_admin_access_v1");
+  return a && typeof a === "object" && !Array.isArray(a) ? a : {};
+}
+// The account an admin-side or Sales employee signs in as (null for delivery-app staff or an unknown id).
+function empAccount(id) {
+  const w = (workerData().workers || []).filter((x) => x && x.id === id)[0];
+  if (!w) return null;
+  const role = empRoleOf(id);
+  if (empPanel(role) === "worker") return null;
+  const extra = accessData()[id];
+  return {
+    id: w.id,
+    name: w.name,
+    phone: w.phone,
+    email: "",
+    role,
+    perms:
+      role === "Admin"
+        ? []
+        : MODULES.filter(
+            (m) =>
+              m === EMP_ROLE_MODULE[role] ||
+              (role !== "Sales" &&
+                Array.isArray(extra) &&
+                extra.indexOf(m) > -1),
+          ),
+    status: w.active === false ? "inactive" : "active",
+    emp: true,
+  };
+}
 function acctOf(s) {
-  return s && s.role === "admin"
-    ? adminList().filter((x) => x && x.id === s.id)[0] || null
-    : null;
+  if (!s || (s.role !== "admin" && s.role !== "sales")) return null;
+  return s.emp
+    ? empAccount(s.id)
+    : adminList().filter((x) => x && x.id === s.id)[0] || null;
 }
 function isSuper(a) {
   return !!a && a.role === "Super Admin";
@@ -545,6 +692,8 @@ const PAGE_RULES = {
   "attendance.html": ["helper"],
   "advances.html": ["billing"],
   "products.html": ["inventory", "billing", "sales"],
+  "sales.html": ["sales", "billing"],
+  "orders.html": ["sales", "billing"],
   "product-edit.html": ["inventory"],
   "workers.html": "full",
   "activity.html": "full",
@@ -577,6 +726,42 @@ function adminMayWrite(s, key) {
   const r = KEY_RULES[key];
   if (!r) return true;
   return r === "full" ? isFull(a) : hasAny(a, r);
+}
+function adminMayManagePlans(s) {
+  return hasAny(acctOf(s), ["delivery"]);
+}
+function customerPlanHistory(plans) {
+  const out = {},
+    today = localDate();
+  if (!plans || typeof plans !== "object" || Array.isArray(plans)) return out;
+  Object.keys(plans).forEach((date) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > today) return;
+    const source = plans[date],
+      list = Array.isArray(source) ? source : source ? [source] : [],
+      history = list
+        .filter((p) => p && typeof p === "object" && p.status !== "cancelled")
+        .map((p) => ({
+          stops: (Array.isArray(p.stops) ? p.stops : [])
+            .filter((stop) => stop && typeof stop.code === "string")
+            .map((stop) => ({ code: stop.code })),
+        }))
+        .filter((p) => p.stops.length);
+    if (history.length) out[date] = Array.isArray(source) ? history : history[0];
+  });
+  return out;
+}
+function isCustomerPlanHistory(candidate, currentPlans) {
+  const visible = customerPlanHistory(currentPlans);
+  return (
+    candidate &&
+    typeof candidate === "object" &&
+    !Array.isArray(candidate) &&
+    Object.keys(candidate).every(
+      (date) =>
+        Object.prototype.hasOwnProperty.call(visible, date) &&
+        util.isDeepStrictEqual(candidate[date], visible[date]),
+    )
+  );
 }
 function cleanPhone(v) {
   return String(v || "")
@@ -666,7 +851,10 @@ function sanitizeAccounts(s, newRaw) {
 }
 function dropSessionsOf(id) {
   Object.keys(sessions).forEach((h) => {
-    if (sessions[h].role === "admin" && sessions[h].id === id)
+    if (
+      (sessions[h].role === "admin" || sessions[h].role === "sales") &&
+      sessions[h].id === id
+    )
       delete sessions[h];
   });
   saveSessions();
@@ -708,7 +896,8 @@ function saveSessions() {
 }
 // An admin is signed out after 30 minutes with no activity. "Remember me" no longer lengthens an admin sign-in.
 // Background polling (GET requests) does not count as activity for an admin; only saving something or the page's own /api/keepalive does.
-const TTL = { admin: 30 * 60e3, worker: 30 * 86400e3 };
+// Sales people work in the field on their phones, so (like the delivery crew) they stay signed in for 30 days.
+const TTL = { admin: 30 * 60e3, worker: 30 * 86400e3, sales: 30 * 86400e3 };
 const sha = (t) => crypto.createHash("sha256").update(t).digest("hex");
 function cookieToken(req) {
   const m = /(?:^|;\s*)gm_sid=([A-Za-z0-9_-]{20,80})/.exec(
@@ -728,9 +917,15 @@ function getSession(req) {
     saveSessions();
     return null;
   }
-  if (s.role === "admin") {
-    const ac = adminList().filter((x) => x && x.id === s.id)[0];
-    if (!ac || ac.status === "inactive") {
+  if (s.role === "admin" || s.role === "sales") {
+    const ac = acctOf(s);
+    // The person must still exist, be active, and still have the role that panel is for (so a role change takes effect at once).
+    if (
+      !ac ||
+      ac.status === "inactive" ||
+      (s.role === "sales") !== (ac.role === "Sales") ||
+      (s.emp && empPanel(ac.role) !== s.role)
+    ) {
       delete sessions[h];
       saveSessions();
       return null;
@@ -767,13 +962,14 @@ function setCookie(res, req, token, maxAgeSec) {
       (isHttps(req) ? "; Secure" : ""),
   );
 }
-function startSession(res, req, role, id, remember) {
+function startSession(res, req, role, id, remember, emp) {
   const ttl = TTL[role];
   const token = crypto.randomBytes(32).toString("base64url");
   Object.keys(sessions).forEach((h) => {
     if (sessions[h].exp < Date.now()) delete sessions[h];
   });
   sessions[sha(token)] = { role, id, exp: Date.now() + ttl, ttl };
+  if (emp) sessions[sha(token)].emp = true; // signed in as an employee (not as a Users & Accounts account)
   saveSessions();
   setCookie(res, req, token, Math.floor(ttl / 1000));
 }
@@ -824,8 +1020,32 @@ const W_READ = new Set([
 ]);
 // Crew marks (delivery results shared between the driver and helpers of one route) and location pings.
 const CREW_RE = /^gm_crew_\d{8}_[A-Za-z0-9_-]{1,40}$/;
+// Who may READ which saved record on the admin side. Full access (Super Admin, Admin) reads everything. Everyone else only
+// the records their modules need; a record not listed here (small screen preferences and the like) is open to any signed-in admin user.
+const ADMIN_READ = [
+  [/^gm_admin_v1$/, ["sales", "billing", "delivery", "helper"]],
+  [/^gm_admin_workers_v1$/, ["sales", "billing", "delivery", "helper"]],
+  [/^gm_admin_wprofile_v1$/, ["billing", "delivery", "helper"]],
+  [/^gm_admin_ledger_v1$/, ["billing", "helper"]],
+  [/^gm_admin_attedit_v1$/, ["helper"]],
+  [/^gm_admin_(vehicles|vfuel|vehsync)_v1$/, ["delivery"]],
+  [/^gm_(pintasks_v1|depot_v1|pins_v1.*)$/, ["sales", "delivery"]],
+  [/^gm_crm_data_v5(__.*)?$/, ["sales", "billing", "delivery", "helper"]],
+  [/^gm_(loc|locreq|crew)_.*$/, ["delivery", "helper"]],
+  [/^gm_admin_access_v1$/, []],
+  [/^gm_sales_(orders|days|watch)_v1$/, ["sales", "billing"]],
+];
+function adminMayRead(s, key) {
+  const a = acctOf(s);
+  if (!a) return false;
+  if (isFull(a)) return true;
+  for (const r of ADMIN_READ) if (r[0].test(key)) return hasAny(a, r[1]);
+  return true;
+}
 function canRead(s, key) {
-  if (s.role === "admin") return true; // (the account list is trimmed per person in viewFor)
+  if (s.role === "sales")
+    return key === "gm_admin_products_v1" || key === "gm_admin_v1"; // Sales sees the price list, plus shop names and routes (trimmed in viewFor); never plans, costs or other records
+  if (s.role === "admin") return adminMayRead(s, key); // (the account list and product list are trimmed per person in viewFor)
   return (
     W_READ.has(key) ||
     CREW_RE.test(key) ||
@@ -837,6 +1057,9 @@ function canRead(s, key) {
   );
 }
 function canWrite(s, key) {
+  if (key === "gm_admin_access_v1") return false; // changed only through /api/access (Super Admin)
+  if (/^gm_sales_(orders|days|watch)_v1$/.test(key)) return false; // written only by the Sales API on the server
+  if (s.role === "sales") return false; // Sales cannot save any shared record (yet)
   if (s.role === "admin") return adminMayWrite(s, key);
   return (
     key === "gm_crm_data_v5__" + s.id ||
@@ -849,6 +1072,43 @@ function canWrite(s, key) {
 }
 // What a signed-in employee is allowed to see inside a value: only their own plan, own profile, own pin tasks.
 function viewFor(s, key, raw) {
+  if (s.role === "sales" && key === "gm_admin_v1" && raw != null) {
+    // Shops (name, place, phone, pin, GST) and route shop lists only. No delivery plans, invoices or anything else.
+    const d = jparse(raw) || {};
+    return JSON.stringify({
+      customers: (Array.isArray(d.customers) ? d.customers : [])
+        .filter((c) => c && c.code && c.active !== false)
+        .map((c) => ({
+          code: c.code,
+          name: c.name,
+          address: c.address,
+          phone: c.phone,
+          area: c.area,
+          lat: c.lat,
+          lng: c.lng,
+          gstin: c.gstin,
+        })),
+      routes: (Array.isArray(d.routes) ? d.routes : [])
+        .filter((r) => r && r.id)
+        .map((r) => ({ id: r.id, name: r.name, codes: r.codes })),
+    });
+  }
+  if (
+    s.role === "admin" &&
+    key === "gm_admin_v1" &&
+    raw != null &&
+    !adminMayManagePlans(s)
+  ) {
+    const d = jparse(raw);
+    if (!d || typeof d !== "object" || Array.isArray(d)) return raw;
+    return JSON.stringify(
+      {
+        customers: Array.isArray(d.customers) ? d.customers : [],
+        routes: Array.isArray(d.routes) ? d.routes : [],
+        plans: customerPlanHistory(d.plans),
+      },
+    );
+  }
   if (s.role === "admin" && key === "gm_admin_account_v1" && raw != null) {
     // only the Super Admin sees everybody; others see just their own record
     const me = acctOf(s);
@@ -859,6 +1119,33 @@ function viewFor(s, key, raw) {
         .filter((a) => a && a.id === s.id)
         .map((a) => ({ id: a.id, name: a.name, phone: a.phone, role: a.role })),
     );
+  }
+  if (key === "gm_admin_products_v1" && raw != null) {
+    // Price list only (no cost, stock, opening value or batch details) for Sales and for admin-side people without Billing or Inventory.
+    const ac = s.role === "admin" ? acctOf(s) : null;
+    if (
+      s.role === "sales" ||
+      (ac && !isFull(ac) && !hasAny(ac, ["billing", "inventory"]))
+    ) {
+      const L = jparse(raw);
+      return JSON.stringify(
+        (Array.isArray(L) ? L : [])
+          .filter((p) => p && typeof p === "object" && p.active !== false)
+          .map((p) => ({
+            id: p.id,
+            code: p.code,
+            name: p.name,
+            alias: p.alias,
+            category: p.category,
+            unit: p.unit,
+            price: p.price,
+            mrp: p.mrp,
+            tax: p.tax,
+            stock: stockOf(p), // available quantity (null = stock not tracked for this product)
+            active: true,
+          })),
+      );
+    }
   }
   if (s.role === "admin" || raw == null) return raw;
   const d = jparse(raw);
@@ -981,10 +1268,146 @@ function mergeNotifs(oldRaw, newRaw, s) {
       title: String(n.title || "").slice(0, 200),
       text: String(n.text || "").slice(0, 600),
       worker: String(n.worker || "").slice(0, 80),
+      wid: s && s.role === "worker" && s.id ? String(s.id).slice(0, 60) : undefined,
       read: false,
       loc: validLoc(n.loc),
     }));
   return JSON.stringify(add.concat(base).slice(0, 300));
+}
+
+/* ---- Attendance safety net ----
+   Punch-in / punch-out is saved twice: as a notification (small, always arrives) and inside the employee's own record
+   (attendanceLog, saved from the phone). If the phone's copy is ever lost or overwritten, the Attendance page showed
+   "Absent" for a day the office was told about. These two functions make sure a punch the office was notified of is
+   always in the attendance record, and that an older copy from a phone can never remove entries already saved. */
+function clockMins(t) {
+  const m = /(\d{1,2}):(\d{2})\s*([ap]m)?/i.exec(String(t || ""));
+  if (!m) return null;
+  let h = +m[1];
+  if (m[3]) {
+    h = h % 12;
+    if (/p/i.test(m[3])) h += 12;
+  }
+  return h * 60 + +m[2];
+}
+function reconcileAttendance(onlyId) {
+  const notifs = stored("gm_admin_notifs_v1");
+  if (!Array.isArray(notifs)) return 0;
+  const byName = {};
+  (workerData().workers || []).forEach((w) => {
+    if (!w || !w.id) return;
+    const k = String(w.name || "").trim().toLowerCase();
+    (byName[k] = byName[k] || []).push(w.id);
+  });
+  const set = stored("gm_admin_settings_v1") || {},
+    lateAfter = clockMins(
+      /^\d{1,2}:\d{2}$/.test(set.lateAfter || "") ? set.lateAfter : "08:30",
+    ),
+    WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    recs = {},
+    touched = new Set();
+  const list = notifs
+    .filter(
+      (n) =>
+        n &&
+        (n.type === "punchin" || n.type === "punchout") &&
+        /^\d{4}-\d{2}-\d{2}$/.test(n.date || ""),
+    )
+    .sort((a, b) => (a.ts || 0) - (b.ts || 0)); // oldest first, so a punch-in is handled before its punch-out
+  for (const n of list) {
+    let id = n.wid;
+    if (!id) {
+      const c = byName[String(n.worker || "").trim().toLowerCase()];
+      if (c && c.length === 1) id = c[0]; // older notifications carry only a name: use it only when it is unique
+    }
+    if (!id || (onlyId && id !== onlyId)) continue;
+    if (!recs[id]) {
+      const r = stored("gm_crm_data_v5__" + id);
+      if (!r || typeof r !== "object") continue;
+      recs[id] = r;
+    }
+    const rec = recs[id],
+      mk = n.date.slice(0, 7),
+      dk = String(+n.date.slice(8)),
+      text = String(n.text || ""),
+      tm = /^At\s+(\d{1,2}:\d{2}\s*[ap]m)/i.exec(text);
+    if (!tm) continue;
+    rec.attendanceLog = rec.attendanceLog || {};
+    rec.attendanceLog[mk] = rec.attendanceLog[mk] || {};
+    let e = rec.attendanceLog[mk][dk];
+    if (n.type === "punchin") {
+      if (e) continue;
+      const im = clockMins(tm[1]),
+        sk = /start km (\d+)/i.exec(text),
+        vh = /vehicle (.+)\.$/i.exec(text);
+      e = rec.attendanceLog[mk][dk] = {
+        day: +n.date.slice(8),
+        weekday: WD[new Date(n.date + "T00:00:00Z").getUTCDay()],
+        status: im != null && im > lateAfter ? "late" : "present",
+        inTime: tm[1],
+        outTime: "-",
+        hours: "-",
+        km: 0,
+        vehicle: vh && vh[1] !== "-" ? vh[1] : "",
+        startKm: sk ? +sk[1] : null,
+        endKm: null,
+      };
+      touched.add(id);
+    } else if (e && (!e.outTime || e.outTime === "-")) {
+      const a = clockMins(e.inTime),
+        b = clockMins(tm[1]),
+        ek = /end km (\d+)/i.exec(text),
+        dr = /driven (\d+) km/i.exec(text);
+      e.outTime = tm[1];
+      e.hours =
+        a != null && b != null && b >= a
+          ? Math.floor((b - a) / 60) + "h " + String((b - a) % 60).padStart(2, "0") + "m"
+          : "-";
+      e.km = dr ? +dr[1] : Number(e.km) || 0;
+      e.endKm = ek ? +ek[1] : e.endKm == null ? null : e.endKm;
+      touched.add(id);
+    }
+  }
+  touched.forEach((id) => {
+    setItem("gm_crm_data_v5__" + id, JSON.stringify(recs[id]));
+    console.log("Attendance restored from punch notifications for", id);
+  });
+  return touched.size;
+}
+// An employee's phone saves its whole record. Keep every attendance entry the server already has that the phone's copy lacks
+// (or has without the punch-out), so an old copy can never erase a day.
+function keepAttendance(oldRaw, newRaw) {
+  const o = jparse(oldRaw),
+    n = jparse(newRaw);
+  if (!o || !n || typeof o !== "object" || typeof n !== "object") return newRaw;
+  const ol = o.attendanceLog;
+  if (!ol || typeof ol !== "object") return newRaw;
+  if (!n.attendanceLog || typeof n.attendanceLog !== "object")
+    n.attendanceLog = {};
+  const nl = n.attendanceLog;
+  let changed = false;
+  Object.keys(ol).forEach((m) => {
+    if (!ol[m] || typeof ol[m] !== "object") return;
+    if (!nl[m] || typeof nl[m] !== "object") nl[m] = {};
+    Object.keys(ol[m]).forEach((d) => {
+      const oe = ol[m][d],
+        ne = nl[m][d];
+      if (!oe || typeof oe !== "object") return;
+      if (!ne || typeof ne !== "object") {
+        nl[m][d] = oe;
+        changed = true;
+      } else if (
+        (!ne.outTime || ne.outTime === "-") &&
+        oe.outTime &&
+        oe.outTime !== "-" &&
+        ne.inTime === oe.inTime
+      ) {
+        nl[m][d] = oe;
+        changed = true;
+      }
+    });
+  });
+  return changed ? JSON.stringify(n) : newRaw;
 }
 function workerFileOk(s, v, k, method) {
   // photos and documents saved under a worker id or a vehicle id
@@ -1041,6 +1464,512 @@ function send(res, code, obj, hdr) {
   res.writeHead(code, h);
   res.end(b);
 }
+// ---- Sales panel: orders, today's route and shop visits. A Sales person can only read and change their OWN records. ----
+// Prices always come from the server's price list (never from the browser). Order numbers run SO-1001, SO-1002 ...
+const SALES_ORDERS = "gm_sales_orders_v1",
+  SALES_DAYS = "gm_sales_days_v1";
+function istDay() {
+  return new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
+}
+// A visit can only be marked from near the shop (shop pin): within SALES_RADIUS metres, allowing for GPS accuracy (up to 50 m).
+const SALES_RADIUS = 150,
+  SALES_WATCH = "gm_sales_watch_v1",
+  NO_ORDER_REASONS = [
+    "Shop closed",
+    "Not interested",
+    "Out of stock with customer",
+    "Will order next time",
+    "Customer not available",
+    "Other",
+  ];
+function metres(a, b, c, d) {
+  const R = 6371000,
+    r = (x) => (x * Math.PI) / 180,
+    h =
+      Math.sin(r(c - a) / 2) ** 2 +
+      Math.cos(r(a)) * Math.cos(r(c)) * Math.sin(r(d - b) / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+// Adds a line to the admin's bell list (newest first, same shape the delivery app uses).
+function notifyAdmin(type, title, text, who) {
+  const L = stored("gm_admin_notifs_v1"),
+    ts = Date.now();
+  const list = Array.isArray(L) ? L : [];
+  list.unshift({
+    id: "N" + ts + Math.random().toString(36).slice(2, 6),
+    ts,
+    date: istDay(),
+    type,
+    title,
+    text,
+    worker: who || "",
+    read: false,
+  });
+  setItem("gm_admin_notifs_v1", JSON.stringify(list.slice(0, 300)));
+}
+// Stock a Sales person may rely on: null = this product's stock is not tracked.
+function stockOf(x) {
+  return x &&
+    x.track &&
+    x.stock !== "" &&
+    x.stock != null &&
+    !isNaN(Number(x.stock))
+    ? Math.max(0, Number(x.stock))
+    : null;
+}
+// ---- cancelling a placed order. A Sales person may cancel their OWN order for CANCEL_MINUTES after placing it; the office may cancel any. ----
+// Nothing is deleted: the order stays in the list as Cancelled with who, when and why, and drops out of all totals.
+const CANCEL_MINUTES = 30;
+function cancelOrder(id, who, reason, repOnly) {
+  const L = stored("gm_sales_orders_v1"),
+    list = Array.isArray(L) ? L : [],
+    o = list.filter((x) => x && x.id === id)[0];
+  if (!o || o.status !== "placed")
+    return { error: "That order cannot be cancelled." };
+  if (repOnly) {
+    if (o.rep !== who.id) return { error: "That order is not yours." };
+    if (Date.now() - o.t > CANCEL_MINUTES * 60e3)
+      return {
+        error:
+          "The " +
+          CANCEL_MINUTES +
+          " minutes to cancel have passed. Ask the office to cancel it.",
+      };
+  }
+  const why = String(reason || "")
+    .trim()
+    .slice(0, 300);
+  if (why.length < 3) return { error: "Give a reason for cancelling." };
+  Object.assign(o, {
+    status: "cancelled",
+    cancelBy: who.name,
+    cancelRole: who.role,
+    cancelAt: Date.now(),
+    cancelReason: why,
+  });
+  setItem("gm_sales_orders_v1", JSON.stringify(list));
+  // the shop was still visited, just with no order
+  const days = stored("gm_sales_days_v1");
+  if (days && days[o.rep]) {
+    Object.keys(days[o.rep]).forEach((dt) => {
+      const v =
+        days[o.rep][dt] &&
+        days[o.rep][dt].visits &&
+        days[o.rep][dt].visits[o.code];
+      if (v && v.o === id) {
+        delete v.o;
+        v.s = "no_order";
+        v.reason = "Order cancelled";
+        v.note = why;
+      }
+    });
+    setItem("gm_sales_days_v1", JSON.stringify(days));
+  }
+  notifyAdmin(
+    "sales_cancel",
+    "Order cancelled: " + id + " (" + o.shop + ")",
+    who.name +
+      (who.role === "sales" ? " (salesperson)" : " (office)") +
+      " cancelled order " +
+      id +
+      " for " +
+      o.shop +
+      ", Rs " +
+      o.total +
+      ". Reason: " +
+      why,
+    o.repName,
+  );
+  return { order: o };
+}
+function salesApi(req, res, s, p, url) {
+  const isDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(String(d || ""));
+  const arr = (k) => {
+    const v = stored(k);
+    return Array.isArray(v) ? v : [];
+  };
+  const daysAll = () => {
+    const v = stored(SALES_DAYS);
+    return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+  };
+  const admin = () => stored("gm_admin_v1") || {};
+  const shop = (code) =>
+    (admin().customers || []).filter(
+      (c) => c && c.code === code && c.active !== false,
+    )[0];
+  const num = (n) => Math.round((Number(n) || 0) * 100) / 100;
+  // Checks the phone's position against the shop pin. Returns { loc } or { error }.
+  const where = (sh, b) => {
+    const lat = Number(b.lat),
+      lng = Number(b.lng),
+      acc = Math.max(0, Math.round(Number(b.acc) || 0));
+    if (!(Math.abs(lat) <= 90 && Math.abs(lng) <= 180) || (!lat && !lng))
+      return {
+        error:
+          "Turn on location (GPS) and allow it for this page, then try again.",
+      };
+    if (acc > 200)
+      return {
+        error:
+          "Your GPS is not accurate enough yet (about " +
+          acc +
+          " m). Step outside or wait a few seconds, then try again.",
+      };
+    const loc = {
+      lat: Math.round(lat * 1e6) / 1e6,
+      lng: Math.round(lng * 1e6) / 1e6,
+      acc,
+    };
+    if (!(Number(sh.lat) && Number(sh.lng))) {
+      loc.nopin = true; // the shop has no map pin, so the distance cannot be checked
+      return { loc };
+    }
+    const d = Math.round(metres(Number(sh.lat), Number(sh.lng), lat, lng));
+    loc.dist = d;
+    if (d - Math.min(acc, 50) > SALES_RADIUS)
+      return {
+        error:
+          "You are about " +
+          (d >= 1000 ? (d / 1000).toFixed(1) + " km" : d + " m") +
+          " from " +
+          sh.name +
+          ". Go to the shop to mark it (must be within " +
+          SALES_RADIUS +
+          " m).",
+      };
+    return { loc };
+  };
+  const dayOf = (all, date) => {
+    const mine = all[s.id] || (all[s.id] = {});
+    return mine[date] || (mine[date] = { route: "", visits: {} });
+  };
+  const saveDays = (all) => {
+    const mine = all[s.id] || {},
+      keep = Object.keys(mine).sort().slice(-62), // two months of days per person
+      out = {};
+    keep.forEach((d) => (out[d] = mine[d]));
+    all[s.id] = out;
+    setItem(SALES_DAYS, JSON.stringify(all));
+  };
+
+  if (p === "/api/sales/mine" && req.method === "GET") {
+    const q = url.searchParams.get("date"),
+      date = isDate(q) ? q : istDay(),
+      day = (daysAll()[s.id] || {})[date] || {};
+    const orders = arr(SALES_ORDERS)
+      .filter((o) => o && o.rep === s.id)
+      .slice(-500)
+      .reverse();
+    const wl = stored(SALES_WATCH),
+      mineW = wl && Array.isArray(wl[s.id]) ? wl[s.id] : [],
+      byP = {};
+    arr("gm_admin_products_v1").forEach((x) => x && x.id && (byP[x.id] = x));
+    const back = mineW
+      .map((id) => byP[id])
+      .filter(
+        (x) =>
+          x &&
+          x.active !== false &&
+          (stockOf(x) === null ? false : stockOf(x) > 0),
+      )
+      .map((x) => ({
+        id: x.id,
+        name: x.name,
+        unit: x.unit || "",
+        stock: stockOf(x),
+      }));
+    return send(res, 200, {
+      ok: true,
+      date,
+      today: istDay(),
+      route: day.route || "",
+      visits: day.visits || {},
+      orders,
+      watch: mineW,
+      back,
+    });
+  }
+  if (req.method !== "POST") return send(res, 404, { error: "Not found" });
+
+  return body(req, (err, b) => {
+    if (err || !b || typeof b !== "object")
+      return send(res, 400, { error: "Bad request" });
+
+    // choose today's route (any day from today on)
+    if (p === "/api/sales/route") {
+      const date = isDate(b.date) ? b.date : istDay(),
+        id = String(b.route || "");
+      if (id && !(admin().routes || []).some((r) => r && r.id === id))
+        return send(res, 400, { error: "Route not found" });
+      const all = daysAll();
+      dayOf(all, date).route = id;
+      saveDays(all);
+      return send(res, 200, { ok: true });
+    }
+
+    // "Visited, no order": needs a reason and the phone's position near the shop. A visit cannot be undone by the Sales person.
+    if (p === "/api/sales/visit") {
+      const code = String(b.code || ""),
+        sh = shop(code);
+      if (!sh) return send(res, 400, { error: "Shop not found" });
+      if (b.status !== "no_order")
+        return send(res, 400, {
+          error:
+            "To record a visit with an order, place the order. Otherwise choose a reason for no order.",
+        });
+      const reason = String(b.reason || ""),
+        note = String(b.note || "")
+          .trim()
+          .slice(0, 300);
+      if (NO_ORDER_REASONS.indexOf(reason) < 0)
+        return send(res, 400, { error: "Choose the reason for no order." });
+      if (reason === "Other" && note.length < 3)
+        return send(res, 400, { error: "Write a short note for Other." });
+      const w = where(sh, b);
+      if (w.error) return send(res, 400, { error: w.error });
+      const all = daysAll(),
+        d = dayOf(all, istDay()),
+        prev = d.visits[code];
+      if (prev && prev.o)
+        return send(res, 400, {
+          error:
+            "An order was already placed for this shop today. Cancel it first if it was a mistake.",
+        });
+      d.visits[code] = Object.assign(
+        { s: "no_order", t: Date.now(), reason, note },
+        w.loc,
+      );
+      saveDays(all);
+      if (!prev) {
+        const who = actorOf(s).name;
+        notifyAdmin(
+          "sales_noorder",
+          "No order: " + sh.name,
+          who +
+            " visited " +
+            sh.name +
+            " - no order (" +
+            reason +
+            (note ? ": " + note : "") +
+            ")." +
+            (w.loc.nopin
+              ? " Shop has no map pin, so distance was not checked."
+              : " Marked " + w.loc.dist + " m from the shop."),
+          who,
+        );
+        logEvents(s, [
+          {
+            type: "visit",
+            text: "Visit, no order: " + sh.name + " (" + reason + ")",
+          },
+        ]);
+      }
+      return send(res, 200, { ok: true, visits: d.visits });
+    }
+
+    if (p === "/api/sales/cancel") {
+      const r = cancelOrder(
+        String(b.id || ""),
+        { id: s.id, name: actorOf(s).name, role: "sales" },
+        b.reason,
+        true,
+      );
+      if (r.error) return send(res, 400, { error: r.error });
+      logEvents(s, [
+        {
+          type: "order",
+          text: "Order " + r.order.id + " cancelled: " + r.order.cancelReason,
+        },
+      ]);
+      return send(res, 200, { ok: true, order: r.order });
+    }
+
+    // "Tell me when it is back in stock"
+    if (p === "/api/sales/watch") {
+      const id = String(b.id || ""),
+        x = arr("gm_admin_products_v1").filter((q) => q && q.id === id)[0];
+      if (!x) return send(res, 400, { error: "Product not found" });
+      const all0 = stored(SALES_WATCH),
+        all =
+          all0 && typeof all0 === "object" && !Array.isArray(all0) ? all0 : {},
+        mine = (Array.isArray(all[s.id]) ? all[s.id] : []).filter(
+          (q) => q !== id,
+        );
+      if (b.on !== false) mine.push(id);
+      all[s.id] = mine.slice(-100);
+      setItem(SALES_WATCH, JSON.stringify(all));
+      return send(res, 200, { ok: true, watch: all[s.id] });
+    }
+
+    // save a draft, place an order, or remove a draft
+    if (p === "/api/sales/order") {
+      const list = arr(SALES_ORDERS),
+        old = b.id
+          ? list.filter((o) => o && o.id === b.id && o.rep === s.id)[0]
+          : null;
+      if (b.remove) {
+        if (!old || old.status !== "draft")
+          return send(res, 400, {
+            error: "Only your own drafts can be removed",
+          });
+        setItem(SALES_ORDERS, JSON.stringify(list.filter((o) => o !== old)));
+        return send(res, 200, { ok: true });
+      }
+      if (old && old.status !== "draft")
+        return send(res, 400, { error: "A placed order cannot be changed" });
+      // the same tap sent twice gives the same order back
+      if (b.k && !old) {
+        const dup = list.filter(
+          (o) => o && o.rep === s.id && o.k === String(b.k),
+        )[0];
+        if (dup) return send(res, 200, { ok: true, order: dup });
+      }
+      const sh = shop(String(b.code || ""));
+      if (!sh) return send(res, 400, { error: "Shop not found" });
+      const prods = arr("gm_admin_products_v1"),
+        byId = {};
+      prods.forEach((x) => {
+        if (x && x.id && x.active !== false) byId[x.id] = x;
+      });
+      const merged = {};
+      (Array.isArray(b.items) ? b.items : []).slice(0, 200).forEach((it) => {
+        const id = String((it && it.id) || ""),
+          q = Math.floor(Number(it && it.qty));
+        if (byId[id] && q > 0)
+          merged[id] = Math.min(9999, (merged[id] || 0) + q);
+      });
+      const ids = Object.keys(merged);
+      if (!ids.length)
+        return send(res, 400, { error: "Add at least one product" });
+      if (!b.draft) {
+        // only what is in stock can be sold
+        for (const id of ids) {
+          const av = stockOf(byId[id]);
+          if (av === null) continue;
+          if (av <= 0)
+            return send(res, 400, {
+              error:
+                byId[id].name +
+                " is out of stock. Remove it to place the order.",
+            });
+          if (merged[id] > av)
+            return send(res, 400, {
+              error:
+                "Only " +
+                av +
+                " " +
+                (byId[id].unit || "") +
+                " of " +
+                byId[id].name +
+                " available. Reduce the quantity.",
+            });
+        }
+      }
+      let oloc = null;
+      if (!b.draft) {
+        const w = where(sh, b);
+        if (w.error) return send(res, 400, { error: w.error });
+        oloc = w.loc;
+      }
+      const items = ids.map((id) => {
+        const x = byId[id],
+          price = num(x.price);
+        return {
+          id,
+          code: x.code,
+          name: x.name,
+          unit: x.unit || "",
+          price,
+          qty: merged[id],
+          amount: num(price * merged[id]),
+        };
+      });
+      const subtotal = num(items.reduce((t, i) => t + i.amount, 0)),
+        discount = Math.min(subtotal, Math.max(0, num(b.discount))),
+        placing = !b.draft;
+      let id = old ? old.id : "DR-" + Date.now().toString(36);
+      if (placing) {
+        const seq = list.reduce((m, o) => {
+          const n =
+            o && /^SO-(\d+)$/.test(o.id) ? parseInt(o.id.slice(3), 10) : 0;
+          return n > m ? n : m;
+        }, 1000);
+        id = "SO-" + (seq + 1);
+      }
+      const now = Date.now(),
+        rec = {
+          id,
+          rep: s.id,
+          repName: actorOf(s).name,
+          code: sh.code,
+          shop: sh.name,
+          area: sh.area || "",
+          date: istDay(),
+          t: now,
+          status: placing ? "placed" : "draft",
+          items,
+          subtotal,
+          discount,
+          total: num(subtotal - discount),
+          notes: String(b.notes || "").slice(0, 500),
+        };
+      if (b.k) rec.k = String(b.k).slice(0, 60);
+      if (oloc) rec.loc = oloc;
+      if (
+        b.replaces &&
+        list.some(
+          (x) =>
+            x &&
+            x.id === b.replaces &&
+            x.rep === s.id &&
+            x.status === "cancelled",
+        )
+      )
+        rec.replaces = String(b.replaces); // a corrected order that replaces a cancelled one
+      const next = list.filter((o) => o !== old);
+      next.push(rec);
+      setItem(SALES_ORDERS, JSON.stringify(next));
+      if (placing) {
+        const all = daysAll(),
+          d = dayOf(all, istDay()),
+          pv = d.visits[sh.code],
+          firstToday = !pv || pv.s === "no_order";
+        // the order becomes the visit (with where it was placed)
+        d.visits[sh.code] = Object.assign(
+          { s: "visited", t: now, o: id },
+          oloc,
+        );
+        saveDays(all);
+        const who = rec.repName;
+        notifyAdmin(
+          "sales_order",
+          "New order " + id + ": " + sh.name,
+          who +
+            " took an order for " +
+            sh.name +
+            ": " +
+            items.length +
+            (items.length === 1 ? " item" : " items") +
+            ", Rs " +
+            rec.total +
+            (oloc.nopin
+              ? ". Shop has no map pin, so distance was not checked."
+              : ". Placed " + oloc.dist + " m from the shop."),
+          who,
+        );
+        logEvents(s, [
+          {
+            type: "order",
+            text: "Order " + id + " for " + sh.name + ", Rs " + rec.total,
+          },
+        ]);
+      }
+      return send(res, 200, { ok: true, order: rec });
+    }
+    return send(res, 404, { error: "Not found" });
+  });
+}
+
 function body(req, cb, limit) {
   let n = 0;
   const parts = [],
@@ -1195,12 +2124,27 @@ function api(req, res, url) {
               code: "inactive",
               error: "This account is inactive. Contact the Super Admin.",
             });
-          startSession(res, req, "admin", a.id, b.remember === true);
-          logEvents({ role: "admin", id: a.id }, [
+          const isSales = a.role === "Sales"; // Sales people get their own limited session, never an admin one
+          startSession(
+            res,
+            req,
+            isSales ? "sales" : "admin",
+            a.id,
+            b.remember === true,
+          );
+          logEvents({ role: isSales ? "sales" : "admin", id: a.id }, [
             { type: "login", text: "Signed in" },
           ]);
           auth.admins[a.id].last = Date.now();
           saveAuth();
+          if (isSales)
+            return send(res, 200, {
+              ok: true,
+              role: "sales",
+              id: a.id,
+              name: a.name,
+              must: !!auth.admins[a.id].must,
+            });
           return send(res, 200, {
             ok: true,
             role: "admin",
@@ -1218,6 +2162,33 @@ function api(req, res, url) {
             code: "inactive",
             error: "This account is inactive. Contact Fleet Admin.",
           });
+        const panel = empPanel(empRoleOf(wk.id));
+        if (panel !== "worker") {
+          startSession(res, req, panel, wk.id, false, true);
+          logEvents({ role: panel, id: wk.id, emp: true }, [
+            { type: "login", text: "Signed in" },
+          ]);
+          if (panel === "sales")
+            return send(res, 200, {
+              ok: true,
+              role: "sales",
+              id: wk.id,
+              name: wk.name,
+              must: false,
+            });
+          const ec = empAccount(wk.id);
+          return send(res, 200, {
+            ok: true,
+            role: "admin",
+            id: wk.id,
+            name: wk.name,
+            adminRole: ec.role,
+            perms: isFull(ec) ? MODULES.slice() : modsOf(ec),
+            full: isFull(ec),
+            super: false,
+            must: false,
+          });
+        }
         const t = localDate();
         if (
           (workerData().leaves || []).some(
@@ -1249,7 +2220,10 @@ function api(req, res, url) {
   }
   if (!s) return send(res, 401, { error: "Please sign in." });
   const mustChange =
-    s.role === "admin" && auth.admins[s.id] && auth.admins[s.id].must;
+    (s.role === "admin" || s.role === "sales") &&
+    !s.emp &&
+    auth.admins[s.id] &&
+    auth.admins[s.id].must;
   if (p === "/api/keepalive" && req.method === "POST")
     return send(res, 200, { ok: true }); // the admin page calls this while the person is really using it
   if (p === "/api/me") {
@@ -1281,7 +2255,8 @@ function api(req, res, url) {
           return send(res, 400, {
             error: "Enter your current and new password.",
           });
-        const rec = (s.role === "admin" ? auth.admins : auth.workers)[s.id],
+        const useW = s.role === "worker" || s.emp,
+          rec = (useW ? auth.workers : auth.admins)[s.id],
           k = "c:" + s.role + s.id;
         if (lockLeft(k))
           return send(res, 429, {
@@ -1301,11 +2276,10 @@ function api(req, res, url) {
           return send(res, 400, {
             error: "Choose a password different from the current one.",
           });
-        (s.role === "admin" ? auth.admins : auth.workers)[s.id] = Object.assign(
-          {},
-          rec,
-          { h: hashPw(b.next), must: false },
-        );
+        (useW ? auth.workers : auth.admins)[s.id] = Object.assign({}, rec, {
+          h: hashPw(b.next),
+          must: false,
+        });
         saveAuth();
         Object.keys(sessions).forEach((h) => {
           if (
@@ -1326,6 +2300,130 @@ function api(req, res, url) {
       error: "Choose a new password first.",
       must: true,
     });
+  // A Sales session can only: read the price list and shops (/api/state, trimmed in viewFor), see product pictures, use the
+  // /api/sales/* calls below (its own orders, route and visits), and sign out / change its own password (handled above). Everything else is refused here, before any other rule is looked at.
+  if (
+    s.role === "sales" &&
+    !(
+      (p === "/api/state" && req.method === "GET") ||
+      (p === "/api/pfile" && req.method === "GET") ||
+      p.indexOf("/api/sales/") === 0
+    )
+  )
+    return send(res, 403, { error: "Not allowed" });
+  if (s.role === "sales" && p.indexOf("/api/sales/") === 0)
+    return salesApi(req, res, s, p, url);
+
+  // ---- Office cancels a Sales order (needs the Sales or Billing option, or full access) ----
+  if (p === "/api/salesadmin/cancel" && req.method === "POST") {
+    const ac = acctOf(s);
+    if (s.role !== "admin" || !ac || !hasAny(ac, ["sales", "billing"]))
+      return send(res, 403, { error: "Not allowed" });
+    return body(
+      req,
+      (err, b) => {
+        if (err || !b) return send(res, 400, { error: "Bad request" });
+        const r = cancelOrder(
+          String(b.id || ""),
+          { id: s.id, name: ac.name, role: "admin" },
+          b.reason,
+          false,
+        );
+        if (r.error) return send(res, 400, { error: r.error });
+        logEvents(s, [
+          {
+            type: "order",
+            text: "Order " + r.order.id + " cancelled: " + r.order.cancelReason,
+          },
+        ]);
+        send(res, 200, { ok: true });
+      },
+      4096,
+    );
+  }
+
+  // ---- Employee access (Super Admin only): which options each admin-side employee can open ----
+  if (p === "/api/access" || p.indexOf("/api/access/") === 0) {
+    if (s.role !== "admin" || s.emp || !isSuper(acctOf(s)))
+      return send(res, 403, {
+        error: "Only the Super Admin can change who sees what.",
+      });
+    if (p === "/api/access" && req.method === "GET") {
+      const prof = stored("gm_admin_wprofile_v1") || {},
+        acc = accessData();
+      return send(res, 200, {
+        ok: true,
+        modules: MODULES,
+        people: (workerData().workers || [])
+          .filter((w) => w && empPanel(empRoleOf(w.id)) !== "worker")
+          .map((w) => {
+            const role = empRoleOf(w.id);
+            return {
+              id: w.id,
+              name: w.name,
+              phone: w.phone,
+              role,
+              code: (prof[w.id] && prof[w.id].empCode) || "",
+              active: w.active !== false,
+              full: role === "Admin",
+              panel: empPanel(role),
+              base: EMP_ROLE_MODULE[role] || "",
+              perms: MODULES.filter(
+                (m) =>
+                  m === EMP_ROLE_MODULE[role] ||
+                  (Array.isArray(acc[w.id]) && acc[w.id].indexOf(m) > -1),
+              ),
+            };
+          }),
+      });
+    }
+    const am = /^\/api\/access\/([^/]+)$/.exec(p);
+    if (am && req.method === "PUT")
+      return body(
+        req,
+        (err, b) => {
+          const id = decodeURIComponent(am[1]),
+            role = empRoleOf(id);
+          if (err || !b || !Array.isArray(b.perms))
+            return send(res, 400, { error: "Send the list of options." });
+          if (
+            !(workerData().workers || []).some((w) => w && w.id === id) ||
+            role === "Admin" ||
+            role === "Sales" ||
+            empPanel(role) === "worker"
+          )
+            return send(res, 400, {
+              error:
+                "Access can only be set for Billing and Inventory employees.",
+            });
+          const acc = Object.assign({}, accessData()),
+            list = MODULES.filter(
+              (m) => b.perms.indexOf(m) > -1 && m !== EMP_ROLE_MODULE[role],
+            );
+          if (list.length) acc[id] = list;
+          else delete acc[id];
+          setItem("gm_admin_access_v1", JSON.stringify(acc));
+          persist();
+          logEvents(s, [
+            {
+              type: "access",
+              text:
+                "Access changed for " +
+                (
+                  (workerData().workers || []).filter(
+                    (w) => w && w.id === id,
+                  )[0] || {}
+                ).name +
+                ": " +
+                (list.length ? list.join(", ") : "own module only"),
+            },
+          ]);
+          send(res, 200, { ok: true });
+        },
+        4096,
+      );
+    return send(res, 404, { error: "not found" });
+  }
 
   // ---- Users & Admins (Super Admin only) ----
   if (p === "/api/users" || p.indexOf("/api/users/") === 0) {
@@ -1360,7 +2458,11 @@ function api(req, res, url) {
         };
       if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
         return { error: "Enter a valid email address, or leave it empty." };
-      if (ROLES.indexOf(role) < 0) return { error: "Choose a role." };
+      if (STAFF_ROLES.indexOf(role) < 0)
+        return {
+          error:
+            "Only Super Admin and Admin accounts are made here. Add everyone else on the Employees page.",
+        };
       if (status !== "active" && status !== "inactive")
         return { error: "Choose the account status." };
       let perms = Array.isArray(b.perms) ? b.perms : (cur && cur.perms) || [];
@@ -1558,7 +2660,10 @@ function api(req, res, url) {
           const txt = String(e.text || "").toLowerCase(),
             own =
               e.uid === wid ||
-              (!e.uid && e.role === "worker" && nm && String(e.by || "").toLowerCase() === nm),
+              (!e.uid &&
+                e.role === "worker" &&
+                nm &&
+                String(e.by || "").toLowerCase() === nm),
             about =
               txt.indexOf("(" + idl + ")") >= 0 ||
               (nm.length > 2 && txt.indexOf(nm) >= 0);
@@ -1661,7 +2766,10 @@ function api(req, res, url) {
         delete auth.workers[id];
         saveAuth();
         Object.keys(sessions).forEach((h) => {
-          if (sessions[h].role === "worker" && sessions[h].id === id)
+          if (
+            sessions[h].id === id &&
+            (sessions[h].role === "worker" || sessions[h].emp)
+          )
             delete sessions[h];
         });
         saveSessions();
@@ -1850,6 +2958,9 @@ function api(req, res, url) {
     if (
       !canWrite(s, key) ||
       (req.method === "DELETE" &&
+        key === "gm_admin_v1" &&
+        !adminMayManagePlans(s)) ||
+      (req.method === "DELETE" &&
         key === "gm_admin_notifs_v1" &&
         s.role !== "admin")
     )
@@ -1883,17 +2994,68 @@ function api(req, res, url) {
             rev: db.items[key].rev,
           });
         }
+        if (
+          key === "gm_admin_v1" &&
+          s.role === "admin" &&
+          !adminMayManagePlans(s)
+        ) {
+          const current = jparse(db.items[key] && db.items[key].v),
+            currentData =
+              current && typeof current === "object" && !Array.isArray(current)
+                ? current
+                : {},
+            next = jparse(val);
+          if (!next || typeof next !== "object" || Array.isArray(next))
+            return send(res, 400, { error: "Invalid customer data" });
+          if (
+            Object.prototype.hasOwnProperty.call(next, "plans") &&
+            !util.isDeepStrictEqual(next.plans, currentData.plans) &&
+            !isCustomerPlanHistory(next.plans, currentData.plans)
+          )
+            return send(res, 403, {
+              error: "Delivery plans are not editable by this role",
+            });
+          if (Object.prototype.hasOwnProperty.call(currentData, "plans"))
+            next.plans = currentData.plans;
+          else delete next.plans;
+          val = JSON.stringify(next);
+        }
         if (key === "gm_admin_v1") {
           const bad = planConflict(db.items[key] && db.items[key].v, val);
           if (bad) return send(res, 409, { error: bad });
+        }
+        if (
+          key === "gm_admin_wprofile_v1" &&
+          s.role === "admin" &&
+          !isSuper(acctOf(s))
+        ) {
+          const oldP = stored(key) || {},
+            newP = jparse(val),
+            isAdm = (o) =>
+              String((o && o.role) || "").toLowerCase() === "admin";
+          if (newP && typeof newP === "object")
+            for (const eid of Object.keys(newP))
+              if (isAdm(newP[eid]) && !isAdm(oldP[eid]))
+                return send(res, 403, {
+                  error: "Only the Super Admin can make someone an Admin.",
+                });
         }
         if (key === "gm_admin_account_v1") {
           val = sanitizeAccounts(s, val);
           if (val == null) return send(res, 400, { error: "bad list" });
         }
+        if (key.indexOf("gm_crm_data_v5__") === 0 && db.items[key])
+          val = keepAttendance(db.items[key].v, val);
         val = cleanValue(key, val);
         const oldV = db.items[key] ? db.items[key].v : null;
         setItem(key, val);
+        if (key === "gm_admin_notifs_v1" && s.role === "worker") {
+          try {
+            reconcileAttendance(s.id);
+          } catch (e) {
+            console.error("Attendance check skipped:", e && e.message);
+          }
+        }
         try {
           logEvents(
             s,
@@ -2157,6 +3319,17 @@ function serveStatic(req, res, url) {
         return res.end(DENIED_HTML);
       }
     }
+    if (rp[0] === "sales" && ext === ".html") {
+      // Sales pages: only for a signed-in Sales person
+      const ss = getSession(req);
+      if (!ss || ss.role !== "sales") {
+        res.writeHead(302, {
+          Location: "/login.html",
+          "Cache-Control": "no-store",
+        });
+        return res.end();
+      }
+    }
     fs.stat(file, (e2, st2) => {
       if (e2 || !st2.isFile()) {
         res.writeHead(404);
@@ -2312,6 +3485,12 @@ async function boot() {
     process.exit(0);
   }
   SETUP_NOTICE = migrateAuth();
+  moveStaffToEmployees();
+  try {
+    reconcileAttendance();
+  } catch (e) {
+    console.error("Attendance check skipped:", e && e.message);
+  }
   pruneCrew();
   setInterval(pruneCrew, 6 * 3600e3).unref();
   if (CLOUD) {

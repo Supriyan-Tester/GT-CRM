@@ -1,6 +1,7 @@
 ﻿<!doctype html>
 <html lang="en">
   <head>
+    <script src="../assets/icons.js"></script>
     <script src="../shared/sync.js"></script>
     <meta charset="UTF-8" />
     <meta
@@ -484,8 +485,7 @@
       <header class="top-bar">
         <div class="top-bar-left">
           <a href="home.html" class="back-btn" aria-label="Go Back"
-            ><svg class="icon" viewBox="0 0 24 24">
-              <path d="M19 12H5M12 19l-7-7 7-7" /></svg
+            ><svg class="icon" data-icon="arrow-left"></svg
           ></a>
           <div>
             <h1 class="page-title">Morning Punch In</h1>
@@ -493,12 +493,7 @@
           </div>
         </div>
         <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">
-          <svg class="icon" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="4" />
-            <path
-              d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
-            />
-          </svg>
+          <svg class="icon" data-icon="sun"></svg>
         </button>
       </header>
 
@@ -512,11 +507,7 @@
             </div>
             <div class="veh">
               <div class="ic">
-                <svg class="icon" viewBox="0 0 24 24">
-                  <path
-                    d="M1 3h15v13H1zM16 8h4l3 3v5h-7M5.5 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18.5 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"
-                  />
-                </svg>
+                <svg class="icon" data-icon="delivery-van"></svg>
               </div>
               <div>
                 <small>Assigned by Admin</small
@@ -527,9 +518,7 @@
             <div class="km-input-wrap">
               <label class="lbl" for="startKm">Current odometer reading</label>
               <div class="km" id="kmField">
-                <svg class="icon" viewBox="0 0 24 24">
-                  <path d="M12 14l4-4" />
-                  <path d="M3.3 17a10 10 0 1 1 17.4 0" /></svg
+                <svg class="icon" data-icon="gauge"></svg
                 ><input
                   type="number"
                   id="startKm"
@@ -539,9 +528,7 @@
                 /><span>km</span>
               </div>
               <div class="hint" id="kmRef" style="display: none">
-                <svg class="icon" viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M12 8v4M12 16h.01" /></svg
+                <svg class="icon" data-icon="alert-circle"></svg
                 ><span>Last closing KM: <strong id="kmRefVal"></strong></span>
               </div>
               <div class="hint er" id="kmMsg"></div>
@@ -556,15 +543,9 @@
             </div>
             <div class="loc" id="gpsBox">
               <div class="ic">
-                <svg class="icon i-ld" viewBox="0 0 24 24">
-                  <path d="M21 12a9 9 0 1 1-6.2-8.6" /></svg
-                ><svg class="icon i-ok" viewBox="0 0 24 24">
-                  <path d="M20 6L9 17l-5-5" /></svg
-                ><svg class="icon i-wn" viewBox="0 0 24 24">
-                  <path
-                    d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"
-                  />
-                </svg>
+                <svg class="icon i-ld" data-icon="loader"></svg
+                ><svg class="icon i-ok" data-icon="check"></svg
+                ><svg class="icon i-wn" data-icon="alert-triangle"></svg>
               </div>
               <div>
                 <b id="gpsTitle">Checking your location...</b
@@ -590,15 +571,10 @@
               >
                 <img id="selfieImg" alt="Employee Selfie" />
                 <span class="ck"
-                  ><svg class="icon" viewBox="0 0 24 24">
-                    <path d="M20 6L9 17l-5-5" /></svg
+                  ><svg class="icon" data-icon="check"></svg
                 ></span>
                 <span class="i-cam"
-                  ><svg class="icon" viewBox="0 0 24 24">
-                    <path
-                      d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
-                    />
-                    <circle cx="12" cy="13" r="4" /></svg
+                  ><svg class="icon" data-icon="camera"></svg
                 ></span>
               </label>
               <div>
@@ -607,11 +583,7 @@
                   Face the camera in good light. Tap to open the camera.
                 </p>
                 <label for="selfieInput" class="sfb" id="selfieAct"
-                  ><svg class="icon" viewBox="0 0 24 24">
-                    <path
-                      d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
-                    />
-                    <circle cx="12" cy="13" r="4" /></svg
+                  ><svg class="icon" data-icon="camera"></svg
                   ><span id="selfieActTxt">Open camera</span></label
                 >
               </div>
@@ -630,9 +602,8 @@
             <div class="inner">
               <div class="pi-sum" id="piSum"></div>
               <button class="btn" id="confirmPunchBtn">
-                <svg class="icon" viewBox="0 0 24 24">
-                  <polyline points="20 6 9 17 4 12" /></svg
-                >Punch In &amp; Start Route
+                <svg class="icon" data-icon="check"></svg>Punch In &amp; Start
+                Route
               </button>
             </div>
           </div>

@@ -85,7 +85,7 @@
       ? '<div class="dp-banner"><span class="grow">' +
         noteHtml +
         '</span><button type="button" class="dp-ib" id="dpNoteX" aria-label="Dismiss">' +
-        DP.icon("x") +
+        DP.icon("close") +
         "</button></div>"
       : "";
     var x = $("dpNoteX");
@@ -197,7 +197,7 @@
       T("c-p", "store", Object.keys(codes).length, "Customers in plans") +
       T("c-s", "check", allUnk ? "-" : done, "Completed visits") +
       T("c-a", "clock", allUnk ? "-" : pend, "Pending visits") +
-      T("c-d", "alert", allUnk ? "-" : miss, "Not delivered");
+      T("c-d", "alert-triangle", allUnk ? "-" : miss, "Not delivered");
     if (allUnk)
       $("dpStats").lastChild.title =
         "Visit results are only kept for each employee's latest day";
@@ -313,7 +313,7 @@
           '" aria-haspopup="menu" aria-expanded="false" aria-label="Actions for ' +
           esc(p.worker) +
           "'s plan\">" +
-          DP.icon("dots") +
+          DP.icon("dots-vertical") +
           "</button></span></div>"
         );
       }).join("");
@@ -482,7 +482,7 @@
       '<span class="dp-mw"><button type="button" class="dp-ib bd" data-kebab="' +
       esc(p.id) +
       '" aria-haspopup="menu" aria-expanded="false" aria-label="Plan actions">' +
-      DP.icon("dots") +
+      DP.icon("dots-vertical") +
       "</button></span></div>" +
       (p.status === "cancelled" && p.cancel
         ? '<div class="dp-cancelled"><b>Cancelled</b> by ' +
@@ -600,7 +600,7 @@
                 '" data-others="' +
                 others +
                 '">' +
-                DP.icon("dots") +
+                DP.icon("dots-vertical") +
                 "</button></span>"
               : "") +
             "</td></tr>"
@@ -920,7 +920,7 @@
         ? '<a class="btn a-btn" target="_blank" rel="noopener" href="' +
           esc(g.url) +
           '">' +
-          DP.icon("ext") +
+          DP.icon("external-link") +
           " Open in Google Maps</a>"
         : "") +
       "</div>" +
@@ -948,9 +948,9 @@
     document.body.style.overflow = "hidden";
     el.innerHTML =
       '<div class="dp-fs-top"><button type="button" class="dp-ib bd" id="fsX" aria-label="Close map">' +
-      DP.icon("left") +
+      DP.icon("chevron-left") +
       '</button><h3 id="fsT"></h3><a class="btn a-btn" id="fsG" target="_blank" rel="noopener" hidden>' +
-      DP.icon("ext") +
+      DP.icon("external-link") +
       " Open in Google Maps</a></div>" +
       '<div class="dp-fs-l"><div class="dp-fs-ctl"><div class="field a-f"><input id="fsQ" type="search" placeholder="Search customers" aria-label="Search customers on this route" autocomplete="off"></div><div class="dp-chips" id="fsAreas"></div></div><div id="fsList"></div></div>' +
       '<div class="dp-fs-c"><div class="dp-map" id="fsMap"></div><div class="dp-mapover" id="fsOver" hidden></div><div class="dp-mapctl"><button type="button" id="fsFit">Fit route</button></div></div>' +
@@ -1338,8 +1338,21 @@
     var L = plans(),
       rows = [
         [
-          "Bill No", "Date", "Party Name", "GSTIN", "Item Name", "MRP Rate", "Qty",
-          "Rate", "Rate+Tax", "GST %", "Tot Amt", "Employee", "Route", "Vehicle", "Delivery status",
+          "Bill No",
+          "Date",
+          "Party Name",
+          "GSTIN",
+          "Item Name",
+          "MRP Rate",
+          "Qty",
+          "Rate",
+          "Rate+Tax",
+          "GST %",
+          "Tot Amt",
+          "Employee",
+          "Route",
+          "Vehicle",
+          "Delivery status",
         ],
       ],
       dd = st.date.split("-").reverse().join("/"),
@@ -1359,7 +1372,9 @@
         n++;
         tot += Number(s.amount) || 0;
         function head() {
-          var h = first ? [String(s.inv || ""), dd, party, c.gstin || ""] : ["", "", "", ""];
+          var h = first
+            ? [String(s.inv || ""), dd, party, c.gstin || ""]
+            : ["", "", "", ""];
           first = false;
           return h;
         }
@@ -1369,7 +1384,8 @@
               a = Number(i.amt) > 0 ? Number(i.amt) : q * (Number(i.rate) || 0),
               g = Number(i.gst) || 0,
               incl = q ? a / q : Number(i.rate) || 0,
-              ex = Number(i.ex) > 0 && q ? Number(i.ex) / q : incl / (1 + g / 100);
+              ex =
+                Number(i.ex) > 0 && q ? Number(i.ex) / q : incl / (1 + g / 100);
             rows.push(
               head().concat(
                 [i.name || "", r2(i.mrp), q, r2(ex), r2(incl), g, r2(a)],
@@ -1380,7 +1396,15 @@
         else
           rows.push(
             head().concat(
-              ["(item list not available)", "", Number(s.boxes) || "", "", "", "", r2(s.amount)],
+              [
+                "(item list not available)",
+                "",
+                Number(s.boxes) || "",
+                "",
+                "",
+                "",
+                r2(s.amount),
+              ],
               tail,
             ),
           );
@@ -1390,7 +1414,23 @@
       DP.toast("There are no bills in this day's plans.", "warn");
       return;
     }
-    rows.push(["", "", "", "", "", "", "", "", "", "Total", r2(tot), "", "", "", ""]);
+    rows.push([
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "Total",
+      r2(tot),
+      "",
+      "",
+      "",
+      "",
+    ]);
     var blob = XLSXLite.build([
       {
         name: "Plan bills",

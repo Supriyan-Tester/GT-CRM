@@ -12,6 +12,7 @@
     "notifications.html": "*",
     "summary.html": ["sales", "billing", "delivery"],
     "customers.html": ["sales", "billing"],
+    "orders.html": ["sales", "billing"],
     "routes.html": ["sales", "delivery"],
     "plan.html": ["delivery"],
     "vehicles.html": ["delivery"],
@@ -133,48 +134,13 @@
     return "";
   }
 
-  var ICONS = {
-    home: '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
-    users:
-      '<circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/><path d="M17 4a4 4 0 0 1 0 8"/><path d="M22 21v-1a6 6 0 0 0-4-5.6"/>',
-    map: '<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
-    store:
-      '<path d="M3 9l1-5h16l1 5"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/>',
-    moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
-    logout:
-      '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
-    coin: '<circle cx="12" cy="12" r="9"/><path d="M14.8 9A2 2 0 0 0 13 8h-2a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4h-2a2 2 0 0 1-1.8-1M12 6v12"/>',
-    alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/>',
-    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-    trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
-    truck:
-      '<path d="M1 6h13v10H1zM14 10h4l3 3v3h-7"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
-    menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
-    back: '<path d="M15 6l-6 6 6 6"/>',
-    panel:
-      '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>',
-    plus: '<path d="M12 5v14M5 12h14"/>',
-    key: '<circle cx="8" cy="15" r="4"/><path d="M10.8 12.2L21 2M17 6l3 3"/>',
-    cal: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
-    power: '<path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/>',
-    edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
-    x: '<path d="M18 6L6 18M6 6l12 12"/>',
-    bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
-    report: '<path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h8M9 17h8"/>',
-    check: '<path d="M20 6L9 17l-5-5"/>',
-    box: '<path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
-  };
-
   window.GA = {
     DEMO_MODE: false, // demo logins and demo data are switched off
     esc: esc,
     today: today,
+    // Icon by name; the drawings live in assets/icons.js
     icon: function (n) {
-      return (
-        '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">' +
-        ICONS[n] +
-        "</svg>"
-      );
+      return GMIcons.svg(n, "icon");
     },
     randomPassword: function () {
       var c = "abcdefghjkmnpqrstuvwxyz23456789",
@@ -601,6 +567,7 @@
           inventory: "I",
           billing: "B",
           loading: "L",
+          admin: "A",
         };
       if (L[r]) return L[r];
       if (/^deliv|driver/.test(r)) return "D";
@@ -918,8 +885,8 @@
         return (
           {
             delivered: ["store", "s", "Delivered"],
-            problem: ["alert", "a", "Problem"],
-            cancelled: ["x", "d", "Cancelled"],
+            problem: ["alert-triangle", "a", "Problem"],
+            cancelled: ["close", "d", "Cancelled"],
             return: ["trash", "i", "Return"],
             route: ["check", "s", "Route done"],
             punchin: ["clock", "p", "Punch in"],
@@ -985,13 +952,14 @@
           ["summary.html", "Daily summary", "report"],
           ["workers.html", "Employees", "users"],
           ["vehicles.html", "Vehicles", "truck"],
-          ["plan.html", "Daily plan", "cal"],
+          ["plan.html", "Daily plan", "calendar"],
           ["routes.html", "Routes", "map"],
           ["customers.html", "Customers", "store"],
+          ["orders.html", "Orders", "clipboard-list"],
           ["products.html", "Products", "box"],
           ["attendance.html", "Attendance", "clock"],
           ["advances.html", "Advances", "coin"],
-          ["problems.html", "Problems", "alert"],
+          ["problems.html", "Problems", "alert-triangle"],
           ["live.html", "Live location", "map"],
           ["activity.html", "Activity log", "check"],
           ["super.html", "User overview", "report"],
@@ -1043,7 +1011,7 @@
             '" title="Back to ' +
             esc(opts.back[1]) +
             '">' +
-            GA.icon("back") +
+            GA.icon("chevron-left") +
             "<span>" +
             esc(opts.back[1]) +
             "</span></a>"
@@ -1336,7 +1304,7 @@
           prevId +
           '" title="Previous day" aria-label="Previous day">&lsaquo;</button>' +
           '<div class="field vx-datebox"><span aria-hidden="true">' +
-          GA.icon("cal") +
+          GA.icon("calendar") +
           '</span><input type="date" id="' +
           inputId +
           '" value="' +

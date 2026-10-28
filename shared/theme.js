@@ -73,10 +73,8 @@
   function upgradeToggle() {
     var old = document.getElementById("themeToggle");
     if (!old || old.getAttribute("data-gt-switch")) return;
-    var sun =
-      '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
-    var moon =
-      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+    var sun = GMIcons.svg("sun"),
+      moon = GMIcons.svg("moon");
     var sw = document.createElement("div");
     sw.id = "themeToggle";
     sw.className = "gt-switch";
@@ -1239,13 +1237,10 @@
   }
 
   function icon() {
-    return (
-      '<svg viewBox="0 0 24 24" fill="none" ' +
-      'stroke="currentColor" stroke-width="1.8" ' +
-      'stroke-linecap="round" stroke-linejoin="round">' +
-      '<rect x="3" y="4" width="18" height="17" rx="3"></rect>' +
-      '<path d="M16 2v4M8 2v4M3 10h18"></path>' +
-      "</svg>"
+    return GMIcons.svg(
+      "calendar",
+      "",
+      'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"',
     );
   }
 
@@ -2051,8 +2046,11 @@
     "Dec",
   ];
   var WD = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-  var ICON =
-    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>';
+  var ICON = GMIcons.svg(
+    "calendar",
+    "",
+    'width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"',
+  );
   var desc = Object.getOwnPropertyDescriptor(
     HTMLInputElement.prototype,
     "value",

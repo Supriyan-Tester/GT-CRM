@@ -1150,7 +1150,7 @@
       '<a class="vx-back" href="' +
       href +
       '">' +
-      DP.icon("left") +
+      DP.icon("chevron-left") +
       " " +
       esc(label) +
       "</a>"
@@ -1159,7 +1159,7 @@
   VX.dateBox = function (id, d) {
     return (
       '<div class="field vx-datebox" data-act><span aria-hidden="true">' +
-      GA.icon("cal") +
+      GA.icon("calendar") +
       '</span><input type="date" id="' +
       id +
       '" value="' +
@@ -1185,7 +1185,7 @@
       s("power", v.transmission, "Transmission") +
       s("truck", v.body, "Body type") +
       s("clock", VX.num(v.lastKm) + " km", "Odometer") +
-      s("cal", last ? VX.date(last.date) : "Not used yet", "Last used")
+      s("calendar", last ? VX.date(last.date) : "Not used yet", "Last used")
     );
   };
   VX.banner = function (v, right) {

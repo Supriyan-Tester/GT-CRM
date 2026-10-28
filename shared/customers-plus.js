@@ -216,26 +216,12 @@
   function waIcon() {
     return typeof WA === "string" ? WA : "";
   }
+  // Small icon used on the customer list page (drawn in assets/icons.js)
   function ic(name) {
-    var P = {
-      users:
-        '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5.2a3.2 3.2 0 0 1 0 5.6M18.5 14.4c1.7.8 2.9 2.7 2.9 5.6"/>',
-      check:
-        '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.5"/>',
-      x: '<circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>',
-      pin: '<path d="M12 21s-7-6.1-7-11.2A7 7 0 0 1 19 9.8C19 14.9 12 21 12 21z"/><circle cx="12" cy="9.8" r="2.4"/>',
-      pinoff:
-        '<path d="M12 21s-7-6.1-7-11.2A7 7 0 0 1 19 9.8C19 14.9 12 21 12 21z"/><path d="M4 4l16 16"/>',
-      cloud:
-        '<path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 8.5 4.8 4.8 0 0 1 17.5 18"/><path d="M12 12v8M9 15l3-3 3 3"/>',
-      ok: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.5"/>',
-      camera:
-        '<path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
-    };
-    return (
-      '<svg class="gp-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
-      (P[name] || "") +
-      "</svg>"
+    return GMIcons.svg(
+      name,
+      "gp-ic",
+      'fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"',
     );
   }
 
@@ -293,10 +279,10 @@
     }
     var T = [
       ["t1", "users", "Total customers", total, ""],
-      ["t2", "check", "Active", active, pct(active)],
-      ["t3", "x", "Inactive", inactive, pct(inactive)],
-      ["t4", "pin", "With location", pinned, pct(pinned)],
-      ["t5", "pinoff", "Without location", noPin, pct(noPin)],
+      ["t2", "check-circle", "Active", active, pct(active)],
+      ["t3", "x-circle", "Inactive", inactive, pct(inactive)],
+      ["t4", "map-pin", "With location", pinned, pct(pinned)],
+      ["t5", "pin-off", "Without location", noPin, pct(noPin)],
     ];
     G("stats").innerHTML = T.map(function (t) {
       return (
@@ -711,26 +697,14 @@
   };
 
   /* ---------- Customer Details (dashboard style) ---------- */
-  function sv(d) {
-    return (
-      '<svg class="gdt-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
-      d +
-      "</svg>"
+  // Icon for the customer details panel (drawn in assets/icons.js)
+  function sv(name) {
+    return GMIcons.svg(
+      name,
+      "gdt-i",
+      'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"',
     );
   }
-  var I = {
-    store:
-      '<path d="M4 9l1.5-5h13L20 9"/><path d="M4 9v11h16V9"/><path d="M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0A2.7 2.7 0 0 0 20 9"/><path d="M10 20v-5h4v5"/>',
-    pin: '<path d="M12 21s-7-6.1-7-11.2A7 7 0 0 1 19 9.8C19 14.9 12 21 12 21z"/><circle cx="12" cy="9.8" r="2.4"/>',
-    phone:
-      '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A15 15 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
-    copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>',
-    edit: '<path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>',
-    dots: '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
-    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-    info: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',
-    ext: '<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
-  };
   function gk(label, val, wide) {
     return (
       '<div class="gdt-k' +
@@ -795,7 +769,7 @@
       "</div>";
     var act = lv
       ? '<div class="gdt-act"><span class="gdt-act-i">' +
-        sv(I.clock) +
+        sv("clock") +
         "</span><div><b>Last visit</b><small>" +
         E(fmtDate(lv)) +
         (c.area ? " &middot; " + E(c.area) : "") +
@@ -833,14 +807,14 @@
       (off ? "Inactive" : "Active") +
       "</span>" +
       (where
-        ? '<span class="gdt-ch2">' + sv(I.pin) + E(where) + "</span>"
+        ? '<span class="gdt-ch2">' + sv("map-pin") + E(where) + "</span>"
         : "") +
       (c.phone
         ? '<span class="gdt-ch2">' +
-          sv(I.phone) +
+          sv("phone") +
           E(c.phone) +
           '<button type="button" id="gdtCp" class="gdt-ib" title="Copy phone">' +
-          sv(I.copy) +
+          sv("copy") +
           "</button>" +
           (w
             ? '<a class="gp-wa" target="_blank" rel="noopener" href="' +
@@ -858,7 +832,7 @@
       '<div class="gdt-tabs"><button class="on" data-t="overview">Overview</button><button data-t="route">Route &amp; Location</button><button data-t="payments">Payments</button><button data-t="history">History &amp; Activity</button><button data-t="notes">Notes</button><button data-t="attachments">Attachments</button></div>' +
       '<div class="gdt-p" data-p="overview"><div class="gdt-cols"><div>' +
       card(
-        I.info,
+        "clipboard-list",
         "Basic Information",
         "Shop details and contact information",
         "",
@@ -866,7 +840,7 @@
       ) +
       '</div><div class="gdt-col">' +
       card(
-        I.pin,
+        "map-pin",
         "Location",
         "Shop location on map",
         pin
@@ -877,7 +851,7 @@
         loc,
       ) +
       card(
-        I.clock,
+        "clock",
         "Recent Activity",
         "Latest customer activity and updates",
         '<button type="button" class="btn btn-secondary a-btn" style="margin-left:auto" id="gdtAll">View all</button>',
@@ -886,7 +860,7 @@
       "</div></div></div>" +
       '<div class="gdt-p" data-p="route" hidden><div class="gdt-cols"><div>' +
       card(
-        I.pin,
+        "map-pin",
         "Route &amp; Location",
         "Delivery route and pin",
         "",
@@ -899,13 +873,13 @@
           "</div>",
       ) +
       "</div><div>" +
-      card(I.pin, "Map", "Stored shop pin", "", loc) +
+      card("map-pin", "Map", "Stored shop pin", "", loc) +
       "</div></div></div>" +
       '<div class="gdt-p" data-p="payments" hidden>' +
       empty("Payment records are not stored for customers yet.") +
       "</div>" +
       '<div class="gdt-p" data-p="history" hidden>' +
-      card(I.clock, "History &amp; Activity", "Visits and updates", "", act) +
+      card("clock", "History &amp; Activity", "Visits and updates", "", act) +
       "</div>" +
       '<div class="gdt-p" data-p="notes" hidden>' +
       empty("Customer notes are not stored yet.") +
@@ -1248,7 +1222,7 @@
           ? '<p class="mu" style="font-size:12px;margin:6px 0">Showing the first 5 rows.</p>'
           : "") +
         '<div class="gp-okbox">' +
-        ic("ok") +
+        ic("check-circle") +
         "<span>" +
         E(note) +
         "</span></div>" +
@@ -1409,7 +1383,7 @@
     show(
       '<div class="card-title">Import Customers (CSV / Excel)</div>' +
         '<div class="gp-drop" id="gpDrop">' +
-        ic("cloud") +
+        ic("cloud-upload") +
         '<b>Upload CSV or Excel file</b><p>Drag and drop your file here or <span class="gp-link">click to browse</span></p><small>Supported formats: .csv, .xlsx</small><input class="gp-file" type="file" id="xFile" accept=".xlsx,.csv,.txt"></div>' +
         '<p class="mu" style="font-size:12px;margin:10px 0">Columns: Customer ID, Shop Name, Phone, Area, Route (optional: Address, Latitude, Longitude, Alternate Phone, GST). Your existing ledger export also still works.</p>' +
         '<div class="a-fg"><button class="btn btn-secondary a-btn" id="sSample" type="button">Download sample CSV</button></div>' +

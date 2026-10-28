@@ -61,7 +61,9 @@
   var ov = document.createElement("div");
   ov.className = "pm-ov";
   ov.innerHTML =
-    '<div class="pm-box" role="dialog" aria-modal="true"><div class="pm-top"><div><h3 id="pmT"></h3><p id="pmS"></p></div><button type="button" class="pm-x" id="pmX" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div><div class="pm-body" id="pmBody"></div><div class="pm-foot" id="pmFoot"></div></div>';
+    '<div class="pm-box" role="dialog" aria-modal="true"><div class="pm-top"><div><h3 id="pmT"></h3><p id="pmS"></p></div><button type="button" class="pm-x" id="pmX" aria-label="Close">' +
+    GMIcons.svg("close") +
+    '</button></div><div class="pm-body" id="pmBody"></div><div class="pm-foot" id="pmFoot"></div></div>';
   document.body.appendChild(ov);
   function $(id) {
     return document.getElementById(id);
@@ -172,7 +174,9 @@
       '<div class="pm-card"><div class="pm-st"><span class="pm-n">1</span>Are you at the depot?</div>' +
       GPS +
       "</div>" +
-      '<div class="pm-card"><div class="pm-st"><span class="pm-n">2</span>Your photo</div><div class="pm-selfie"><label class="pm-circle" for="pmSelfie"><img id="pmImg" alt="Selfie"><span id="pmPrompt" style="display:flex;flex-direction:column;align-items:center;gap:4px"><svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Take Photo</span></label><input type="file" id="pmSelfie" accept="image/*" capture="user" style="display:none"><span class="pm-hint">Tap the circle to take your photo</span></div></div>' +
+      '<div class="pm-card"><div class="pm-st"><span class="pm-n">2</span>Your photo</div><div class="pm-selfie"><label class="pm-circle" for="pmSelfie"><img id="pmImg" alt="Selfie"><span id="pmPrompt" style="display:flex;flex-direction:column;align-items:center;gap:4px">' +
+      GMIcons.svg("camera") +
+      'Take Photo</span></label><input type="file" id="pmSelfie" accept="image/*" capture="user" style="display:none"><span class="pm-hint">Tap the circle to take your photo</span></div></div>' +
       '<div class="pm-card"><div class="pm-st"><span class="pm-n">3</span>' +
       (HELPER ? "Vehicle" : "Vehicle &amp; KM") +
       "</div>" +
@@ -573,7 +577,9 @@
       );
       $("pmS").textContent = "Day closed";
       $("pmBody").innerHTML =
-        '<div class="pm-fin"><span class="pm-ok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><h4>Day closed</h4><p>The office has your day report.<br>See you tomorrow, ' +
+        '<div class="pm-fin"><span class="pm-ok">' +
+        GMIcons.svg("check") +
+        "</span><h4>Day closed</h4><p>The office has your day report.<br>See you tomorrow, " +
         esc((worker.name || "").split(" ")[0]) +
         ".</p></div>";
       $("pmFoot").innerHTML = "";

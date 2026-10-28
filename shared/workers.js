@@ -36,6 +36,7 @@
     ["I", "Inventory"],
     ["B", "Billing"],
     ["L", "Loading"],
+    ["A", "Admin"],
   ];
   function rlet(role) {
     var r = String(role || "Delivery");
@@ -875,7 +876,11 @@
       '<div><label class="wk-lbl" for="fRole">Role <em>*</em></label>' +
       sel(
         "fRole",
-        ROLES.map(function (x) {
+        ROLES.filter(function (x) {
+          // only the Super Admin can make someone an Admin (the server checks this too)
+          var se = GA.session && GA.session();
+          return x[0] !== "A" || rlet(p.role) === "A" || !!(se && se.super);
+        }).map(function (x) {
           return [x[1]];
         }),
         rname(p.role),
@@ -1649,7 +1654,20 @@
               '<div class="wk-sub">Nothing recorded yet for this employee. Older changes made before the log was added are not listed.</div>';
             return;
           }
-          var M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+          var M = [
+              "Jan",
+              "Feb",
+              "Mar",
+              "Apr",
+              "May",
+              "Jun",
+              "Jul",
+              "Aug",
+              "Sep",
+              "Oct",
+              "Nov",
+              "Dec",
+            ],
             z = function (n) {
               return (n < 10 ? "0" : "") + n;
             };
@@ -1660,21 +1678,38 @@
                 var t = new Date(e.t + 5.5 * 3600e3);
                 return (
                   "<tr><td>" +
-                  z(t.getUTCDate()) + " " + M[t.getUTCMonth()] + " " + t.getUTCFullYear() +
-                  ", " + z(t.getUTCHours()) + ":" + z(t.getUTCMinutes()) +
-                  "</td><td>" + esc(e.by || "-") + "</td><td>" + esc(e.text) + "</td></tr>"
+                  z(t.getUTCDate()) +
+                  " " +
+                  M[t.getUTCMonth()] +
+                  " " +
+                  t.getUTCFullYear() +
+                  ", " +
+                  z(t.getUTCHours()) +
+                  ":" +
+                  z(t.getUTCMinutes()) +
+                  "</td><td>" +
+                  esc(e.by || "-") +
+                  "</td><td>" +
+                  esc(e.text) +
+                  "</td></tr>"
                 );
               })
               .join("") +
             "</tbody></table>" +
             (d.total > ev.length
-              ? '<div class="wk-sub">Showing the latest ' + ev.length + " of " + d.total + ".</div>"
+              ? '<div class="wk-sub">Showing the latest ' +
+                ev.length +
+                " of " +
+                d.total +
+                ".</div>"
               : "");
         })
         .catch(function (e) {
           if ($("wkLog"))
             $("wkLog").innerHTML =
-              '<div class="wk-sub">' + esc(e.message || "Could not load the log.") + "</div>";
+              '<div class="wk-sub">' +
+              esc(e.message || "Could not load the log.") +
+              "</div>";
         });
     }
     $("dMore").onclick = function (e) {
@@ -1913,7 +1948,7 @@
     }
     b.href = back[0];
     b.title = "Back to " + back[1];
-    b.innerHTML = GA.icon("back") + "<span>" + back[1] + "</span>";
+    b.innerHTML = GA.icon("chevron-left") + "<span>" + back[1] + "</span>";
   }
   // Entrance animation plays only when the page/screen changes (first load, hash change), not on every re-render (search, filters, sync)
   var enter = true;

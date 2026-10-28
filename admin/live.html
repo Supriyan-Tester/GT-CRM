@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script src="../assets/icons.js"></script>
     <script src="../shared/sync.js"></script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -320,26 +321,15 @@
         "#CA8A04",
         "#DC2626",
       ];
-      var SVG = function (p, c) {
-        return (
-          "<svg" +
-          (c ? ' class="' + c + '"' : "") +
-          ' viewBox="0 0 24 24" aria-hidden="true">' +
-          p +
-          "</svg>"
-        );
-      };
-      var RF =
-        '<path d="M20 11a8 8 0 0 0-14.500-3.500L4 9M4 4v5h5M4 13a8 8 0 0 0 14.500 3.500L20 15M20 20v-5h-5"/>';
       var pg = GA.mount("live.html", "Live location");
       pg.innerHTML =
         '<p class="lv-note">Location is read only when an employee taps Delivered, Problem or Punch in/out, or when you press <b>Locate now</b> and their app is open. It is not tracked in the background.</p>' +
         '<div class="field a-f" data-act style="width:190px;height:38px"><input id="lvQ" type="search" placeholder="Search employee..." aria-label="Search employee" autocomplete="off"></div>' +
         '<button class="lv-ic" id="lvRf" type="button" title="Refresh" aria-label="Refresh" data-act>' +
-        SVG(RF) +
+        GMIcons.svg("sync") +
         "</button>" +
         '<button class="btn lv-btn" id="lvAll" type="button" data-act>' +
-        SVG('<path d="m3 11 18-8-8 18-2-8z"/>') +
+        GMIcons.svg("navigate") +
         "Locate Now</button>" +
         '<div class="lv-wrap"><div class="lv-panel"><div class="lv-ph"><b id="lvCount">Employees</b><select id="lvF"><option value="all">All</option><option value="live">Live</option><option value="off">Offline</option><option value="none">No data</option></select></div><div class="lv-list" id="lvList"></div></div><div class="lv-mapbox"><div id="lvMap"></div></div></div>';
       function locs() {
@@ -495,7 +485,7 @@
                   "</span>" +
                   (detail ? "<span>" + detail + "</span>" : "") +
                   "</div>" +
-                  SVG('<path d="m9 6 6 6-6 6"/>', "lv-chev") +
+                  GMIcons.svg("chevron-right", "lv-chev") +
                   "</div>"
                 );
               })

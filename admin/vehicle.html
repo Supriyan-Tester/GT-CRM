@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script src="../assets/icons.js"></script>
     <script src="../shared/sync.js"></script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -60,7 +61,11 @@
                 : "c-d") +
           '">' +
           GA.icon(
-            a.cls === "ok" ? "check" : a.cls === "busy" ? "truck" : "alert",
+            a.cls === "ok"
+              ? "check"
+              : a.cls === "busy"
+                ? "truck"
+                : "alert-triangle",
           ) +
           "</span><div><b>" +
           esc(a.label) +
@@ -91,7 +96,7 @@
       function tabs(v) {
         var T = [
           ["overview", "Overview", "truck"],
-          ["assign", "Assignments", "cal"],
+          ["assign", "Assignments", "calendar"],
           ["usage", "Usage history", "chart"],
         ];
         return (
@@ -105,7 +110,7 @@
               '" data-tab="' +
               t[0] +
               '">' +
-              (t[2] === "truck" || t[2] === "cal"
+              (t[2] === "truck" || t[2] === "calendar"
                 ? GA.icon(t[2])
                 : DP.icon(t[2])) +
               t[1] +
@@ -126,7 +131,7 @@
           '" role="tab" aria-selected="' +
           (st.tab === "docs") +
           '" data-tab="docs">' +
-          DP.icon("doc") +
+          DP.icon("document") +
           "Documents</button></div>"
         );
       }
@@ -232,7 +237,7 @@
             '<li><span class="chip ' +
             (m ? "c-s" : "c-a") +
             '" style="width:28px;height:28px">' +
-            DP.icon("doc") +
+            DP.icon("document") +
             '</span><div style="flex:1">' +
             d[1] +
             '<small class="mu" style="display:block">' +
@@ -407,7 +412,7 @@
             '<div class="vx-doc"><span class="chip ' +
             (m ? "c-s" : "c-a") +
             '">' +
-            DP.icon("doc") +
+            DP.icon("document") +
             "</span><div><b>" +
             title +
             "</b><small>" +

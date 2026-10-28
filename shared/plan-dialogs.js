@@ -150,11 +150,11 @@
       cls: "dpw-dlg",
       html:
         '<div class="dpw"><aside class="dpw-side"><span class="dpw-logo">' +
-        GA.icon("cal") +
+        GA.icon("calendar") +
         '</span><h3 class="dpw-t">Add Daily Plan</h3><p class="dpw-d">Create a daily plan to manage deliveries, track invoices and assign an employee, vehicle and route.</p><ol class="dpw-steps" id="apSteps"></ol>' +
         '<div class="dpw-tip"><b>Tip</b>A daily plan helps you assign work, track deliveries and manage invoices on the day.</div></aside>' +
         '<section class="dpw-main"><header class="dpw-h"><div><h3 id="apHT"></h3><p id="apHS"></p></div><span class="dpw-date">' +
-        GA.icon("cal") +
+        GA.icon("calendar") +
         " " +
         esc(DP.niceDate(date)) +
         "</span></header>" +
@@ -380,12 +380,12 @@
       }
       DP.$("apReview").innerHTML =
         '<div class="dpw-sums">' +
-        box(GA.icon("cal"), "Date", DP.niceDate(date)) +
+        box(GA.icon("calendar"), "Date", DP.niceDate(date)) +
         box(DP.icon("route"), "Route", r.name, r.codes.length + " customers") +
         box(GA.icon("users"), "Employee", w.name || "", w.phone || "") +
         box(GA.icon("truck"), "Vehicle", vh.number || "", vh.type || "") +
         box(
-          DP.icon("doc"),
+          DP.icon("document"),
           "Invoice file",
           st.fileName || "Manual entry",
           st.bills ? st.bills.length + " bills in file" : "",
@@ -2142,13 +2142,13 @@
                       ' up"' +
                       (mi === 0 ? " disabled" : "") +
                       ">" +
-                      DP.icon("up") +
+                      DP.icon("chevron-up") +
                       '</button><button type="button" class="dp-ib bd" data-mv="1" aria-label="Move ' +
                       esc(s.name) +
                       ' down"' +
                       (mi === mv.length - 1 ? " disabled" : "") +
                       ">" +
-                      DP.icon("down") +
+                      DP.icon("chevron-down") +
                       "</button>") +
                   "</li>"
                 );

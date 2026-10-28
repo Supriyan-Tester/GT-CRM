@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="robots" content="noindex" />
+    <title>My Route - General Traders Sales</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/icon-32.png"
+    />
+    <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+    <link rel="stylesheet" href="../shared/vendor/leaflet/leaflet.css" />
+    <link rel="stylesheet" href="sales.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="../assets/icons.js"></script>
+    <script src="sales.js"></script>
+    <script src="../shared/vendor/leaflet/leaflet.js"></script>
+    <script src="../shared/road-line.js"></script>
+    <script>
+      Sales.start("route", function (me, hello, main) {
+        var AVG_KMH = 25; // city driving average used for the time estimate
+        hello.innerHTML = '<h1>My Route</h1><p id="sub"></p>';
+        main.innerHTML = '<div class="empty"><b>Loading…</b></div>';
+        var D,
+          M,
+          routeId = "",
+          stops = [],
+          sel = "",
+          view = "list",
+          km = null,
+          map = null,
+          group = null,
+          markers = {},
+          drawId = 0;
+
+        function desktop() {
+          return matchMedia("(min-width:1101px)").matches;
+        }
+        function visitedOf(c) {
+          return M.visits && M.visits[c.code];
+        }
+        function currentCode() {
+          var s = stops.filter(function (c) {
+            return !visitedOf(c);
+          })[0];
+          return s ? s.code : "";
+        }
+        function state(c) {
+          return visitedOf(c)
+            ? "visited"
+            : c.code === currentCode()
+              ? "current"
+              : "pending";
+        }
+        function colour(st) {
+          return st === "visited"
+            ? "#16a34a"
+            : st === "current"
+              ? "#2563eb"
+              : "#f59e0b";
+        }
+        function byCode(code) {
+          return stops.filter(function (c) {
+            return c.code === code;
+          })[0];
+        }
+
+        function build() {
+          var r = D.routes.filter(function (x) {
+              return x.id === routeId;
+            })[0],
+            idx = {};
+          D.customers.forEach(function (c) {
+            idx[c.code] = c;
+          });
+          stops = r
+            ? (r.codes || [])
+                .map(function (k) {
+                  return idx[k];
+                })
+                .filter(Boolean)
+            : [];
+          if (!byCode(sel) || visitedOf(byCode(sel))) sel = currentCode();
+        }
+        function fmtTime(min) {
+          min = Math.round(min);
+          return min >= 60
+            ? Math.floor(min / 60) + "h " + (min % 60 ? (min % 60) + "m" : "")
+            : min + "m";
+        }
+        function ring(done, total) {
+          var p = total ? done / total : 0,
+            c = 2 * Math.PI * 20;
+          return (
+            '<div class="ringw"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" stroke="var(--teal-soft)" fill="none"/><circle cx="24" cy="24" r="20" stroke="var(--teal)" fill="none" stroke-linecap="round" stroke-dasharray="' +
+            (c * p).toFixed(1) +
+            " " +
+            c.toFixed(1) +
+            '"/></svg><i>' +
+            Math.round(p * 100) +
+            "%</i></div>"
+          );
+        }
+
+        function page() {
+          document.getElementById("sub").textContent = Sales.dateLabel(M.date);
+          var opts =
+            '<option value="">Choose today\'s route…</option>' +
+            D.routes
+              .map(function (r) {
+                return (
+                  '<option value="' +
+                  Sales.esc(r.id) +
+                  '"' +
+                  (r.id === routeId ? " selected" : "") +
+                  ">" +
+                  Sales.esc(r.name) +
+                  " (" +
+                  (r.codes || []).length +
+                  ")</option>"
+                );
+              })
+              .join("");
+          var head =
+            '<div class="rowh"><select class="routesel grow" id="rsel" aria-label="Route">' +
+            opts +
+            "</select>" +
+            '<a class="btn soft sm" id="gmaps" target="_blank" rel="noopener" hidden>' +
+            Sales.ic("map") +
+            "View on Maps</a></div>";
+          if (!routeId || !stops.length) {
+            main.innerHTML =
+              head +
+              '<div class="card empty"><i>' +
+              Sales.ic("route") +
+              "</i><b>" +
+              (routeId
+                ? "This route has no shops"
+                : "Pick the route you are on today") +
+              "</b><span>" +
+              (routeId
+                ? "Ask the office to add shops to this route."
+                : "Your shops will show here with a map and visit status.") +
+              "</span></div>";
+            return bind();
+          }
+          var done = stops.filter(visitedOf).length,
+            left = stops.length - done;
+          main.innerHTML =
+            head +
+            '<div class="rstats"><div class="card rs">' +
+            ring(done, stops.length) +
+            "<div><b>" +
+            done +
+            " / " +
+            stops.length +
+            "</b><span>Shops Visited</span></div></div>" +
+            '<div class="card rs"><i style="background:var(--pri-soft);color:var(--pri)">' +
+            Sales.ic("cart") +
+            "</i><div><b>" +
+            left +
+            "</b><span>Shops Remaining</span></div></div>" +
+            '<div class="card rs"><i style="background:var(--amber-soft);color:var(--amber)">' +
+            Sales.ic("route") +
+            '</i><div><b id="skm">…</b><span>Total Distance</span></div></div>' +
+            '<div class="card rs"><i style="background:var(--teal-soft);color:var(--teal)">' +
+            Sales.ic("clock") +
+            '</i><div><b id="stm">…</b><span>Est. Travel Time</span></div></div></div>' +
+            '<div class="seg" id="seg" style="' +
+            (desktop() ? "display:none" : "") +
+            '"><button data-v="list" class="' +
+            (view === "list" ? "on" : "") +
+            '">List View</button><button data-v="map" class="' +
+            (view === "map" ? "on" : "") +
+            '">Map View</button></div>' +
+            '<div class="rgrid"><div class="card" id="lcard"><h2>Today\'s Route <em>(' +
+            stops.length +
+            ')</em></h2><div class="stops" id="stops"></div></div>' +
+            '<div class="card" id="mcard"><div class="mapbox" id="map"><div class="mapnote" id="mnote" hidden></div></div>' +
+            '<div class="legend"><span><i style="background:#16a34a"></i>Visited</span><span><i style="background:#2563eb"></i>Current</span><span><i style="background:#f59e0b"></i>Pending</span></div><div id="nxt"></div></div></div>';
+          drawList();
+          drawNext();
+          showView();
+          bind();
+          setTimeout(drawMap, 30);
+          var pend = stops
+            .filter(function (c) {
+              return !visitedOf(c) && c.lat && c.lng;
+            })
+            .slice(0, 10);
+          var g = document.getElementById("gmaps");
+          if (pend.length) {
+            var pt = function (c) {
+              return c.lat + "," + c.lng;
+            };
+            g.href =
+              "https://www.google.com/maps/dir/?api=1&destination=" +
+              pt(pend[pend.length - 1]) +
+              (pend.length > 1
+                ? "&waypoints=" + pend.slice(0, -1).map(pt).join("|")
+                : "");
+            g.hidden = false;
+          }
+        }
+        function showView() {
+          if (desktop()) {
+            document.getElementById("lcard").style.display = "";
+            document.getElementById("mcard").style.display = "";
+            return;
+          }
+          document.getElementById("lcard").style.display =
+            view === "list" ? "" : "none";
+          document.getElementById("mcard").style.display =
+            view === "map" ? "" : "none";
+          if (view === "map" && map)
+            setTimeout(function () {
+              map.invalidateSize();
+              fit();
+            }, 30);
+        }
+        function drawList() {
+          document.getElementById("stops").innerHTML = stops
+            .map(function (c, i) {
+              var st = state(c),
+                v = visitedOf(c);
+              return (
+                '<div class="st ' +
+                st +
+                '" data-c="' +
+                Sales.esc(c.code) +
+                '"' +
+                (c.code === sel && desktop()
+                  ? ' style="background:var(--sel)"'
+                  : "") +
+                '><span class="dot">' +
+                (st === "visited" ? Sales.ic("check") : i + 1) +
+                "</span>" +
+                "<div><b>" +
+                Sales.esc(c.name) +
+                "</b><small>" +
+                Sales.esc(c.area || c.address || "") +
+                "</small></div>" +
+                '<span class="pill ' +
+                st +
+                '">' +
+                (st === "visited"
+                  ? "Visited" +
+                    (v && v.t ? " " + Sales.esc(Sales.time(v.t)) : "")
+                  : st === "current"
+                    ? "Current"
+                    : "Pending") +
+                "</span>" +
+                Sales.ic("chevron-right") +
+                "</div>"
+              );
+            })
+            .join("");
+        }
+        function drawNext() {
+          var c = byCode(sel),
+            el = document.getElementById("nxt");
+          if (!c) {
+            el.innerHTML =
+              '<div class="next"><div class="grow"><h3>All shops visited</h3><small>Nice work. Your route is complete.</small></div></div>';
+            return;
+          }
+          var nav = Sales.navLink(c),
+            isCur = c.code === currentCode();
+          el.innerHTML =
+            '<div class="next"><div class="tile t0">' +
+            Sales.esc(Sales.init(c.name)) +
+            '</div><div class="grow"><small>' +
+            (isCur ? "Next Shop" : "Selected Shop") +
+            "</small><h3>" +
+            Sales.esc(c.name) +
+            "</h3><small>" +
+            Sales.esc(c.area || c.address || "") +
+            "</small></div>" +
+            '<div class="rowh" style="width:100%">' +
+            (nav
+              ? '<a class="btn teal sm" href="' +
+                Sales.esc(nav) +
+                '" target="_blank" rel="noopener">' +
+                Sales.ic("navigate") +
+                "Navigate</a>"
+              : "") +
+            '<a class="btn sm" href="order.html?c=' +
+            encodeURIComponent(c.code) +
+            '">' +
+            Sales.ic("cart") +
+            "Take Order</a>" +
+            '<button class="btn line sm" id="mv" type="button">' +
+            Sales.ic("check") +
+            "Mark Visited</button>" +
+            '<a class="btn soft sm" href="shop.html?c=' +
+            encodeURIComponent(c.code) +
+            '">View Details</a></div></div>';
+          document.getElementById("mv").onclick = function () {
+            var b = this;
+            b.disabled = true;
+            Sales.api("/api/sales/visit", { code: c.code, status: "visited" })
+              .then(function (j) {
+                M.visits = j.visits;
+                sel = "";
+                build();
+                page();
+                Sales.toast("Marked visited");
+              })
+              .catch(function (e) {
+                b.disabled = false;
+                Sales.toast(e.message, true);
+              });
+          };
+        }
+        function pinIcon(n, st) {
+          return L.divIcon({
+            className: "",
+            iconSize: [26, 26],
+            iconAnchor: [13, 26],
+            html:
+              '<div class="pin" style="background:' +
+              colour(st) +
+              '"><span>' +
+              n +
+              "</span></div>",
+          });
+        }
+        function fit() {
+          var ll = stops
+            .filter(function (c) {
+              return c.lat && c.lng;
+            })
+            .map(function (c) {
+              return [c.lat, c.lng];
+            });
+          if (map && ll.length)
+            map.fitBounds(ll, { padding: [30, 30], maxZoom: 15 });
+        }
+        function drawMap() {
+          var el = document.getElementById("map");
+          if (!el) return;
+          if (!window.L) {
+            el.innerHTML =
+              '<div class="empty"><b>Map could not load</b><span>Your list still works.</span></div>';
+            return;
+          }
+          if (map) {
+            map.remove();
+            map = null;
+          }
+          map = L.map(el, { zoomControl: true, minZoom: 5 });
+          L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution:
+              '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
+          }).addTo(map);
+          group = L.layerGroup().addTo(map);
+          markers = {};
+          var ll = [],
+            missing = 0;
+          stops.forEach(function (c, i) {
+            if (!(c.lat && c.lng)) {
+              missing++;
+              return;
+            }
+            ll.push([c.lat, c.lng]);
+            markers[c.code] = L.marker([c.lat, c.lng], {
+              icon: pinIcon(i + 1, state(c)),
+              title: c.name,
+            })
+              .addTo(group)
+              .on("click", function () {
+                pick(c.code, false);
+              });
+          });
+          if (!ll.length) {
+            el.innerHTML =
+              '<div class="empty"><b>No shop pins yet</b><span>These shops have no map location saved.</span></div>';
+            document.getElementById("skm").textContent = "-";
+            document.getElementById("stm").textContent = "-";
+            return;
+          }
+          var n = document.getElementById("mnote");
+          if (missing) {
+            n.textContent =
+              missing +
+              (missing === 1 ? " shop has" : " shops have") +
+              " no pin";
+            n.hidden = false;
+          }
+          fit();
+          var line = L.polyline(ll, {
+              color: "#0F766E",
+              weight: 3,
+              opacity: 0.6,
+              dashArray: "3 9",
+              interactive: false,
+            }).addTo(group),
+            id = ++drawId;
+          if (ll.length < 2) {
+            setDist(0);
+            return;
+          }
+          if (!window.RoadLine) return setDist(null, ll);
+          RoadLine.draw(
+            group,
+            ll,
+            { color: "#0F766E", weight: 4 },
+            [line],
+            function () {
+              return id !== drawId;
+            },
+          ).then(
+            function (r) {
+              if (r) setDist(r.km);
+              else setDist(null, ll);
+            },
+            function () {
+              setDist(null, ll);
+            },
+          );
+        }
+        function straightKm(ll) {
+          var t = 0,
+            R = 6371;
+          for (var i = 1; i < ll.length; i++) {
+            var a = ll[i - 1],
+              b = ll[i],
+              dLa = ((b[0] - a[0]) * Math.PI) / 180,
+              dLo = ((b[1] - a[1]) * Math.PI) / 180;
+            var h =
+              Math.sin(dLa / 2) * Math.sin(dLa / 2) +
+              Math.cos((a[0] * Math.PI) / 180) *
+                Math.cos((b[0] * Math.PI) / 180) *
+                Math.sin(dLo / 2) *
+                Math.sin(dLo / 2);
+            t += 2 * R * Math.asin(Math.sqrt(h));
+          }
+          return t;
+        }
+        function setDist(k, ll) {
+          var a = document.getElementById("skm"),
+            b = document.getElementById("stm");
+          if (!a) return;
+          if (k == null) {
+            k = straightKm(ll || []) * 1.3;
+            a.textContent = "≈ " + k.toFixed(1) + " km";
+          } else a.textContent = k.toFixed(1) + " km";
+          b.textContent = k > 0 ? fmtTime((k / AVG_KMH) * 60) : "-";
+        }
+        function pick(code, pan) {
+          sel = code;
+          drawList();
+          drawNext();
+          var c = byCode(code);
+          if (pan !== false && map && c && c.lat && c.lng)
+            map.setView([c.lat, c.lng], Math.max(map.getZoom(), 15));
+          Object.keys(markers).forEach(function (k) {
+            var c2 = byCode(k);
+            if (c2) markers[k].setZIndexOffset(k === code ? 1000 : 0);
+          });
+        }
+        function bind() {
+          var rs = document.getElementById("rsel");
+          rs.onchange = function () {
+            var v = rs.value;
+            rs.disabled = true;
+            Sales.api("/api/sales/route", { date: M.date, route: v })
+              .then(function () {
+                routeId = v;
+                sel = "";
+                build();
+                page();
+              })
+              .catch(function (e) {
+                rs.disabled = false;
+                Sales.toast(e.message, true);
+              });
+          };
+          var st = document.getElementById("stops");
+          if (st)
+            st.onclick = function (e) {
+              var r = e.target.closest && e.target.closest(".st");
+              if (!r) return;
+              var code = r.getAttribute("data-c");
+              if (desktop()) pick(code, true);
+              else location.href = "shop.html?c=" + encodeURIComponent(code);
+            };
+          var sg = document.getElementById("seg");
+          if (sg)
+            sg.onclick = function (e) {
+              var b = e.target.closest && e.target.closest("[data-v]");
+              if (!b) return;
+              view = b.getAttribute("data-v");
+              sg.querySelectorAll("button").forEach(function (x) {
+                x.classList.toggle("on", x === b);
+              });
+              showView();
+            };
+        }
+        window.addEventListener("resize", function () {
+          var sg = document.getElementById("seg");
+          if (sg) {
+            sg.style.display = desktop() ? "none" : "";
+            showView();
+            if (map) map.invalidateSize();
+          }
+        });
+
+        Promise.all([Sales.data(), Sales.mine()])
+          .then(function (r) {
+            D = r[0];
+            M = r[1];
+            routeId = M.route || "";
+            if (
+              routeId &&
+              !D.routes.some(function (x) {
+                return x.id === routeId;
+              })
+            )
+              routeId = "";
+            build();
+            page();
+          })
+          .catch(function () {
+            main.innerHTML =
+              '<div class="card empty"><b>Could not load your route</b><span>Check your connection and refresh.</span></div>';
+          });
+      });
+    </script>
+  </body>
+</html>

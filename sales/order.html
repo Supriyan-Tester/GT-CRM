@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="robots" content="noindex" />
+    <title>New Order - General Traders Sales</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/icon-32.png"
+    />
+    <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+    <link rel="stylesheet" href="sales.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="../assets/icons.js"></script>
+    <script src="sales.js"></script>
+    <script>
+      Sales.start("order", function (me, hello, main) {
+        var qs = new URLSearchParams(location.search),
+          CODE = qs.get("c") || "",
+          DRAFT = qs.get("d") || "",
+          REPL = qs.get("r") || "";
+        if (!CODE) return location.replace("customers.html");
+        hello.innerHTML = '<h1>New Order</h1><p id="sub">Loading…</p>';
+        main.innerHTML = '<div class="empty"><b>Loading…</b></div>';
+
+        var SHOP,
+          PRODS = [],
+          cart = {},
+          cat = "",
+          q = "",
+          page = 1,
+          STEP = 48,
+          discount = 0,
+          notes = "",
+          discOn = false,
+          draftId = "",
+          busy = false,
+          key =
+            "k" +
+            Date.now().toString(36) +
+            Math.random().toString(36).slice(2, 8),
+          placed = false;
+        var byId = {};
+        function norm(s) {
+          return String(s || "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, " ")
+            .trim();
+        }
+        function pic(p, cls) {
+          var ini = Sales.esc(
+            String(p.name || "?")
+              .trim()
+              .slice(0, 2)
+              .toUpperCase(),
+          );
+          return (
+            '<div class="' +
+            cls +
+            '"><img loading="lazy" alt="" src="/api/pfile?p=' +
+            encodeURIComponent(p.id) +
+            '&i=0"><span hidden>' +
+            ini +
+            "</span></div>"
+          );
+        }
+        function totals() {
+          var n = 0,
+            sub = 0;
+          Object.keys(cart).forEach(function (id) {
+            var p = byId[id];
+            if (!p) return;
+            n += cart[id];
+            sub += (Number(p.price) || 0) * cart[id];
+          });
+          var d = Math.min(sub, Math.max(0, Number(discount) || 0));
+          return {
+            lines: Object.keys(cart).length,
+            units: n,
+            sub: sub,
+            disc: d,
+            total: sub - d,
+          };
+        }
+
+        function shell() {
+          var S = SHOP,
+            t = 0;
+          main.innerHTML =
+            '<a class="back" href="customers.html">' +
+            Sales.ic("chevron-left") +
+            "Customers</a>" +
+            '<div class="ord"><div class="left">' +
+            '<div class="card shead"><div class="tile t0">' +
+            Sales.esc(Sales.init(S.name)) +
+            '</div><div class="info"><h2>' +
+            Sales.esc(S.name) +
+            "<em>" +
+            Sales.esc(S.code) +
+            "</em></h2><small>" +
+            Sales.esc(
+              [S.area, S.address].filter(Boolean).join(" · ") ||
+                "No address yet",
+            ) +
+            "</small>" +
+            (S.phone
+              ? '<a class="ph" href="tel:' +
+                Sales.esc(S.phone) +
+                '">' +
+                Sales.ic("phone") +
+                Sales.esc(S.phone) +
+                "</a>"
+              : "") +
+            "</div>" +
+            '<a class="btn soft sm" href="shop.html?c=' +
+            encodeURIComponent(S.code) +
+            '">View Details</a></div>' +
+            '<label class="search"><span class="sr">Search products</span>' +
+            Sales.ic("search") +
+            '<input id="q" type="search" placeholder="Search products by name or code" autocomplete="off" /></label>' +
+            '<div class="cats" id="cats" role="tablist" aria-label="Category"></div>' +
+            '<div class="pgrid" id="grid"></div><div class="more" id="more" hidden></div></div>' +
+            '<aside class="card cart" id="cart" aria-label="Order items"></aside></div>' +
+            '<button class="cbar" id="cbar" type="button" hidden></button>';
+          document.getElementById("sub").textContent = S.name;
+          var qi = document.getElementById("q"),
+            tm;
+          qi.oninput = function () {
+            clearTimeout(tm);
+            tm = setTimeout(function () {
+              q = qi.value;
+              page = 1;
+              drawGrid();
+            }, 120);
+          };
+          document.getElementById("cats").onclick = function (e) {
+            var b = e.target.closest && e.target.closest(".cat");
+            if (!b) return;
+            cat = b.getAttribute("data-c");
+            page = 1;
+            drawCats();
+            drawGrid();
+          };
+          var grid = document.getElementById("grid");
+          grid.onclick = function (e) {
+            var c = e.target.closest && e.target.closest(".pc");
+            if (!c) return;
+            var id = c.getAttribute("data-id"),
+              p = byId[id];
+            if (p && p.stock != null && p.stock <= 0) {
+              Sales.watch(id, true)
+                .then(function () {
+                  Sales.toast(
+                    p.name +
+                      " is out of stock. You will see it on Home when it is back.",
+                  );
+                })
+                .catch(function () {});
+              return;
+            }
+            setQty(id, (cart[id] || 0) + 1);
+          };
+          grid.addEventListener("error", imgErr, true);
+          document
+            .getElementById("cart")
+            .addEventListener("error", imgErr, true);
+          document.getElementById("cbar").onclick = function () {
+            document.getElementById("cart").classList.add("open");
+          };
+          drawCats();
+          drawGrid();
+          drawCart();
+        }
+        function imgErr(e) {
+          var im = e.target;
+          if (im && im.tagName === "IMG") {
+            im.style.display = "none";
+            if (im.nextElementSibling) im.nextElementSibling.hidden = false;
+          }
+        }
+        function drawCats() {
+          var c = {};
+          PRODS.forEach(function (p) {
+            if (p.category) c[p.category] = 1;
+          });
+          document.getElementById("cats").innerHTML =
+            '<button class="cat' +
+            (cat ? "" : " on") +
+            '" type="button" data-c="">All</button>' +
+            Object.keys(c)
+              .sort()
+              .map(function (n) {
+                return (
+                  '<button class="cat' +
+                  (cat === n ? " on" : "") +
+                  '" type="button" data-c="' +
+                  Sales.esc(n) +
+                  '">' +
+                  Sales.esc(n) +
+                  "</button>"
+                );
+              })
+              .join("");
+        }
+        function rows() {
+          var t = norm(q);
+          return PRODS.filter(function (p) {
+            return (!cat || p.category === cat) && (!t || p._k.indexOf(t) > -1);
+          });
+        }
+        function drawGrid() {
+          var R = rows(),
+            g = document.getElementById("grid");
+          g.innerHTML = R.length
+            ? R.slice((page - 1) * STEP, page * STEP)
+                .map(function (p) {
+                  var n = cart[p.id];
+                  return (
+                    '<div class="pc' +
+                    (p.stock != null && p.stock <= 0 ? " oos" : "") +
+                    '" role="button" tabindex="0" data-id="' +
+                    Sales.esc(p.id) +
+                    '">' +
+                    (n ? '<span class="qtyb">' + n + "</span>" : "") +
+                    pic(p, "pic") +
+                    "<b>" +
+                    Sales.esc(p.name) +
+                    "</b><small>" +
+                    Sales.esc(p.code || "") +
+                    (p.unit ? " · per " + Sales.esc(p.unit) : "") +
+                    "</small>" +
+                    Sales.stockHtml(p) +
+                    '<div class="pr2"><b>' +
+                    Sales.money(p.price) +
+                    '</b><button class="add" type="button" tabindex="-1" aria-label="Add ' +
+                    Sales.esc(p.name) +
+                    '">' +
+                    Sales.ic("plus") +
+                    "</button></div></div>"
+                  );
+                })
+                .join("")
+            : '<div class="empty" style="grid-column:1/-1"><i>' +
+              Sales.ic("search") +
+              "</i><b>No products found</b><span>Try a different name or category.</span></div>";
+          Sales.pager(
+            document.getElementById("more"),
+            R.length,
+            page,
+            STEP,
+            function (p) {
+              page = p;
+              drawGrid();
+              document
+                .getElementById("grid")
+                .scrollIntoView({ block: "start" });
+            },
+          );
+        }
+        function drawCart() {
+          var T = totals(),
+            el = document.getElementById("cart"),
+            ids = Object.keys(cart).filter(function (id) {
+              return byId[id];
+            });
+          var items = ids.length
+            ? ids
+                .map(function (id) {
+                  var p = byId[id],
+                    n = cart[id];
+                  return (
+                    '<div class="ci" data-id="' +
+                    Sales.esc(id) +
+                    '">' +
+                    pic(p, "pic") +
+                    "<div><b>" +
+                    Sales.esc(p.name) +
+                    "</b><small>" +
+                    Sales.esc(p.code || "") +
+                    " · " +
+                    Sales.money(p.price) +
+                    "</small></div>" +
+                    '<div class="ctl"><div class="step"><button type="button" data-a="dec" aria-label="Less">' +
+                    Sales.ic(n > 1 ? "minus" : "trash") +
+                    '</button><input type="number" min="1" max="9999" inputmode="numeric" value="' +
+                    n +
+                    '" aria-label="Quantity"><button type="button" data-a="inc" aria-label="More">' +
+                    Sales.ic("plus") +
+                    '</button></div><div class="amt">' +
+                    Sales.money((Number(p.price) || 0) * n) +
+                    "</div></div></div>"
+                  );
+                })
+                .join("")
+            : '<div class="empty"><i>' +
+              Sales.ic("cart") +
+              "</i><b>No items yet</b><span>Tap a product to add it.</span></div>";
+          el.innerHTML =
+            '<h2><span><button class="back mclose" id="cclose" type="button" style="display:none">' +
+            Sales.ic("chevron-left") +
+            "</button>Order Items (" +
+            T.lines +
+            ')</span><button type="button" id="clear"' +
+            (T.lines ? "" : " hidden") +
+            ">Clear All</button></h2>" +
+            '<div class="cl">' +
+            items +
+            "</div>" +
+            '<div class="sum"><div><span>Items (' +
+            T.units +
+            ")</span><span>" +
+            Sales.money(T.sub) +
+            "</span></div>" +
+            "<div><span>Discount</span><span>" +
+            (T.disc ? "− " + Sales.money(T.disc) : "₹0") +
+            "</span></div>" +
+            (discOn
+              ? '<div class="disc"><label for="dsc">Discount (₹)</label><input id="dsc" type="number" min="0" inputmode="decimal" value="' +
+                (discount || "") +
+                '" placeholder="0"></div>'
+              : '<button class="btn tsoft sm" id="adsc" type="button">' +
+                Sales.ic("plus") +
+                "Add Discount</button>") +
+            '<div class="tot"><span>Total Amount</span><span>' +
+            Sales.money(T.total) +
+            "</span></div></div>" +
+            '<div><label for="nt">Notes (optional)</label><textarea class="notes" id="nt" maxlength="500" placeholder="Add order notes…">' +
+            Sales.esc(notes) +
+            "</textarea></div>" +
+            '<div class="cbtns"><button class="btn line" id="draft" type="button"' +
+            (T.lines ? "" : " disabled") +
+            '>Save as Draft</button><button class="btn teal" id="place" type="button"' +
+            (T.lines ? "" : " disabled") +
+            ">" +
+            Sales.ic("check") +
+            "Place Order</button></div>";
+          var bar = document.getElementById("cbar");
+          bar.hidden = !T.lines;
+          bar.innerHTML =
+            "<span>" +
+            Sales.ic("cart").replace(
+              "<svg",
+              '<svg style="vertical-align:-5px;margin-right:8px"',
+            ) +
+            "View Cart (" +
+            T.lines +
+            ")</span><span>" +
+            Sales.money(T.total) +
+            "</span>";
+          var cc = document.getElementById("cclose");
+          if (matchMedia("(max-width:900px)").matches)
+            cc.style.display = "inline-flex";
+          cc.onclick = function () {
+            el.classList.remove("open");
+          };
+          el.querySelector(".cl").onclick = function (e) {
+            var b = e.target.closest && e.target.closest("button[data-a]"),
+              row = e.target.closest && e.target.closest(".ci");
+            if (!b || !row) return;
+            var id = row.getAttribute("data-id");
+            setQty(
+              id,
+              (cart[id] || 0) + (b.getAttribute("data-a") === "inc" ? 1 : -1),
+            );
+          };
+          el.querySelector(".cl").onchange = function (e) {
+            var row = e.target.closest && e.target.closest(".ci");
+            if (row && e.target.tagName === "INPUT")
+              setQty(
+                row.getAttribute("data-id"),
+                Math.floor(Number(e.target.value)) || 0,
+              );
+          };
+          var cl = document.getElementById("clear");
+          cl.onclick = function () {
+            if (confirm("Remove all items from this order?")) {
+              cart = {};
+              refresh();
+            }
+          };
+          var a = document.getElementById("adsc");
+          if (a)
+            a.onclick = function () {
+              discOn = true;
+              drawCart();
+              document.getElementById("dsc").focus();
+            };
+          var d = document.getElementById("dsc");
+          if (d)
+            d.onchange = function () {
+              discount = Math.max(0, Number(d.value) || 0);
+              drawCart();
+            };
+          document.getElementById("nt").oninput = function () {
+            notes = this.value;
+          };
+          document.getElementById("draft").onclick = function () {
+            send(true);
+          };
+          document.getElementById("place").onclick = function () {
+            send(false);
+          };
+        }
+        function setQty(id, n) {
+          n = Math.min(9999, Math.max(0, n));
+          var sp = byId[id];
+          if (sp && sp.stock != null && n > sp.stock) {
+            n = Math.max(0, sp.stock);
+            Sales.toast(
+              "Only " +
+                sp.stock +
+                (sp.unit ? " " + sp.unit : "") +
+                " of " +
+                sp.name +
+                " available",
+            );
+          }
+          if (n) cart[id] = n;
+          else delete cart[id];
+          refresh();
+        }
+        function refresh() {
+          drawGrid();
+          drawCart();
+        }
+        function payload(draft) {
+          return {
+            code: CODE,
+            items: Object.keys(cart).map(function (id) {
+              return { id: id, qty: cart[id] };
+            }),
+            discount: totals().disc,
+            notes: notes,
+            draft: draft,
+            id: draftId || undefined,
+            k: key,
+            replaces: REPL || undefined,
+          };
+        }
+        function send(draft) {
+          if (busy || !Object.keys(cart).length) return;
+          busy = true;
+          var b = document.getElementById(draft ? "draft" : "place");
+          if (b) b.disabled = true;
+          // placing an order needs the phone's position (you must be at the shop); a draft does not
+          var withLoc = draft
+            ? Promise.resolve({})
+            : (b && (b.textContent = "Checking your location…"),
+              Sales.locate());
+          withLoc
+            .then(function (loc) {
+              var pl = payload(draft);
+              pl.lat = loc.lat;
+              pl.lng = loc.lng;
+              pl.acc = loc.acc;
+              return Sales.api("/api/sales/order", pl);
+            })
+            .then(function (j) {
+              busy = false;
+              if (draft) {
+                draftId = j.order.id;
+                key =
+                  "k" +
+                  Date.now().toString(36) +
+                  Math.random().toString(36).slice(2, 8);
+                Sales.toast("Draft saved");
+                drawCart();
+              } else {
+                placed = true;
+                success(j.order);
+              }
+            })
+            .catch(function (e) {
+              busy = false;
+              drawCart();
+              Sales.toast(e.message || "Could not save. Try again.", true);
+            });
+        }
+        function success(o) {
+          document.getElementById("hello").innerHTML = "<h1>New Order</h1>";
+          var t = new Date(o.t);
+          main.innerHTML =
+            '<div class="done"><div class="ring">' +
+            Sales.ic("check") +
+            "</div><h1>Order Placed Successfully!</h1>" +
+            '<div class="card oc"><div class="tile t0">' +
+            Sales.esc(Sales.init(o.shop)) +
+            "</div><div><b>Order #" +
+            Sales.esc(o.id) +
+            '</b><br><span style="color:var(--muted)">' +
+            Sales.esc(o.shop) +
+            "<br>" +
+            o.items.length +
+            (o.items.length === 1 ? " item" : " items") +
+            " · " +
+            Sales.money(o.total) +
+            "<br>" +
+            Sales.esc(Sales.dateLabel(o.date)) +
+            " · " +
+            Sales.esc(Sales.time(o.t)) +
+            "</span></div></div>" +
+            '<div class="grid2"><a class="btn wide" href="orders.html?o=' +
+            encodeURIComponent(o.id) +
+            '">View Order Details</a>' +
+            '<a class="btn line wide" href="route.html">Back to My Route</a><a class="btn line wide" href="home.html">Back to Home</a></div></div>';
+          window.scrollTo(0, 0);
+        }
+        window.addEventListener("beforeunload", function (e) {
+          if (!placed && Object.keys(cart).length) {
+            e.preventDefault();
+            e.returnValue = "";
+          }
+        });
+
+        Promise.all([
+          Sales.data(),
+          DRAFT ? Sales.mine() : Promise.resolve(null),
+        ])
+          .then(function (r) {
+            var d = r[0];
+            SHOP = d.customers.filter(function (c) {
+              return c.code === CODE;
+            })[0];
+            if (!SHOP) {
+              main.innerHTML =
+                '<div class="card empty"><b>Shop not found</b><span><a class="link" href="customers.html">Back to My Customers</a></span></div>';
+              return;
+            }
+            PRODS = d.products.filter(function (p) {
+              return p && p.id;
+            });
+            PRODS.forEach(function (p) {
+              byId[p.id] = p;
+              p._k = norm([p.name, p.alias, p.code, p.category].join(" "));
+            });
+            PRODS.sort(function (a, b) {
+              return String(a.name).localeCompare(String(b.name), "en", {
+                sensitivity: "base",
+                numeric: true,
+              });
+            });
+            if (r[1]) {
+              var o = r[1].orders.filter(function (x) {
+                return (
+                  x.id === DRAFT && x.status === "draft" && x.code === CODE
+                );
+              })[0];
+              if (o) {
+                draftId = o.id;
+                notes = o.notes || "";
+                discount = o.discount || 0;
+                discOn = !!discount;
+                o.items.forEach(function (it) {
+                  if (byId[it.id]) cart[it.id] = it.qty;
+                });
+              }
+            }
+            shell();
+          })
+          .catch(function () {
+            main.innerHTML =
+              '<div class="card empty"><b>Could not load products</b><span>Check your connection and refresh.</span></div>';
+          });
+      });
+    </script>
+  </body>
+</html>

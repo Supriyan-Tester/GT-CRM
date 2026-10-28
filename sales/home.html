@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="robots" content="noindex" />
+    <title>Home - General Traders Sales</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/icon-32.png"
+    />
+    <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+    <link rel="stylesheet" href="sales.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="../assets/icons.js"></script>
+    <script src="sales.js"></script>
+    <script>
+      Sales.start("home", function (me, hello, main) {
+        var h = new Date().getHours(),
+          g =
+            h < 12
+              ? "Good Morning"
+              : h < 17
+                ? "Good Afternoon"
+                : "Good Evening",
+          first =
+            String(me.name || "")
+              .trim()
+              .split(/\s+/)[0] || "there";
+        hello.innerHTML =
+          "<h1>" +
+          g +
+          ", " +
+          Sales.esc(first) +
+          "!</h1><p>" +
+          new Date().toLocaleDateString("en-IN", {
+            weekday: "short",
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          }) +
+          "</p>";
+        function kpi(cls, ic, id, label) {
+          return (
+            '<div class="card kpi ' +
+            cls +
+            '"><i>' +
+            Sales.ic(ic) +
+            '</i><div><b id="' +
+            id +
+            '">-</b><span>' +
+            label +
+            "</span></div></div>"
+          );
+        }
+        main.innerHTML =
+          '<div class="card"><h2>Price list <a class="link" href="products.html">Open all</a></h2>' +
+          '<div class="stat"><div><b id="nProd">-</b><span>Products</span></div><div><b id="nCat">-</b><span>Categories</span></div></div>' +
+          '<form class="srow" id="qf" action="products.html"><label class="search"><span class="sr">Search products</span>' +
+          Sales.ic("search") +
+          '<input name="q" type="search" placeholder="Search product name or code" autocomplete="off" /></label>' +
+          '<button class="btn" type="submit">Search</button></form></div>' +
+          '<div class="kpis">' +
+          kpi("k-teal", "check-circle", "kV", "Shops Visited") +
+          kpi("k-pri", "cart", "kO", "Orders Taken") +
+          kpi("k-pri", "rupee", "kT", "Order Value") +
+          kpi("k-amber", "hourglass", "kP", "Shops Pending") +
+          "</div>" +
+          '<div class="cols"><div class="card"><h2>Today\'s Shops <a class="link" href="route.html">My Route</a></h2><div id="today"></div></div>' +
+          '<div class="stack"><div class="card"><h2>Current Shop</h2><div id="cur"></div></div></div></div>';
+        function soon(ic, title, text, href, btn) {
+          return (
+            '<div class="empty"><i>' +
+            Sales.ic(ic) +
+            "</i><b>" +
+            title +
+            "</b><span>" +
+            text +
+            "</span>" +
+            (href
+              ? '<a class="btn teal sm" style="margin-top:8px" href="' +
+                href +
+                '">' +
+                btn +
+                "</a>"
+              : "") +
+            "</div>"
+          );
+        }
+        Promise.all([Sales.data(), Sales.mine()])
+          .then(function (r) {
+            var D = r[0],
+              M = r[1],
+              idx = {},
+              route = D.routes.filter(function (x) {
+                return x.id === M.route;
+              })[0],
+              stops;
+            D.customers.forEach(function (c) {
+              idx[c.code] = c;
+            });
+            stops = route
+              ? (route.codes || [])
+                  .map(function (k) {
+                    return idx[k];
+                  })
+                  .filter(Boolean)
+              : [];
+            var placed = (M.orders || []).filter(function (o) {
+              return o.status === "placed" && o.date === M.today;
+            });
+            function v(c) {
+              return M.visits && M.visits[c.code];
+            }
+            var done = stops.filter(v).length,
+              cur = stops.filter(function (c) {
+                return !v(c);
+              })[0];
+            document.getElementById("kV").textContent = Object.keys(
+              M.visits || {},
+            ).length;
+            document.getElementById("kO").textContent = placed.length;
+            document.getElementById("kT").textContent = Sales.money(
+              placed.reduce(function (t, o) {
+                return t + o.total;
+              }, 0),
+            );
+            document.getElementById("kP").textContent = route
+              ? stops.length - done
+              : "-";
+            document.getElementById("today").innerHTML = stops.length
+              ? '<div class="shops">' +
+                stops
+                  .slice(0, 8)
+                  .map(function (c, i) {
+                    var st = v(c)
+                      ? "visited"
+                      : cur && c.code === cur.code
+                        ? "current"
+                        : "pending";
+                    return (
+                      '<a class="shop" href="shop.html?c=' +
+                      encodeURIComponent(c.code) +
+                      '"><div class="tile t' +
+                      (i % 4) +
+                      '">' +
+                      Sales.esc(Sales.init(c.name)) +
+                      "</div><div><b>" +
+                      Sales.esc(c.name) +
+                      "</b><small>" +
+                      Sales.esc(c.area || c.address || "") +
+                      '</small></div><span class="pill ' +
+                      st +
+                      '">' +
+                      (st === "visited"
+                        ? "Visited"
+                        : st === "current"
+                          ? "Current"
+                          : "Pending") +
+                      "</span></a>"
+                    );
+                  })
+                  .join("") +
+                "</div>" +
+                (stops.length > 8
+                  ? '<p class="note" style="padding-top:10px">+ ' +
+                    (stops.length - 8) +
+                    ' more on <a class="link" href="route.html">My Route</a></p>'
+                  : "")
+              : soon(
+                  "users",
+                  "Pick today's route",
+                  "Choose the route you are on and your shops will show here.",
+                  "route.html",
+                  "Choose route",
+                );
+            document.getElementById("cur").innerHTML = cur
+              ? '<div class="shead" style="margin-bottom:12px"><div class="tile t0">' +
+                Sales.esc(Sales.init(cur.name)) +
+                '</div><div class="info"><h2 style="font-size:16px">' +
+                Sales.esc(cur.name) +
+                "</h2><small>" +
+                Sales.esc(cur.area || cur.address || "") +
+                '</small></div></div><div class="rowh"><a class="btn teal sm" href="order.html?c=' +
+                encodeURIComponent(cur.code) +
+                '">' +
+                Sales.ic("cart") +
+                "Take Order</a>" +
+                (Sales.navLink(cur)
+                  ? '<a class="btn soft sm" target="_blank" rel="noopener" href="' +
+                    Sales.esc(Sales.navLink(cur)) +
+                    '">' +
+                    Sales.ic("navigate") +
+                    "Navigate</a>"
+                  : "") +
+                "</div>"
+              : stops.length
+                ? soon(
+                    "check-circle",
+                    "All shops visited",
+                    "Your route for today is complete.",
+                  )
+                : soon(
+                    "route",
+                    "No shop selected",
+                    "Take Order and Mark Visit will work from here.",
+                  );
+          })
+          .catch(function () {
+            document.getElementById("today").innerHTML =
+              '<div class="empty"><b>Could not load today\'s shops</b><span>Check your connection and refresh.</span></div>';
+          });
+        Sales.products()
+          .then(function (L) {
+            var cats = {};
+            L.forEach(function (p) {
+              if (p && p.category) cats[p.category] = 1;
+            });
+            document.getElementById("nProd").textContent =
+              L.length.toLocaleString("en-IN");
+            document.getElementById("nCat").textContent =
+              Object.keys(cats).length;
+          })
+          .catch(function () {});
+      });
+    </script>
+  </body>
+</html>

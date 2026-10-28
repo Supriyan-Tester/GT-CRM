@@ -35,50 +35,9 @@
     return n + " " + (n === 1 ? a : b || a + "s");
   }
 
-  /* ---------- Icons (same style as GA.icon) ---------- */
-  var I = {
-    pin: '<path d="M12 21s7-6.2 7-11a7 7 0 0 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>',
-    chev: '<path d="M6 9l6 6 6-6"/>',
-    check: '<path d="M20 6L9 17l-5-5"/>',
-    search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
-    grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
-    list: '<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1" fill="currentColor"/><circle cx="3.5" cy="12" r="1" fill="currentColor"/><circle cx="3.5" cy="18" r="1" fill="currentColor"/>',
-    map: '<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
-    grip: '<g fill="currentColor" stroke="none"><circle cx="9" cy="5.5" r="1.7"/><circle cx="15" cy="5.5" r="1.7"/><circle cx="9" cy="12" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="9" cy="18.5" r="1.7"/><circle cx="15" cy="18.5" r="1.7"/></g>',
-    dots: '<g fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></g>',
-    eye: '<path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/>',
-    edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
-    top: '<path d="M5 4h14"/><path d="M12 20V9"/><path d="M6 14l6-6 6 6"/>',
-    up: '<path d="M12 19V5"/><path d="M5 12l7-7 7 7"/>',
-    down: '<path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/>',
-    bottom: '<path d="M5 20h14"/><path d="M12 4v11"/><path d="M6 10l6 6 6-6"/>',
-    swap: '<path d="M4 7h14l-3-3"/><path d="M20 17H6l3 3"/>',
-    phone:
-      '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
-    ban: '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
-    trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
-    x: '<path d="M18 6L6 18M6 6l12 12"/>',
-    plus: '<path d="M12 5v14M5 12h14"/>',
-    print:
-      '<path d="M6 9V3h12v6"/><path d="M6 18H4v-7h16v7h-2"/><path d="M7 14h10v7H7z"/>',
-    merge:
-      '<path d="M6 4v5a6 6 0 0 0 6 6h6"/><path d="M15 11l4 4-4 4"/><path d="M6 20V9"/>',
-    store:
-      '<path d="M3 9l1-5h16l1 5"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/>',
-    alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/>',
-    fit: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
-    route:
-      '<circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/>',
-    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
-  };
+  /* ---------- Icons (drawn in assets/icons.js, picked here by name) ---------- */
   function ic(n, cls) {
-    return (
-      '<svg class="icon' +
-      (cls ? " " + cls : "") +
-      '" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
-      I[n] +
-      "</svg>"
-    );
+    return GMIcons.svg(n, "icon" + (cls ? " " + cls : ""), 'focusable="false"');
   }
 
   /* ---------- State ---------- */
@@ -362,8 +321,8 @@
           "",
         ],
         saved: [ic("check") + "All changes saved", "saved"],
-        offline: [ic("alert") + "Not saved to the server yet", "warn"],
-        local: [ic("alert") + "Saved on this device only", "warn"],
+        offline: [ic("alert-triangle") + "Not saved to the server yet", "warn"],
+        local: [ic("alert-triangle") + "Saved on this device only", "warn"],
       },
       m = map[state] || map.idle;
     el.innerHTML = m[0];
@@ -373,7 +332,7 @@
     if (bad) {
       ban.className = "rt-banner noprint";
       ban.innerHTML =
-        ic("alert") +
+        ic("alert-triangle") +
         "<span>" +
         (state === "offline"
           ? "The server cannot be reached. Your change is kept on this device and is sent again automatically every few seconds."
@@ -467,7 +426,7 @@
     t.setAttribute("role", k === "err" ? "alert" : "status");
     t.innerHTML =
       '<span class="rt-t-i">' +
-      ic(k === "ok" ? "check" : k === "info" ? "info" : "alert") +
+      ic(k === "ok" ? "check" : k === "info" ? "info" : "alert-triangle") +
       '</span><span class="rt-t-m">' +
       esc(msg) +
       "</span>" +
@@ -477,7 +436,7 @@
           "</button>"
         : "") +
       '<button type="button" class="rt-t-x" aria-label="Dismiss">' +
-      ic("x") +
+      ic("close") +
       "</button>";
     function gone() {
       if (t.parentNode) t.parentNode.removeChild(t);
@@ -534,7 +493,7 @@
     if (!v) return;
     v.innerHTML =
       '<div class="rt-empty"><div class="ei">' +
-      ic("alert") +
+      ic("alert-triangle") +
       "</div><b>The routes could not be loaded</b>" +
       esc(e && e.message ? e.message : "Unknown error") +
       '<br><button class="btn a-btn" type="button" onclick="location.reload()">Reload page</button></div>';
@@ -573,7 +532,7 @@
     '<section id="vMap" hidden><div class="rt-mapwrap"><aside class="rt-maplist" id="rtMapList" aria-label="Shops on this route"></aside>' +
     '<div class="rt-mapbox"><div id="rtMap" role="application" aria-label="Map of shops on this route"></div><div class="rt-map-over" id="rtMapOver" hidden></div>' +
     '<div class="rt-map-tools"><button type="button" id="rtFit" aria-label="Fit map to all markers">' +
-    ic("fit") +
+    ic("expand") +
     "Fit all</button></div></div></div></section></div>" +
     "</div>" +
     '<div class="noprint rt-foot"><button class="r-demo" id="demo" type="button" style="display:none">Load demo data</button></div></div>' +
@@ -604,14 +563,14 @@
     var n = cur === ALL ? totalShops() : r ? r.codes.length : 0;
     b.disabled = none;
     b.innerHTML =
-      ic("pin", "pin") +
+      ic("map-pin", "pin") +
       '<span class="rt-sel-name">' +
       esc(name) +
       "</span>" +
       (none
         ? ""
         : '<span class="rt-sel-n">(' + plural(n, "shop") + ")</span>") +
-      ic("chev", "chev");
+      ic("chevron-down", "chev");
     b.setAttribute(
       "aria-label",
       "Route: " +
@@ -979,7 +938,7 @@
   }
   function mapChip(c) {
     return coord(c)
-      ? '<span class="rt-chip pin">' + ic("pin") + "On map</span>"
+      ? '<span class="rt-chip pin">' + ic("map-pin") + "On map</span>"
       : '<span class="rt-chip nopin">No map pin</span>';
   }
   function phoneHtml(c) {
@@ -1173,7 +1132,7 @@
             '<div class="rt-c-a" role="cell"><button type="button" class="rt-dots" data-act="menu" aria-haspopup="menu" aria-expanded="false" aria-label="Actions for ' +
             esc(nm) +
             '" title="Actions">' +
-            ic("dots") +
+            ic("dots-horizontal") +
             "</button></div></div>"
           );
         })
@@ -1237,7 +1196,7 @@
             '<button type="button" class="rt-dots" data-act="menu" aria-haspopup="menu" aria-expanded="false" aria-label="Actions for ' +
             esc(nm) +
             '" title="Actions">' +
-            ic("dots") +
+            ic("dots-horizontal") +
             "</button></div>" +
             '<div class="rt-cb"><h3 class="rt-cn" title="' +
             esc(nm) +
@@ -1583,7 +1542,7 @@
       '" aria-haspopup="menu" aria-expanded="false" aria-label="Actions for ' +
       esc(nm) +
       '">' +
-      ic("dots") +
+      ic("dots-horizontal") +
       "</button></div></div></div>"
     );
   }
@@ -1676,7 +1635,7 @@
             '<button type="button" class="rt-dots" data-act="menu" aria-haspopup="menu" aria-expanded="false" aria-label="Actions for ' +
             esc(c.name) +
             '" title="Actions">' +
-            ic("dots") +
+            ic("dots-horizontal") +
             "</button></div>"
           );
         })
@@ -1742,13 +1701,23 @@
       g.push({
         label: "Reorder",
         items: [
-          { id: "top", label: "Move to top", icon: "top", off: x.i === 0 },
-          { id: "up", label: "Move up", icon: "up", off: x.i === 0 },
-          { id: "down", label: "Move down", icon: "down", off: x.i === n - 1 },
+          {
+            id: "top",
+            label: "Move to top",
+            icon: "arrow-to-top",
+            off: x.i === 0,
+          },
+          { id: "up", label: "Move up", icon: "arrow-up", off: x.i === 0 },
+          {
+            id: "down",
+            label: "Move down",
+            icon: "arrow-down",
+            off: x.i === n - 1,
+          },
           {
             id: "bottom",
             label: "Move to bottom",
-            icon: "bottom",
+            icon: "arrow-to-bottom",
             off: x.i === n - 1,
           },
         ],
@@ -1761,7 +1730,8 @@
         ],
       });
     var loc = [];
-    if (coord(c)) loc.push({ id: "onmap", label: "Open on map", icon: "pin" });
+    if (coord(c))
+      loc.push({ id: "onmap", label: "Open on map", icon: "map-pin" });
     if (tel)
       loc.push({
         id: "call",
@@ -1851,7 +1821,7 @@
         " \u00b7 " +
         esc(x.r.name) +
         '</span></div><button type="button" class="rt-dots" data-m="close" aria-label="Close menu">' +
-        ic("x") +
+        ic("close") +
         "</button></div>" +
         html;
       $("rtSheet").hidden = false;

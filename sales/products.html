@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="robots" content="noindex" />
+    <title>Products - General Traders Sales</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/icon-32.png"
+    />
+    <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+    <link rel="stylesheet" href="sales.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="../assets/icons.js"></script>
+    <script src="sales.js"></script>
+    <script>
+      Sales.start("products", function (me, hello, main) {
+        hello.innerHTML =
+          '<h1>Products</h1><p id="sub">Loading price list…</p>';
+        main.innerHTML =
+          '<label class="search"><span class="sr">Search products</span>' +
+          Sales.ic("search") +
+          '<input id="q" type="search" placeholder="Search by name, code or category" autocomplete="off" /></label>' +
+          '<div class="cats" id="cats" role="tablist" aria-label="Category"></div>' +
+          '<div class="card" style="padding:0"><div class="plist" id="list" aria-live="polite"></div><div class="more" id="more" hidden></div></div>';
+        var ALL = [],
+          cat = "",
+          q = "",
+          page = 1,
+          STEP = 60;
+        var qi = document.getElementById("q"),
+          list = document.getElementById("list");
+        function norm(s) {
+          return String(s || "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, " ")
+            .trim();
+        }
+        function rows() {
+          var t = norm(q);
+          return ALL.filter(function (p) {
+            return (!cat || p.category === cat) && (!t || p._k.indexOf(t) > -1);
+          });
+        }
+        function row(p) {
+          var ini = Sales.esc(
+            String(p.name || "?")
+              .trim()
+              .slice(0, 2)
+              .toUpperCase(),
+          );
+          var sub = [p.code, p.category]
+            .filter(Boolean)
+            .map(Sales.esc)
+            .join(" · ");
+          var mrp =
+            Number(p.mrp) > 0
+              ? "<small>MRP " + Sales.rupee(p.mrp) + "</small>"
+              : "";
+          var gst =
+            p.tax !== "" && p.tax != null
+              ? '<small class="gst">GST ' + Sales.esc(p.tax) + "%</small>"
+              : "";
+          return (
+            '<div class="pr"><div class="th"><img loading="lazy" alt="" src="/api/pfile?p=' +
+            encodeURIComponent(p.id) +
+            '&i=0"><span hidden>' +
+            ini +
+            '</span></div><div class="pn"><b>' +
+            Sales.esc(p.name) +
+            "</b><small>" +
+            sub +
+            "</small></div>" +
+            '<div class="pp"><b>' +
+            Sales.rupee(p.price) +
+            "</b><small>" +
+            (p.unit ? "per " + Sales.esc(p.unit) : "") +
+            "</small>" +
+            mrp +
+            gst +
+            "</div></div>"
+          );
+        }
+        function draw() {
+          var R = rows();
+          document.getElementById("sub").textContent =
+            R.length.toLocaleString("en-IN") +
+            (R.length === 1 ? " product" : " products") +
+            (cat || q ? " found" : "");
+          list.innerHTML = R.length
+            ? R.slice((page - 1) * STEP, page * STEP)
+                .map(row)
+                .join("")
+            : '<div class="empty"><i>' +
+              Sales.ic("search") +
+              "</i><b>No products found</b><span>Try a different name or category.</span></div>";
+          Sales.pager(
+            document.getElementById("more"),
+            R.length,
+            page,
+            STEP,
+            function (p) {
+              page = p;
+              draw();
+              window.scrollTo(0, 0);
+            },
+          );
+        }
+        function drawCats() {
+          var c = {};
+          ALL.forEach(function (p) {
+            if (p.category) c[p.category] = (c[p.category] || 0) + 1;
+          });
+          var names = Object.keys(c).sort();
+          document.getElementById("cats").innerHTML =
+            '<button class="cat' +
+            (cat ? "" : " on") +
+            '" type="button" data-c="">All</button>' +
+            names
+              .map(function (n) {
+                return (
+                  '<button class="cat' +
+                  (cat === n ? " on" : "") +
+                  '" type="button" data-c="' +
+                  Sales.esc(n) +
+                  '">' +
+                  Sales.esc(n) +
+                  "</button>"
+                );
+              })
+              .join("");
+        }
+        document.getElementById("cats").onclick = function (e) {
+          var b = e.target.closest && e.target.closest(".cat");
+          if (!b) return;
+          cat = b.getAttribute("data-c");
+          page = 1;
+          drawCats();
+          draw();
+        };
+        var tm;
+        qi.oninput = function () {
+          clearTimeout(tm);
+          tm = setTimeout(function () {
+            q = qi.value;
+            page = 1;
+            draw();
+          }, 120);
+        };
+        // a picture that is missing shows the first letters of the name instead
+        list.addEventListener(
+          "error",
+          function (e) {
+            var im = e.target;
+            if (im && im.tagName === "IMG") {
+              im.style.display = "none";
+              if (im.nextElementSibling) im.nextElementSibling.hidden = false;
+            }
+          },
+          true,
+        );
+        try {
+          q = new URLSearchParams(location.search).get("q") || "";
+          qi.value = q;
+        } catch (e) {}
+        Sales.products()
+          .then(function (L) {
+            ALL = L.filter(function (p) {
+              return p && p.id;
+            });
+            ALL.forEach(function (p) {
+              p._k = norm([p.name, p.alias, p.code, p.category].join(" "));
+            });
+            ALL.sort(function (a, b) {
+              return String(a.name).localeCompare(String(b.name), "en", {
+                sensitivity: "base",
+                numeric: true,
+              });
+            });
+            drawCats();
+            draw();
+          })
+          .catch(function () {
+            document.getElementById("sub").textContent = "";
+            list.innerHTML =
+              '<div class="empty"><b>Could not load the price list</b><span>Check your connection and refresh.</span></div>';
+          });
+      });
+    </script>
+  </body>
+</html>

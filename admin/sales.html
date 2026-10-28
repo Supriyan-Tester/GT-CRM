@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script src="../assets/icons.js"></script>
+    <script src="../shared/sync.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sales activity - General Traders Admin</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="../shared/admin.css" />
+    <link rel="stylesheet" href="../shared/vendor/leaflet/leaflet.css" />
+    <script src="../shared/theme.js"></script>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/icon-32.png"
+    />
+    <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+    <style>
+      .sa-bar {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+      }
+      .sa-bar input[type="date"] {
+        height: 42px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0 12px;
+        background: var(--card);
+        color: var(--text);
+      }
+      .sa-k {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+      .sa-k div {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px;
+      }
+      .sa-k b {
+        display: block;
+        font-size: 22px;
+      }
+      .sa-k span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .sa-box {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin-bottom: 14px;
+        overflow: hidden;
+      }
+      .sa-box h2 {
+        font-size: 15px;
+        margin: 0;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--border);
+      }
+      .sa-box table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      .sa-box th {
+        text-align: left;
+        color: var(--muted);
+        font-weight: 600;
+        font-size: 12px;
+        padding: 10px 16px;
+      }
+      .sa-box td {
+        padding: 10px 16px;
+        border-top: 1px solid var(--border);
+        vertical-align: top;
+      }
+      .sa-box tr.sa-r {
+        cursor: pointer;
+      }
+      .sa-box tr.sa-r:hover {
+        background: rgba(127, 127, 127, 0.07);
+      }
+      .sa-pill {
+        display: inline-block;
+        border-radius: 999px;
+        padding: 2px 10px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .sa-ok {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .sa-no {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .sa-empty {
+        padding: 26px 16px;
+        color: var(--muted);
+        text-align: center;
+      }
+      .sa-map {
+        height: 380px;
+      }
+      .sa-items {
+        background: rgba(127, 127, 127, 0.06);
+      }
+      .sa-scroll {
+        overflow-x: auto;
+      }
+      .sa-m {
+        color: var(--muted);
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="../shared/mock-data.js"></script>
+    <script src="../shared/admin.js"></script>
+    <script src="../shared/vendor/leaflet/leaflet.js"></script>
+    <script>
+      GA.guard();
+      var $ = function (i) {
+          return document.getElementById(i);
+        },
+        esc = GA.esc;
+      var pg = GA.mount("sales.html", "Sales activity");
+      function rd(k, d) {
+        try {
+          var v = JSON.parse(localStorage.getItem(k));
+          return v == null ? d : v;
+        } catch (e) {
+          return d;
+        }
+      }
+      function today() {
+        return new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
+      }
+      function money(n) {
+        return (
+          "₹" +
+          Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })
+        );
+      }
+      function tm(t) {
+        return new Date(t).toLocaleTimeString("en-IN", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+          timeZone: "Asia/Kolkata",
+        });
+      }
+      var lastSig = "",
+        date = today(),
+        map = null,
+        layer = null,
+        openRow = "";
+      pg.innerHTML =
+        '<div class="sa-bar"><label>Date <input type="date" id="saD"></label><span class="sa-m">Updates by itself while you keep this page open.</span></div>' +
+        '<div class="sa-k" id="saK"></div>' +
+        '<div class="sa-box"><h2>Where visits were marked</h2><div id="saMap" class="sa-map"></div></div>' +
+        '<div class="sa-box"><h2>Shop visits</h2><div class="sa-scroll" id="saV"></div></div>' +
+        '<div class="sa-box"><h2>Orders</h2><div class="sa-scroll" id="saO"></div></div>';
+      $("saD").value = date;
+      $("saD").onchange = function () {
+        date = this.value || today();
+        draw();
+      };
+
+      function names() {
+        var n = {};
+        (rd("gm_admin_workers_v1", { workers: [] }).workers || []).forEach(
+          function (w) {
+            n[w.id] = w.name;
+          },
+        );
+        return n;
+      }
+      function draw() {
+        var NM = names(),
+          DAYS = rd("gm_sales_days_v1", {}),
+          ORD = rd("gm_sales_orders_v1", []),
+          CU = {};
+        (rd("gm_admin_v1", {}).customers || []).forEach(function (c) {
+          CU[c.code] = c;
+        });
+        var V = [];
+        Object.keys(DAYS).forEach(function (rep) {
+          var d = DAYS[rep] && DAYS[rep][date];
+          if (!d || !d.visits) return;
+          Object.keys(d.visits).forEach(function (code) {
+            V.push(Object.assign({ rep: rep, code: code }, d.visits[code]));
+          });
+        });
+        V.sort(function (a, b) {
+          return (b.t || 0) - (a.t || 0);
+        });
+        var ALLO = (Array.isArray(ORD) ? ORD : [])
+            .filter(function (o) {
+              return (
+                o &&
+                (o.status === "placed" || o.status === "cancelled") &&
+                o.date === date
+              );
+            })
+            .sort(function (a, b) {
+              return b.t - a.t;
+            }),
+          O = ALLO.filter(function (o) {
+            return o.status === "placed";
+          }),
+          nCan = ALLO.length - O.length;
+        var noOrd = V.filter(function (v) {
+            return v.s === "no_order";
+          }).length,
+          value = O.reduce(function (t, o) {
+            return t + (o.total || 0);
+          }, 0);
+        $("saK").innerHTML = [
+          [V.length, "Shops visited"],
+          [O.length, "Orders"],
+          [money(value), "Order value"],
+          [noOrd, "Visited, no order"],
+          [nCan, "Cancelled orders"],
+        ]
+          .map(function (k) {
+            return "<div><b>" + k[0] + "</b><span>" + k[1] + "</span></div>";
+          })
+          .join("");
+
+        $("saV").innerHTML = V.length
+          ? "<table><thead><tr><th>Time</th><th>Salesperson</th><th>Shop</th><th>Result</th><th>Where marked</th></tr></thead><tbody>" +
+            V.map(function (v) {
+              var c = CU[v.code] || {},
+                loc =
+                  v.lat && v.lng
+                    ? '<a href="https://www.google.com/maps?q=' +
+                      v.lat +
+                      "," +
+                      v.lng +
+                      '" target="_blank" rel="noopener">Open in Maps</a>'
+                    : "-";
+              var res =
+                v.s === "no_order"
+                  ? '<span class="sa-pill sa-no">No order</span><br><b>' +
+                    esc(v.reason || "") +
+                    "</b>" +
+                    (v.note
+                      ? '<br><span class="sa-m">' + esc(v.note) + "</span>"
+                      : "")
+                  : v.o
+                    ? '<span class="sa-pill sa-ok">Order ' +
+                      esc(v.o) +
+                      "</span>"
+                    : '<span class="sa-pill sa-ok">Visited</span><br><span class="sa-m">Earlier record: no location saved</span>';
+              var dist = v.nopin
+                ? '<br><span class="sa-m">Shop has no map pin, distance not checked</span>'
+                : v.dist != null
+                  ? '<br><span class="sa-m">' +
+                    v.dist +
+                    " m from the shop (GPS ±" +
+                    (v.acc || 0) +
+                    " m)</span>"
+                  : "";
+              return (
+                '<tr class="sa-r" data-k="' +
+                esc(v.rep + "|" + v.code) +
+                '"><td>' +
+                (v.t ? tm(v.t) : "-") +
+                "</td><td>" +
+                esc(NM[v.rep] || v.rep) +
+                "</td><td><b>" +
+                esc(c.name || v.code) +
+                '</b><br><span class="sa-m">' +
+                esc(c.area || "") +
+                "</span></td><td>" +
+                res +
+                "</td><td>" +
+                loc +
+                dist +
+                "</td></tr>"
+              );
+            }).join("") +
+            "</tbody></table>"
+          : '<div class="sa-empty">No visits on this date.</div>';
+
+        $("saO").innerHTML = ALLO.length
+          ? '<table><thead><tr><th>Order</th><th>Time</th><th>Salesperson</th><th>Shop</th><th>Items</th><th style="text-align:right">Total</th></tr></thead><tbody>' +
+            ALLO.map(function (o) {
+              var open = openRow === o.id,
+                can = o.status === "cancelled";
+              return (
+                '<tr class="sa-r" data-o="' +
+                esc(o.id) +
+                '"' +
+                (can ? ' style="opacity:.65"' : "") +
+                "><td><b>" +
+                (can ? "<s>" + esc(o.id) + "</s> " : esc(o.id)) +
+                (can
+                  ? '<br><span class="sa-pill sa-no" style="background:#fee2e2;color:#991b1b">Cancelled</span>'
+                  : "") +
+                (o.replaces
+                  ? '<br><span class="sa-m">replaces ' +
+                    esc(o.replaces) +
+                    "</span>"
+                  : "") +
+                "</b></td><td>" +
+                tm(o.t) +
+                "</td><td>" +
+                esc(o.repName || NM[o.rep] || "") +
+                "</td><td>" +
+                esc(o.shop) +
+                "</td><td>" +
+                o.items.length +
+                '</td><td style="text-align:right"><b>' +
+                (can ? "<s>" + money(o.total) + "</s>" : money(o.total)) +
+                "</b></td></tr>" +
+                (open
+                  ? '<tr class="sa-items"><td colspan="6"><table><thead><tr><th>Product</th><th>Qty</th><th>Rate</th><th style="text-align:right">Amount</th></tr></thead><tbody>' +
+                    o.items
+                      .map(function (i) {
+                        return (
+                          "<tr><td>" +
+                          esc(i.name) +
+                          ' <span class="sa-m">' +
+                          esc(i.code || "") +
+                          "</span></td><td>" +
+                          i.qty +
+                          (i.unit ? " " + esc(i.unit) : "") +
+                          "</td><td>" +
+                          money(i.price) +
+                          '</td><td style="text-align:right">' +
+                          money(i.amount) +
+                          "</td></tr>"
+                        );
+                      })
+                      .join("") +
+                    "</tbody></table>" +
+                    (o.discount
+                      ? '<p class="sa-m">Discount ' + money(o.discount) + "</p>"
+                      : "") +
+                    (o.notes
+                      ? '<p class="sa-m">Notes: ' + esc(o.notes) + "</p>"
+                      : "") +
+                    (can
+                      ? "<p><b>Cancelled</b> by " +
+                        esc(o.cancelBy || "") +
+                        " at " +
+                        tm(o.cancelAt) +
+                        ": " +
+                        esc(o.cancelReason || "") +
+                        "</p>"
+                      : '<p><button type="button" class="btn btn-secondary" data-cx="' +
+                        esc(o.id) +
+                        '">Cancel this order</button></p>') +
+                    "</td></tr>"
+                  : "")
+              );
+            }).join("") +
+            "</tbody></table>"
+          : '<div class="sa-empty">No orders on this date.</div>';
+
+        [].forEach.call($("saO").querySelectorAll("tr[data-o]"), function (r) {
+          r.onclick = function () {
+            openRow = openRow === r.dataset.o ? "" : r.dataset.o;
+            draw();
+          };
+        });
+        [].forEach.call($("saO").querySelectorAll("[data-cx]"), function (b) {
+          b.onclick = function (e) {
+            e.stopPropagation();
+            var why = prompt(
+              "Why is order " + b.dataset.cx + " being cancelled? (needed)",
+            );
+            if (!why || why.trim().length < 3) return;
+            b.disabled = true;
+            fetch("/api/salesadmin/cancel", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: b.dataset.cx, reason: why.trim() }),
+            })
+              .then(function (r) {
+                return r.json().then(function (j) {
+                  if (!r.ok) throw new Error(j.error || "Could not cancel");
+                });
+              })
+              .then(function () {
+                alert("Order cancelled.");
+                lastSig = "";
+              })
+              .catch(function (er) {
+                b.disabled = false;
+                alert(er.message);
+              });
+          };
+        });
+        [].forEach.call($("saV").querySelectorAll("tr[data-k]"), function (r) {
+          r.onclick = function (e) {
+            if (e.target.tagName === "A") return;
+            focus(r.dataset.k);
+          };
+        });
+        var sig = date + JSON.stringify(V);
+        if (sig !== lastSig) {
+          lastSig = sig;
+          marks(V, CU, NM);
+        } // do not redraw (and re-zoom) the map when only an order row was opened
+      }
+      var pts = {};
+      function marks(V, CU, NM) {
+        if (!window.L) {
+          $("saMap").innerHTML =
+            '<div class="sa-empty">The map could not load. The list above still works.</div>';
+          return;
+        }
+        if (!map) {
+          map = L.map("saMap", { minZoom: 5 });
+          L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution: "&copy; OpenStreetMap",
+          }).addTo(map);
+          map.setView([10.99, 76.96], 11);
+        }
+        if (layer) layer.remove();
+        layer = L.layerGroup().addTo(map);
+        pts = {};
+        var ll = [];
+        V.forEach(function (v) {
+          if (!(v.lat && v.lng)) return;
+          var c = CU[v.code] || {},
+            col = v.s === "no_order" ? "#d97706" : "#16a34a";
+          if (c.lat && c.lng) {
+            L.circleMarker([c.lat, c.lng], {
+              radius: 5,
+              color: "#64748b",
+              weight: 2,
+              fillOpacity: 0.3,
+            })
+              .addTo(layer)
+              .bindTooltip("Shop: " + (c.name || v.code));
+            L.polyline(
+              [
+                [c.lat, c.lng],
+                [v.lat, v.lng],
+              ],
+              { color: col, weight: 2, dashArray: "4 4" },
+            ).addTo(layer);
+          }
+          var m = L.circleMarker([v.lat, v.lng], {
+            radius: 9,
+            color: "#fff",
+            weight: 2,
+            fillColor: col,
+            fillOpacity: 1,
+          })
+            .addTo(layer)
+            .bindPopup(
+              "<b>" +
+                esc(c.name || v.code) +
+                "</b><br>" +
+                esc(NM[v.rep] || v.rep) +
+                " at " +
+                (v.t ? tm(v.t) : "") +
+                "<br>" +
+                (v.s === "no_order"
+                  ? "No order: " + esc(v.reason || "")
+                  : "Order " + esc(v.o || "")),
+            );
+          pts[v.rep + "|" + v.code] = m;
+          ll.push([v.lat, v.lng]);
+        });
+        if (ll.length) map.fitBounds(ll, { padding: [40, 40], maxZoom: 16 });
+        setTimeout(function () {
+          map.invalidateSize();
+        }, 50);
+      }
+      function focus(k) {
+        var m = pts[k];
+        if (m && map) {
+          map.setView(m.getLatLng(), 17);
+          m.openPopup();
+          $("saMap").scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
+      draw();
+      window.addEventListener("gm-sync", draw);
+    </script>
+  </body>
+</html>

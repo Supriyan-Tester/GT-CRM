@@ -559,7 +559,10 @@ XLSXLite.bill = function (rows) {
         mrp: mrp,
         qty: q,
         gst: gp,
-        ex: hasTaxCol && gp > 0 && exr && q ? Math.round(exr * q * 100) / 100 : undefined,
+        ex:
+          hasTaxCol && gp > 0 && exr && q
+            ? Math.round(exr * q * 100) / 100
+            : undefined,
         rate: q && a ? Math.round((a / q) * 100) / 100 : ri,
         amt: Math.round(a * 100) / 100,
       });

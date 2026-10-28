@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="robots" content="noindex" />
+    <title>Orders - General Traders Sales</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/icon-32.png"
+    />
+    <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+    <link rel="stylesheet" href="sales.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="../assets/icons.js"></script>
+    <script src="sales.js"></script>
+    <script>
+      Sales.start("orders", function (me, hello, main) {
+        var OID = new URLSearchParams(location.search).get("o") || "",
+          ORD = [],
+          f = "all";
+        hello.innerHTML = '<h1>Orders</h1><p id="sub">Loading…</p>';
+        main.innerHTML = '<div class="empty"><b>Loading…</b></div>';
+
+        function lines(o) {
+          return (
+            '<div class="lines">' +
+            o.items
+              .map(function (i) {
+                return (
+                  "<div><span>" +
+                  Sales.esc(i.name) +
+                  " × " +
+                  i.qty +
+                  "</span><b>" +
+                  Sales.money(i.amount) +
+                  "</b></div>"
+                );
+              })
+              .join("") +
+            "</div>"
+          );
+        }
+        function detail(o) {
+          document.getElementById("hello").innerHTML =
+            "<h1>Order #" +
+            Sales.esc(o.id) +
+            "</h1><p>" +
+            Sales.esc(Sales.dateLabel(o.date)) +
+            " · " +
+            Sales.esc(Sales.time(o.t)) +
+            "</p>";
+          main.innerHTML =
+            '<a class="back" href="orders.html">' +
+            Sales.ic("chevron-left") +
+            "All orders</a>" +
+            '<div class="card"><div class="rowh"><div class="tile t0">' +
+            Sales.esc(Sales.init(o.shop)) +
+            '</div><div class="grow"><b>' +
+            Sales.esc(o.shop) +
+            '</b><br><small style="color:var(--muted)">' +
+            Sales.esc(o.area || o.code) +
+            '</small></div><span class="pill ' +
+            o.status +
+            '">' +
+            (o.status === "draft"
+              ? "Draft"
+              : o.status === "cancelled"
+                ? "Cancelled"
+                : "Placed") +
+            "</span></div>" +
+            (o.status === "cancelled"
+              ? '<p class="note" style="margin:10px 0 0"><b>Cancelled</b> by ' +
+                Sales.esc(o.cancelBy || "") +
+                ": " +
+                Sales.esc(o.cancelReason || "") +
+                "</p>"
+              : "") +
+            (o.replaces
+              ? '<p class="note" style="margin:6px 0 0">Replaces order #' +
+                Sales.esc(o.replaces) +
+                "</p>"
+              : "") +
+            lines(o) +
+            '<div class="sum"><div><span>Items</span><span>' +
+            Sales.money(o.subtotal) +
+            "</span></div>" +
+            (o.discount
+              ? "<div><span>Discount</span><span>− " +
+                Sales.money(o.discount) +
+                "</span></div>"
+              : "") +
+            '<div class="tot"><span>Total Amount</span><span>' +
+            Sales.money(o.total) +
+            "</span></div></div>" +
+            (o.notes
+              ? '<p class="note" style="margin:12px 0 0"><b>Notes:</b> ' +
+                Sales.esc(o.notes) +
+                "</p>"
+              : "") +
+            "</div>" +
+            (o.status === "draft"
+              ? '<div class="rowh"><a class="btn teal" href="order.html?c=' +
+                encodeURIComponent(o.code) +
+                "&d=" +
+                encodeURIComponent(o.id) +
+                '">Continue order</a><button class="btn line" id="rm" type="button">' +
+                Sales.ic("trash") +
+                "Delete draft</button></div>"
+              : o.status === "placed" && Date.now() - o.t <= 30 * 60e3
+                ? '<p class="note">Made a mistake? You can cancel for ' +
+                  Math.max(
+                    1,
+                    Math.ceil((30 * 60e3 - (Date.now() - o.t)) / 60000),
+                  ) +
+                  ' more minutes.</p><div class="rowh"><button class="btn line" id="cnl" type="button">Cancel order</button><button class="btn teal" id="cre" type="button">Cancel and re-order</button></div>'
+                : '<div class="rowh"><a class="btn line" href="shop.html?c=' +
+                  encodeURIComponent(o.code) +
+                  '">Shop details</a><a class="btn teal" href="order.html?c=' +
+                  encodeURIComponent(o.code) +
+                  '">' +
+                  Sales.ic("cart") +
+                  "New order for this shop</a></div>");
+          var cn = document.getElementById("cnl"),
+            cr = document.getElementById("cre");
+          if (cn)
+            cn.onclick = function () {
+              Sales.cancelSheet(o, function () {
+                location.replace("orders.html?o=" + encodeURIComponent(o.id));
+              });
+            };
+          if (cr)
+            cr.onclick = function () {
+              Sales.cancelSheet(o, function () {
+                location.replace(
+                  "order.html?c=" +
+                    encodeURIComponent(o.code) +
+                    "&r=" +
+                    encodeURIComponent(o.id),
+                );
+              });
+            };
+          var rm = document.getElementById("rm");
+          if (rm)
+            rm.onclick = function () {
+              if (!confirm("Delete this draft?")) return;
+              Sales.api("/api/sales/order", { id: o.id, remove: true })
+                .then(function () {
+                  location.replace("orders.html");
+                })
+                .catch(function (e) {
+                  Sales.toast(e.message, true);
+                });
+            };
+        }
+        function list() {
+          var today = Sales.today(),
+            t = ORD.filter(function (o) {
+              return o.status === "placed" && o.date === today;
+            });
+          document.getElementById("sub").textContent =
+            t.length +
+            (t.length === 1 ? " order" : " orders") +
+            " today · " +
+            Sales.money(
+              t.reduce(function (s, o) {
+                return s + o.total;
+              }, 0),
+            );
+          var R = ORD.filter(function (o) {
+              return f === "all" || o.status === f;
+            }),
+            html = "",
+            last = "";
+          R.sort(function (a, b) {
+            return b.t - a.t;
+          }).forEach(function (o) {
+            if (o.date !== last) {
+              last = o.date;
+              html +=
+                '<h3 style="padding:14px 0 2px;font-size:13px;color:var(--muted)">' +
+                Sales.esc(
+                  o.date === today ? "Today" : Sales.dateLabel(o.date),
+                ) +
+                "</h3>";
+            }
+            html +=
+              '<a class="oh" href="orders.html?o=' +
+              encodeURIComponent(o.id) +
+              '"><div class="grow"><b>' +
+              Sales.esc(o.shop) +
+              "</b><small>#" +
+              Sales.esc(o.id) +
+              " · " +
+              o.items.length +
+              (o.items.length === 1 ? " item" : " items") +
+              " · " +
+              Sales.esc(Sales.time(o.t)) +
+              '</small></div><div><div class="amt">' +
+              Sales.money(o.total) +
+              '</div><span class="pill ' +
+              o.status +
+              '">' +
+              (o.status === "draft"
+                ? "Draft"
+                : o.status === "cancelled"
+                  ? "Cancelled"
+                  : "Placed") +
+              "</span></div></a>";
+          });
+          main.innerHTML =
+            '<div class="rowh"><div class="cats grow" id="fc"><button class="cat' +
+            (f === "all" ? " on" : "") +
+            '" data-f="all">All</button><button class="cat' +
+            (f === "placed" ? " on" : "") +
+            '" data-f="placed">Placed</button><button class="cat' +
+            (f === "draft" ? " on" : "") +
+            '" data-f="draft">Drafts</button><button class="cat' +
+            (f === "cancelled" ? " on" : "") +
+            '" data-f="cancelled">Cancelled</button></div>' +
+            '<a class="btn teal sm" href="customers.html">' +
+            Sales.ic("plus") +
+            "New Order</a></div>" +
+            '<div class="card">' +
+            (R.length
+              ? html
+              : '<div class="empty"><i>' +
+                Sales.ic("clipboard-list") +
+                "</i><b>No orders yet</b><span>Pick a shop and take your first order.</span></div>") +
+            "</div>";
+          document.getElementById("fc").onclick = function (e) {
+            var b = e.target.closest("[data-f]");
+            if (b) {
+              f = b.getAttribute("data-f");
+              list();
+            }
+          };
+        }
+        Sales.mine()
+          .then(function (j) {
+            ORD = j.orders || [];
+            if (OID) {
+              var o = ORD.filter(function (x) {
+                return x.id === OID;
+              })[0];
+              if (o) return detail(o);
+            }
+            list();
+          })
+          .catch(function () {
+            main.innerHTML =
+              '<div class="card empty"><b>Could not load orders</b><span>Check your connection and refresh.</span></div>';
+          });
+      });
+    </script>
+  </body>
+</html>

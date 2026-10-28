@@ -10,41 +10,13 @@
     return document.getElementById(id);
   });
 
-  /* ---------- icons (the shared set plus the few this page needs) ---------- */
-  var IC = {
-    trash: '<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/>',
-    dots: '<circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/>',
-    up: '<path d="M6 15l6-6 6 6"/>',
-    down: '<path d="M6 9l6 6 6-6"/>',
-    left: '<path d="M15 6l-6 6 6 6"/>',
-    right: '<path d="M9 6l6 6-6 6"/>',
-    grip: '<circle cx="9" cy="6" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="18" r="1.3"/>',
-    search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
-    route:
-      '<circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H16a3.5 3.5 0 0 0 0-7H8a3.5 3.5 0 0 1 0-7h7.5"/>',
-    swap: '<path d="M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/>',
-    flag: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
-    ext: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
-    expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
-    note: '<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7"/>',
-    wrench:
-      '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',
-    fuel: '<path d="M4 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h12M14 10h2a2 2 0 0 1 2 2v4a1.5 1.5 0 0 0 3 0V8l-3-3"/><path d="M7 8h4"/>',
-    doc: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',
-    upload: '<path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>',
-    download: '<path d="M12 4v12M7 11l5 5 5-5M4 20h16"/>',
-    eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
-    gauge: '<path d="M4 18a9 9 0 1 1 16 0"/><path d="M12 14l4-5"/>',
-    chart: '<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>',
-    filter: '<path d="M3 5h18l-7 8v6l-4-2v-4z"/>',
-    sort: '<path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3"/>',
-  };
+  /* ---------- icons (drawn in assets/icons.js, picked here by name) ---------- */
   DP.icon = function (n) {
-    return IC[n]
-      ? '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-          IC[n] +
-          "</svg>"
-      : GA.icon(n);
+    return GMIcons.svg(
+      n,
+      "icon",
+      'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"',
+    );
   };
 
   /* ---------- small helpers ---------- */
@@ -593,7 +565,13 @@
     t.className = "dp-toast " + (kind || "ok");
     t.innerHTML =
       '<span class="dp-toast-i">' +
-      DP.icon(kind === "err" ? "alert" : kind === "warn" ? "alert" : "check") +
+      DP.icon(
+        kind === "err"
+          ? "alert-triangle"
+          : kind === "warn"
+            ? "alert-triangle"
+            : "check",
+      ) +
       '</span><span class="dp-toast-t">' +
       esc(msg) +
       "</span>" +
@@ -603,7 +581,7 @@
           "</button>"
         : "") +
       '<button type="button" class="dp-toast-x" aria-label="Dismiss">' +
-      DP.icon("x") +
+      DP.icon("close") +
       "</button>";
     box.appendChild(t);
     function kill() {
@@ -642,7 +620,7 @@
       't">' +
       esc(o.title) +
       '</h3><button type="button" class="dp-ib" data-x aria-label="Close dialog">' +
-      DP.icon("x") +
+      DP.icon("close") +
       "</button></div>" +
       (o.sub ? '<p class="sub">' + o.sub + "</p>" : "") +
       "<div data-body>" +
@@ -787,7 +765,7 @@
           (it.disabled ? " disabled" : "") +
           (it.hint ? ' title="' + esc(it.hint) + '"' : "") +
           ">" +
-          DP.icon(it.icon || "dots") +
+          DP.icon(it.icon || "dots-vertical") +
           "<span>" +
           esc(it.label) +
           "</span></button>"

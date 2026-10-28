@@ -146,6 +146,41 @@ window.GMImg = {
       k !== BLOB
     );
   }
+  // A worker's own record (punch-in, attendance, deliveries) is saved in the background. If the page changes before the save
+  // reaches the server (the punch-in screen opens Home 0.6 s later), the unsent copy used to be lost and the next page then
+  // loaded the OLD copy from the server over it. This marker lives in localStorage so it survives the page change: the next
+  // page keeps this phone's copy and sends it again instead of replacing it. It is not a gm_ key, so it is never synced itself.
+  var DIRTY = "gmq_dirty";
+  function track(k) {
+    return isWorker && typeof k === "string" && k.indexOf(NS) === 0;
+  }
+  function dirtyMap() {
+    try {
+      return JSON.parse(rawGet.call(ls, DIRTY)) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+  function dirtySave(m) {
+    try {
+      if (Object.keys(m).length) rawSet.call(ls, DIRTY, JSON.stringify(m));
+      else rawRem.call(ls, DIRTY);
+    } catch (e) {}
+  }
+  function markDirty(k) {
+    if (!track(k)) return;
+    var m = dirtyMap();
+    m[k] = Date.now();
+    dirtySave(m);
+  }
+  function markClean(k) {
+    if (!track(k)) return;
+    var m = dirtyMap();
+    if (k in m) {
+      delete m[k];
+      dirtySave(m);
+    }
+  }
   function jget(k) {
     try {
       return JSON.parse(rawGet.call(ls, k));
@@ -210,8 +245,10 @@ window.GMImg = {
                   krev[k] = j.rev;
                   readRev[k] = j.rev;
                 } // the page's copy now equals the server's
-                if (pending[k] === v) delete pending[k];
-                else send(k);
+                if (pending[k] === v) {
+                  delete pending[k];
+                  markClean(k);
+                } else send(k);
                 gmEmit("gm-sync-saved", k);
               });
           } else if (r.status === 401) {
@@ -221,6 +258,7 @@ window.GMImg = {
             if (pending[k] === v) {
               delete pending[k];
               delete written[k];
+              markClean(k);
             }
             gmEmit("gm-sync-failed", k);
           } // this account may not save this item; retrying cannot help
@@ -235,6 +273,7 @@ window.GMImg = {
                 if (pending[k] === v) {
                   delete pending[k];
                   delete written[k];
+                  markClean(k);
                 }
                 try {
                   window.dispatchEvent(
@@ -264,6 +303,7 @@ window.GMImg = {
   function push(k, v) {
     pending[k] = v;
     written[k] = Date.now();
+    markDirty(k);
     send(k);
   }
   window.addEventListener("pagehide", function () {
@@ -342,6 +382,7 @@ window.GMImg = {
         ks.forEach(function (k) {
           if (DATA_KEY.test(k)) rawRem.call(ls, k);
         });
+        rawRem.call(ls, DIRTY);
         pending = {};
         written = {};
       },
@@ -388,7 +429,9 @@ window.GMImg = {
           id = wid(cur);
         if (id) {
           var mine = items[NS + id];
-          if (mine && mine.v !== null) rawSet.call(ls, BLOB, mine.v);
+          if (dirtyMap()[NS + id])
+            push(NS + id, cur); // an earlier page's save never reached the server: keep this phone's copy and send it again
+          else if (mine && mine.v !== null) rawSet.call(ls, BLOB, mine.v);
           else push(NS + id, cur);
         }
       }

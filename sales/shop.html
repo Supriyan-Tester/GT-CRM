@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="robots" content="noindex" />
+    <title>Shop Details - General Traders Sales</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/icon-32.png"
+    />
+    <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+    <link rel="stylesheet" href="sales.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="../assets/icons.js"></script>
+    <script src="sales.js"></script>
+    <script>
+      Sales.start("shop", function (me, hello, main) {
+        var CODE = new URLSearchParams(location.search).get("c") || "";
+        if (!CODE) return location.replace("customers.html");
+        hello.innerHTML = '<h1>Shop Details</h1><p id="sub"></p>';
+        main.innerHTML = '<div class="empty"><b>Loading…</b></div>';
+        var S,
+          ORD = [],
+          visited = false,
+          tab = location.hash === "#orders" ? "orders" : "overview";
+
+        function kv(k, v) {
+          return v ? "<span>" + k + "</span><b>" + v + "</b>" : "";
+        }
+        function overview() {
+          var nav = Sales.navLink(S),
+            a = Sales.esc;
+          return (
+            '<div class="kv">' +
+            kv("Shop code", a(S.code)) +
+            kv("Area", a(S.area)) +
+            kv("Address", a(S.address)) +
+            kv(
+              "Phone",
+              S.phone
+                ? '<a href="tel:' +
+                    a(S.phone) +
+                    '" style="color:var(--pri)">' +
+                    a(S.phone) +
+                    "</a>"
+                : "",
+            ) +
+            kv("GST", a(S.gstin)) +
+            kv("Location", S.lat && S.lng ? "Pin saved" : "No pin saved yet") +
+            "</div>" +
+            (S.lat && S.lng
+              ? ""
+              : '<p class="note">This shop has no map pin yet. Ask the office to share it with the driver.</p>')
+          );
+        }
+        function history() {
+          var R = ORD.filter(function (o) {
+            return o.code === CODE && o.status === "placed";
+          });
+          return R.length
+            ? R.map(function (o) {
+                return (
+                  '<a class="oh" href="orders.html?o=' +
+                  encodeURIComponent(o.id) +
+                  '"><div class="grow"><b>#' +
+                  Sales.esc(o.id) +
+                  "</b><small>" +
+                  Sales.esc(Sales.dateLabel(o.date)) +
+                  " · " +
+                  o.items.length +
+                  (o.items.length === 1 ? " item" : " items") +
+                  '</small></div><div class="amt">' +
+                  Sales.money(o.total) +
+                  "</div></a>"
+                );
+              }).join("")
+            : '<div class="empty"><i>' +
+                Sales.ic("receipt") +
+                "</i><b>No orders yet</b><span>Orders you place for this shop will show here.</span></div>";
+        }
+        function draw() {
+          var nav = Sales.navLink(S);
+          document.getElementById("sub").textContent = S.name;
+          main.innerHTML =
+            '<a class="back" href="customers.html">' +
+            Sales.ic("chevron-left") +
+            "Customers</a>" +
+            '<div class="card"><div class="shead"><div class="tile t0">' +
+            Sales.esc(Sales.init(S.name)) +
+            '</div><div class="info"><h2>' +
+            Sales.esc(S.name) +
+            "<em>" +
+            Sales.esc(S.code) +
+            "</em></h2><small>" +
+            Sales.esc(
+              [S.area, S.address].filter(Boolean).join(" · ") ||
+                "No address yet",
+            ) +
+            "</small>" +
+            (visited
+              ? '<span class="pill visited" style="margin-top:6px">' +
+                Sales.ic("check").replace(
+                  "<svg",
+                  '<svg style="width:12px;height:12px"',
+                ) +
+                "Visited today</span>"
+              : "") +
+            "</div></div>" +
+            '<div class="qa" style="margin-top:14px">' +
+            (S.phone
+              ? '<a href="tel:' +
+                Sales.esc(S.phone) +
+                '">' +
+                Sales.ic("phone") +
+                "Call</a>"
+              : '<span style="opacity:.4;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px">' +
+                Sales.ic("phone") +
+                "Call</span>") +
+            (nav
+              ? '<a href="' +
+                Sales.esc(nav) +
+                '" target="_blank" rel="noopener">' +
+                Sales.ic("navigate") +
+                "Navigate</a>"
+              : '<span style="opacity:.4;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px">' +
+                Sales.ic("navigate") +
+                "Navigate</span>") +
+            '<button type="button" id="shr">' +
+            Sales.ic("share") +
+            "Share</button></div></div>" +
+            '<div class="card"><div class="tabs"><button data-t="overview" class="' +
+            (tab === "overview" ? "on" : "") +
+            '">Overview</button><button data-t="orders" class="' +
+            (tab === "orders" ? "on" : "") +
+            '">Previous Orders</button></div><div style="padding-top:8px">' +
+            (tab === "orders" ? history() : overview()) +
+            "</div></div>" +
+            '<div class="rowh"><a class="btn teal grow" href="order.html?c=' +
+            encodeURIComponent(S.code) +
+            '">' +
+            Sales.ic("cart") +
+            "Take Order</a>" +
+            '<button class="btn line" id="vis" type="button">' +
+            Sales.ic("check") +
+            (visited ? "Undo visit" : "Mark visited") +
+            "</button></div>";
+          main.querySelector(".tabs").onclick = function (e) {
+            var b = e.target.closest("[data-t]");
+            if (b) {
+              tab = b.getAttribute("data-t");
+              draw();
+            }
+          };
+          document.getElementById("shr").onclick = function () {
+            var text =
+              S.name +
+              (S.address ? ", " + S.address : "") +
+              (S.phone ? " · " + S.phone : "") +
+              (nav ? " " + nav : "");
+            if (navigator.share)
+              navigator
+                .share({ title: S.name, text: text })
+                .catch(function () {});
+            else if (navigator.clipboard)
+              navigator.clipboard.writeText(text).then(function () {
+                Sales.toast("Shop details copied");
+              });
+          };
+          document.getElementById("vis").onclick = function () {
+            var b = this;
+            b.disabled = true;
+            Sales.api("/api/sales/visit", {
+              code: S.code,
+              status: visited ? "pending" : "visited",
+            })
+              .then(function () {
+                visited = !visited;
+                draw();
+                Sales.toast(visited ? "Marked visited" : "Visit removed");
+              })
+              .catch(function (e) {
+                b.disabled = false;
+                Sales.toast(e.message, true);
+              });
+          };
+        }
+        Promise.all([Sales.data(), Sales.mine()])
+          .then(function (r) {
+            S = r[0].customers.filter(function (c) {
+              return c.code === CODE;
+            })[0];
+            if (!S) {
+              main.innerHTML =
+                '<div class="card empty"><b>Shop not found</b><span><a class="link" href="customers.html">Back to My Customers</a></span></div>';
+              return;
+            }
+            ORD = r[1].orders || [];
+            visited = !!(
+              r[1].visits &&
+              r[1].visits[CODE] &&
+              r[1].date === r[1].today
+            );
+            draw();
+          })
+          .catch(function () {
+            main.innerHTML =
+              '<div class="card empty"><b>Could not load this shop</b><span>Check your connection and refresh.</span></div>';
+          });
+      });
+    </script>
+  </body>
+</html>

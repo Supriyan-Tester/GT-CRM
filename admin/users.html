@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script src="../assets/icons.js"></script>
     <script src="../shared/sync.js"></script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -44,7 +45,7 @@
         };
 
       pg.innerHTML =
-        '<div class="us-head"><p>View and manage all users.</p></div>' +
+        '<div class="us-head"><p>Super Admin and Admin accounts. Add everyone else on the Employees page.</p></div>' +
         '<section class="us-panel"><div class="us-bar">' +
         '<div class="field a-f us-q"><input type="search" id="uQ" placeholder="Search name, phone or email..." aria-label="Search users" autocomplete="off"></div>' +
         '<div class="field a-f us-f"><select id="uRole" aria-label="Filter by role"><option value="">All Roles</option>' +
@@ -55,8 +56,11 @@
         '<div class="field a-f us-f"><select id="uSt" aria-label="Filter by status"><option value="">All Status</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="pending">Pending</option></select></div>' +
         '<button type="button" class="btn a-btn" id="uNew">' +
         GA.icon("plus") +
-        " Create User</button>" +
-        '</div><div id="uBody"><div class="us-empty">Loading users...</div></div></section>';
+        " Create Admin</button>" +
+        '</div><div id="uBody"><div class="us-empty">Loading users...</div></div></section>' +
+        '<section class="us-panel" style="margin-top:18px"><div class="us-head" style="padding:16px 18px 0"><h2 style="margin:0 0 4px;font-size:17px">Employee access</h2>' +
+        "<p>Choose which options each employee can open. An employee always gets the options of their own role (shown ticked). Delivery and Helper staff use the delivery app and are not listed.</p></div>" +
+        '<div id="aBody"><div class="us-empty">Loading...</div></div></section>';
 
       $("uRole").value = st.role;
       $("uSt").value = st.status;
@@ -224,7 +228,104 @@
           return u.id === id;
         })[0];
       }
+      var MODN = {
+        sales: "Customers & Routes",
+        billing: "Billing",
+        inventory: "Inventory",
+        delivery: "Delivery",
+        helper: "Attendance & Problems",
+      };
+      function loadAccess() {
+        US.api("GET", "/api/access").then(function (r) {
+          if (!r.ok) {
+            $("aBody").innerHTML =
+              '<div class="us-empty">' +
+              esc(r.data.error || "Could not load.") +
+              "</div>";
+            return;
+          }
+          var P = r.data.people;
+          if (!P.length) {
+            $("aBody").innerHTML =
+              '<div class="us-empty">No Sales, Billing, Inventory or Admin employees yet. Add them on the Employees page.</div>';
+            return;
+          }
+          $("aBody").innerHTML =
+            '<div class="us-scroll"><table class="us-table"><thead><tr><th>Employee</th><th>Role</th><th>Can open</th><th style="text-align:right">Save</th></tr></thead><tbody>' +
+            P.map(function (p) {
+              var cells;
+              if (p.full) cells = '<span class="mu">Everything (Admin)</span>';
+              else if (p.panel === "sales")
+                cells =
+                  '<span class="mu">Sales panel: Home and Products</span>';
+              else
+                cells = r.data.modules
+                  .map(function (m) {
+                    var base = p.base === m;
+                    return (
+                      '<label style="display:inline-flex;gap:6px;align-items:center;margin:2px 14px 2px 0"><input type="checkbox" data-m="' +
+                      m +
+                      '"' +
+                      (p.perms.indexOf(m) > -1 ? " checked" : "") +
+                      (base ? " disabled" : "") +
+                      "> " +
+                      esc(MODN[m] || m) +
+                      "</label>"
+                    );
+                  })
+                  .join("");
+              return (
+                '<tr data-id="' +
+                esc(p.id) +
+                '"><td><b>' +
+                esc(p.name) +
+                "</b><br><small>" +
+                esc(p.code || p.phone) +
+                (p.active ? "" : " - inactive") +
+                "</small></td><td>" +
+                esc(p.role) +
+                "</td><td>" +
+                cells +
+                '</td><td class="acts">' +
+                (p.full || p.panel === "sales"
+                  ? ""
+                  : '<button type="button" class="btn btn-secondary" data-save>Save</button>') +
+                "</td></tr>"
+              );
+            }).join("") +
+            "</tbody></table></div>";
+          [].forEach.call(
+            $("aBody").querySelectorAll("[data-save]"),
+            function (b) {
+              b.onclick = function () {
+                var tr = b.closest("tr"),
+                  perms = [].map.call(
+                    tr.querySelectorAll("input[data-m]:checked"),
+                    function (c) {
+                      return c.dataset.m;
+                    },
+                  );
+                b.disabled = true;
+                US.api(
+                  "PUT",
+                  "/api/access/" + encodeURIComponent(tr.dataset.id),
+                  { perms: perms },
+                ).then(function (x) {
+                  b.disabled = false;
+                  DP.toast(
+                    x.ok
+                      ? "Saved. It applies the next time they open a page."
+                      : x.data.error || "Could not save.",
+                    x.ok ? "ok" : "err",
+                  );
+                });
+              };
+            },
+          );
+        });
+      }
       load();
+      loadAccess();
       $("uNew").onclick = function () {
         US.openForm({ done: load });
       };

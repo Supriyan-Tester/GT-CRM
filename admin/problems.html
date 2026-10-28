@@ -1,6 +1,7 @@
 ﻿<!doctype html>
 <html lang="en">
   <head>
+    <script src="../assets/icons.js"></script>
     <script src="../shared/sync.js"></script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -159,7 +160,7 @@
           "</p>" +
           '<div class="a-stats">' +
           GA.tile("s-s", "store", done + " of " + shops.length, "Delivered") +
-          GA.tile("s-a", "alert", late.length, "Not delivered") +
+          GA.tile("s-a", "alert-triangle", late.length, "Not delivered") +
           GA.tile("s-i", "map", pend, "Still pending") +
           GA.tile("s-p", "coin", R(ded), "Return deductions") +
           "</div>" +

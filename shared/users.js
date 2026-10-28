@@ -7,15 +7,8 @@
     };
 
   // Role list, colour per role, and the module each role starts with. (The server keeps the same lists.)
-  US.ROLES = [
-    "Super Admin",
-    "Admin",
-    "Sales",
-    "Billing",
-    "Inventory",
-    "Delivery",
-    "Helper",
-  ];
+  // Only these two are accounts. Everyone else (Sales, Billing, Inventory, Delivery, Helper) is added on the Employees page.
+  US.ROLES = ["Super Admin", "Admin"];
   US.COLOR = {
     "Super Admin": "#DC2626",
     Admin: "#2563EB",
