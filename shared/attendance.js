@@ -903,7 +903,7 @@
               hm(d.hrs) +
               "</td><td>" +
               (d.km || "-") +
-              "</td><td>" +
+              '</td><td class="at-rtc">' +
               esc(d.route || "-") +
               "</td><td>" +
               badge(d) +

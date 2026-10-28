@@ -153,6 +153,13 @@
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
+/* long route names wrap instead of pushing Status and the edit button out of sight */
+.at-tbl td.at-rtc {
+  white-space: normal;
+  min-width: 140px;
+  max-width: 240px;
+  line-height: 1.35;
+}
 .at-tbl tr.cl {
   cursor: pointer;
 }
