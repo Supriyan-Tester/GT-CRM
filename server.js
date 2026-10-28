@@ -2707,16 +2707,19 @@ function api(req, res, url) {
           return send(res, 400, { error: "bad request" });
         const id = typeof b.id === "string" ? b.id : "",
           date = typeof b.date === "string" ? b.date : "",
-          endKm = Math.round(Number(b.endKm)),
+          endKm = Math.round(Number(b.endKm)) || 0,
+          stKm = Math.round(Number(b.startKm)) || 0,
           tOut = /(\d{1,2}):(\d{2})\s*([ap]m)?/i.exec(String(b.outTime || ""));
         if (
           !/^[A-Za-z0-9_-]{1,40}$/.test(id) ||
           !/^\d{4}-\d{2}-\d{2}$/.test(date)
         )
           return send(res, 400, { error: "bad request" });
-        if (!(endKm > 0))
-          return send(res, 400, { error: "Enter the end km (odometer reading)." });
-        if (!tOut)
+        if (!(endKm > 0) && !(stKm > 0))
+          return send(res, 400, {
+            error: "Enter the start km or the end km (odometer reading).",
+          });
+        if (endKm > 0 && !tOut)
           return send(res, 400, { error: "Enter the check-out time too." });
         const w = (workerData().workers || []).filter(
           (x) => x && x.id === id,
@@ -2764,37 +2767,66 @@ function api(req, res, url) {
             endKm: null,
           };
         }
-        const sk = e.startKm == null ? null : Number(e.startKm);
-        if (sk != null && Number.isFinite(sk) && endKm < sk)
+        // start km: the office may correct it; otherwise keep what the employee entered
+        const sk =
+          stKm > 0
+            ? stKm
+            : e.startKm == null || !Number.isFinite(Number(e.startKm))
+              ? null
+              : Number(e.startKm);
+        // end km: the new one if given, else the one already saved on this day
+        const ek =
+          endKm > 0
+            ? endKm
+            : Number(e.endKm) > 0
+              ? Number(e.endKm)
+              : null;
+        if (sk != null && ek != null && ek < sk)
           return send(res, 400, {
             error:
-              "End km cannot be less than the start km (" + sk + " km).",
+              endKm > 0
+                ? "End km cannot be less than the start km (" + sk + " km)."
+                : "Start km cannot be more than the end km (" + ek + " km).",
           });
-        let om = clockMins(tOut[0]);
-        const im2 = clockMins(e.inTime);
-        if (om != null && im2 != null && om < im2)
-          return send(res, 400, {
-            error: "Check-out must be after check-in (" + e.inTime + ").",
-          });
-        e.outTime = fmt(om);
-        e.hours =
-          im2 != null ? Math.floor((om - im2) / 60) + "h " + String((om - im2) % 60).padStart(2, "0") + "m" : "-";
-        e.endKm = endKm;
-        e.km =
-          sk != null && Number.isFinite(sk)
-            ? endKm - sk
-            : Number.isFinite(Number(b.km)) && Number(b.km) >= 0
+        if (endKm > 0) {
+          let om = clockMins(tOut[0]);
+          const im2 = clockMins(e.inTime);
+          if (om != null && im2 != null && om < im2)
+            return send(res, 400, {
+              error: "Check-out must be after check-in (" + e.inTime + ").",
+            });
+          e.outTime = fmt(om);
+          e.hours =
+            im2 != null
+              ? Math.floor((om - im2) / 60) +
+                "h " +
+                String((om - im2) % 60).padStart(2, "0") +
+                "m"
+              : "-";
+          e.endKm = endKm;
+          e.closedByOffice = true;
+        }
+        if (stKm > 0) {
+          e.startKm = stKm;
+          e.startKmByOffice = true;
+        }
+        if (sk != null && ek != null) e.km = ek - sk;
+        else if (endKm > 0)
+          e.km =
+            Number.isFinite(Number(b.km)) && Number(b.km) >= 0
               ? Number(b.km)
               : Number(e.km) || 0;
         if (!e.vehicle && typeof b.vehicle === "string")
           e.vehicle = b.vehicle.slice(0, 80);
-        e.closedByOffice = true;
         setItem("gm_crm_data_v5__" + id, JSON.stringify(rec));
         logEvents(s, [
           {
             type: "employee",
             text:
-              "Closed " + w.name + "'s day " + date + " from the office: " + e.outTime + ", end km " + endKm,
+              (endKm > 0
+                ? "Closed " + w.name + "'s day " + date + " from the office: " + e.outTime + ", end km " + endKm
+                : "Changed " + w.name + "'s start km on " + date) +
+              (stKm > 0 ? (endKm > 0 ? ", start km " : ": ") + stKm : ""),
           },
         ]);
         send(res, 200, { ok: true, entry: e });

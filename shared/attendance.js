@@ -1074,7 +1074,8 @@
       rt = M.keep ? M.rt : d.route,
       vh = M.keep ? M.vh : d.vehicle,
       rm = M.keep ? M.rm : d.remarks,
-      ek = M.keep ? M.ek : d.endKm || "";
+      ek = M.keep ? M.ek : d.endKm || "",
+      sk2 = M.keep ? M.sk2 : d.startKm || "";
     M.sk = d.startKm;
     M.st = pre.st;
     M.keep = false;
@@ -1187,13 +1188,18 @@
       '<label class="at-lbl">Kilometres (optional)</label><div class="field"><input type="number" min="0" step="0.1" id="mKm" value="' +
       esc(km) +
       '"></div>' +
+      '<label class="at-lbl">Start km, odometer (optional)</label><div class="field"><input type="number" min="0" step="1" id="mSk" placeholder="Opening odometer reading" value="' +
+      esc(sk2) +
+      '"' +
+      (times ? "" : " disabled") +
+      '></div>' +
       '<label class="at-lbl">End km, odometer (optional)</label><div class="field"><input type="number" min="0" step="1" id="mEk" placeholder="Closing odometer reading" value="' +
       esc(ek) +
       '"' +
       (times ? "" : " disabled") +
       '></div><p class="at-sub" style="margin:4px 0 10px">' +
       (d.startKm != null ? "Start km was " + esc(d.startKm) + ". " : "") +
-      "Use this when the employee forgot to punch out: it closes the day in their record, so Vehicles shows it as returned and the odometer moves up. Needs a check-out time.</p>" +
+      "Change the start km if it was entered wrongly; the day's distance is recalculated. Add an end km when the employee forgot to punch out: it closes the day in their record, so Vehicles shows it as returned and the odometer moves up. An end km needs a check-out time.</p>" +
       '<label class="at-lbl">Remarks (optional)</label><div class="field"><textarea id="mRm" rows="2" placeholder="Add any remarks...">' +
       esc(rm) +
       '</textarea></div><div class="at-err" id="mErr"></div>' +
@@ -1216,6 +1222,7 @@
       M.vh = $("mVh").value;
       M.rm = $("mRm").value;
       M.ek = $("mEk") ? $("mEk").value : "";
+      M.sk2 = $("mSk") ? $("mSk").value : "";
     }
     $("mX").onclick = $("mCan").onclick = closeEdit;
     $("mW").onchange = function () {
@@ -1282,9 +1289,19 @@
       return;
     }
     var times = st === "present" || st === "late";
-    var ek = M.ek === "" || M.ek == null ? 0 : Number(M.ek);
-    if (times && ek > 0) {
-      if (!outV) {
+    var ek = M.ek === "" || M.ek == null ? 0 : Number(M.ek),
+      sk = M.sk2 === "" || M.sk2 == null ? 0 : Number(M.sk2),
+      skChanged = sk > 0 && sk !== Number(M.sk);
+    if (times && (ek < 0 || sk < 0 || ek !== ek || sk !== sk)) {
+      $("mErr").textContent = "Start km and end km must be zero or more.";
+      return;
+    }
+    if (times && ek > 0 && sk > 0 && ek < sk) {
+      $("mErr").textContent = "End km cannot be less than the start km.";
+      return;
+    }
+    if (times && (ek > 0 || skChanged)) {
+      if (ek > 0 && !outV) {
         $("mErr").textContent = "Enter the check-out time to close the day with an end km.";
         return;
       }
@@ -1296,8 +1313,9 @@
         body: JSON.stringify({
           id: w.id,
           date: M.ds,
-          endKm: ek,
-          outTime: t12(outV),
+          endKm: ek > 0 ? ek : undefined,
+          startKm: sk > 0 ? sk : undefined,
+          outTime: outV ? t12(outV) : undefined,
           inTime: t12(inV),
           km: km,
           vehicle: M.vh,
@@ -1327,7 +1345,7 @@
             rr.attendanceLog[M.ds.slice(0, 7)] =
               rr.attendanceLog[M.ds.slice(0, 7)] || {};
             rr.attendanceLog[M.ds.slice(0, 7)][+M.ds.slice(8)] = x.j.entry;
-            finishEdit(w, st, inV, outV, x.j.entry && x.j.entry.km != null ? Number(x.j.entry.km) : km, times, ek);
+            finishEdit(w, st, inV, outV, x.j.entry && x.j.entry.km != null ? Number(x.j.entry.km) : km, times, ek, skChanged ? sk : 0);
           },
           function () {
             $("mSave").disabled = false;
@@ -1338,7 +1356,7 @@
     }
     finishEdit(w, st, inV, outV, km, times, 0);
   }
-  function finishEdit(w, st, inV, outV, km, times, ek) {
+  function finishEdit(w, st, inV, outV, km, times, ek, sk) {
     if (st === "present" && mins(inV) > mins(LATE)) st = "late"; // checked in after the late time
     DB.edits.edits[w.id] = DB.edits.edits[w.id] || {};
     DB.edits.edits[w.id][M.ds] = {
@@ -1359,6 +1377,7 @@
         " to " +
         (BADGE[st] || BADGE.none)[1] +
         (times ? " (" + t12(inV) + (outV ? " - " + t12(outV) : "") + ")" : "") +
+        (sk > 0 ? ", start km " + sk : "") +
         (ek > 0 ? ", end km " + ek : ""),
     );
     persist();
