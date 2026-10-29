@@ -2063,7 +2063,6 @@ html.fx-theming *::after {
   }
 }
 
-
 /* Tiles no longer float: they stay still (only the short pop-in when a page opens is kept) */
 .a-main
   :is(.gtc-stat, .at-tile, .wk-tile, .vx-tile, .pr-tile, .dp-stat, .a-stat),
@@ -2098,7 +2097,18 @@ html.fx-theming *::after {
    White card, same height and padding, a tinted icon square on the left, number first, label below.
    Colour lives only in the icon square. Pages no longer paint the whole tile. ===== */
 .a-main
-  :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc) {
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  ) {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -2113,7 +2123,18 @@ html.fx-theming *::after {
   box-shadow: var(--fx-sh-1, var(--shadow));
 }
 .a-main
-  :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc)
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  )
   :is(.chip, .gtc-stat-icon) {
   width: 40px;
   height: 40px;
@@ -2124,13 +2145,37 @@ html.fx-theming *::after {
   margin: 0 !important;
   box-shadow: none;
 }
-.a-main :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc) svg.icon,
+.a-main
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  )
+  svg.icon,
 .a-main .gtc-stat .gtc-stat-icon .gp-ic {
   width: 20px;
   height: 20px;
 }
 .a-main
-  :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc)
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  )
   > div {
   min-width: 0;
   display: flex;
@@ -2139,7 +2184,18 @@ html.fx-theming *::after {
   flex: 1;
 }
 .a-main
-  :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc)
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  )
   b {
   display: block;
   order: 1;
@@ -2148,7 +2204,18 @@ html.fx-theming *::after {
   overflow-wrap: anywhere;
 }
 .a-main
-  :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc)
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  )
   > div
   > span {
   display: block;
@@ -2203,7 +2270,17 @@ html.fx-theming *::after {
   border-radius: 10px;
 }
 /* a row of tiles: even gaps, and 6 tiles split 3 + 3 instead of 4 + 2 */
-.a-main :is(.a-stats, .dp-stats, .wk-tiles, .at-tiles, .pr-tiles, .gtc-stats, .us-tiles, .vx-tiles) {
+.a-main
+  :is(
+    .a-stats,
+    .dp-stats,
+    .wk-tiles,
+    .at-tiles,
+    .pr-tiles,
+    .gtc-stats,
+    .us-tiles,
+    .vx-tiles
+  ) {
   gap: 12px;
   margin-bottom: 14px;
 }
@@ -2244,26 +2321,111 @@ html.fx-theming *::after {
 }
 
 /* ===== TINTED LOOK: the whole tile takes the soft colour, the icon sits in a white square ===== */
-.a-main :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc) {
+.a-main
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  ) {
   background-color: var(--t-primary);
   border-color: transparent;
 }
-.a-main :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc) :is(.chip, .gtc-stat-icon, .om-ki) {
+.a-main
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  )
+  :is(.chip, .gtc-stat-icon, .om-ki) {
   background: var(--card) !important;
 }
-.a-main :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc):has(> .c-p) {
+.a-main
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  ):has(> .c-p) {
   background-color: var(--t-primary);
 }
-.a-main :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc):has(> .c-s) {
+.a-main
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  ):has(> .c-s) {
   background-color: var(--t-success);
 }
-.a-main :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc):has(> .c-i) {
+.a-main
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  ):has(> .c-i) {
   background-color: var(--t-info);
 }
-.a-main :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc):has(> .c-a) {
+.a-main
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  ):has(> .c-a) {
   background-color: var(--t-accent);
 }
-.a-main :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc):has(> .c-d) {
+.a-main
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  ):has(> .c-d) {
   background-color: var(--t-danger);
 }
 .a-main .a-stat.s-p {
@@ -2317,13 +2479,35 @@ html.fx-theming *::after {
    2. Every card can carry one small detail line under the label (.a-sub).
    3. Six cards split 3 + 3 (2 + 2 + 2 on phones) so amounts get room. ===== */
 .a-main
-  :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc) {
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  ) {
   overflow: hidden;
   align-items: center;
   min-height: 84px;
 }
 .a-main
-  :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc)
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  )
   > div
   > b {
   white-space: nowrap;
@@ -2334,7 +2518,18 @@ html.fx-theming *::after {
   letter-spacing: -0.01em;
 }
 .a-main
-  :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc)
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  )
   > div
   > span {
   overflow: hidden;
@@ -2476,6 +2671,7 @@ html.fx-theming *::after {
   font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
+  margin-top: 24px;
 }
 .a-n a.a-open svg {
   width: 13px;
