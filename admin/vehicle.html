@@ -136,9 +136,26 @@
         );
       }
       function key(v) {
+        var KI = {
+          "Vehicle number": "truck",
+          "Internal code": "key",
+          Model: "gear",
+          "Vehicle type": "delivery-van",
+          "Fuel type": "fuel",
+          Transmission: "gear",
+          "Body type": "box",
+          Colour: "flag",
+          "Purchase date": "calendar",
+          "Insurance expiry": "calendar",
+          "Permit expiry": "calendar",
+          Owner: "user",
+          Status: "check",
+        };
         function r(l, val) {
           return (
-            "<tr><td>" +
+            '<tr><td><span class="ki">' +
+            GA.icon(KI[l] || "note") +
+            "</span>" +
             l +
             "</td><td>" +
             (val === "" || val == null ? "-" : esc(val)) +
@@ -159,7 +176,7 @@
           r("Insurance expiry", v.insExpiry ? VX.date(v.insExpiry) : "") +
           r("Permit expiry", v.permitExpiry ? VX.date(v.permitExpiry) : "") +
           r("Owner", v.owner || v.ownerType) +
-          "<tr><td>Status</td><td>" +
+          '<tr><td><span class="ki">' + GA.icon("check") + "</span>Status</td><td>" +
           VX.badge(v.status) +
           "</td></tr></table>"
         );
@@ -200,6 +217,43 @@
           emptySub:
             "Mileage is worked out from two fuel entries with odometer readings.",
         });
+      }
+
+      function who(v, all) {
+        var D = VX.drivers(v),
+          L = all ? D : D.slice(0, 5);
+        return (
+          '<section class="vx-panel"><div class="vx-ph2"><h3>Who used this vehicle<span class="sub">Only ' +
+          esc(v.number) +
+          "</span></h3>" +
+          (!all && D.length > 5
+            ? '<button type="button" class="btn btn-secondary a-btn" style="min-height:34px" data-tab="usage">View all</button>'
+            : "") +
+          '</div><div class="vx-body">' +
+          (L.length
+            ? '<ul class="vx-who">' +
+              L.map(function (d) {
+                var n = VX.wname(d.wid);
+                return (
+                  '<li><span class="av">' +
+                  esc((n || "?").charAt(0).toUpperCase()) +
+                  "</span><div><b>" +
+                  esc(n) +
+                  "</b><small>Last used " +
+                  VX.date(d.last, true) +
+                  '</small></div><div class="cnt"><b>' +
+                  d.days +
+                  " day" +
+                  (d.days === 1 ? "" : "s") +
+                  "</b><small>" +
+                  VX.num(d.km) +
+                  " km</small></div></li>"
+                );
+              }).join("") +
+              "</ul>"
+            : '<div class="vx-empty" style="padding:8px"><b>Nobody yet</b>An employee shows here after punching in with this vehicle.</div>') +
+          "</div></section>"
+        );
       }
       function overviewAll(v) {
         var a = VX.avail(v, date),
@@ -247,11 +301,19 @@
         }).join("");
         return (
           '<div class="vx-cols">' +
-          '<section class="vx-panel vx-c4"><div class="vx-ph2"><h3>Key information</h3><a class="btn btn-secondary a-btn" style="min-height:34px" href="vehicle-edit.html?id=' +
+          '<div class="vx-c4" style="display:flex;flex-direction:column;gap:14px;min-width:0">' +
+          '<section class="vx-panel"><div class="vx-ph2"><h3>Key information</h3><a class="btn btn-secondary a-btn" style="min-height:34px" href="vehicle-edit.html?id=' +
           encodeURIComponent(v.id) +
           '">Edit</a></div><div class="vx-body">' +
           key(v) +
           "</div></section>" +
+          '<section class="vx-panel"><div class="vx-ph2"><h3>Notes</h3><button type="button" class="btn btn-secondary a-btn" style="min-height:34px" id="vNoteEdit">Edit</button></div><div class="vx-body">' +
+          (v.note
+            ? '<p style="font-size:14px;white-space:pre-wrap">' +
+              esc(v.note) +
+              "</p>"
+            : '<div class="vx-empty" style="padding:8px"><b>No notes yet</b>Add important information about this vehicle.</div>') +
+          "</div></section></div>" +
           '<div class="vx-c5" style="display:flex;flex-direction:column;gap:14px;min-width:0"><section class="vx-panel"><div class="vx-ph2"><h3>Usage summary</h3><div class="field"><select id="vMonth" aria-label="Month">' +
           months()
             .map(function (m) {
@@ -285,10 +347,24 @@
           (st.range === "all" ? " selected" : "") +
           '>All time</option></select></div></div><div class="vx-body">' +
           effChart(v) +
-          "</div></section></div>" +
-          '<div class="vx-c3" style="grid-column:span 3;display:flex;flex-direction:column;gap:14px;min-width:0"><section class="vx-panel"><div class="vx-ph2"><h3>Current assignment</h3></div>' +
+          "</div></section>" +
+          '<section class="vx-panel"><div class="vx-ph2"><h3>Maintenance status</h3><a class="btn btn-secondary a-btn" style="min-height:34px" href="' +
+          VX.link("vehicle-maintenance.html", v.id, date) +
+          '">View all</a></div><div class="vx-body"><div class="vx-t4"><div class="g"><b>' +
+          up.length +
+          '</b><span>Upcoming service</span></div><div class="' +
+          (over.length ? "d" : "g") +
+          '"><b>' +
+          over.length +
+          "</b><span>Overdue service</span></div></div></div></section>" +
+          '<section class="vx-panel"><div class="vx-ph2"><h3>Documents</h3><button type="button" class="btn btn-secondary a-btn" style="min-height:34px" data-tab="docs">Manage</button></div><div class="vx-body"><ul class="vx-rem" style="margin:0">' +
+          files +
+          "</ul></div></section>" +
+          "</div>" +
+          '<div class="vx-c3" style="display:flex;flex-direction:column;gap:14px;min-width:0"><section class="vx-panel"><div class="vx-ph2"><h3>Current assignment</h3></div>' +
           cur +
           "</section>" +
+          who(v, false) +
           '<section class="vx-panel"><div class="vx-ph2"><h3>Recent activity</h3></div><div class="vx-body">' +
           (act.length
             ? '<ul class="vx-feed">' +
@@ -308,31 +384,13 @@
               "</ul>"
             : '<p class="mu" style="font-size:13px">No activity yet.</p>') +
           "</div></section></div>" +
-          '<section class="vx-panel vx-c4"><div class="vx-ph2"><h3>Maintenance status</h3><a class="btn btn-secondary a-btn" style="min-height:34px" href="' +
-          VX.link("vehicle-maintenance.html", v.id, date) +
-          '">View all</a></div><div class="vx-body"><div class="vx-t4"><div class="g"><b>' +
-          up.length +
-          '</b><span>Upcoming service</span></div><div class="' +
-          (over.length ? "d" : "g") +
-          '"><b>' +
-          over.length +
-          "</b><span>Overdue service</span></div></div></div></section>" +
-          '<section class="vx-panel vx-c4"><div class="vx-ph2"><h3>Documents</h3><button type="button" class="btn btn-secondary a-btn" style="min-height:34px" data-tab="docs">Manage</button></div><div class="vx-body"><ul class="vx-rem" style="margin:0">' +
-          files +
-          "</ul></div></section>" +
-          '<section class="vx-panel vx-c4"><div class="vx-ph2"><h3>Notes</h3><button type="button" class="btn btn-secondary a-btn" style="min-height:34px" id="vNoteEdit">Edit</button></div><div class="vx-body">' +
-          (v.note
-            ? '<p style="font-size:14px;white-space:pre-wrap">' +
-              esc(v.note) +
-              "</p>"
-            : '<div class="vx-empty" style="padding:8px"><b>No notes yet</b>Add important information about this vehicle.</div>') +
-          "</div></section></div>"
+          "</div>"
         );
       }
       function assign(v) {
         var L = VX.planDays(v);
         return (
-          '<section class="vx-panel"><div class="vx-ph2"><h3>Assignments<span class="sub">Every Daily plan that used this vehicle</span></h3></div><div class="vx-body">' +
+          '<section class="vx-panel"><div class="vx-ph2"><h3>Assignments<span class="sub">Daily plans that used this vehicle only</span></h3></div><div class="vx-body">' +
           (L.length
             ? '<div class="a-scroll"><table class="vx-table stack"><thead><tr><th>Date</th><th>Employee</th><th>Route</th><th>Stops</th><th>Plan</th></tr></thead><tbody>' +
               L.slice(0, 60)
@@ -367,7 +425,8 @@
       function usage(v) {
         var L = VX.uses(v);
         return (
-          '<section class="vx-panel"><div class="vx-ph2"><h3>Usage history<span class="sub">Taken from each employee\'s punch in and out</span></h3></div><div class="vx-body">' +
+          who(v, true) +
+          '<section class="vx-panel" style="margin-top:14px"><div class="vx-ph2"><h3>Usage history<span class="sub">Trips made with ' + esc(v.number) + ' only, from each employee\'s punch in and out</span></h3></div><div class="vx-body">' +
           (VX.online === false
             ? '<div class="vx-note warn">The server is not reachable, so trips cannot be shown right now.</div>'
             : "") +

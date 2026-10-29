@@ -815,8 +815,11 @@
         var sh = GM.getShift(),
           w = GM.getWorker();
         if (!sh.punchedOut || !(sh.endKm > 0)) return;
-        var plan = (GA.ops.get().plans || {})[today()];
-        if (!plan || plan.workerId !== w.id || !plan.vehicleId) return;
+        // Today's plan list: the driver's own active plan with a vehicle (a day can have several plans).
+        var plan = GA.ops.activePlansOn(GA.ops.get(), today()).filter(function (p) {
+          return p.workerId === w.id && p.vehicleId;
+        })[0];
+        if (!plan) return;
         var list = loadV(),
           changed = false;
         list.forEach(function (v) {
@@ -870,6 +873,33 @@
       clear: function () {
         GA.notifs.save([]);
       },
+      // Where a notification should take the admin: the page that shows exactly that record.
+      href: function (n) {
+        var t = n.type || "",
+          nm = (n.worker || "").toLowerCase(),
+          w = GA.workers().filter(function (x) {
+            return (x.name || "").toLowerCase() === nm;
+          })[0],
+          wq = w ? "&w=" + encodeURIComponent(w.id) : "",
+          shop = ((n.title || "").split(/:\s+/)[1] || (n.title || "").replace(/^Problem at\s+/, "")).trim(),
+          oid = ((n.title || "").match(/[A-Z]{1,4}-\d+/) || [""])[0];
+        if (t === "punchin" || t === "punchout")
+          return w ? "attendance.html#worker/" + encodeURIComponent(w.id) : "attendance.html";
+        if (t === "problem" || t === "cancelled" || t === "return")
+          return "problems.html?x=1" + wq;
+        if (t === "delivered" || t === "route")
+          return "summary.html?date=" + (n.date || "") + wq;
+        if (t === "pin") return "customers.html?q=" + encodeURIComponent(shop);
+        if (t === "sales_order" || t === "sales_cancel")
+          return "orders.html?q=" + encodeURIComponent(oid || shop);
+        if (t === "sales_noorder") return "sales.html?date=" + (n.date || "");
+        return "notifications.html";
+      },
+      // Marks it read, then goes to its page.
+      open: function (n) {
+        GA.notifs.markRead(n.id);
+        location.href = GA.notifs.href(n);
+      },
       ago: function (ts) {
         var m = Math.round((Date.now() - ts) / 60000);
         if (m < 1) return "just now";
@@ -892,6 +922,9 @@
             punchin: ["clock", "p", "Punch in"],
             punchout: ["power", "p", "Punch out"],
             pin: ["store", "s", "Shop location"],
+            sales_order: ["store", "s", "New order"],
+            sales_cancel: ["close", "d", "Order cancelled"],
+            sales_noorder: ["alert-triangle", "a", "No order"],
           }[t] || ["bell", "p", "Update"]
         );
       },
@@ -949,21 +982,24 @@
       var s = GA.session() || {},
         nav = [
           ["index.html", "Home", "home"],
-          ["summary.html", "Daily summary", "report"],
-          ["workers.html", "Employees", "users"],
-          ["vehicles.html", "Vehicles", "truck"],
           ["plan.html", "Daily plan", "calendar"],
+          ["vehicles.html", "Vehicles", "truck"],
+          ["workers.html", "Employees", "users"],
+          ["summary.html", "Daily summary", "report"],
           ["routes.html", "Routes", "map"],
           ["customers.html", "Customers", "store"],
           ["orders.html", "Orders", "clipboard-list"],
           ["products.html", "Products", "box"],
           ["attendance.html", "Attendance", "clock"],
           ["advances.html", "Advances", "coin"],
-          ["problems.html", "Problems", "alert-triangle"],
           ["live.html", "Live location", "map"],
           ["activity.html", "Activity log", "check"],
           ["super.html", "User overview", "report"],
           ["users.html", "Users & Admins", "key"],
+          ["sales.html", "Reports", "chart"],
+          ["problems.html", "Problems", "alert-triangle"],
+          ["profile.html", "Settings", "settings"],
+          
         ];
       nav = nav.filter(function (n) {
         return GA.can(n[0]);
@@ -1144,30 +1180,57 @@
           b.style.display = u ? "inline-block" : "none";
         }
         pop.innerHTML =
-          '<div class="a-pop-h"><b>Notifications</b><button id="aAll">Mark all read</button></div>' +
+          '<div class="a-pop-h"><b>Notifications</b><span class="a-pop-acts"><a href="notifications.html">See all</a><button id="aAll">Mark all read</button></span></div>' +
           (l.length
             ? l
                 .map(function (n) {
                   var m = GA.notifs.meta(n.type);
                   return (
-                    '<a class="a-n' +
+                    '<div class="a-n' +
                     (n.read ? "" : " un") +
-                    '" href="notifications.html"><span class="chip c-' +
+                    '" data-nid="' +
+                    esc(n.id) +
+                    '" role="link" tabindex="0" style="cursor:pointer"><span class="chip c-' +
                     m[1] +
                     '">' +
                     GA.icon(m[0]) +
-                    "</span><div><b>" +
+                    '</span><div style="flex:1;min-width:0"><b>' +
                     esc(n.title) +
                     "</b><span>" +
                     esc(n.text) +
                     "</span><small>" +
                     GA.notifs.ago(n.ts) +
-                    "</small></div></a>"
+                    '</small></div><div class="a-nr">' +
+                    (n.read ? "" : '<em class="a-new">New</em>') +
+                    '<a class="a-open" data-nid="' +
+                    esc(n.id) +
+                    '" href="' +
+                    esc(GA.notifs.href(n)) +
+                    '">Open</a></div></div>'
                   );
                 })
                 .join("")
-            : '<div class="a-empty"><b>Nothing yet</b>When an employee finishes a shop, reports a problem or returns items, it shows up here.</div>') +
-          '<a class="a-pop-f" href="notifications.html">See all</a>';
+            : '<div class="a-empty"><b>Nothing yet</b>When an employee finishes a shop, reports a problem or returns items, it shows up here.</div>');
+        // Tapping a notification goes to the Notifications page; its small Open button goes to the page it is about.
+        [].forEach.call(pop.querySelectorAll(".a-n"), function (row) {
+          function go() {
+            GA.notifs.markRead(row.getAttribute("data-nid"));
+            location.href = "notifications.html";
+          }
+          row.onclick = function (e) {
+            if (e.target.closest && e.target.closest(".a-open")) return;
+            go();
+          };
+          row.onkeydown = function (e) {
+            if (e.key === "Enter" && e.target === row) go();
+          };
+        });
+        [].forEach.call(pop.querySelectorAll(".a-open"), function (a) {
+          a.onclick = function (e) {
+            e.stopPropagation();
+            GA.notifs.markRead(a.getAttribute("data-nid"));
+          };
+        });
         var all = document.getElementById("aAll");
         if (all)
           all.onclick = function (e) {
@@ -1191,7 +1254,7 @@
           esc(n.text) +
           "</span></div>";
         t.onclick = function () {
-          location.href = "notifications.html";
+          GA.notifs.open(n);
         };
         document.body.appendChild(t);
         setTimeout(function () {
@@ -1732,7 +1795,8 @@ GA.ops = (function () {
       "INV-2041,C001,4250,3\nINV-2042,C003,7890,5\nINV-2043,C004,2310,2\nINV-2044,C007,5120,4\nINV-2045,C012,1450,1",
   };
 })();
-GA.tile = function (cls, icon, n, label) {
+/* One stat card for every page: icon square, big number, label, and an optional small detail line (sub). */
+GA.tile = function (cls, icon, n, label, sub) {
   return (
     '<div class="a-stat ' +
     cls +
@@ -1742,9 +1806,66 @@ GA.tile = function (cls, icon, n, label) {
     n +
     "</b><span>" +
     label +
-    "</span></div></div>"
+    "</span>" +
+    (sub ? '<em class="a-sub">' + sub + "</em>" : "") +
+    "</div></div>"
   );
 };
+
+/* Keep big numbers (like rupee amounts) inside their card on every page.
+   Each number starts at the normal size and shrinks only as much as it needs to fit. */
+(function () {
+  var SEL =
+    ".a-main :is(.a-stat,.dp-stat,.wk-tile,.at-tile,.vx-tile,.pr-tile,.gtc-stat,.us-tile,.sa-t,.om-kc) > div > b";
+  var MIN = 11,
+    queued = false,
+    busy = false;
+  function fit(b) {
+    b.style.fontSize = "";
+    if (!b.clientWidth) return;
+    var size = parseFloat(getComputedStyle(b).fontSize) || 22;
+    var guard = 0;
+    while (b.scrollWidth > b.clientWidth + 0.5 && size > MIN && guard++ < 24) {
+      size -= 1;
+      b.style.fontSize = size + "px";
+    }
+    b.title = b.scrollWidth > b.clientWidth + 0.5 ? b.textContent : "";
+  }
+  function run() {
+    queued = false;
+    busy = true;
+    var list = document.querySelectorAll(SEL);
+    for (var i = 0; i < list.length; i++) fit(list[i]);
+    busy = false;
+  }
+  function queue() {
+    if (queued || busy) return;
+    queued = true;
+    requestAnimationFrame(run);
+  }
+  GA.fitTiles = queue;
+  function start() {
+    queue();
+    new MutationObserver(queue).observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+    window.addEventListener("resize", queue);
+    if (document.fonts) {
+      if (document.fonts.ready) document.fonts.ready.then(queue);
+      /* fonts load after the first paint, and they change the text width, so fit again each time */
+      if (document.fonts.addEventListener)
+        document.fonts.addEventListener("loadingdone", queue);
+    }
+    window.addEventListener("load", function () {
+      queue();
+      setTimeout(queue, 400);
+    });
+  }
+  if (document.body) start();
+  else document.addEventListener("DOMContentLoaded", start);
+})();
 
 /* GT FINAL HIDE SIDEBAR AVATAR */
 (function () {
@@ -1768,9 +1889,9 @@ GA.tile = function (cls, icon, n, label) {
   });
 })();
 
-/* ---- Idle sign-out: an admin who has not touched the page for 30 minutes is signed out (the server enforces the same limit). ---- */
+/* ---- Idle sign-out: an admin who has not touched the page for 3 hours is signed out (the server enforces the same limit). ---- */
 (function () {
-  var LIMIT = 30 * 60e3,
+  var LIMIT = 180 * 60e3,
     WARN = 2 * 60e3,
     ACT = "gm_last_act",
     last = Date.now(),

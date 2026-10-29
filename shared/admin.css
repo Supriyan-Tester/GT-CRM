@@ -543,9 +543,9 @@
 }
 .a-pop {
   display: none;
-  position: absolute;
-  right: 0;
-  top: 44px;
+  position: fixed;
+  right: 16px;
+  top: 72px;
   width: 360px;
   max-width: calc(100vw - 24px);
   max-height: 70vh;
@@ -565,6 +565,17 @@
   align-items: center;
   padding: 12px 14px;
   border-bottom: 1px solid var(--border);
+}
+.a-pop-acts {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.a-pop-acts a {
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: none;
 }
 .a-pop-h button {
   background: none;
@@ -2050,4 +2061,456 @@ html.fx-theming *::after {
   .a-uchip {
     padding: 0 4px;
   }
+}
+
+
+/* Tiles no longer float: they stay still (only the short pop-in when a page opens is kept) */
+.a-main
+  :is(.gtc-stat, .at-tile, .wk-tile, .vx-tile, .pr-tile, .dp-stat, .a-stat),
+.a-main [class$="-tiles"] > *,
+.a-main [class$="-stats"] > * {
+  animation: none;
+}
+.a-enter [class$="-tiles"] > *,
+.a-enter [class$="-stats"] > *,
+.a-enter .a-stats > * {
+  animation: fxPop 0.5s var(--fx-ease) both;
+}
+
+/* Summary tiles: big numbers (like amounts) stay inside their tile; tiles wrap onto a new row instead of squeezing */
+.a-stats {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+.a-stat {
+  min-width: 0;
+}
+.a-stat > div {
+  min-width: 0;
+}
+.a-stat .chip {
+  flex: none;
+}
+.a-stat b {
+  font-size: clamp(18px, 1.7vw, 26px);
+  overflow-wrap: anywhere;
+}
+/* ===== ONE STAT-TILE STYLE for every admin page =====
+   White card, same height and padding, a tinted icon square on the left, number first, label below.
+   Colour lives only in the icon square. Pages no longer paint the whole tile. ===== */
+.a-main
+  :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc) {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  min-height: 80px;
+  padding: 14px 16px;
+  box-sizing: border-box;
+  min-width: 0;
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--fx-sh-1, var(--shadow));
+}
+.a-main
+  :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc)
+  :is(.chip, .gtc-stat-icon) {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  flex: none;
+  display: grid !important;
+  place-items: center;
+  margin: 0 !important;
+  box-shadow: none;
+}
+.a-main :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc) svg.icon,
+.a-main .gtc-stat .gtc-stat-icon .gp-ic {
+  width: 20px;
+  height: 20px;
+}
+.a-main
+  :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc)
+  > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.a-main
+  :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc)
+  b {
+  display: block;
+  order: 1;
+  font-size: 22px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.a-main
+  :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc)
+  > div
+  > span {
+  display: block;
+  order: 2;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.a-main .vx-tile > div > span:not(.lbl) {
+  order: 3;
+  font-size: 12px;
+}
+.a-main .at-tile i,
+.a-main .gtc-stat em {
+  order: 3;
+  margin: 2px 0 0;
+  align-self: flex-start;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 700;
+}
+.a-main .gtc-stat em {
+  margin-left: 0;
+}
+.a-main .at-tile i {
+  background: var(--border);
+  color: var(--muted);
+  padding: 1px 8px;
+  border-radius: 999px;
+}
+/* icon square colours (same palette everywhere) */
+.a-main .a-stat.s-p .chip,
+.a-main .gp-t1 .gtc-stat-icon {
+  color: var(--primary);
+}
+.a-main .a-stat.s-a .chip,
+.a-main .gp-t5 .gtc-stat-icon {
+  color: var(--accent);
+}
+.a-main .a-stat.s-i .chip,
+.a-main .gp-t4 .gtc-stat-icon {
+  color: var(--info);
+}
+.a-main .a-stat.s-s .chip,
+.a-main .gp-t2 .gtc-stat-icon {
+  color: var(--success);
+}
+.a-main .gp-t3 .gtc-stat-icon {
+  color: var(--danger);
+}
+.a-main .us-tile .chip {
+  border-radius: 10px;
+}
+/* a row of tiles: even gaps, and 6 tiles split 3 + 3 instead of 4 + 2 */
+.a-main :is(.a-stats, .dp-stats, .wk-tiles, .at-tiles, .pr-tiles, .gtc-stats, .us-tiles, .vx-tiles) {
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.a-main .a-stats:has(> :nth-child(6):last-child) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 760px) {
+  .a-main .a-stats:has(> :nth-child(6):last-child) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Orders tile: number first, label under it (same as every other page) */
+.a-main .om-kc > div > small {
+  order: 2;
+  display: block;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.a-main .om-kc > div > em {
+  order: 3;
+  font-size: 12px;
+}
+.a-main .om-k,
+.a-main .sa-k {
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.a-main .om-ki {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+.a-main .om-ki svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ===== TINTED LOOK: the whole tile takes the soft colour, the icon sits in a white square ===== */
+.a-main :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc) {
+  background-color: var(--t-primary);
+  border-color: transparent;
+}
+.a-main :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc) :is(.chip, .gtc-stat-icon, .om-ki) {
+  background: var(--card) !important;
+}
+.a-main :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc):has(> .c-p) {
+  background-color: var(--t-primary);
+}
+.a-main :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc):has(> .c-s) {
+  background-color: var(--t-success);
+}
+.a-main :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc):has(> .c-i) {
+  background-color: var(--t-info);
+}
+.a-main :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc):has(> .c-a) {
+  background-color: var(--t-accent);
+}
+.a-main :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc):has(> .c-d) {
+  background-color: var(--t-danger);
+}
+.a-main .a-stat.s-p {
+  background-color: var(--t-primary);
+}
+.a-main .a-stat.s-a {
+  background-color: var(--t-accent);
+}
+.a-main .a-stat.s-i {
+  background-color: var(--t-info);
+}
+.a-main .a-stat.s-s {
+  background-color: var(--t-success);
+}
+.a-main .gtc-stat.gp-t1 {
+  background-color: var(--t-primary);
+}
+.a-main .gtc-stat.gp-t2 {
+  background-color: var(--t-success);
+}
+.a-main .gtc-stat.gp-t3 {
+  background-color: var(--t-danger);
+}
+.a-main .gtc-stat.gp-t4 {
+  background-color: var(--t-info);
+}
+.a-main .gtc-stat.gp-t5 {
+  background-color: var(--t-accent);
+}
+.a-main .om-kc:has(.om-ki[style*="--t-primary"]) {
+  background-color: var(--t-primary);
+}
+.a-main .om-kc:has(.om-ki[style*="--t-success"]) {
+  background-color: var(--t-success);
+}
+.a-main .om-kc:has(.om-ki[style*="--t-info"]) {
+  background-color: var(--t-info);
+}
+.a-main .om-kc:has(.om-ki[style*="--t-accent"]) {
+  background-color: var(--t-accent);
+}
+.a-main .om-kc:has(.om-ki[style*="--t-danger"]) {
+  background-color: var(--t-danger);
+}
+.a-main .at-tile i {
+  background: var(--card);
+}
+
+/* ===== STAT CARDS, FINAL RULES (apply to every admin page) =====
+   1. Numbers always stay inside their card (admin.js shrinks long ones; this is the safety net).
+   2. Every card can carry one small detail line under the label (.a-sub).
+   3. Six cards split 3 + 3 (2 + 2 + 2 on phones) so amounts get room. ===== */
+.a-main
+  :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc) {
+  overflow: hidden;
+  align-items: center;
+  min-height: 84px;
+}
+.a-main
+  :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc)
+  > div
+  > b {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.a-main
+  :is(.a-stat, .dp-stat, .wk-tile, .at-tile, .vx-tile, .pr-tile, .gtc-stat, .us-tile, .sa-t, .om-kc)
+  > div
+  > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.a-main .a-sub {
+  order: 3;
+  display: block;
+  margin: 2px 0 0;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--muted);
+  opacity: 0.9;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.a-main .a-stats {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+.a-main .a-stats:has(> :nth-child(5):last-child),
+.a-main .a-stats:has(> :nth-child(6):last-child) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 1100px) {
+  .a-main .a-stats:has(> :nth-child(4):last-child) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .a-main .a-stats,
+  .a-main .a-stats:has(> :nth-child(5):last-child),
+  .a-main .a-stats:has(> :nth-child(6):last-child) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 420px) {
+  .a-main .a-stats,
+  .a-main .a-stats:has(> :nth-child(5):last-child),
+  .a-main .a-stats:has(> :nth-child(6):last-child) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Route cards (Routes page) use the same card look, all in one row when there is room */
+.a-main .a-stats.rt-stats,
+.a-main .a-stats.rt-stats:has(> :nth-child(5):last-child),
+.a-main .a-stats.rt-stats:has(> :nth-child(6):last-child) {
+  grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));
+  gap: 12px;
+  margin: 0 0 14px;
+}
+@media (max-width: 760px) {
+  .a-main .a-stats.rt-stats,
+  .a-main .a-stats.rt-stats:has(> :nth-child(5):last-child),
+  .a-main .a-stats.rt-stats:has(> :nth-child(6):last-child) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 420px) {
+  .a-main .a-stats.rt-stats,
+  .a-main .a-stats.rt-stats:has(> :nth-child(5):last-child),
+  .a-main .a-stats.rt-stats:has(> :nth-child(6):last-child) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media print {
+  .rt-stats {
+    display: none !important;
+  }
+}
+
+/* Maps keep their own stacking order: Leaflet's panes use z-index 400+, which drew the map over the notification pop-up and menus. */
+.leaflet-container {
+  isolation: isolate;
+}
+
+/* ---- Notifications: compact rows (as before) + corner "New" flag + small Open button ---- */
+.a-pop-t {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.a-pop-bell {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--t-primary);
+  color: var(--primary);
+}
+.a-pop-bell svg {
+  width: 16px;
+  height: 16px;
+}
+.a-pop-acts a {
+  padding-right: 12px;
+  border-right: 1px solid var(--border);
+}
+.a-n {
+  position: relative;
+  overflow: hidden;
+  align-items: flex-start;
+}
+.a-n .a-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+.a-n small.a-time {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.a-n small.a-time svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+.a-n a.a-open {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 26px;
+  padding: 0 9px 0 11px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.a-n a.a-open svg {
+  width: 13px;
+  height: 13px;
+}
+.a-n a.a-open:hover {
+  border-color: var(--primary);
+}
+/* small corner flag */
+.a-n em.a-new {
+  position: absolute;
+  top: 0;
+  right: 10px;
+  padding: 4px 9px 9px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
+}
+.a-n.un > div:first-of-type b,
+.a-n.un .chip + div b {
+  padding-right: 46px;
+}
+/* in the pop-up: one line for the title, two for the text, so more notifications fit */
+.a-pop .a-n b {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.a-pop .a-n span:not(.chip) {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

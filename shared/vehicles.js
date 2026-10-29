@@ -634,12 +634,13 @@
       Object.keys(L).forEach(function (mk) {
         Object.keys(L[mk]).forEach(function (d) {
           var e = L[mk][d];
+          // Exact vehicle only: the log holds "NUMBER (type)", so compare the number part, never a prefix.
           if (
             e &&
             String(e.vehicle || "")
+              .split("(")[0]
               .replace(/\s+/g, "")
-              .toUpperCase()
-              .indexOf(key) === 0
+              .toUpperCase() === key
           )
             out.push({
               date: mk + "-" + String(d).padStart(2, "0"),
@@ -652,6 +653,23 @@
     return out.sort(function (a, b) {
       return a.date < b.date ? 1 : -1;
     });
+  };
+  // Who drove THIS vehicle: one row per employee, with days, km and the last day.
+  VX.drivers = function (v) {
+    var m = {};
+    VX.uses(v).forEach(function (x) {
+      var d = m[x.wid] || (m[x.wid] = { wid: x.wid, days: 0, km: 0, last: "" });
+      d.days++;
+      d.km += +x.e.km || 0;
+      if (x.date > d.last) d.last = x.date;
+    });
+    return Object.keys(m)
+      .map(function (k) {
+        return m[k];
+      })
+      .sort(function (a, b) {
+        return b.days - a.days || (a.last < b.last ? 1 : -1);
+      });
   };
   // every day a plan used this vehicle (cancelled plans are kept but marked)
   VX.planDays = function (v) {
@@ -704,6 +722,9 @@
         label: "Assigned",
         sub:
           (pd.plan.worker || VX.wname(pd.plan.workerId)) +
+          (Array.isArray(pd.plan.helpers) && pd.plan.helpers.length
+            ? " + " + pd.plan.helpers.map(VX.wname).join(", ")
+            : "") +
           " · " +
           pd.plan.routeName,
         cls: "busy",
@@ -1199,6 +1220,13 @@
       '</div><div class="mu">' +
       esc(v.code) +
       (v.type ? " · " + esc(v.type) : "") +
+      '</div><div class="vx-tags">' +
+      [v.vtype, v.body]
+        .filter(Boolean)
+        .map(function (t) {
+          return "<span>" + esc(t) + "</span>";
+        })
+        .join("") +
       '</div><div class="vx-specs">' +
       VX.specs(v) +
       "</div></div>" +

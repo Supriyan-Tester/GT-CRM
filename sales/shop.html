@@ -17,11 +17,13 @@
     />
     <link rel="apple-touch-icon" href="/assets/icon-180.png" />
     <link rel="stylesheet" href="sales.css" />
+    <link rel="stylesheet" href="../shared/dropdown.css" />
   </head>
   <body>
     <div id="app"></div>
     <script src="../assets/icons.js"></script>
     <script src="sales.js"></script>
+    <script src="../shared/dropdown.js"></script>
     <script>
       Sales.start("shop", function (me, hello, main) {
         var CODE = new URLSearchParams(location.search).get("c") || "";
@@ -31,6 +33,7 @@
         var S,
           ORD = [],
           visited = false,
+          BACK = { href: "customers.html", label: "Customers" },
           tab = location.hash === "#orders" ? "orders" : "overview";
 
         function kv(k, v) {
@@ -91,9 +94,12 @@
           var nav = Sales.navLink(S);
           document.getElementById("sub").textContent = S.name;
           main.innerHTML =
-            '<a class="back" href="customers.html">' +
+            '<a class="back" href="' +
+            BACK.href +
+            '">' +
             Sales.ic("chevron-left") +
-            "Customers</a>" +
+            BACK.label +
+            "</a>" +
             '<div class="card"><div class="shead"><div class="tile t0">' +
             Sales.esc(Sales.init(S.name)) +
             '</div><div class="info"><h2>' +
@@ -146,12 +152,15 @@
             "</div></div>" +
             '<div class="rowh"><a class="btn teal grow" href="order.html?c=' +
             encodeURIComponent(S.code) +
+            Sales.fromQ() +
             '">' +
             Sales.ic("cart") +
             "Take Order</a>" +
-            '<button class="btn line" id="vis" type="button">' +
+            '<button class="btn line" id="vis" type="button"' +
+            (visited ? " disabled" : "") +
+            ">" +
             Sales.ic("check") +
-            (visited ? "Undo visit" : "Mark visited") +
+            (visited ? "Visited" : "Mark visited") +
             "</button></div>";
           main.querySelector(".tabs").onclick = function (e) {
             var b = e.target.closest("[data-t]");
@@ -175,22 +184,12 @@
                 Sales.toast("Shop details copied");
               });
           };
+          // "Mark visited" = visited with no order: ask the reason, then save (an order marks the visit by itself)
           document.getElementById("vis").onclick = function () {
-            var b = this;
-            b.disabled = true;
-            Sales.api("/api/sales/visit", {
-              code: S.code,
-              status: visited ? "pending" : "visited",
-            })
-              .then(function () {
-                visited = !visited;
-                draw();
-                Sales.toast(visited ? "Marked visited" : "Visit removed");
-              })
-              .catch(function (e) {
-                b.disabled = false;
-                Sales.toast(e.message, true);
-              });
+            Sales.visitSheet(S, function () {
+              visited = true;
+              draw();
+            });
           };
         }
         Promise.all([Sales.data(), Sales.mine()])
@@ -204,6 +203,7 @@
               return;
             }
             ORD = r[1].orders || [];
+            BACK = Sales.backTo(r[1], r[0]);
             visited = !!(
               r[1].visits &&
               r[1].visits[CODE] &&

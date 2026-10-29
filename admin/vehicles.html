@@ -49,10 +49,10 @@
         GA.icon("plus") +
         " Add vehicle</a></div></div>" +
         '<div id="vBanner"></div><div class="vx-tiles" id="vTiles"></div>' +
-        '<div class="vx-grid2"><section class="vx-panel" aria-label="Vehicle list"><div class="vx-ph2"><h3>Vehicle list<span class="sub">View and manage all your vehicles</span></h3>' +
+        '<div><section class="vx-panel" aria-label="Vehicle list"><div class="vx-ph2"><h3>Vehicle list<span class="sub">View and manage all your vehicles</span></h3>' +
         '<div class="field"><select id="vFlt" aria-label="Filter by status"><option value="all">All status</option><option value="active">Active</option><option value="repair">In service / repair</option><option value="inactive">Inactive</option></select></div>' +
         '<div class="field"><select id="vSort" aria-label="Sort vehicles"><option value="number">Vehicle number</option><option value="km">Odometer (high first)</option><option value="used">Last used</option><option value="status">Status</option></select></div></div>' +
-        '<div class="vx-list" id="vList"></div></section><aside class="vx-panel" id="vSide" aria-label="Selected vehicle"></aside></div>';
+        '<div class="vx-list" id="vList"></div></section></div>';
       VX.initTips();
 
       function usedLast(v) {
@@ -135,9 +135,7 @@
           asg =
             a.key === "assigned" || a.key === "road" || a.key === "returned";
         return (
-          '<div class="vx-card' +
-          (v.id === st.sel ? " on" : "") +
-          '" data-id="' +
+          '<div class="vx-card" data-id="' +
           esc(v.id) +
           '" role="link" tabindex="0" title="Open vehicle details">' +
           VX.photo(v, "md") +
@@ -437,7 +435,6 @@
               '<br><a class="btn a-btn" style="margin-top:12px" href="vehicle-edit.html">' +
               GA.icon("plus") +
               " Add vehicle</a></div>";
-        side(st.ready ? VX.vehicle(st.sel) : null);
       }
       function confirmStatus(v, next) {
         var label = VX.ST[next][0],

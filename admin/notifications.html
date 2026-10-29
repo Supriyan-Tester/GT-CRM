@@ -37,6 +37,7 @@
         ["return", "Returns"],
         ["punch", "Punch in/out"],
         ["pin", "Shop locations"],
+        ["sales", "Sales"],
       ];
       pg.innerHTML =
         '<div class="a-filters" id="fl"></div><div class="btn-group no-print" style="margin-bottom:14px;flex-wrap:wrap"><button class="btn btn-secondary a-btn" id="mr" data-act>' +
@@ -50,6 +51,7 @@
           return (
             filter === "all" ||
             n.type === filter ||
+            (filter === "sales" && /^sales_/.test(n.type)) ||
             (filter === "punch" &&
               (n.type === "punchin" || n.type === "punchout"))
           );
@@ -80,7 +82,9 @@
                   (n.read ? "" : " un") +
                   '" data-id="' +
                   esc(n.id) +
-                  '"><span class="chip c-' +
+                  '">' +
+                  (n.read ? "" : '<em class="a-new">New</em>') +
+                  '<span class="chip c-' +
                   m[1] +
                   '">' +
                   GA.icon(m[0]) +
@@ -98,7 +102,8 @@
                       (n.loc.acc ? "within " + n.loc.acc + " m" : "map") +
                       ")</a></span>"
                     : "") +
-                  "<small>" +
+                  '<div class="a-foot"><small class="a-time">' +
+                  GA.icon("clock") +
                   esc(n.worker || "") +
                   " \u00b7 " +
                   new Date(n.ts).toLocaleString("en-IN", {
@@ -107,17 +112,29 @@
                     hour: "2-digit",
                     minute: "2-digit",
                   }) +
-                  "</small></div>" +
-                  (n.read ? "" : '<span class="badge b-info">New</span>') +
-                  "</div>"
+                  '</small><a class="a-open" href="' +
+                  esc(GA.notifs.href(n)) +
+                  '" data-open="' +
+                  esc(n.id) +
+                  '">Open' +
+                  GA.icon("chevron-right") +
+                  "</a></div></div></div>"
                 );
               })
               .join("")
           : '<div class="card"><div class="a-empty"><b>No notifications</b>You will see an alert here each time an employee delivers a shop, reports a problem, returns items or punches in or out.</div></div>';
-        [].forEach.call($("feed").querySelectorAll(".a-n.un"), function (e) {
-          e.onclick = function () {
+        // Tapping a notification just marks it read; its small Open button goes to the page it is about.
+        [].forEach.call($("feed").querySelectorAll(".a-n"), function (e) {
+          e.style.cursor = "pointer";
+          e.onclick = function (ev) {
+            if (ev.target.closest && ev.target.closest("a")) return;
             GA.notifs.markRead(e.getAttribute("data-id"));
             draw();
+          };
+        });
+        [].forEach.call($("feed").querySelectorAll(".a-open"), function (a) {
+          a.onclick = function () {
+            GA.notifs.markRead(a.getAttribute("data-open"));
           };
         });
       }

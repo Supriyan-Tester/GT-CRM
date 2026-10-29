@@ -523,6 +523,7 @@
     "</div>" +
     '<div class="rt-banner noprint" id="rtBanner" hidden role="alert"></div>' +
     '<div class="card rt-head" id="rtHead"></div>' +
+    '<div class="a-stats rt-stats noprint" id="rtStats" aria-label="Route summary"></div>' +
     '<div class="card rt-main" id="rtMain">' +
     '<div class="field a-f noprint" id="rtQBox" data-act style="width:190px;height:38px"><input type="search" id="rtQ" placeholder="Search shop..." aria-label="Search shop name, code or phone" autocomplete="off"></div>' +
     '<div class="rt-tools noprint" id="rtTools">' +
@@ -789,6 +790,7 @@
         ic("plus") +
         " Add route</button></div>";
       $("addB").onclick = openAdd;
+      if ($("rtStats")) $("rtStats").innerHTML = "";
       return;
     }
     GA.clearActs();
@@ -820,25 +822,20 @@
           " Delete route</button>") +
       "</div></div>" +
       '<div class="rt-merge noprint" id="mgP"><span class="mu">Move all shops from this route into</span><div class="field a-f" style="width:220px;max-width:100%"><select id="mgS" aria-label="Route to merge into"></select></div><button type="button" class="btn a-btn" id="mgOk">Merge</button><button type="button" class="btn btn-secondary a-btn" id="mgNo">Cancel</button></div>' +
-      '<div class="rt-figs">' +
-      (!all &&
+      "";
+    var showArea = !(
+      !all &&
       r &&
       String(areaLabel(s)).toLowerCase() === String(r.name).toLowerCase()
-        ? ""
-        : "<div><b>" + esc(areaLabel(s)) + "</b>Area</div>") +
-      "<div><b>" +
-      n +
-      '</b>Total shops</div><div class="' +
-      (s.phone < n ? "w" : "") +
-      '"><b>' +
-      s.phone +
-      '</b>With phone</div><div class="' +
-      (s.pin < n ? "w" : "") +
-      '"><b>' +
-      s.pin +
-      "</b>With map pin</div><div><b>" +
-      s.off +
-      "</b>Inactive</div></div>";
+    );
+    var noPhone = n - s.phone,
+      noPin = n - s.pin;
+    $("rtStats").innerHTML =
+      GA.tile("s-p", "store", n, "Total shops") +
+      (showArea ? GA.tile("s-i", "map", esc(areaLabel(s)), "Area") : "") +
+      GA.tile(noPhone ? "s-a" : "s-s", "phone", s.phone, "With phone") +
+      GA.tile(noPin ? "s-a" : "s-s", "map-pin", s.pin, "With map pin") +
+      GA.tile(s.off ? "s-a" : "s-i", "ban", s.off, "Inactive");
     GA.hoist(h);
     $("prn").onclick = doPrint;
     $("addB").onclick = openAdd;

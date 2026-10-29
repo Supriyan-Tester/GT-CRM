@@ -977,3 +977,344 @@
     text-align: left;
   }
 }
+
+
+/* ---- Vehicle details: softer, rounder look (matches the new design) ---- */
+.vx-panel,
+.vx-banner,
+.vx-tabs {
+  border-radius: 18px;
+  box-shadow: 0 6px 24px -14px rgba(15, 80, 70, 0.28);
+}
+.vx-banner {
+  padding: 18px;
+  gap: 22px;
+}
+.vx-ph.lg {
+  border-radius: 14px;
+}
+.vx-title h2 {
+  font-size: 26px;
+  letter-spacing: -0.01em;
+}
+.vx-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.vx-tags span {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--card);
+}
+.vx-specs {
+  gap: 14px 0;
+}
+.vx-spec {
+  padding: 0 22px;
+  border-left: 1px solid var(--border);
+}
+.vx-spec:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+.vx-spec b {
+  font-size: 15px;
+}
+.vx-avail {
+  border-radius: 16px;
+  padding: 16px;
+  background: var(--t-success);
+}
+.vx-avail.busy {
+  background: var(--t-info);
+}
+.vx-avail.warn {
+  background: var(--t-accent);
+}
+.vx-avail .h b {
+  font-size: 18px;
+}
+.vx-tabs {
+  padding: 8px;
+  gap: 6px;
+}
+.vx-tab {
+  border-bottom: 0;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 14px;
+}
+.vx-tab.on {
+  background: var(--t-primary);
+  color: var(--primary);
+}
+.vx-ph2 {
+  padding: 16px 18px;
+}
+.vx-ph2 h3 {
+  font-size: 17px;
+}
+.vx-body {
+  padding: 4px 18px 18px;
+}
+.vx-kv td {
+  padding: 11px 0;
+}
+.vx-kv td:first-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.vx-kv .ki {
+  color: var(--primary);
+  display: inline-grid;
+  opacity: 0.85;
+}
+.vx-kv .ki svg.icon {
+  width: 16px;
+  height: 16px;
+}
+.vx-t4 {
+  gap: 12px;
+}
+.vx-t4 > div {
+  border-radius: 14px;
+  padding: 16px;
+}
+.vx-t4 b {
+  font-size: 22px;
+}
+/* who used this vehicle */
+.vx-who {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.vx-who li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+.vx-who li:last-child {
+  border-bottom: 0;
+}
+.vx-who .av {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  background: var(--t-primary);
+  color: var(--primary);
+}
+.vx-who li > div:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.vx-who b {
+  display: block;
+  font-size: 14px;
+}
+.vx-who small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.vx-who .cnt {
+  text-align: right;
+}
+@media (max-width: 760px) {
+  .vx-spec {
+    padding: 0 14px;
+  }
+}
+
+
+/* Banner: five facts fit on one row; an empty availability box (its buttons moved to the top bar) is hidden */
+.vx-spec {
+  padding: 0 14px;
+}
+.vx-specs {
+  flex-wrap: wrap;
+  row-gap: 12px;
+}
+.vx-avail:empty {
+  display: none;
+}
+/* Charts: not taller than needed */
+.vx-chart {
+  max-width: 720px;
+  margin-inline: auto;
+}
+.vx-chart .vx-svg {
+  max-height: 240px;
+}
+
+/* Key information: compact rows, labels on one line */
+.vx-kv td {
+  padding: 7px 0;
+  font-size: 13px;
+}
+.vx-kv td:first-child {
+  display: table-cell;
+  white-space: nowrap;
+  width: 42%;
+}
+.vx-kv .ki {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+.vx-ph2 {
+  padding: 12px 16px;
+}
+.vx-body {
+  padding: 4px 16px 16px;
+}
+
+/* Vehicles list: full-width cards, no side panel */
+.vx-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+  padding: 14px;
+}
+.vx-gc {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  align-items: stretch;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.vx-gc:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -14px rgba(15, 80, 70, 0.4);
+}
+.vx-gc-img {
+  position: relative;
+}
+.vx-gc-img .vx-ph {
+  width: 100%;
+  height: 160px;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--border);
+}
+.vx-gc-img .vx-badge,
+.vx-gc-img .badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+}
+.vx-gc-img .vx-kebab {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+.vx-gc-b {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.vx-gc-b h4 {
+  font-size: 18px;
+  margin: 0;
+}
+.vx-gc-f {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+.vx-gc-f div {
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.vx-gc-f small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+.vx-gc-f b {
+  font-size: 13px;
+}
+.vx-gc-u {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.vx-gc-u svg.icon {
+  width: 16px;
+  height: 16px;
+  color: var(--primary);
+}
+
+/* Overview columns keep their own height: no stretched cards and no empty gaps */
+.vx-cols {
+  align-items: start;
+}
+
+/* Key information rows: the hover tint runs the full width of the card */
+.a-main .vx-kv tr:hover > td {
+  background: var(--t-primary);
+}
+.a-main .vx-kv tr:hover > td:first-child {
+  box-shadow: -16px 0 0 var(--t-primary);
+}
+.a-main .vx-kv tr:hover > td:last-child {
+  box-shadow: 16px 0 0 var(--t-primary);
+}
+.vx-kv td:last-child {
+  overflow-wrap: anywhere;
+}
+
+/* Cards stay tidy when real data fills in */
+.vx-c3 {
+  grid-column: span 3;
+  min-width: 0;
+}
+.vx-who li > div:nth-child(2) b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vx-who .cnt {
+  flex: none;
+}
+.vx-t4 b,
+.vx-feed li span,
+.vx-panel p {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1439px) {
+  .vx-cols > .vx-c4 {
+    grid-column: span 5;
+  }
+  .vx-cols > .vx-c5 {
+    grid-column: span 7;
+  }
+  .vx-cols > .vx-c3 {
+    grid-column: span 12;
+  }
+}
+@media (max-width: 1279px) {
+  .vx-cols > .vx-c4,
+  .vx-cols > .vx-c5,
+  .vx-cols > .vx-c3 {
+    grid-column: span 12;
+  }
+}

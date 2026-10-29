@@ -1843,3 +1843,20 @@
   width: 18px;
   height: 18px;
 }
+
+/* Customer names wrap inside their column instead of running over the phone number */
+.gtc-table td:nth-child(2) {
+  white-space: normal;
+  min-width: 220px;
+  max-width: 280px;
+}
+.gtc-table .gtc-name {
+  max-width: 100%;
+  min-width: 0;
+}
+.gtc-table .gtc-name b {
+  white-space: normal;
+  text-align: left;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}

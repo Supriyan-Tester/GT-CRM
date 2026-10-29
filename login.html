@@ -867,7 +867,7 @@
           else localStorage.removeItem(REMEMBER_KEY);
         } catch (e) {}
       }
-      // Admins are no longer kept signed in (they sign out after 30 minutes idle); this block only cleans up an old setting.
+      // Admins are no longer kept signed in (they sign out after 3 hours idle); this block only cleans up an old setting.
       var STAY_KEY = "gt-remember-admin";
       try {
         var stay = JSON.parse(localStorage.getItem(STAY_KEY) || "null");
@@ -898,7 +898,7 @@
         msg.className = "msg";
         msg.style.color = "var(--primary)";
         msg.textContent =
-          "You were signed out after 30 minutes of inactivity. Please sign in again.";
+          "You were signed out after 3 hours of inactivity. Please sign in again.";
       }
 
       phone.addEventListener("input", function () {

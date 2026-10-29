@@ -208,11 +208,86 @@
   function routes() {
     return jl("gm_admin_v1", {}).routes || [];
   }
+  // Route days from the Daily plan: the employee as main person or as a helper (cancelled plans ignored).
+  // Consecutive days on the same route + vehicle are joined into one row {route, vehicle, from, to, plan:true}.
+  function planAssign(id) {
+    var P = jl("gm_admin_v1", {}).plans || {},
+      days = [];
+    Object.keys(P)
+      .sort()
+      .forEach(function (d) {
+        (Array.isArray(P[d]) ? P[d] : P[d] ? [P[d]] : []).forEach(function (
+          p,
+        ) {
+          if (
+            p &&
+            p.status !== "cancelled" &&
+            (p.workerId === id ||
+              (Array.isArray(p.helpers) && p.helpers.indexOf(id) > -1))
+          )
+            days.push({
+              d: d,
+              route: p.routeName || "",
+              vehicle: (
+                (GA.vehicles().filter(function (v) {
+                  return v.id === p.vehicleId;
+                })[0] || {}
+                ).number || ""
+              ),
+            });
+        });
+      });
+    // Sales reps choose their own route each day (saved apart from the Daily plan)
+    var SD = (jl("gm_sales_days_v1", {}) || {})[id] || {},
+      RT = jl("gm_admin_v1", {}).routes || [];
+    Object.keys(SD).forEach(function (d) {
+      var rid = SD[d] && SD[d].route,
+        r = RT.filter(function (x) {
+          return x.id === rid;
+        })[0];
+      if (r && !days.some(function (x) { return x.d === d; }))
+        days.push({ d: d, route: r.name, vehicle: "" });
+    });
+    days.sort(function (a, b) {
+      return a.d < b.d ? -1 : a.d > b.d ? 1 : 0;
+    });
+    var out = [];
+    days.forEach(function (x) {
+      var l = out[out.length - 1];
+      if (
+        l &&
+        l.route === x.route &&
+        l.vehicle === x.vehicle &&
+        addDays(l.to, 1) >= x.d
+      )
+        l.to = x.d;
+      else
+        out.push({
+          route: x.route,
+          vehicle: x.vehicle,
+          from: x.d,
+          to: x.d,
+          plan: true,
+        });
+    });
+    return out;
+  }
   function cur(id) {
     var a = (prof(id).assign || []).filter(function (x) {
       return !x.to;
     });
     return a.length ? a[a.length - 1] : null;
+  }
+  // For display only: the manual assignment, else today's (or the latest) Daily plan route.
+  function shown(id) {
+    var c = cur(id);
+    if (c) return c;
+    var pa = planAssign(id),
+      t = GA.today(),
+      now = pa.filter(function (x) {
+        return x.from <= t && t <= x.to;
+      })[0];
+    return now || pa[pa.length - 1] || null;
   }
   function stat(w) {
     return isRel(w)
@@ -362,7 +437,7 @@
             : w.onLeave
               ? "leave"
               : "active",
-        r = cur(w.id);
+        r = shown(w.id);
       if (S.st && s !== S.st) return false;
       if (S.route && (!r || r.route !== S.route)) return false;
       return (
@@ -378,14 +453,14 @@
       S.view === "grid" ? rows : rows.slice((S.pgn - 1) * PER, S.pgn * PER);
     var rts = {};
     all.forEach(function (w) {
-      var r = cur(w.id);
+      var r = shown(w.id);
       if (r) rts[r.route] = 1;
     });
     var body =
       vis
         .map(function (w, i) {
           var p = prof(w.id),
-            r = cur(w.id);
+            r = shown(w.id);
           return (
             '<tr class="cl" data-w="' +
             esc(w.id) +
@@ -421,7 +496,7 @@
           : "Add your first employee. They log in to the app with their mobile number.") +
         "</div></td></tr>";
     function card(w) {
-      var r = cur(w.id);
+      var r = shown(w.id);
       return (
         '<div class="wk-wc" data-w="' +
         esc(w.id) +
@@ -453,17 +528,13 @@
       '<div class="wk-head"><div><p class="wk-sub" style="margin:0">Manage your employees, assign routes, and track details.</p></div><div class="field a-f" data-act style="width:190px;height:38px"><input type="search" id="fQ" placeholder="Search employee..." aria-label="Search employee name, ID or phone" autocomplete="off" value="' +
       esc(S.q) +
       '"></div><button class="btn" id="bAdd" data-act>+ Add employee</button></div>' +
-      '<div class="wk-tiles"><div class="wk-tile t-g"><b>' +
-      all.length +
-      '</b><span>Total employees</span></div><div class="wk-tile t-i"><b>' +
-      cA +
-      '</b><span>Active</span></div><div class="wk-tile t-y"><b>' +
-      cL +
-      '</b><span>On leave today</span></div><div class="wk-tile t-r"><b>' +
-      cI +
-      '</b><span>Inactive</span></div><div class="wk-tile t-n"><b>' +
-      cR +
-      "</b><span>Relieved</span></div></div>" +
+      '<div class="wk-tiles">' +
+      tile("t-g", all.length, "Total employees", "users") +
+      tile("t-i", cA, "Active", "check-circle") +
+      tile("t-y", cL, "On leave today", "calendar") +
+      tile("t-r", cI, "Inactive", "ban") +
+      tile("t-n", cR, "Relieved", "logout") +
+      "</div>" +
       '<div class="wk-card"><div class="wk-filters"><div class="field"><select id="fS">' +
       [
         ["", "All status"],
@@ -832,7 +903,7 @@
       return;
     }
     var p = w ? prof(w.id) : {},
-      r = w ? cur(w.id) : null;
+      r = w ? shown(w.id) : null;
     F = {
       id: id,
       photo: null,
@@ -1148,15 +1219,24 @@
   }
 
   // ---------- 3-5. details, documents, routes ----------
-  function tile(c, v, l) {
+  /* One employee stat card: icon square, number, label, optional detail line.
+     c is the old colour class (t-g, t-y, t-r, t-i, t-b, t-n); it picks the tint. */
+  var TONE = { "t-g": "c-s", "t-y": "c-a", "t-r": "c-d", "t-i": "c-i", "t-b": "c-p", "t-n": "c-p" };
+  function tile(c, v, l, icon, sub) {
     return (
       '<div class="wk-tile ' +
       c +
-      '"><b>' +
+      '"><span class="chip ' +
+      (TONE[c] || "c-p") +
+      '">' +
+      GA.icon(icon || "users") +
+      "</span><div><b>" +
       v +
       "</b><span>" +
       l +
-      "</span></div>"
+      "</span>" +
+      (sub ? '<em class="a-sub">' + sub + "</em>" : "") +
+      "</div></div>"
     );
   }
   function kv(l, v) {
@@ -1321,11 +1401,11 @@
       w.id +
       '">Full attendance page</a></span></h3>' +
       '<div class="wk-tiles" style="margin:14px 0 0">' +
-      tile("t-g", att, "Days attended") +
-      tile("t-y", c.late, "Days late") +
-      tile("t-r", c.absent, "Days absent") +
-      tile("t-i", c.leave, "On leave") +
-      tile("t-b", Math.round(km * 10) / 10 + " km", "Distance") +
+      tile("t-g", att, "Days attended", "check-circle") +
+      tile("t-y", c.late, "Days late", "clock") +
+      tile("t-r", c.absent, "Days absent", "x-circle") +
+      tile("t-i", c.leave, "On leave", "calendar") +
+      tile("t-b", Math.round(km * 10) / 10 + " km", "Distance", "route") +
       "</div>" +
       '<p class="wk-sub" style="margin:10px 0 0">' +
       mlabel(m) +
@@ -1363,9 +1443,9 @@
       monthBar("vM", m) +
       '<a class="btn btn-outline" style="padding:0 12px;min-height:36px;font-weight:600" href="advances.html">All employees</a><button class="btn" id="bAdv">+ Add entry</button></span></h3>' +
       '<div class="wk-tiles wk-t3" style="margin:14px 0 0">' +
-      tile("t-y", GA.ops.rupee(adv), "Advances given") +
-      tile("t-r", GA.ops.rupee(ded), "Deductions") +
-      tile("t-b", list.length, "Entries this month") +
+      tile("t-y", GA.ops.rupee(adv), "Advances given", "coin") +
+      tile("t-r", GA.ops.rupee(ded), "Deductions", "trash") +
+      tile("t-b", list.length, "Entries this month", "clipboard-list") +
       "</div></div>" +
       '<div class="wk-card" style="margin-top:16px"><h3>' +
       mlabel(m) +
@@ -1478,7 +1558,7 @@
         km += Number(x.km) || 0;
       });
     });
-    var c = cur(id);
+    var c = shown(id);
     if (S.tab === "overview")
       main =
         '<div class="wk-2"><div class="wk-col"><div class="wk-card"><h3>Basic details</h3><div class="wk-kv">' +
@@ -1512,19 +1592,24 @@
         ) +
         "</div></div></div></div>" +
         '<div class="wk-card" style="margin-top:16px"><h3>Quick stats <small style="font-weight:400;color:var(--muted)">from the employee\'s punch records</small></h3><div class="wk-tiles" style="margin:0">' +
-        tile("t-g", pr, "Days present") +
-        tile("t-y", la, "Days late") +
-        tile("t-b", Math.round(km * 10) / 10 + " km", "Total distance") +
+        tile("t-g", pr, "Days present", "check-circle") +
+        tile("t-y", la, "Days late", "clock") +
+        tile("t-b", Math.round(km * 10) / 10 + " km", "Total distance", "route") +
         tile(
           "t-i",
           pr ? Math.round((km / pr) * 10) / 10 + " km" : "-",
           "Avg daily km",
+          "gauge",
         ) +
         "</div></div>";
     else if (S.tab === "attendance") main = attendanceTab(w);
     else if (S.tab === "advances") main = advancesTab(w);
     else if (S.tab === "routes") {
-      var hist = (p.assign || []).slice().reverse();
+      var hist = (p.assign || [])
+        .concat(planAssign(id))
+        .sort(function (a, b) {
+          return a.from < b.from ? 1 : a.from > b.from ? -1 : 0;
+        });
       main =
         '<div class="wk-card"><h3>Current assignment <button class="btn btn-outline" id="bAs">Edit assignment</button></h3><div class="wk-kv">' +
         kv("Assigned route", c ? c.route : "None") +
@@ -1543,7 +1628,11 @@
               "</td><td>" +
               dshort(a.from) +
               "</td><td>" +
-              (a.to ? dshort(a.to) : '<span class="wk-b b-cu">Present</span>') +
+              (a.to
+                ? a.plan && a.to === GA.today()
+                  ? '<span class="wk-b b-cu">Today</span>'
+                  : dshort(a.to)
+                : '<span class="wk-b b-cu">Present</span>') +
               "</td></tr>"
             );
           })

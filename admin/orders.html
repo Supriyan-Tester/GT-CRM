@@ -466,6 +466,312 @@
         display: block;
         color: var(--muted);
       }
+      .om-tl {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .om-tl li {
+        position: relative;
+        padding: 0 0 18px 32px;
+        font-size: 13.5px;
+      }
+      .om-tl li:last-child {
+        padding-bottom: 0;
+      }
+      .om-tl li::before {
+        content: "";
+        position: absolute;
+        left: 11px;
+        top: 24px;
+        bottom: 0;
+        width: 2px;
+        background: var(--border);
+      }
+      .om-tl li:last-child::before {
+        display: none;
+      }
+      .om-tl li.done::before {
+        background: var(--primary);
+      }
+      .om-tl .dot {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 2px solid var(--border);
+        background: var(--card, #fff);
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--muted);
+      }
+      .om-tl li.done .dot {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+      }
+      .om-tl li.now .dot {
+        border-color: var(--primary);
+        color: var(--primary);
+      }
+      .om-tl li.bad .dot {
+        background: #dc2626;
+        border-color: #dc2626;
+        color: #fff;
+      }
+      .om-tl b {
+        display: block;
+      }
+      .om-tl li.todo b {
+        color: var(--muted);
+        font-weight: 600;
+      }
+      .om-tl small {
+        display: block;
+        color: var(--muted);
+      }
+      #omSub[hidden],
+      #omBar[hidden],
+      #omK[hidden],
+      #omMain[hidden],
+      #omFull[hidden] {
+        display: none !important;
+      }
+      .om-th {
+        display: inline-flex;
+        margin-right: -8px;
+        vertical-align: middle;
+      }
+      .om-th img,
+      .om-th i {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        border: 2px solid var(--card);
+        object-fit: cover;
+        background: var(--bg);
+        display: grid;
+        place-items: center;
+        font-style: normal;
+        font-weight: 700;
+        font-size: 12px;
+        color: var(--muted);
+        margin-right: 0;
+      }
+      .om-th > * + * {
+        margin-left: -10px;
+      }
+      .om-more {
+        margin-left: 14px;
+        font-size: 12px;
+        color: var(--muted);
+        font-weight: 600;
+      }
+      .om-shp {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .om-shp > i {
+        flex: none;
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        background: var(--bg);
+        color: var(--primary);
+        display: grid;
+        place-items: center;
+        font-style: normal;
+        font-weight: 800;
+        font-size: 13px;
+      }
+      .om-shp b {
+        display: block;
+      }
+      .om-shp small {
+        color: var(--muted);
+      }
+      .om-dt2 small {
+        display: block;
+        color: var(--muted);
+      }
+      .of-top {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+      }
+      .of-top h2 {
+        margin: 0;
+        font-size: 22px;
+      }
+      .of-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--text);
+        border-radius: 12px;
+        padding: 8px 14px;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .of-act {
+        margin-left: auto;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .of-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card, 16px);
+        padding: 16px 18px;
+        margin-bottom: 16px;
+      }
+      .of-card h3 {
+        margin: 0 0 12px;
+        font-size: 16px;
+      }
+      .of-tiles {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 12px;
+      }
+      .of-tiles > div {
+        background: var(--bg);
+        border-radius: 12px;
+        padding: 12px 14px;
+      }
+      .of-tiles small,
+      .of-kv small {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .of-tiles b {
+        font-size: 16px;
+      }
+      .of-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+      }
+      @media (max-width: 960px) {
+        .of-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .of-it {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .of-it th {
+        text-align: left;
+        font-size: 12px;
+        color: var(--muted);
+        padding: 8px 6px;
+        border-bottom: 1px solid var(--border);
+      }
+      .of-it td {
+        padding: 10px 6px;
+        border-bottom: 1px solid var(--border);
+        font-size: 14px;
+      }
+      .of-it .r {
+        text-align: right;
+      }
+      .of-it .pn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .of-it .pn img,
+      .of-it .pn i {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        object-fit: cover;
+        background: var(--bg);
+        display: grid;
+        place-items: center;
+        font-style: normal;
+        font-weight: 700;
+        color: var(--muted);
+      }
+      .of-it small {
+        color: var(--muted);
+        display: block;
+      }
+      .of-tot {
+        margin-top: 14px;
+        margin-left: auto;
+        max-width: 320px;
+      }
+      .of-tot div {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+      }
+      .of-tot .g {
+        border-top: 1px solid var(--border);
+        margin-top: 6px;
+        padding-top: 10px;
+        font-size: 18px;
+        font-weight: 800;
+        color: var(--primary);
+      }
+      .of-kv {
+        display: grid;
+        gap: 10px;
+      }
+      .of-kv b {
+        font-weight: 600;
+      }
+      .om-tl.h {
+        display: flex;
+      }
+      .om-tl.h li {
+        flex: 1;
+        min-width: 0;
+        padding: 34px 8px 0 0;
+      }
+      .om-tl.h li::before {
+        left: 26px;
+        right: 0;
+        top: 11px;
+        bottom: auto;
+        width: auto;
+        height: 2px;
+        display: block;
+      }
+      .om-tl.h li:last-child::before {
+        display: none;
+      }
+      @media (max-width: 760px) {
+        .om-tl.h {
+          display: block;
+        }
+        .om-tl.h li {
+          padding: 0 0 18px 32px;
+        }
+        .om-tl.h li::before {
+          left: 11px;
+          right: auto;
+          top: 24px;
+          bottom: 0;
+          width: 2px;
+          height: auto;
+        }
+      }
       .om-dact {
         display: flex;
         gap: 8px;
@@ -575,6 +881,7 @@
         },
         esc = GA.esc;
       var pg = GA.mount("orders.html", "Order Management");
+      var CAN_DEL = !!(GA.session() || {}).super; // only the Super Admin sees Delete (the server checks again)
 
       function rd(k, d) {
         try {
@@ -647,8 +954,8 @@
       };
 
       pg.innerHTML =
-        '<p class="om-sub">View, manage and track all sales orders</p>' +
-        '<div class="om-bar">' +
+        '<p class="om-sub" id="omSub">View, manage and track all sales orders</p>' +
+        '<div class="om-bar" id="omBar">' +
         '<input type="date" id="omFrom" aria-label="From date">' +
         '<input type="date" id="omTo" aria-label="To date">' +
         '<select id="omRep" aria-label="Sales person"></select>' +
@@ -662,6 +969,7 @@
         '<div class="om-foot" id="omFoot"></div></div>' +
         '<div class="om-d" id="omD" hidden></div>' +
         "</div>" +
+        '<div id="omFull" hidden></div>' +
         '<div id="omPrint"></div>';
 
       $("omFrom").value = st.from;
@@ -690,6 +998,13 @@
         st.page = 1;
         draw();
       };
+      (function () {
+        var q = new URLSearchParams(location.search).get("q");
+        if (q) {
+          $("omQ").value = q;
+          st.q = q.trim().toLowerCase();
+        }
+      })();
       $("omQ").oninput = function () {
         st.q = this.value.trim().toLowerCase();
         st.page = 1;
@@ -771,8 +1086,281 @@
           );
         });
       }
+      // Product pictures (each product's picture comes from the Products page)
+      var PIMG = null;
+      function pimg(id) {
+        if (!PIMG) {
+          PIMG = {};
+          var L = rd("gm_admin_products_v1", []);
+          (Array.isArray(L) ? L : []).forEach(function (x) {
+            if (x && x.id) PIMG[x.id] = x;
+          });
+        }
+        var p = PIMG[id],
+          im = p && p.imgs && p.imgs[0];
+        return im
+          ? "/api/pfile?p=" +
+              encodeURIComponent(id) +
+              "&i=" +
+              im.i +
+              "&t=" +
+              (im.at || 0)
+          : "";
+      }
+      function pic(i) {
+        var u = pimg(i.id),
+          ch = esc(
+            String(i.name || "?")
+              .charAt(0)
+              .toUpperCase(),
+          );
+        return u
+          ? '<img src="' +
+              u +
+              '" alt="" loading="lazy" data-ch="' +
+              ch +
+              '">'
+          : "<i>" + ch + "</i>";
+      }
+      // a picture that fails to load turns into the product's first letter
+      document.addEventListener(
+        "error",
+        function (e) {
+          var t = e.target;
+          if (t && t.tagName === "IMG" && t.dataset && t.dataset.ch) {
+            var el = document.createElement("i");
+            el.textContent = t.dataset.ch;
+            t.replaceWith(el);
+          }
+        },
+        true,
+      );
+      function thumbs(o) {
+        return (
+          '<span class="om-th">' +
+          o._items
+            .slice(0, 3)
+            .map(function (i) {
+              return pic(i);
+            })
+            .join("") +
+          "</span>" +
+          (o._items.length > 3
+            ? '<span class="om-more">+' + (o._items.length - 3) + "</span>"
+            : "")
+        );
+      }
+      function timeOnly(t) {
+        return new Date(t).toLocaleTimeString("en-IN", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+          timeZone: "Asia/Kolkata",
+        });
+      }
+      function dateOnly(t) {
+        return new Date(t).toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          timeZone: "Asia/Kolkata",
+        });
+      }
+      function viewId() {
+        try {
+          return decodeURIComponent(location.hash.replace(/^#/, ""));
+        } catch (e) {
+          return "";
+        }
+      }
+      function openOrder(id) {
+        location.hash = encodeURIComponent(id);
+      }
+
+      // Full-page Order Details
+      function drawFull(all) {
+        var F = $("omFull"),
+          o = find(all, st.view),
+          back =
+            '<div class="of-top"><button type="button" class="of-back" id="ofBack">' +
+            I("chevron-left") +
+            "Orders</button>";
+        if (!o) {
+          F.innerHTML =
+            back +
+            "</div>" +
+            '<div class="of-card"><div class="om-empty">Order ' +
+            esc(st.view) +
+            " was not found. It may have been deleted.</div></div>";
+          $("ofBack").onclick = function () {
+            location.hash = "";
+          };
+          return;
+        }
+        var cu =
+            (rd("gm_admin_v1", {}).customers || []).filter(function (c) {
+              return c.code === o.code;
+            })[0] || {},
+          map =
+            cu.lat && cu.lng
+              ? "https://www.google.com/maps?q=" +
+                encodeURIComponent(cu.lat + "," + cu.lng)
+              : "",
+          nx = nextStage(o),
+          sub = o._items.reduce(function (t, i) {
+            return t + (+i.amount || 0);
+          }, 0),
+          disc = +o.discount || 0;
+        F.innerHTML =
+          back +
+          "<h2>Order Details</h2>" +
+          '<span class="om-st ' +
+          o.status +
+          '">' +
+          (LABEL[o.status] || esc(o.status)) +
+          '</span><div class="of-act"><button type="button" class="om-ib" id="ofPr">' +
+          I("print") +
+          "Print</button>" +
+          (nx
+            ? '<button type="button" class="om-ib om-pri" id="ofNx">' +
+              I("check-circle") +
+              (nx[0] === "delivered" ? "Mark as Delivered" : "Mark " + nx[1]) +
+              "</button>"
+            : "") +
+          (o.status === "placed" && !(o.stages && o.stages.delivered)
+            ? '<button type="button" class="om-ib danger" id="ofCx">' +
+              I("x-circle") +
+              "Cancel order</button>"
+            : "") +
+          (CAN_DEL
+            ? '<button type="button" class="om-ib danger" id="ofDel">' +
+              I("trash") +
+              "Delete order</button>"
+            : "") +
+          "</div></div>" +
+          '<div class="of-card"><h3>Order Overview</h3><div class="of-tiles">' +
+          "<div><small>Order ID</small><b>" +
+          esc(o.id) +
+          "</b></div><div><small>Order date</small><b>" +
+          dateOnly(o.t) +
+          "</b><small>" +
+          timeOnly(o.t) +
+          '</small></div><div><small>Status</small><span class="om-st ' +
+          o.status +
+          '">' +
+          (LABEL[o.status] || esc(o.status)) +
+          "</span></div><div><small>Order value</small><b>" +
+          money(o.total) +
+          "</b><small>" +
+          o._items.length +
+          " items</small></div>" +
+          '<div><small>Sales person</small><div class="om-shp" style="margin-top:2px"><i>' +
+          esc(initials(o._rep)) +
+          "</i><b>" +
+          esc(o._rep) +
+          "</b></div></div></div></div>" +
+          '<div class="of-grid"><div><div class="of-card"><h3>Order Items <span class="om-more" style="margin:0">' +
+          o._items.length +
+          '</span></h3><div class="om-scroll"><table class="of-it"><thead><tr><th>#</th><th>Product</th><th>Code</th><th class="r">Unit price</th><th class="r">Qty</th><th class="r">Total</th></tr></thead><tbody>' +
+          o._items
+            .map(function (i, n) {
+              return (
+                "<tr><td>" +
+                (n + 1) +
+                '</td><td><div class="pn">' +
+                pic(i) +
+                "<div><b>" +
+                esc(i.name || i.id) +
+                "</b>" +
+                (i.unit ? "<small>" + esc(i.unit) + "</small>" : "") +
+                "</div></div></td><td>" +
+                esc(i.code || "-") +
+                '</td><td class="r">' +
+                money(i.price) +
+                '</td><td class="r">' +
+                esc(i.qty) +
+                '</td><td class="r">' +
+                money(i.amount) +
+                "</td></tr>"
+              );
+            })
+            .join("") +
+          '</tbody></table></div><div class="of-tot"><div><span>Subtotal</span><span>' +
+          money(o.subtotal != null ? o.subtotal : sub) +
+          "</span></div>" +
+          (disc
+            ? "<div><span>Discount</span><span>- " +
+              money(disc) +
+              "</span></div>"
+            : "") +
+          '<div class="g"><span>Total amount</span><span>' +
+          money(o.total) +
+          "</span></div></div></div>" +
+          '<div class="of-card"><h3>Order Notes</h3><p style="margin:0;color:var(--muted)">' +
+          (o.notes ? esc(o.notes) : "No notes.") +
+          "</p></div></div>" +
+          '<div><div class="of-card"><h3>Customer / Shop Details</h3><div class="om-shp" style="margin-bottom:12px"><i>' +
+          esc(initials(o.shop || o.code)) +
+          "</i><div><b>" +
+          esc(o.shop || o.code) +
+          "</b><small>#" +
+          esc(o.code || "") +
+          '</small></div></div><div class="of-kv"><div><small>Phone</small><b>' +
+          esc(cu.phone || "-") +
+          "</b></div><div><small>Area</small><b>" +
+          esc(o.area || cu.area || "-") +
+          "</b></div><div><small>Address</small><b>" +
+          esc(cu.address || "-") +
+          "</b></div></div></div>" +
+          '<div class="of-card"><h3>Delivery Information</h3><div class="of-kv"><div><small>Delivery address</small><b>' +
+          esc(cu.address || "-") +
+          "</b></div>" +
+          (map
+            ? '<div><a class="om-ib" href="' +
+              map +
+              '" target="_blank" rel="noopener">View on map</a></div>'
+            : "<div><small>No map pin saved for this shop.</small></div>") +
+          "</div></div></div></div>" +
+          '<div class="of-card"><h3>Order Status Timeline</h3>' +
+          timeline(o).replace('class="om-tl"', 'class="om-tl h"') +
+          "</div>";
+        $("ofBack").onclick = function () {
+          location.hash = "";
+        };
+        $("ofPr").onclick = function () {
+          printOrder(o);
+        };
+        if ($("ofNx"))
+          $("ofNx").onclick = function () {
+            advance(o, nextStage(o)[0]);
+          };
+        if ($("ofCx"))
+          $("ofCx").onclick = function () {
+            cancel(o);
+          };
+        if ($("ofDel"))
+          $("ofDel").onclick = function () {
+            removeOrder(o);
+          };
+      }
+      window.addEventListener("hashchange", function () {
+        draw();
+        window.scrollTo(0, 0);
+      });
+
       function draw() {
         var all = load();
+        PIMG = null;
+        st.view = viewId();
+        var full = !!st.view;
+        ["omSub", "omBar", "omK", "omMain"].forEach(function (i) {
+          $(i).hidden = full;
+        });
+        $("omFull").hidden = !full;
+        if (full) {
+          drawFull(all);
+          return;
+        }
         fillSelects(all);
         var span = daysBetween(st.from, st.to) + 1,
           cur = base(all, st.from, st.to),
@@ -912,7 +1500,7 @@
           rows = L.slice(from, from + st.per);
 
         $("omList").innerHTML = rows.length
-          ? '<table class="om-t"><thead><tr><th>#</th><th>Order ID</th><th>Date &amp; Time</th><th>Customer / Shop</th><th>Sales Person</th><th>Area</th><th class="r">Items</th><th class="r">Amount</th><th>Status</th><th class="r">Actions</th></tr></thead><tbody>' +
+          ? '<table class="om-t"><thead><tr><th>Order ID</th><th>Customer / Shop</th><th>Order Date</th><th>Items</th><th class="r">Amount</th><th>Status</th><th>Order Taken By</th><th class="r">Actions</th></tr></thead><tbody>' +
             rows
               .map(function (o, i) {
                 var can = o.status === "cancelled";
@@ -921,31 +1509,31 @@
                   esc(o.id) +
                   '"' +
                   (st.sel === o.id ? ' class="sel"' : "") +
-                  '><td class="oc-n">' +
-                  (from + i + 1) +
-                  '</td><td class="oc-id">' +
+                  '><td class="oc-id">' +
                   (can ? "<s>" + esc(o.id) + "</s>" : esc(o.id)) +
-                  '</td><td class="oc-dt">' +
-                  when(o.t) +
-                  '</td><td class="oc-sh om-s">' +
+                  '</td><td class="oc-sh om-s"><div class="om-shp"><i>' +
+                  esc(initials(o.shop || o.code)) +
+                  "</i><div><b>" +
                   esc(o.shop || o.code) +
-                  "<small>" +
+                  "</b><small>" +
                   esc(o.area || "") +
-                  '</small></td><td class="oc-a"><span class="om-av">' +
-                  esc(initials(o._rep)) +
-                  "</span>" +
-                  esc(o._rep) +
-                  '</td><td class="oc-ar">' +
-                  esc(o.area || "-") +
-                  '</td><td class="oc-i r">' +
-                  o._items.length +
+                  '</small></div></div></td><td class="oc-dt om-dt2">' +
+                  dateOnly(o.t) +
+                  "<small>" +
+                  timeOnly(o.t) +
+                  '</small></td><td class="oc-i">' +
+                  thumbs(o) +
                   '</td><td class="oc-amt r">' +
                   (can ? "<s>" + money(o.total) + "</s>" : money(o.total)) +
                   '</td><td class="oc-st"><span class="om-st ' +
                   o.status +
                   '">' +
                   (LABEL[o.status] || esc(o.status)) +
-                  '</span></td><td class="oc-ac"><div class="om-acts"><button type="button" data-v="' +
+                  '</span></td><td class="oc-a"><span class="om-av">' +
+                  esc(initials(o._rep)) +
+                  "</span>" +
+                  esc(o._rep) +
+                  '</td><td class="oc-ac"><div class="om-acts"><button type="button" data-v="' +
                   esc(o.id) +
                   '" aria-label="View">' +
                   I("eye") +
@@ -953,7 +1541,15 @@
                   esc(o.id) +
                   '" aria-label="Print">' +
                   I("print") +
-                  "</button></div></td></tr>"
+                  "</button>" +
+                  (CAN_DEL
+                    ? '<button type="button" data-x="' +
+                      esc(o.id) +
+                      '" aria-label="Delete" title="Delete order" style="color:var(--danger)">' +
+                      I("trash") +
+                      "</button>"
+                    : "") +
+                  "</div></td></tr>"
                 );
               })
               .join("") +
@@ -1025,17 +1621,13 @@
         };
         [].forEach.call($("omList").querySelectorAll("tbody tr"), function (r) {
           r.onclick = function () {
-            st.sel = r.dataset.id;
-            st.tab = "details";
-            draw();
+            openOrder(r.dataset.id);
           };
         });
         [].forEach.call($("omList").querySelectorAll("[data-v]"), function (b) {
           b.onclick = function (e) {
             e.stopPropagation();
-            st.sel = b.dataset.v;
-            st.tab = "details";
-            draw();
+            openOrder(b.dataset.v);
           };
         });
         [].forEach.call($("omList").querySelectorAll("[data-p]"), function (b) {
@@ -1044,12 +1636,91 @@
             printOrder(find(all, b.dataset.p));
           };
         });
+        [].forEach.call($("omList").querySelectorAll("[data-x]"), function (b) {
+          b.onclick = function (e) {
+            e.stopPropagation();
+            removeOrder(find(all, b.dataset.x));
+          };
+        });
         drawDetail(all);
       }
       function find(all, id) {
         return all.filter(function (o) {
           return o.id === id;
         })[0];
+      }
+
+      // Order status timeline: real events only (created, each stage the office ticked, or cancelled)
+      var STAGES = [
+        ["processing", "Processing", "Order is being prepared"],
+        ["out", "Out for delivery", "Order is on the way"],
+        ["delivered", "Delivered", "Order completed"],
+      ];
+      function nextStage(o) {
+        var g = o.stages || {};
+        return o.status === "placed"
+          ? STAGES.filter(function (x) {
+              return !g[x[0]];
+            })[0]
+          : null;
+      }
+      function timeline(o) {
+        var g = o.stages || {},
+          cx = o.status === "cancelled",
+          nx = nextStage(o),
+          rows = [
+            '<li class="done"><span class="dot">&#10003;</span><b>Order created</b><small>' +
+              when(o.t) +
+              " · by " +
+              esc(o._rep) +
+              "</small></li>",
+          ];
+        STAGES.forEach(function (x) {
+          var e = g[x[0]];
+          if (e)
+            rows.push(
+              '<li class="done"><span class="dot">&#10003;</span><b>' +
+                x[1] +
+                "</b><small>" +
+                when(e.at) +
+                (e.by ? " · by " + esc(e.by) : "") +
+                "</small></li>",
+            );
+          else if (!cx)
+            rows.push(
+              '<li class="' +
+                (nx && nx[0] === x[0] ? "now" : "todo") +
+                '"><span class="dot">&bull;</span><b>' +
+                x[1] +
+                "</b><small>" +
+                x[2] +
+                "</small></li>",
+            );
+        });
+        if (cx)
+          rows.push(
+            '<li class="bad"><span class="dot">&times;</span><b>Cancelled</b><small>' +
+              (o.cancelAt ? when(o.cancelAt) : "") +
+              (o.cancelBy ? " · by " + esc(o.cancelBy) : "") +
+              (o.cancelReason ? " — " + esc(o.cancelReason) : "") +
+              "</small></li>",
+          );
+        return '<ul class="om-tl">' + rows.join("") + "</ul>";
+      }
+      function advance(o, stage) {
+        fetch("/api/salesadmin/stage", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: o.id, stage: stage }),
+        })
+          .then(function (r) {
+            return r.json().then(function (j) {
+              if (!r.ok) throw new Error(j.error || "Could not update");
+            });
+          })
+          .catch(function (e) {
+            alert(e.message);
+          });
       }
 
       function drawDetail(all) {
@@ -1094,6 +1765,9 @@
             " items</b></div><div><small>Total amount</small><b>" +
             money(o.total) +
             "</b></div></div></div>" +
+            '<div class="om-sec"><h3>Order Status Timeline</h3>' +
+            timeline(o) +
+            "</div>" +
             '<div class="om-sec"><h3>Notes</h3><p style="margin:0;font-size:13.5px;color:var(--muted)">' +
             (o.notes ? esc(o.notes) : "No notes.") +
             "</p></div>" +
@@ -1202,10 +1876,23 @@
           '</div><div class="om-dact"><button type="button" class="om-ib" id="omPr">' +
           I("print") +
           "Print</button>" +
-          (o.status === "placed"
+          (nextStage(o)
+            ? '<button type="button" class="om-ib om-pri" id="omNx">' +
+              I("check-circle") +
+              (nextStage(o)[0] === "delivered"
+                ? "Mark as Delivered"
+                : "Mark " + nextStage(o)[1]) +
+              "</button>"
+            : "") +
+          (o.status === "placed" && !(o.stages && o.stages.delivered)
             ? '<button type="button" class="om-ib danger" id="omCx">' +
               I("x-circle") +
               "Cancel order</button>"
+            : "") +
+          (CAN_DEL
+            ? '<button type="button" class="om-ib danger" id="omDel">' +
+              I("trash") +
+              "Delete order</button>"
             : "") +
           "</div></div>";
         $("omClose").onclick = function () {
@@ -1221,10 +1908,62 @@
         $("omPr").onclick = function () {
           printOrder(o);
         };
+        if ($("omNx"))
+          $("omNx").onclick = function () {
+            advance(o, nextStage(o)[0]);
+          };
         if ($("omCx"))
           $("omCx").onclick = function () {
             cancel(o);
           };
+        if ($("omDel"))
+          $("omDel").onclick = function () {
+            removeOrder(o);
+          };
+      }
+
+      // Super Admin only: permanently removes the order (the server checks this again).
+      function removeOrder(o) {
+        if (!o) return;
+        if (
+          !confirm(
+            "Delete order " +
+              o.id +
+              " (" +
+              (o.shop || o.code || "") +
+              ") permanently?\n\nThis cannot be undone.",
+          )
+        )
+          return;
+        fetch("/api/salesadmin/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: o.id }),
+        })
+          .then(function (r) {
+            return r.json().then(function (j) {
+              if (!r.ok) throw new Error(j.error || "Could not delete");
+            });
+          })
+          .then(function () {
+            var ord = rd("gm_sales_orders_v1", []);
+            if (Array.isArray(ord))
+              try {
+                localStorage.setItem(
+                  "gm_sales_orders_v1",
+                  JSON.stringify(
+                    ord.filter(function (x) {
+                      return x && x.id !== o.id;
+                    }),
+                  ),
+                );
+              } catch (e) {}
+            if (st.sel === o.id) st.sel = "";
+            draw();
+          })
+          .catch(function (e) {
+            alert(e.message);
+          });
       }
 
       function cancel(o) {
@@ -1248,72 +1987,209 @@
           });
       }
 
+      // The order slip: shop, who took it, every product with quantity, price and amount, and the totals
       function printOrder(o) {
         if (!o) return;
+        // The print rule hides everything on the page except #omPrint, so it must sit directly under <body>
+        if ($("omPrint").parentNode !== document.body)
+          document.body.appendChild($("omPrint"));
+        var cu =
+            (rd("gm_admin_v1", {}).customers || []).filter(function (c) {
+              return c.code === o.code;
+            })[0] || {},
+          qty = o._items.reduce(function (t, i) {
+            return t + (+i.qty || 0);
+          }, 0),
+          sub = o._items.reduce(function (t, i) {
+            return t + (+i.amount || 0);
+          }, 0),
+          disc = +o.discount || 0,
+          cell = "border:1px solid #999;padding:6px 8px;";
         $("omPrint").innerHTML =
-          '<h2 style="margin:0">General Traders</h2><p style="margin:2px 0 14px">Order ' +
+          '<div style="font-family:Arial,sans-serif;color:#000;max-width:760px;margin:0 auto">' +
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #000;padding-bottom:8px">' +
+          '<div><h2 style="margin:0">General Traders</h2><div style="font-size:13px">Sales order</div></div>' +
+          '<div style="text-align:right;font-size:13px"><b style="font-size:18px">' +
           esc(o.id) +
-          " · " +
-          when(o.t) +
-          "</p><p><b>" +
-          esc(o.shop || o.code) +
           "</b><br>" +
-          esc(o.area || "") +
-          "<br>Sales person: " +
+          dateOnly(o.t) +
+          ", " +
+          timeOnly(o.t) +
+          "<br>Status: <b>" +
+          (LABEL[o.status] || esc(o.status)) +
+          "</b>" +
+          (o.stages && o.stages.delivered
+            ? " (Delivered)"
+            : o.stages && o.stages.out
+              ? " (Out for delivery)"
+              : o.stages && o.stages.processing
+                ? " (Processing)"
+                : "") +
+          "</div></div>" +
+          '<table style="width:100%;margin:12px 0;font-size:14px"><tr><td style="vertical-align:top;width:60%"><b>' +
+          esc(o.shop || o.code) +
+          "</b> (" +
+          esc(o.code || "") +
+          ")<br>" +
+          (cu.address ? esc(cu.address) + "<br>" : "") +
+          (o.area || cu.area ? "Area: " + esc(o.area || cu.area) + "<br>" : "") +
+          (cu.phone ? "Phone: " + esc(cu.phone) : "") +
+          '</td><td style="vertical-align:top">Order taken by: <b>' +
           esc(o._rep) +
-          '</p><table style="width:100%;border-collapse:collapse" border="1" cellpadding="6"><tr><th align="left">Item</th><th>Qty</th><th>Price</th><th>Amount</th></tr>' +
+          "</b></td></tr></table>" +
+          '<table style="width:100%;border-collapse:collapse;font-size:14px"><thead><tr style="background:#eee">' +
+          '<th style="' +
+          cell +
+          'text-align:center;width:34px">#</th><th style="' +
+          cell +
+          'text-align:left">Product</th><th style="' +
+          cell +
+          'text-align:left">Code</th><th style="' +
+          cell +
+          'text-align:center">Unit</th><th style="' +
+          cell +
+          'text-align:right">Price</th><th style="' +
+          cell +
+          'text-align:center">Qty</th><th style="' +
+          cell +
+          'text-align:right">Amount</th></tr></thead><tbody>' +
           o._items
-            .map(function (i) {
+            .map(function (i, n) {
               return (
-                "<tr><td>" +
+                "<tr><td style=\"" +
+                cell +
+                'text-align:center">' +
+                (n + 1) +
+                '</td><td style="' +
+                cell +
+                '">' +
                 esc(i.name || i.id) +
-                '</td><td align="center">' +
-                i.qty +
-                '</td><td align="right">' +
+                '</td><td style="' +
+                cell +
+                '">' +
+                esc(i.code || "") +
+                '</td><td style="' +
+                cell +
+                'text-align:center">' +
+                esc(i.unit || "") +
+                '</td><td style="' +
+                cell +
+                'text-align:right">' +
                 money(i.price) +
-                '</td><td align="right">' +
+                '</td><td style="' +
+                cell +
+                'text-align:center"><b>' +
+                esc(i.qty) +
+                '</b></td><td style="' +
+                cell +
+                'text-align:right">' +
                 money(i.amount) +
                 "</td></tr>"
               );
             })
             .join("") +
-          '</table><p style="text-align:right;font-size:18px"><b>Total ' +
+          '</tbody><tfoot><tr><td colspan="5" style="' +
+          cell +
+          'text-align:right"><b>Total quantity</b></td><td style="' +
+          cell +
+          'text-align:center"><b>' +
+          qty +
+          '</b></td><td style="' +
+          cell +
+          '"></td></tr></tfoot></table>' +
+          '<div style="margin:12px 0 0 auto;max-width:300px;font-size:14px">' +
+          '<div style="display:flex;justify-content:space-between"><span>Items</span><span>' +
+          o._items.length +
+          '</span></div><div style="display:flex;justify-content:space-between"><span>Subtotal</span><span>' +
+          money(o.subtotal != null ? o.subtotal : sub) +
+          "</span></div>" +
+          (disc
+            ? '<div style="display:flex;justify-content:space-between"><span>Discount</span><span>- ' +
+              money(disc) +
+              "</span></div>"
+            : "") +
+          '<div style="display:flex;justify-content:space-between;border-top:2px solid #000;margin-top:4px;padding-top:6px;font-size:18px"><b>Total</b><b>' +
           money(o.total) +
-          "</b></p>";
+          "</b></div></div>" +
+          (o.notes
+            ? '<p style="margin-top:14px;font-size:13px"><b>Notes:</b> ' +
+              esc(o.notes) +
+              "</p>"
+            : "") +
+          (o.status === "cancelled"
+            ? '<p style="margin-top:14px;font-size:13px;color:#b00"><b>CANCELLED</b>' +
+              (o.cancelReason ? " - " + esc(o.cancelReason) : "") +
+              "</p>"
+            : "") +
+          "</div>";
         window.print();
       }
-
+      // Export: one line per product ordered, so every order shows what was ordered and how much
       function exportCsv(L) {
         function c(v) {
           return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
         }
+        var custs = {};
+        (rd("gm_admin_v1", {}).customers || []).forEach(function (x) {
+          custs[x.code] = x;
+        });
         var rows = [
           [
             "Order ID",
             "Date",
-            "Shop",
-            "Customer ID",
-            "Sales person",
-            "Area",
-            "Items",
-            "Amount",
+            "Time",
             "Status",
+            "Customer ID",
+            "Shop",
+            "Phone",
+            "Address",
+            "Area",
+            "Order taken by",
+            "Product code",
+            "Product",
+            "Unit",
+            "Unit price",
+            "Qty",
+            "Item amount",
+            "Order subtotal",
+            "Discount",
+            "Order total",
+            "Notes",
           ],
-        ].concat(
-          L.map(function (o) {
-            return [
+        ];
+        L.forEach(function (o) {
+          var cu = custs[o.code] || {},
+            head = [
               o.id,
-              when(o.t),
-              o.shop,
-              o.code,
-              o._rep,
-              o.area,
-              o._items.length,
-              o.total,
+              dateOnly(o.t),
+              timeOnly(o.t),
               LABEL[o.status] || o.status,
-            ];
-          }),
-        );
+              o.code,
+              o.shop,
+              cu.phone || "",
+              cu.address || "",
+              o.area || cu.area || "",
+              o._rep,
+            ],
+            items = o._items.length ? o._items : [{}];
+          items.forEach(function (i, n) {
+            // order-level amounts appear on the first line only, so adding up a column never counts an order twice
+            rows.push(
+              head.concat([
+                i.code || "",
+                i.name || "",
+                i.unit || "",
+                i.price != null ? i.price : "",
+                i.qty != null ? i.qty : "",
+                i.amount != null ? i.amount : "",
+                n === 0 ? (o.subtotal != null ? o.subtotal : o.total) : "",
+                n === 0 ? +o.discount || 0 : "",
+                n === 0 ? o.total : "",
+                n === 0 ? o.notes || "" : "",
+              ]),
+            );
+          });
+        });
         var blob = new Blob(
           [
             "﻿" +

@@ -107,8 +107,9 @@
           ? '<div class="a-warn" style="margin:0 0 12px">Server not reachable. Nothing is shown until it is back.</div>'
           : "";
       }
-      var date = GA.today(),
-        who = "all",
+      var QP = new URLSearchParams(location.search),
+        date = /^\d{4}-\d\d-\d\d$/.test(QP.get("date") || "") ? QP.get("date") : GA.today(),
+        who = QP.get("w") || "all",
         pg = GA.mount("summary.html", "Daily summary");
       var SB = {
         delivered: ["b-success", "Delivered"],

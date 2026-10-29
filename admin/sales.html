@@ -40,20 +40,6 @@
         gap: 12px;
         margin-bottom: 14px;
       }
-      .sa-k div {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 14px;
-      }
-      .sa-k b {
-        display: block;
-        font-size: 22px;
-      }
-      .sa-k span {
-        color: var(--muted);
-        font-size: 13px;
-      }
       .sa-box {
         background: var(--card);
         border: 1px solid var(--border);
@@ -162,7 +148,9 @@
         });
       }
       var lastSig = "",
-        date = today(),
+        date = /^\d{4}-\d\d-\d\d$/.test(new URLSearchParams(location.search).get("date") || "")
+          ? new URLSearchParams(location.search).get("date")
+          : today(),
         map = null,
         layer = null,
         openRow = "";
@@ -228,14 +216,18 @@
             return t + (o.total || 0);
           }, 0);
         $("saK").innerHTML = [
-          [V.length, "Shops visited"],
-          [O.length, "Orders"],
-          [money(value), "Order value"],
-          [noOrd, "Visited, no order"],
-          [nCan, "Cancelled orders"],
+          [V.length, "Shops visited", "store", "c-p"],
+          [O.length, "Orders", "cart", "c-i"],
+          [money(value), "Order value", "rupee", "c-s"],
+          [noOrd, "Visited, no order", "alert-circle", "c-a"],
+          [nCan, "Cancelled orders", "x-circle", "c-d"],
         ]
           .map(function (k) {
-            return "<div><b>" + k[0] + "</b><span>" + k[1] + "</span></div>";
+            return (
+              '<div class="sa-t"><span class="chip ' + k[3] + '">' +
+              GA.icon(k[2]) + "</span><div><b>" + k[0] + "</b><span>" + k[1] +
+              "</span></div></div>"
+            );
           })
           .join("");
 
@@ -250,7 +242,7 @@
                       "," +
                       v.lng +
                       '" target="_blank" rel="noopener">Open in Maps</a>'
-                    : "-";
+                    : '<span class="sa-m">Location not shared</span>';
               var res =
                 v.s === "no_order"
                   ? '<span class="sa-pill sa-no">No order</span><br><b>' +

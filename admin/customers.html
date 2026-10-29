@@ -2006,6 +2006,18 @@
             });
           });
         });
+        // Visits made by sales reps (visited / no order) count as a visit too
+        try {
+          var SD = JSON.parse(localStorage.getItem("gm_sales_days_v1")) || {};
+          Object.keys(SD).forEach(function (wid) {
+            Object.keys(SD[wid] || {}).forEach(function (d) {
+              if (d > t) return;
+              Object.keys((SD[wid][d] || {}).visits || {}).forEach(function (c) {
+                if (!o[c] || o[c] < d) o[c] = d;
+              });
+            });
+          });
+        } catch (e) {}
         return o;
       }
       function fillRt() {
@@ -3101,6 +3113,16 @@
       mergeWorkerPins();
       areaOptions();
       render();
+      /* Notification link: customers.html?q=SHOP NAME searches for that shop */
+      (function () {
+        try {
+          var q = new URLSearchParams(location.search).get("q");
+          if (!q) return;
+          $("cSearch").value = q;
+          if ($("cSt")) $("cSt").value = "all";
+          render();
+        } catch (e) {}
+      })();
       /* GM routes deep link: customers.html?code=C001 shows that shop; add &edit=1 to open its Edit form (used by the Routes page) */
       (function () {
         try {

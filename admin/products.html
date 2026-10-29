@@ -87,7 +87,9 @@
         '<div class="pr-tools"><div class="field a-f" data-act style="width:190px;height:38px"><input type="search" id="pQ" placeholder="Search product..." aria-label="Search product name or code" autocomplete="off"></div>' +
         '<button class="btn btn-secondary a-btn" id="pImp" data-act type="button">' +
         DP.icon("upload") +
-        ' Import</button><button class="pr-ib" data-act id="pMore" type="button" aria-label="More actions" aria-haspopup="menu">' +
+        ' Import</button><button class="btn btn-secondary a-btn" id="pStk" data-act type="button">' +
+        DP.icon("upload") +
+        ' Import Stock</button><button class="pr-ib" data-act id="pMore" type="button" aria-label="More actions" aria-haspopup="menu">' +
         DP.icon("dots-vertical") +
         "</button>" +
         '<a class="btn a-btn" id="pAdd" data-act href="product-edit.html">' +
@@ -904,6 +906,7 @@
           "Avg Sales",
           "Stock",
           "Low Stock Alert",
+          "Box Qty",
           "Batch",
           "Status",
         ];
@@ -933,6 +936,7 @@
               p.avg,
               p.track ? p.stock : "",
               p.track ? p.low : "",
+              p.boxQty || "",
               p.batch ? "Yes" : "No",
               PR.isOn(p) ? "Active" : "Inactive",
             ];
@@ -1155,7 +1159,8 @@
           OQ = /^(open qty|opening qty|opening stock)$/,
           OV = /^(open val|opening value)$/,
           AVG = /^avg sales$/,
-          BATCH = /^batch$/;
+          BATCH = /^batch$/,
+          BOXQ = /^(box qty|box quantity|pcs per box|pieces per box|pcs\/box|case qty|case size|box size|qty per box)$/;
         for (i = 0; i < Math.min(rows.length, 15) && hi < 0; i++) {
           var h = rows[i].map(function (c) {
             return String(c).trim().toLowerCase();
@@ -1196,6 +1201,7 @@
           cov = col(OV),
           cav = col(AVG),
           cb = col(BATCH),
+          cbx = col(BOXQ),
           out = [],
           skip = [],
           seen = {},
@@ -1244,6 +1250,7 @@
               openVal: numOf(cell(r, cov)),
               avg: numOf(cell(r, cav)),
               batch: /^(yes|y|true|1)$/i.test(cell(r, cb)),
+              boxQty: Math.floor(numOf(cell(r, cbx))) || "",
             },
             key = code ? "C:" + code.toUpperCase() : "N:" + PR.nk(name);
           if (seen[key] != null) {
@@ -1273,7 +1280,7 @@
       $("pImp").onclick = function () {
         DP.dialog({
           title: "Import products",
-          sub: "Upload a .xlsx or .csv with a Product (or Item Name) column. Code, Category (or Group), Unit, Sale Rate, MRP, Purchase Rate, HSN, GST, Alias, Print Name, Sub Unit, Ratio, Open Qty, Open Val, Avg Sales and Batch columns are used if present.",
+          sub: "Upload a .xlsx or .csv with a Product (or Item Name) column. Code, Category (or Group), Unit, Sale Rate, MRP, Purchase Rate, HSN, GST, Alias, Print Name, Sub Unit, Ratio, Open Qty, Open Val, Avg Sales, Batch and Box Qty (pieces per box) columns are used if present.",
           cls: "dp-small",
           html: '<div class="a-fg"><input class="a-file" type="file" id="xFile" accept=".xlsx,.csv,.txt" aria-label="Product file"></div><div class="msg" id="xMsg" style="margin-bottom:10px"></div><div id="xRes"></div><div class="btn-group"><button class="btn btn-secondary a-btn" data-x2 type="button">Close</button></div>',
           onOpen: function (api) {
@@ -1379,6 +1386,7 @@
                             },
                           );
                           if (x.batch) p.batch = true;
+                          if (x.boxQty) p.boxQty = x.boxQty; // a Box Qty column in the file is an explicit instruction
                           if (x.tax !== "" && !p.tax) p.tax = x.tax;
                           u++;
                         } else {
@@ -1401,6 +1409,7 @@
                             openVal: x.openVal,
                             avg: x.avg,
                             batch: x.batch,
+                            boxQty: x.boxQty,
                             active: true,
                             at: Date.now(),
                           });
@@ -1431,6 +1440,271 @@
                         );
                       });
                     };
+                  })
+                  .catch(function (er) {
+                    say(String((er && er.message) || er));
+                    inp.value = "";
+                  });
+              };
+              if (isX) fr.readAsArrayBuffer(f);
+              else fr.readAsText(f);
+            };
+          },
+        });
+      };
+
+      /* ---------- import stock (Tally "Stock report" or any Product + Qty file) ---------- */
+      function qtyOf(v) {
+        var m = /^\s*(-?[\d,]*\.?\d+)/.exec(String(v == null ? "" : v));
+        if (!m) return null;
+        var n = parseFloat(m[1].replace(/,/g, ""));
+        return isNaN(n) ? null : Math.round(n * 1000) / 1000;
+      }
+      function readStock(rows) {
+        var hi = -1,
+          H = {},
+          i,
+          when = "";
+        var NAME =
+            /^(product name|product|item name|item|items|description|particulars|name)$/,
+          SET = /^(close qty|closing qty|closing stock|close stock|stock|qty|quantity|current stock)$/,
+          ADD = /^(in qty|received qty|receive qty|add qty|purchase qty|qty|quantity|stock in)$/;
+        for (i = 0; i < Math.min(rows.length, 15); i++) {
+          var line = rows[i].join(" ");
+          var pm = /PERIOD\s+FROM\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+TO\s+(\d{1,2}\/\d{1,2}\/\d{4})/i.exec(line);
+          if (pm) when = pm[2];
+        }
+        for (i = 0; i < Math.min(rows.length, 15) && hi < 0; i++) {
+          var h = rows[i].map(function (c) {
+            return String(c).trim().toLowerCase();
+          });
+          if (
+            h.some(function (c) {
+              return NAME.test(c);
+            })
+          ) {
+            hi = i;
+            h.forEach(function (c, n) {
+              if (c && H[c] == null) H[c] = n;
+            });
+          }
+        }
+        if (hi < 0)
+          throw new Error(
+            "No product column found. The file needs a column named Item Name or Product.",
+          );
+        function col(re) {
+          for (var c in H) if (re.test(c)) return H[c];
+          return -1;
+        }
+        var cn = col(NAME),
+          cs = col(SET),
+          ca = col(ADD);
+        if (cs < 0 && ca < 0)
+          throw new Error(
+            "No quantity column found. Use a column named Close Qty, Stock or Qty.",
+          );
+        var out = [],
+          skip = [],
+          seen = {},
+          dup = 0;
+        rows.slice(hi + 1).forEach(function (r, n) {
+          var name = String(r[cn] == null ? "" : r[cn])
+            .replace(/^\s*-\s*/, "")
+            .replace(/\s+/g, " ")
+            .trim();
+          if (!name) return; // blank and the totals line at the bottom
+          var close = cs > -1 ? qtyOf(r[cs]) : null,
+            inq = ca > -1 ? qtyOf(r[ca]) : null;
+          if (close == null && inq == null) {
+            skip.push("Row " + (hi + n + 2) + " " + name + ": no quantity");
+            return;
+          }
+          var k = PR.nk(name),
+            x = { name: name, close: close, inq: inq };
+          if (seen[k] != null) {
+            dup++;
+            out[seen[k]] = x;
+            return;
+          }
+          seen[k] = out.length;
+          out.push(x);
+        });
+        return {
+          list: out,
+          skip: skip,
+          dup: dup,
+          when: when,
+        };
+      }
+      $("pStk").onclick = function () {
+        DP.dialog({
+          title: "Import stock",
+          sub: "Upload the Stock report (.xlsx) from your billing software, or any .xlsx / .csv with an Item Name column and a Close Qty (or Stock / Qty) column. Prices and other product details are not touched.",
+          cls: "dp-small",
+          html:
+            '<div class="a-fg"><input class="a-file" type="file" id="sFile" accept=".xlsx,.csv,.txt" aria-label="Stock file"></div>' +
+            '<div class="a-fg" style="margin:6px 0 10px"><label style="display:block;margin-bottom:6px"><input type="radio" name="sMode" value="set" checked> <b>Replace stock</b> with the closing quantity in the file <span class="mu">(use for the daily stock report)</span></label>' +
+            '<label style="display:block;margin-bottom:6px"><input type="radio" name="sMode" value="add"> <b>Add to current stock</b> <span class="mu">(use for goods just received: In Qty / Qty is added)</span></label>' +
+            '<label style="display:block"><input type="checkbox" id="sZero"> <span>Set products that are <b>not in the file</b> to 0 stock</span></label></div>' +
+            '<div class="msg" id="sMsg" style="margin-bottom:10px"></div><div id="sRes"></div><div class="btn-group"><button class="btn btn-secondary a-btn" data-s2 type="button">Close</button></div>',
+          onOpen: function (api) {
+            var data = null,
+              inp = api.q("#sFile");
+            var say = function (m, ok) {
+              var e = api.q("#sMsg");
+              e.textContent = m;
+              e.className = m ? (ok ? "msg ok" : "msg") : "";
+            };
+            var mode = function () {
+              var r = api.q('input[name="sMode"]:checked');
+              return r ? r.value : "set";
+            };
+            api.q("[data-s2]").onclick = function () {
+              api.close();
+            };
+            // work out what the import will do, without saving anything
+            function plan() {
+              var cur = PR.load(),
+                hit = [],
+                miss = [],
+                neg = 0,
+                used = {},
+                md = mode(),
+                zero = api.q("#sZero").checked,
+                noq = 0;
+              data.list.forEach(function (x) {
+                var p = findP(cur, "", x.name),
+                  q = md === "add" ? (x.inq != null ? x.inq : x.close) : x.close;
+                if (q == null) {
+                  noq++;
+                  return;
+                }
+                if (!p) {
+                  miss.push(x.name);
+                  return;
+                }
+                used[p.id] = 1;
+                var nv = md === "add" ? (Number(p.track ? p.stock : 0) || 0) + q : q;
+                if (nv < 0) neg++;
+                hit.push({ p: p, v: Math.max(0, Math.round(nv * 1000) / 1000) });
+              });
+              var zeroed = zero && md === "set"
+                ? cur.filter(function (p) {
+                    return PR.isOn(p) && !used[p.id] && p.track && Number(p.stock) > 0;
+                  })
+                : [];
+              return { hit: hit, miss: miss, neg: neg, zeroed: zeroed, noq: noq };
+            }
+            function show() {
+              if (!data) return;
+              var P = plan(),
+                md = mode();
+              api.q("#sRes").innerHTML =
+                '<p style="margin-bottom:8px"><b>' +
+                P.hit.length +
+                '</b> products will be updated' +
+                (data.when ? " (stock as on " + esc(data.when) + ")" : "") +
+                ".</p>" +
+                '<ul class="mu" style="margin:0 0 12px 18px;line-height:1.7">' +
+                (P.neg
+                  ? "<li>" + P.neg + " have a negative quantity in the file and will be set to 0</li>"
+                  : "") +
+                (P.zeroed.length
+                  ? "<li>" + P.zeroed.length + " products not in the file will be set to 0</li>"
+                  : "") +
+                (P.miss.length
+                  ? "<li>" + P.miss.length + " not found in your product list (skipped): see below</li>"
+                  : "") +
+                (data.dup ? "<li>" + data.dup + " repeated in the file (last one used)</li>" : "") +
+                "</ul>" +
+                (P.miss.length
+                  ? '<div class="mu" style="font-size:12px;max-height:110px;overflow:auto;margin-bottom:10px"><b>Not in product list</b><br>' +
+                    P.miss.slice(0, 30).map(esc).join("<br>") +
+                    (P.miss.length > 30 ? "<br>and " + (P.miss.length - 30) + " more" : "") +
+                    "</div>"
+                  : "") +
+                '<button class="btn a-btn" id="sGo" type="button" style="margin-bottom:10px"' +
+                (P.hit.length || P.zeroed.length ? "" : " disabled") +
+                ">" +
+                (md === "add" ? "Add stock to " : "Update stock for ") +
+                P.hit.length +
+                " products</button>";
+              var go = api.q("#sGo");
+              if (go)
+                go.onclick = function () {
+                  var btn = this,
+                    c2 = PR.load(),
+                    P2 = plan(),
+                    now = Date.now(),
+                    byId = {};
+                  c2.forEach(function (p) {
+                    byId[p.id] = p;
+                  });
+                  DP.setBusy(api, btn, true, "Saving...");
+                  P2.hit.forEach(function (h) {
+                    var p = byId[h.p.id];
+                    if (!p) return;
+                    p.stock = h.v;
+                    p.track = true; // the Sales app only shows and checks stock for tracked products
+                    p.stockAt = now;
+                    if (data.when && md === "set") p.stockDate = data.when;
+                  });
+                  P2.zeroed.forEach(function (z) {
+                    var p = byId[z.id];
+                    if (!p) return;
+                    p.stock = 0;
+                    p.stockAt = now;
+                  });
+                  PR.save(c2).then(function (res) {
+                    DP.setBusy(api, btn, false);
+                    if (!res.ok) {
+                      say(res.error);
+                      return;
+                    }
+                    inp.value = "";
+                    L = PR.load();
+                    st.pg = 1;
+                    api.close();
+                    render();
+                    toast(
+                      "Stock updated for " +
+                        P2.hit.length +
+                        " products" +
+                        (P2.zeroed.length ? ", " + P2.zeroed.length + " set to 0" : "") +
+                        ".",
+                    );
+                  });
+                };
+            }
+            api.q("#sZero").onchange = show;
+            api.qa('input[name="sMode"]').forEach(function (r) {
+              r.onchange = function () {
+                api.q("#sZero").disabled = mode() === "add";
+                show();
+              };
+            });
+            inp.onchange = function () {
+              var f = this.files[0];
+              if (!f) return;
+              say("Reading " + f.name + "...", true);
+              api.q("#sRes").innerHTML = "";
+              data = null;
+              var fr = new FileReader(),
+                isX = /\.xlsx$/i.test(f.name);
+              fr.onerror = function () {
+                say("Could not read that file");
+              };
+              fr.onload = function () {
+                (isX
+                  ? XLSXLite.parse(fr.result)
+                  : Promise.resolve(csvParse(String(fr.result)))
+                )
+                  .then(function (rows) {
+                    data = readStock(rows);
+                    if (!data.list.length) throw new Error("No products found in this file");
+                    say("", true);
+                    show();
                   })
                   .catch(function (er) {
                     say(String((er && er.message) || er));

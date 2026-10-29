@@ -18,11 +18,13 @@
     <link rel="apple-touch-icon" href="/assets/icon-180.png" />
     <link rel="stylesheet" href="../shared/vendor/leaflet/leaflet.css" />
     <link rel="stylesheet" href="sales.css" />
+    <link rel="stylesheet" href="../shared/dropdown.css" />
   </head>
   <body>
     <div id="app"></div>
     <script src="../assets/icons.js"></script>
     <script src="sales.js"></script>
+    <script src="../shared/dropdown.js"></script>
     <script src="../shared/vendor/leaflet/leaflet.js"></script>
     <script src="../shared/road-line.js"></script>
     <script>
@@ -35,6 +37,7 @@
           routeId = "",
           stops = [],
           sel = "",
+          rf = new URLSearchParams(location.search).get("f") || "all",
           view = "list",
           km = null,
           map = null,
@@ -42,6 +45,7 @@
           markers = {},
           drawId = 0;
 
+        if (["all", "visited", "pending"].indexOf(rf) < 0) rf = "all";
         function desktop() {
           return matchMedia("(min-width:1101px)").matches;
         }
@@ -111,10 +115,74 @@
           );
         }
 
+        function chips() {
+          return (
+            '<div class="cats" id="rf" style="margin:8px 0 4px">' +
+            ["all", "visited", "pending"]
+              .map(function (k) {
+                return (
+                  '<button class="cat' +
+                  (rf === k ? " on" : "") +
+                  '" data-rf="' +
+                  k +
+                  '">' +
+                  (k === "all" ? "All" : k === "visited" ? "Visited" : "Pending") +
+                  "</button>"
+                );
+              })
+              .join("") +
+            "</div>"
+          );
+        }
+        function visitedCard() {
+          var idx = {};
+          D.customers.forEach(function (c) {
+            idx[c.code] = c;
+          });
+          var V = M.visits || {},
+            rows = Object.keys(V)
+              .map(function (code) {
+                return { c: idx[code] || { code: code, name: code }, v: V[code] };
+              })
+              .sort(function (a, b) {
+                return ((b.v && b.v.t) || 0) - ((a.v && a.v.t) || 0);
+              });
+          return (
+            '<div class="card"><h2>Visited Today <em>(' +
+            rows.length +
+            ")</em></h2>" +
+            chips() +
+            '<div class="stops" id="vlist">' +
+            (rows.length
+              ? rows
+                  .map(function (r) {
+                    return (
+                      '<a class="st visited" href="shop.html?c=' +
+                      encodeURIComponent(r.c.code) +
+                      '&from=route"><span class="dot">' +
+                      Sales.ic("check") +
+                      "</span><div><b>" +
+                      Sales.esc(r.c.name) +
+                      "</b><small>" +
+                      Sales.esc(r.c.area || r.c.address || "") +
+                      '</small></div><span class="pill visited">Visited' +
+                      (r.v && r.v.t ? " " + Sales.esc(Sales.time(r.v.t)) : "") +
+                      "</span>" +
+                      Sales.ic("chevron-right") +
+                      "</a>"
+                    );
+                  })
+                  .join("")
+              : '<div class="empty"><b>No shops visited yet</b></div>') +
+            "</div></div>"
+          );
+        }
         function page() {
           document.getElementById("sub").textContent = Sales.dateLabel(M.date);
           var opts =
-            '<option value="">Choose today\'s route…</option>' +
+            (routeId
+              ? ""
+              : '<option value="">Choose today\'s route…</option>') +
             D.routes
               .map(function (r) {
                 return (
@@ -137,6 +205,10 @@
             '<a class="btn soft sm" id="gmaps" target="_blank" rel="noopener" hidden>' +
             Sales.ic("map") +
             "View on Maps</a></div>";
+          if (rf === "visited") {
+            main.innerHTML = head + visitedCard();
+            return bind();
+          }
           if (!routeId || !stops.length) {
             main.innerHTML =
               head +
@@ -184,7 +256,9 @@
             '">Map View</button></div>' +
             '<div class="rgrid"><div class="card" id="lcard"><h2>Today\'s Route <em>(' +
             stops.length +
-            ')</em></h2><div class="stops" id="stops"></div></div>' +
+            ')</em></h2>' +
+            chips() +
+            '<div class="stops" id="stops"></div></div>' +
             '<div class="card" id="mcard"><div class="mapbox" id="map"><div class="mapnote" id="mnote" hidden></div></div>' +
             '<div class="legend"><span><i style="background:#16a34a"></i>Visited</span><span><i style="background:#2563eb"></i>Current</span><span><i style="background:#f59e0b"></i>Pending</span></div><div id="nxt"></div></div></div>';
           drawList();
@@ -228,10 +302,14 @@
             }, 30);
         }
         function drawList() {
-          document.getElementById("stops").innerHTML = stops
+          var shown = 0;
+          var rows = stops
             .map(function (c, i) {
               var st = state(c),
                 v = visitedOf(c);
+              if (rf === "visited" && st !== "visited") return "";
+              if (rf === "pending" && st === "visited") return "";
+              shown++;
               return (
                 '<div class="st ' +
                 st +
@@ -264,6 +342,11 @@
               );
             })
             .join("");
+          document.getElementById("stops").innerHTML =
+            rows ||
+            '<div class="empty"><b>' +
+              (rf === "visited" ? "No shops visited yet" : "No pending shops") +
+              "</b></div>";
         }
         function drawNext() {
           var c = byCode(sel),
@@ -295,7 +378,7 @@
               : "") +
             '<a class="btn sm" href="order.html?c=' +
             encodeURIComponent(c.code) +
-            '">' +
+            '&from=route">' +
             Sales.ic("cart") +
             "Take Order</a>" +
             '<button class="btn line sm" id="mv" type="button">' +
@@ -303,22 +386,14 @@
             "Mark Visited</button>" +
             '<a class="btn soft sm" href="shop.html?c=' +
             encodeURIComponent(c.code) +
-            '">View Details</a></div></div>';
+            '&from=route">View Details</a></div></div>';
           document.getElementById("mv").onclick = function () {
-            var b = this;
-            b.disabled = true;
-            Sales.api("/api/sales/visit", { code: c.code, status: "visited" })
-              .then(function (j) {
-                M.visits = j.visits;
-                sel = "";
-                build();
-                page();
-                Sales.toast("Marked visited");
-              })
-              .catch(function (e) {
-                b.disabled = false;
-                Sales.toast(e.message, true);
-              });
+            Sales.visitSheet(c, function (j) {
+              M.visits = j.visits;
+              sel = "";
+              build();
+              page();
+            });
           };
         }
         function pinIcon(n, st) {
@@ -486,6 +561,17 @@
                 Sales.toast(e.message, true);
               });
           };
+          var fr = document.getElementById("rf");
+          if (fr)
+            fr.onclick = function (e) {
+              var b = e.target.closest && e.target.closest("[data-rf]");
+              if (!b) return;
+              rf = b.getAttribute("data-rf");
+              fr.querySelectorAll("button").forEach(function (x) {
+                x.classList.toggle("on", x === b);
+              });
+              page();
+            };
           var st = document.getElementById("stops");
           if (st)
             st.onclick = function (e) {
@@ -493,7 +579,8 @@
               if (!r) return;
               var code = r.getAttribute("data-c");
               if (desktop()) pick(code, true);
-              else location.href = "shop.html?c=" + encodeURIComponent(code);
+              else location.href =
+                "shop.html?c=" + encodeURIComponent(code) + "&from=route";
             };
           var sg = document.getElementById("seg");
           if (sg)

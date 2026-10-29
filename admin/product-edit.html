@@ -115,6 +115,7 @@
             mrp: "",
             subUnit: "",
             ratio: "",
+            boxQty: "",
             openQty: "",
             openVal: "",
             avg: "",
@@ -138,6 +139,7 @@
         "weight",
         "mrp",
         "ratio",
+        "boxQty",
         "openQty",
         "openVal",
         "avg",
@@ -420,6 +422,13 @@
             ph: "1",
             extra:
               '<span class="mu" style="font-size:12px;display:block;margin-top:4px">How many sub units in 1 main unit</span>',
+          }) +
+          fld("boxQty", "Pieces per box", {
+            opt: 1,
+            type: "number",
+            ph: "e.g. 12",
+            extra:
+              '<span class="mu" style="font-size:12px;display:block;margin-top:4px">Sales people get an "Add box" button that adds this many pieces at once (a box of 12 = one tap, not 12).</span>',
           }) +
           "</div></div>" +
           '<div class="pr-box"><div class="pr-sec"><h3>Stock Information</h3><small>Track current stock quantity and low stock alert.</small></div><div class="pr-form">' +
@@ -890,6 +899,7 @@
               mrp: num(d.mrp),
               subUnit: d.subUnit.trim(),
               ratio: num(d.ratio),
+              boxQty: num(d.boxQty),
               openQty: num(d.openQty),
               openVal: num(d.openVal),
               avg: num(d.avg),

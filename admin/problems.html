@@ -107,7 +107,7 @@
           ? '<div class="a-warn" style="margin:0 0 12px">Server not reachable. Nothing is shown until it is back.</div>'
           : "";
       }
-      var who = "all",
+      var who = new URLSearchParams(location.search).get("w") || "all",
         pg = GA.mount("problems.html", "Problems");
       pg.innerHTML =
         '<div class="a-bar"><label class="mu" for="wk">Employee</label><div class="field a-f" style="width:210px"><select id="wk"></select></div></div><div id="out"></div>';

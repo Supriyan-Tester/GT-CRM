@@ -101,7 +101,7 @@ window.GMImg = {
     location.replace("../login.html");
   }
   var DATA_KEY =
-    /^(gm_admin_|gm_crm_data_v5|gm_pins_v1|gm_pintasks_v1|gm_depot_v1|gm_wself_|gm_crew_|gm_loc_|gm_locreq_|gm_view_worker|gm_logged_in)/;
+    /^(gm_admin_|gm_sales_|gm_crm_data_v5|gm_pins_v1|gm_pintasks_v1|gm_depot_v1|gm_wself_|gm_crew_|gm_loc_|gm_locreq_|gm_view_worker|gm_logged_in)/;
   var rev = 0,
     pending = {},
     written = {},

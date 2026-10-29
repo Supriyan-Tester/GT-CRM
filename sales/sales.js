@@ -156,6 +156,9 @@
       : '<span class="stk">' +
           p.stock.toLocaleString("en-IN") +
           (p.unit ? " " + S.esc(p.unit) : "") +
+          (p.boxQty && p.stock >= p.boxQty
+            ? " (" + Math.floor(p.stock / p.boxQty) + " box)"
+            : "") +
           " in stock</span>";
   };
   S.watch = function (id, on) {
@@ -189,6 +192,43 @@
       );
     });
   };
+  // Best-effort position for the admin's "where it happened": never blocks. Gives {} if the phone does not share it in a few seconds.
+  S.locateSoft = function () {
+    return new Promise(function (ok) {
+      var done = false;
+      function fin(v) {
+        if (!done) {
+          done = true;
+          ok(v);
+        }
+      }
+      setTimeout(function () {
+        fin({ err: "timeout" });
+      }, 6000);
+      if (!navigator.geolocation) return fin({ err: "unsupported" });
+      navigator.geolocation.getCurrentPosition(
+        function (p) {
+          fin({
+            lat: p.coords.latitude,
+            lng: p.coords.longitude,
+            acc: Math.round(p.coords.accuracy || 0),
+          });
+        },
+        function (e) {
+          // why no position, so the office can see the reason
+          fin({
+            err:
+              e && e.code === 1
+                ? "denied"
+                : e && e.code === 3
+                  ? "timeout"
+                  : "unavailable",
+          });
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 },
+      );
+    });
+  };
   var REASONS = [
     "Shop closed",
     "Not interested",
@@ -197,7 +237,7 @@
     "Customer not available",
     "Other",
   ];
-  // "Mark visited, no order": asks the reason, reads the GPS, and the server checks the person is near the shop.
+  // "Mark visited, no order": asks the reason and saves. The phone's position is recorded for the admin when it is shared.
   S.visitSheet = function (shop, done) {
     var bg = document.createElement("div");
     bg.className = "sheet-bg on";
@@ -236,8 +276,8 @@
       if (r.value === "Other" && note.length < 3)
         return (err.textContent = "Write a short note for Other.");
       go.disabled = true;
-      go.textContent = "Checking your location…";
-      S.locate()
+      go.textContent = "Saving…";
+      S.locateSoft()
         .then(function (loc) {
           return S.api("/api/sales/visit", {
             code: shop.code,
@@ -247,6 +287,7 @@
             lat: loc.lat,
             lng: loc.lng,
             acc: loc.acc,
+            lerr: loc.err,
           });
         })
         .then(function (j) {
@@ -322,6 +363,33 @@
           err.textContent = e.message;
         });
     };
+  };
+  // Where the back arrow on a shop goes: today's Route page when a route is selected for today, otherwise My Customers.
+  // m = the result of S.mine(), d = the result of S.data() (used to ignore a route that no longer exists).
+  S.from = function () {
+    var f = new URLSearchParams(location.search).get("from");
+    return f === "route" || f === "customers" ? f : "";
+  };
+  S.fromQ = function () {
+    var f = S.from();
+    return f ? "&from=" + f : "";
+  };
+  S.backTo = function (m, d) {
+    var f = S.from();
+    if (f === "route") return { href: "route.html", label: "Route" };
+    if (f === "customers") return { href: "customers.html", label: "Customers" };
+    var ok =
+      m &&
+      m.route &&
+      m.date === m.today &&
+      (!d ||
+        !d.routes ||
+        d.routes.some(function (x) {
+          return x.id === m.route;
+        }));
+    return ok
+      ? { href: "route.html", label: "Route" }
+      : { href: "customers.html", label: "Customers" };
   };
   S.mine = function (date) {
     return S.api(
@@ -494,7 +562,7 @@
     var t = document.documentElement.getAttribute("data-theme");
     document.getElementById("app").innerHTML =
       '<div class="shell">' +
-      '<aside class="side"><div class="brand"><div class="logo">GT</div><div><b>General Traders</b><small>Sales Panel</small></div></div>' +
+      '<aside class="side"><div class="brand"><div class="logo"><img src="../assets/icon-192.png" alt="General Traders" /></div><div><b>General Traders</b><small>Sales Panel</small></div></div>' +
       '<nav class="menu" aria-label="Sales menu">' +
       menu +
       "</nav>" +
@@ -506,7 +574,7 @@
       '<button class="out" type="button" id="outBtn">' +
       S.ic("logout") +
       "<span>Logout</span></button></aside>" +
-      '<div class="content"><header class="top"><div class="logo">GT</div><div class="hello" id="hello"></div>' +
+      '<div class="content"><header class="top"><div class="logo"><img src="../assets/icon-192.png" alt="General Traders" /></div><div class="hello" id="hello"></div>' +
       '<button class="ibtn" id="themeBtn" type="button" aria-label="Switch light or dark">' +
       S.ic(t === "dark" ? "sun" : "moon") +
       "</button>" +

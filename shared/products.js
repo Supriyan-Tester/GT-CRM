@@ -350,6 +350,12 @@
         (isNaN(n(d.ratio)) || n(d.ratio) <= 0)
       )
         e.ratio = "Pack ratio must be more than 0.";
+      if (
+        d.boxQty !== "" &&
+        d.boxQty != null &&
+        (isNaN(n(d.boxQty)) || n(d.boxQty) < 1 || n(d.boxQty) % 1)
+      )
+        e.boxQty = "Pieces per box must be a whole number, 1 or more.";
       ["openQty", "openVal", "avg"].forEach(function (k) {
         if (d[k] !== "" && d[k] != null && (isNaN(n(d[k])) || n(d[k]) < 0))
           e[k] = "Must be 0 or more.";

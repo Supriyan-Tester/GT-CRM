@@ -894,10 +894,10 @@ function saveSessions() {
     } catch (e) {}
   }, 500);
 }
-// An admin is signed out after 30 minutes with no activity. "Remember me" no longer lengthens an admin sign-in.
+// An admin is signed out after 3 hours with no activity. "Remember me" no longer lengthens an admin sign-in.
 // Background polling (GET requests) does not count as activity for an admin; only saving something or the page's own /api/keepalive does.
 // Sales people work in the field on their phones, so (like the delivery crew) they stay signed in for 30 days.
-const TTL = { admin: 30 * 60e3, worker: 30 * 86400e3, sales: 30 * 86400e3 };
+const TTL = { admin: 180 * 60e3, worker: 30 * 86400e3, sales: 30 * 86400e3 };
 const sha = (t) => crypto.createHash("sha256").update(t).digest("hex");
 function cookieToken(req) {
   const m = /(?:^|;\s*)gm_sid=([A-Za-z0-9_-]{20,80})/.exec(
@@ -1134,6 +1134,7 @@ function viewFor(s, key, raw) {
           .map((p) => ({
             id: p.id,
             code: p.code,
+            barcode: p.barcode ? String(p.barcode) : undefined,
             name: p.name,
             alias: p.alias,
             category: p.category,
@@ -1142,6 +1143,7 @@ function viewFor(s, key, raw) {
             mrp: p.mrp,
             tax: p.tax,
             stock: stockOf(p), // available quantity (null = stock not tracked for this product)
+            boxQty: Number(p.boxQty) >= 2 ? Math.floor(Number(p.boxQty)) : null, // pieces in one box (null = no box ordering)
             active: true,
           })),
       );
@@ -1491,7 +1493,7 @@ function metres(a, b, c, d) {
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 // Adds a line to the admin's bell list (newest first, same shape the delivery app uses).
-function notifyAdmin(type, title, text, who) {
+function notifyAdmin(type, title, text, who, loc) {
   const L = stored("gm_admin_notifs_v1"),
     ts = Date.now();
   const list = Array.isArray(L) ? L : [];
@@ -1504,6 +1506,9 @@ function notifyAdmin(type, title, text, who) {
     text,
     worker: who || "",
     read: false,
+    ...(loc && typeof loc.lat === "number" && typeof loc.lng === "number"
+      ? { loc: { lat: loc.lat, lng: loc.lng, acc: loc.acc || 0 } }
+      : {}),
   });
   setItem("gm_admin_notifs_v1", JSON.stringify(list.slice(0, 300)));
 }
@@ -1524,7 +1529,7 @@ function cancelOrder(id, who, reason, repOnly) {
   const L = stored("gm_sales_orders_v1"),
     list = Array.isArray(L) ? L : [],
     o = list.filter((x) => x && x.id === id)[0];
-  if (!o || o.status !== "placed")
+  if (!o || o.status !== "placed" || (o.stages && o.stages.delivered))
     return { error: "That order cannot be cancelled." };
   if (repOnly) {
     if (o.rep !== who.id) return { error: "That order is not yours." };
@@ -1598,47 +1603,36 @@ function salesApi(req, res, s, p, url) {
       (c) => c && c.code === code && c.active !== false,
     )[0];
   const num = (n) => Math.round((Number(n) || 0) * 100) / 100;
-  // Checks the phone's position against the shop pin. Returns { loc } or { error }.
+  // Records where the phone was when an order or visit was saved. It never blocks: if the phone shared no usable position
+  // the record is saved without one. Returns { loc } (loc is {} when no position was shared).
   const where = (sh, b) => {
     const lat = Number(b.lat),
       lng = Number(b.lng),
       acc = Math.max(0, Math.round(Number(b.acc) || 0));
     if (!(Math.abs(lat) <= 90 && Math.abs(lng) <= 180) || (!lat && !lng))
-      return {
-        error:
-          "Turn on location (GPS) and allow it for this page, then try again.",
-      };
-    if (acc > 200)
-      return {
-        error:
-          "Your GPS is not accurate enough yet (about " +
-          acc +
-          " m). Step outside or wait a few seconds, then try again.",
-      };
+      return { loc: { why: String(b.lerr || "").slice(0, 20) } };
     const loc = {
       lat: Math.round(lat * 1e6) / 1e6,
       lng: Math.round(lng * 1e6) / 1e6,
       acc,
     };
-    if (!(Number(sh.lat) && Number(sh.lng))) {
-      loc.nopin = true; // the shop has no map pin, so the distance cannot be checked
-      return { loc };
-    }
-    const d = Math.round(metres(Number(sh.lat), Number(sh.lng), lat, lng));
-    loc.dist = d;
-    if (d - Math.min(acc, 50) > SALES_RADIUS)
-      return {
-        error:
-          "You are about " +
-          (d >= 1000 ? (d / 1000).toFixed(1) + " km" : d + " m") +
-          " from " +
-          sh.name +
-          ". Go to the shop to mark it (must be within " +
-          SALES_RADIUS +
-          " m).",
-      };
+    if (!(Number(sh.lat) && Number(sh.lng))) loc.nopin = true;
+    else loc.dist = Math.round(metres(Number(sh.lat), Number(sh.lng), lat, lng));
     return { loc };
   };
+  // Short note for the admin about where it happened
+  const whereText = (loc) =>
+    typeof loc.lat !== "number"
+      ? " Location was not shared" +
+        ({
+          denied: " (location is blocked in the browser).",
+          unavailable: " (the device could not find its position).",
+          timeout: " (it took too long to get a position).",
+          unsupported: " (this device cannot share location).",
+        }[loc.why] || ".")
+      : loc.dist != null
+        ? " Marked " + loc.dist + " m from the shop."
+        : " Shop has no map pin, so distance is unknown.";
   const dayOf = (all, date) => {
     const mine = all[s.id] || (all[s.id] = {});
     return mine[date] || (mine[date] = { route: "", visits: {} });
@@ -1726,7 +1720,6 @@ function salesApi(req, res, s, p, url) {
       if (reason === "Other" && note.length < 3)
         return send(res, 400, { error: "Write a short note for Other." });
       const w = where(sh, b);
-      if (w.error) return send(res, 400, { error: w.error });
       const all = daysAll(),
         d = dayOf(all, istDay()),
         prev = d.visits[code];
@@ -1752,10 +1745,9 @@ function salesApi(req, res, s, p, url) {
             reason +
             (note ? ": " + note : "") +
             ")." +
-            (w.loc.nopin
-              ? " Shop has no map pin, so distance was not checked."
-              : " Marked " + w.loc.dist + " m from the shop."),
+            whereText(w.loc),
           who,
+          w.loc,
         );
         logEvents(s, [
           {
@@ -1865,12 +1857,8 @@ function salesApi(req, res, s, p, url) {
             });
         }
       }
-      let oloc = null;
-      if (!b.draft) {
-        const w = where(sh, b);
-        if (w.error) return send(res, 400, { error: w.error });
-        oloc = w.loc;
-      }
+      // Orders can be placed from anywhere: the phone's position is only recorded for the admin (never blocks).
+      const oloc = b.draft ? null : where(sh, b).loc;
       const items = ids.map((id) => {
         const x = byId[id],
           price = num(x.price);
@@ -1882,6 +1870,7 @@ function salesApi(req, res, s, p, url) {
           price,
           qty: merged[id],
           amount: num(price * merged[id]),
+          ...(Number(x.boxQty) >= 2 ? { boxQty: Math.floor(Number(x.boxQty)) } : {}),
         };
       });
       const subtotal = num(items.reduce((t, i) => t + i.amount, 0)),
@@ -1952,10 +1941,10 @@ function salesApi(req, res, s, p, url) {
             (items.length === 1 ? " item" : " items") +
             ", Rs " +
             rec.total +
-            (oloc.nopin
-              ? ". Shop has no map pin, so distance was not checked."
-              : ". Placed " + oloc.dist + " m from the shop."),
+            "." +
+            whereText(oloc || {}),
           who,
+          oloc || undefined,
         );
         logEvents(s, [
           {
@@ -2334,6 +2323,105 @@ function api(req, res, url) {
           {
             type: "order",
             text: "Order " + r.order.id + " cancelled: " + r.order.cancelReason,
+          },
+        ]);
+        send(res, 200, { ok: true });
+      },
+      4096,
+    );
+  }
+
+  // ---- Office moves a Sales order along: Processing -> Out for delivery -> Delivered (one step at a time) ----
+  if (p === "/api/salesadmin/stage" && req.method === "POST") {
+    const ac = acctOf(s);
+    if (s.role !== "admin" || !ac || !hasAny(ac, ["sales", "billing"]))
+      return send(res, 403, { error: "Not allowed" });
+    return body(
+      req,
+      (err, b) => {
+        if (err || !b) return send(res, 400, { error: "Bad request" });
+        const ORDER = ["processing", "out", "delivered"],
+          NAME = {
+            processing: "Processing",
+            out: "Out for delivery",
+            delivered: "Delivered",
+          },
+          L = stored("gm_sales_orders_v1"),
+          list = Array.isArray(L) ? L : [],
+          o = list.filter((x) => x && x.id === String(b.id || ""))[0],
+          st = String(b.stage || "");
+        if (!o || o.status !== "placed")
+          return send(res, 400, { error: "That order cannot be updated." });
+        if (ORDER.indexOf(st) < 0)
+          return send(res, 400, { error: "Unknown stage." });
+        o.stages = o.stages || {};
+        const next = ORDER.filter((k) => !o.stages[k])[0];
+        if (next !== st)
+          return send(res, 400, {
+            error: next
+              ? "Next step for this order is " + NAME[next] + "."
+              : "This order is already delivered.",
+          });
+        o.stages[st] = { at: Date.now(), by: ac.name };
+        setItem("gm_sales_orders_v1", JSON.stringify(list));
+        logEvents(s, [
+          { type: "order", text: "Order " + o.id + " marked " + NAME[st] },
+        ]);
+        send(res, 200, { ok: true });
+      },
+      2048,
+    );
+  }
+
+  // ---- Super Admin permanently deletes a Sales order (it leaves every list and total; a record of it stays in the activity log) ----
+  if (p === "/api/salesadmin/delete" && req.method === "POST") {
+    const ac = acctOf(s);
+    if (s.role !== "admin" || s.emp || !isSuper(ac))
+      return send(res, 403, { error: "Only the Super Admin can delete orders." });
+    return body(
+      req,
+      (err, b) => {
+        if (err || !b) return send(res, 400, { error: "Bad request" });
+        const id = String(b.id || ""),
+          L = stored("gm_sales_orders_v1"),
+          list = Array.isArray(L) ? L : [],
+          o = list.filter((x) => x && x.id === id)[0];
+        if (!o) return send(res, 404, { error: "Order not found." });
+        setItem(
+          "gm_sales_orders_v1",
+          JSON.stringify(list.filter((x) => x !== o)),
+        );
+        // the shop visit that pointed at this order becomes "no order"
+        const days = stored("gm_sales_days_v1");
+        if (days && days[o.rep]) {
+          Object.keys(days[o.rep]).forEach((dt) => {
+            const v =
+              days[o.rep][dt] &&
+              days[o.rep][dt].visits &&
+              days[o.rep][dt].visits[o.code];
+            if (v && v.o === id) {
+              delete v.o;
+              v.s = "no_order";
+              v.reason = "Order deleted";
+            }
+          });
+          setItem("gm_sales_days_v1", JSON.stringify(days));
+        }
+        logEvents(s, [
+          {
+            type: "order",
+            text:
+              "Order " +
+              o.id +
+              " deleted (" +
+              (o.shop || o.code) +
+              ", Rs " +
+              o.total +
+              ", " +
+              (o.status || "") +
+              ", by " +
+              (o.repName || o.rep) +
+              ")",
           },
         ]);
         send(res, 200, { ok: true });

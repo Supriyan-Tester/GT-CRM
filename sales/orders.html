@@ -17,15 +17,19 @@
     />
     <link rel="apple-touch-icon" href="/assets/icon-180.png" />
     <link rel="stylesheet" href="sales.css" />
+    <link rel="stylesheet" href="../shared/dropdown.css" />
   </head>
   <body>
     <div id="app"></div>
     <script src="../assets/icons.js"></script>
     <script src="sales.js"></script>
+    <script src="../shared/dropdown.js"></script>
     <script>
       Sales.start("orders", function (me, hello, main) {
         var OID = new URLSearchParams(location.search).get("o") || "",
           ORD = [],
+          f = new URLSearchParams(location.search).get("f") || "all";
+        if (["all", "today", "placed", "draft", "cancelled"].indexOf(f) < 0)
           f = "all";
         hello.innerHTML = '<h1>Orders</h1><p id="sub">Loading…</p>';
         main.innerHTML = '<div class="empty"><b>Loading…</b></div>';
@@ -176,7 +180,11 @@
               }, 0),
             );
           var R = ORD.filter(function (o) {
-              return f === "all" || o.status === f;
+              return f === "all"
+                ? true
+                : f === "today"
+                  ? o.status === "placed" && o.date === today
+                  : o.status === f;
             }),
             html = "",
             last = "";
@@ -220,6 +228,8 @@
             '<div class="rowh"><div class="cats grow" id="fc"><button class="cat' +
             (f === "all" ? " on" : "") +
             '" data-f="all">All</button><button class="cat' +
+            (f === "today" ? " on" : "") +
+            '" data-f="today">Today</button><button class="cat' +
             (f === "placed" ? " on" : "") +
             '" data-f="placed">Placed</button><button class="cat' +
             (f === "draft" ? " on" : "") +
@@ -234,7 +244,9 @@
               ? html
               : '<div class="empty"><i>' +
                 Sales.ic("clipboard-list") +
-                "</i><b>No orders yet</b><span>Pick a shop and take your first order.</span></div>") +
+                "</i><b>" +
+                (f === "today" ? "No orders today" : "No orders yet") +
+                "</b><span>Pick a shop and take your first order.</span></div>") +
             "</div>";
           document.getElementById("fc").onclick = function (e) {
             var b = e.target.closest("[data-f]");

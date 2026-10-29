@@ -17,16 +17,19 @@
     />
     <link rel="apple-touch-icon" href="/assets/icon-180.png" />
     <link rel="stylesheet" href="sales.css" />
+    <link rel="stylesheet" href="../shared/dropdown.css" />
   </head>
   <body>
     <div id="app"></div>
     <script src="../assets/icons.js"></script>
     <script src="sales.js"></script>
+    <script src="../shared/dropdown.js"></script>
     <script>
       Sales.start("order", function (me, hello, main) {
         var qs = new URLSearchParams(location.search),
           CODE = qs.get("c") || "",
           DRAFT = qs.get("d") || "",
+          BACK = { href: "customers.html", label: "Customers" },
           REPL = qs.get("r") || "";
         if (!CODE) return location.replace("customers.html");
         hello.innerHTML = '<h1>New Order</h1><p id="sub">Loading…</p>';
@@ -49,7 +52,8 @@
             Date.now().toString(36) +
             Math.random().toString(36).slice(2, 8),
           placed = false;
-        var byId = {};
+        var byId = {},
+          LIST = [];
         function norm(s) {
           return String(s || "")
             .toLowerCase()
@@ -96,11 +100,16 @@
           var S = SHOP,
             t = 0;
           main.innerHTML =
-            '<a class="back" href="customers.html">' +
+            '<a class="back" href="' +
+            BACK.href +
+            '">' +
             Sales.ic("chevron-left") +
-            "Customers</a>" +
+            BACK.label +
+            "</a>" +
             '<div class="ord"><div class="left">' +
-            '<div class="card shead"><div class="tile t0">' +
+            '<div class="card shead"><button class="sw" id="swp" type="button" aria-label="Previous customer">' +
+            Sales.ic("chevron-left") +
+            '</button><div class="tile t0">' +
             Sales.esc(Sales.init(S.name)) +
             '</div><div class="info"><h2>' +
             Sales.esc(S.name) +
@@ -123,14 +132,21 @@
             "</div>" +
             '<a class="btn soft sm" href="shop.html?c=' +
             encodeURIComponent(S.code) +
-            '">View Details</a></div>' +
-            '<label class="search"><span class="sr">Search products</span>' +
+            Sales.fromQ() +
+            '">View Details</a><button class="sw" id="swn" type="button" aria-label="Next customer">' +
+            Sales.ic("chevron-right") +
+            "</button></div>" +
+            '<div class="osrow"><label class="search"><span class="sr">Search products</span>' +
             Sales.ic("search") +
-            '<input id="q" type="search" placeholder="Search products by name or code" autocomplete="off" /></label>' +
+            '<input id="q" type="search" placeholder="Search products by name, code or brand…" autocomplete="off" /></label>' +
+            '<button class="btn line scanb" id="scan" type="button">' +
+            Sales.ic("scan") +
+            "<span>Scan</span></button></div>" +
             '<div class="cats" id="cats" role="tablist" aria-label="Category"></div>' +
+            '<div class="boxtip" id="boxtip" hidden><span><b>Selling by the box?</b> Tap <b>+ Box</b> to add a full box in one tap. To type a number, open the cart and tap the quantity.</span><button type="button" id="boxtipx" aria-label="Got it">Got it</button></div>' +
             '<div class="pgrid" id="grid"></div><div class="more" id="more" hidden></div></div>' +
             '<aside class="card cart" id="cart" aria-label="Order items"></aside></div>' +
-            '<button class="cbar" id="cbar" type="button" hidden></button>';
+            '<div class="cback" id="cback"></div><button class="cbar" id="cbar" type="button" hidden></button>';
           document.getElementById("sub").textContent = S.name;
           var qi = document.getElementById("q"),
             tm;
@@ -155,19 +171,42 @@
             var c = e.target.closest && e.target.closest(".pc");
             if (!c) return;
             var id = c.getAttribute("data-id"),
-              p = byId[id];
-            if (p && p.stock != null && p.stock <= 0) {
-              Sales.watch(id, true)
-                .then(function () {
-                  Sales.toast(
-                    p.name +
-                      " is out of stock. You will see it on Home when it is back.",
-                  );
-                })
-                .catch(function () {});
+              p = byId[id],
+              isBox = !!(e.target.closest && e.target.closest(".boxb"));
+            if (e.target.closest && e.target.closest(".fav")) {
+              toggleFav(id);
               return;
             }
-            setQty(id, (cart[id] || 0) + 1);
+            if (e.target.closest && e.target.closest("input")) return;
+            var sb = e.target.closest && e.target.closest("[data-s]");
+            if (sb && !isBox) {
+              if (sb.getAttribute("data-s") === "-")
+                setQty(id, (cart[id] || 0) - 1);
+              else if (p && p.stock != null && p.stock <= 0) notifyOut(p, id);
+              else setQty(id, (cart[id] || 0) + 1);
+              return;
+            }
+            if (p && p.stock != null && p.stock <= 0) return notifyOut(p, id);
+            setQty(id, (cart[id] || 0) + (isBox && p.boxQty ? p.boxQty : 1));
+          };
+          grid.onchange = function (e) {
+            var c = e.target.closest && e.target.closest(".pc");
+            if (c && e.target.tagName === "INPUT")
+              setQty(
+                c.getAttribute("data-id"),
+                Math.floor(Number(e.target.value)) || 0,
+              );
+          };
+          document.getElementById("scan").onclick = scan;
+          document.getElementById("swp").onclick = function () {
+            goShop(-1);
+          };
+          document.getElementById("swn").onclick = function () {
+            goShop(1);
+          };
+          document.getElementById("cback").onclick = function () {
+            document.getElementById("cart").classList.remove("open");
+            document.getElementById("cback").classList.remove("on");
           };
           grid.addEventListener("error", imgErr, true);
           document
@@ -175,10 +214,133 @@
             .addEventListener("error", imgErr, true);
           document.getElementById("cbar").onclick = function () {
             document.getElementById("cart").classList.add("open");
+            document.getElementById("cback").classList.add("on");
+          };
+          var tip = document.getElementById("boxtip"),
+            seen = false;
+          try {
+            seen = localStorage.getItem("gm_box_tip") === "1";
+          } catch (e) {}
+          tip.hidden =
+            seen ||
+            !PRODS.some(function (p) {
+              return p.boxQty;
+            });
+          document.getElementById("boxtipx").onclick = function () {
+            tip.hidden = true;
+            try {
+              localStorage.setItem("gm_box_tip", "1");
+            } catch (e) {}
           };
           drawCats();
           drawGrid();
           drawCart();
+        }
+        // Favourites are remembered on this phone only (no server change needed)
+        var FAV = {};
+        try {
+          FAV = JSON.parse(localStorage.getItem("gm_fav") || "{}") || {};
+        } catch (e) {}
+        function toggleFav(id) {
+          if (FAV[id]) delete FAV[id];
+          else FAV[id] = 1;
+          try {
+            localStorage.setItem("gm_fav", JSON.stringify(FAV));
+          } catch (e) {}
+          drawGrid();
+        }
+        // previous / next customer (same order as My Customers)
+        function goShop(d) {
+          var i = -1;
+          LIST.forEach(function (c, k) {
+            if (c.code === CODE) i = k;
+          });
+          if (i < 0 || LIST.length < 2) return;
+          var t = LIST[(i + d + LIST.length) % LIST.length];
+          if (
+            Object.keys(cart).length &&
+            !confirm("Leave this order? Items not saved as a draft will be lost.")
+          )
+            return;
+          placed = true;
+          location.href =
+            "order.html?c=" + encodeURIComponent(t.code) + Sales.fromQ();
+        }
+        function notifyOut(p, id) {
+          Sales.watch(id, true)
+            .then(function () {
+              Sales.toast(
+                p.name +
+                  " is out of stock. You will see it on Home when it is back.",
+              );
+            })
+            .catch(function () {});
+        }
+        // Scan a barcode with the camera; matches the product barcode or code
+        function scan() {
+          if (!("BarcodeDetector" in window) || !navigator.mediaDevices) {
+            var t = prompt(
+              "Camera scan is not supported here. Type the barcode or product code:",
+            );
+            if (t) found(t);
+            return;
+          }
+          var ov = document.createElement("div");
+          ov.className = "scanov";
+          ov.innerHTML =
+            '<video playsinline muted></video><button type="button" class="btn line">Cancel</button>';
+          document.body.appendChild(ov);
+          var v = ov.querySelector("video"),
+            stream,
+            stop = false,
+            det = new BarcodeDetector();
+          function close() {
+            stop = true;
+            if (stream)
+              stream.getTracks().forEach(function (t) {
+                t.stop();
+              });
+            ov.remove();
+          }
+          ov.querySelector("button").onclick = close;
+          navigator.mediaDevices
+            .getUserMedia({ video: { facingMode: "environment" } })
+            .then(function (s) {
+              stream = s;
+              v.srcObject = s;
+              v.play();
+              (function tick() {
+                if (stop) return;
+                det
+                  .detect(v)
+                  .then(function (r) {
+                    if (r && r.length) {
+                      close();
+                      found(r[0].rawValue);
+                    } else setTimeout(tick, 250);
+                  })
+                  .catch(function () {
+                    setTimeout(tick, 400);
+                  });
+              })();
+            })
+            .catch(function () {
+              close();
+              Sales.toast("Could not open the camera", true);
+            });
+        }
+        function found(raw) {
+          var t = String(raw || "").trim().toLowerCase(),
+            p = PRODS.filter(function (x) {
+              return (
+                String(x.barcode || "").toLowerCase() === t ||
+                String(x.code || "").toLowerCase() === t
+              );
+            })[0];
+          if (!p) return Sales.toast("No product found for " + raw, true);
+          if (p.stock != null && p.stock <= 0) return notifyOut(p, p.id);
+          setQty(p.id, (cart[p.id] || 0) + 1);
+          Sales.toast("Added " + p.name);
         }
         function imgErr(e) {
           var im = e.target;
@@ -230,22 +392,35 @@
                     '" role="button" tabindex="0" data-id="' +
                     Sales.esc(p.id) +
                     '">' +
-                    (n ? '<span class="qtyb">' + n + "</span>" : "") +
+                    '<button class="fav' +
+                    (FAV[p.id] ? " on" : "") +
+                    '" type="button" tabindex="-1" aria-label="Favourite">' +
+                    Sales.ic("heart") +
+                    "</button>" +
                     pic(p, "pic") +
+                    Sales.stockHtml(p) +
                     "<b>" +
                     Sales.esc(p.name) +
                     "</b><small>" +
                     Sales.esc(p.code || "") +
                     (p.unit ? " · per " + Sales.esc(p.unit) : "") +
                     "</small>" +
-                    Sales.stockHtml(p) +
                     '<div class="pr2"><b>' +
                     Sales.money(p.price) +
-                    '</b><button class="add" type="button" tabindex="-1" aria-label="Add ' +
+                    "</b></div>" +
+                    '<div class="pstep"><button type="button" data-s="-" tabindex="-1" aria-label="Less"' +
+                    (n ? "" : " disabled") +
+                    ">" +
+                    Sales.ic("minus") +
+                    '</button><input type="number" min="0" max="9999" inputmode="numeric" value="' +
+                    (n || 0) +
+                    '" aria-label="Quantity"><button class="add" type="button" data-s="+" tabindex="-1" aria-label="Add ' +
                     Sales.esc(p.name) +
                     '">' +
                     Sales.ic("plus") +
-                    "</button></div></div>"
+                    "</button></div>" +
+                    boxBtn(p) +
+                    "</div>"
                   );
                 })
                 .join("")
@@ -264,6 +439,24 @@
                 .getElementById("grid")
                 .scrollIntoView({ block: "start" });
             },
+          );
+        }
+        // Box helpers: boxQty = pieces in one box (null when the product is not sold by the box)
+        function boxBtn(p) {
+          return p.boxQty
+            ? '<button class="boxb" type="button" tabindex="-1">+ Box <small>(' +
+                p.boxQty +
+                " " +
+                Sales.esc(p.unit || "pcs") +
+                ")</small></button>"
+            : "";
+        }
+        function boxText(p, n) {
+          if (!p.boxQty || n < p.boxQty) return "";
+          var b = Math.floor(n / p.boxQty),
+            r = n % p.boxQty;
+          return (
+            b + (b === 1 ? " box" : " boxes") + (r ? " + " + r + " loose" : "")
           );
         }
         function drawCart() {
@@ -288,7 +481,13 @@
                     Sales.esc(p.code || "") +
                     " · " +
                     Sales.money(p.price) +
-                    "</small></div>" +
+                    "</small>" +
+                    (p.boxQty
+                      ? '<div class="bxr"><span>' +
+                        (boxText(p, n) || "Less than 1 box") +
+                        '</span><button type="button" data-a="boxdec" aria-label="Remove one box">− Box</button><button type="button" data-a="boxinc" aria-label="Add one box">+ Box</button></div>'
+                      : "") +
+                    "</div>" +
                     '<div class="ctl"><div class="step"><button type="button" data-a="dec" aria-label="Less">' +
                     Sales.ic(n > 1 ? "minus" : "trash") +
                     '</button><input type="number" min="1" max="9999" inputmode="numeric" value="' +
@@ -345,6 +544,7 @@
             "Place Order</button></div>";
           var bar = document.getElementById("cbar");
           bar.hidden = !T.lines;
+          document.getElementById("main").classList.toggle("hascbar", !!T.lines);
           bar.innerHTML =
             "<span>" +
             Sales.ic("cart").replace(
@@ -361,16 +561,24 @@
             cc.style.display = "inline-flex";
           cc.onclick = function () {
             el.classList.remove("open");
+            document.getElementById("cback").classList.remove("on");
           };
           el.querySelector(".cl").onclick = function (e) {
             var b = e.target.closest && e.target.closest("button[data-a]"),
               row = e.target.closest && e.target.closest(".ci");
             if (!b || !row) return;
             var id = row.getAttribute("data-id");
-            setQty(
-              id,
-              (cart[id] || 0) + (b.getAttribute("data-a") === "inc" ? 1 : -1),
-            );
+            var act = b.getAttribute("data-a"),
+              bq = (byId[id] && byId[id].boxQty) || 1,
+              step =
+                act === "inc"
+                  ? 1
+                  : act === "dec"
+                    ? -1
+                    : act === "boxinc"
+                      ? bq
+                      : -bq;
+            setQty(id, (cart[id] || 0) + step);
           };
           el.querySelector(".cl").onchange = function (e) {
             var row = e.target.closest && e.target.closest(".ci");
@@ -451,17 +659,14 @@
           busy = true;
           var b = document.getElementById(draft ? "draft" : "place");
           if (b) b.disabled = true;
-          // placing an order needs the phone's position (you must be at the shop); a draft does not
-          var withLoc = draft
-            ? Promise.resolve({})
-            : (b && (b.textContent = "Checking your location…"),
-              Sales.locate());
-          withLoc
+          // the phone's position is only recorded for the admin; it never blocks the order
+          (draft ? Promise.resolve({}) : Sales.locateSoft())
             .then(function (loc) {
               var pl = payload(draft);
               pl.lat = loc.lat;
               pl.lng = loc.lng;
               pl.acc = loc.acc;
+              pl.lerr = loc.err;
               return Sales.api("/api/sales/order", pl);
             })
             .then(function (j) {
@@ -523,7 +728,12 @@
 
         Promise.all([
           Sales.data(),
-          DRAFT ? Sales.mine() : Promise.resolve(null),
+          // today's route decides where the back arrow goes; only a draft needs it to succeed
+          DRAFT
+            ? Sales.mine()
+            : Sales.mine().catch(function () {
+                return null;
+              }),
         ])
           .then(function (r) {
             var d = r[0];
@@ -535,12 +745,17 @@
                 '<div class="card empty"><b>Shop not found</b><span><a class="link" href="customers.html">Back to My Customers</a></span></div>';
               return;
             }
+            LIST = d.customers.filter(function (c) {
+              return c && c.code;
+            });
             PRODS = d.products.filter(function (p) {
               return p && p.id;
             });
             PRODS.forEach(function (p) {
               byId[p.id] = p;
-              p._k = norm([p.name, p.alias, p.code, p.category].join(" "));
+              p._k = norm(
+                [p.name, p.alias, p.code, p.barcode, p.category].join(" "),
+              );
             });
             PRODS.sort(function (a, b) {
               return String(a.name).localeCompare(String(b.name), "en", {
@@ -548,7 +763,8 @@
                 numeric: true,
               });
             });
-            if (r[1]) {
+            BACK = Sales.backTo(r[1], d);
+            if (r[1] && DRAFT) {
               var o = r[1].orders.filter(function (x) {
                 return (
                   x.id === DRAFT && x.status === "draft" && x.code === CODE

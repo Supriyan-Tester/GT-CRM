@@ -146,7 +146,12 @@
       return w.active !== false;
     });
     var adm = jl("gm_admin_v1", {});
-    DB.plans = adm.plans || {};
+    // Older data stored one plan object per date; newer data stores a list. Always use lists here.
+    DB.plans = {};
+    Object.keys(adm.plans || {}).forEach(function (d) {
+      var v = adm.plans[d];
+      DB.plans[d] = (Array.isArray(v) ? v : v ? [v] : []).filter(Boolean);
+    });
     DB.routes = adm.routes || [];
     DB.customers = adm.customers || [];
     DB.vehicles = jl("gm_admin_vehicles_v1", []).filter(function (v) {
@@ -183,21 +188,38 @@
       )
       .then(build);
   }
+  // On a plan as the main person OR as a helper riding along.
+  function onPlan(p, wid) {
+    return (
+      p.workerId === wid ||
+      (Array.isArray(p.helpers) && p.helpers.indexOf(wid) > -1)
+    );
+  }
   function routeOf(wid, ds) {
     var l = (DB.plans[ds] || []).filter(function (p) {
-      return p.workerId === wid && p.status !== "cancelled";
+      return onPlan(p, wid) && p.status !== "cancelled";
     });
-    return l.length
-      ? l
-          .map(function (p) {
-            return p.routeName;
-          })
-          .join(", ")
-      : "";
+    if (l.length)
+      return l
+        .map(function (p) {
+          return p.routeName;
+        })
+        .join(", ");
+    return salesRoute(wid, ds);
+  }
+  // A sales rep picks their own route for the day (saved apart from the Daily plan)
+  function salesRoute(wid, ds) {
+    var d = jl("gm_sales_days_v1", {});
+    var id = d && d[wid] && d[wid][ds] && d[wid][ds].route;
+    if (!id) return "";
+    var r = (jl("gm_admin_v1", {}).routes || []).filter(function (x) {
+      return x.id === id;
+    })[0];
+    return r ? r.name : "";
   }
   function planOf(wid, ds) {
     return (DB.plans[ds] || []).filter(function (p) {
-      return p.workerId === wid && p.status !== "cancelled";
+      return onPlan(p, wid) && p.status !== "cancelled";
     });
   }
   function onLeave(wid, ds) {
@@ -566,27 +588,27 @@
       esc(f.q) +
       '"></div>' +
       '<button class="btn btn-secondary a-btn at-noprint" id="bRep" data-act>Reports</button><button class="btn btn-secondary a-btn at-noprint" id="bMark" data-act>Mark attendance</button><button class="btn a-btn at-noprint" id="bExp" data-act>Export report</button></div>' +
-      '<div class="at-tiles"><div class="at-tile t-g"><b>' +
+      '<div class="at-tiles"><div class="at-tile t-g"><span class="chip c-s">' + GA.icon("check-circle") + '</span><div><b>' +
       (cp + cl) +
       " / " +
       total +
       "</b><span>Present</span><i>" +
       pct +
-      '%</i></div><div class="at-tile t-r"><b>' +
+      '%</i></div></div><div class="at-tile t-r"><span class="chip c-d">' + GA.icon("x-circle") + '</span><div><b>' +
       ca +
       " / " +
       total +
       "</b><span>Absent</span><i>" +
       (total ? Math.round((ca * 1000) / total) / 10 : 0) +
-      '%</i></div><div class="at-tile t-y"><b>' +
+      '%</i></div></div><div class="at-tile t-y"><span class="chip c-a">' + GA.icon("clock") + '</span><div><b>' +
       cl +
       "</b><span>Late (after " +
       t12(LATE) +
       ")</span><i>" +
       (total ? Math.round((cl * 1000) / total) / 10 : 0) +
-      '%</i></div><div class="at-tile t-b"><b>' +
+      '%</i></div></div><div class="at-tile t-b"><span class="chip c-i">' + GA.icon("route") + '</span><div><b>' +
       Math.round(km * 10) / 10 +
-      " km</b><span>Total distance</span></div></div>" +
+      " km</b><span>Total distance</span></div></div></div>" +
       '<div class="at" style="margin-top:16px"><div class="at-card"><div class="at-filters"><div class="field"><select id="fS">' +
       stOpts
         .map(function (o) {
@@ -787,11 +809,11 @@
     return (
       '<div class="at-tile ' +
       cls +
-      '"><b>' +
+      '"><div><b>' +
       v +
       "</b><span>" +
       l +
-      "</span></div>"
+      "</span></div></div>"
     );
   }
   function worker(wid) {
