@@ -2671,7 +2671,7 @@ html.fx-theming *::after {
   font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
-  margin-top: 24px;
+  margin-top: 50px;
 }
 .a-n a.a-open svg {
   width: 13px;
