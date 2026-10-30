@@ -719,6 +719,7 @@ const KEY_RULES = {
   gm_admin_ledger_v1: ["billing"],
   gm_admin_workers_v1: "full",
   gm_admin_wprofile_v1: "full",
+  gm_admin_business_v1: "full",
 };
 function adminMayWrite(s, key) {
   const a = acctOf(s);
@@ -1826,9 +1827,16 @@ function salesApi(req, res, s, p, url) {
       const merged = {};
       (Array.isArray(b.items) ? b.items : []).slice(0, 200).forEach((it) => {
         const id = String((it && it.id) || ""),
-          q = Math.floor(Number(it && it.qty));
+          kg = byId[id] && /^kgs?$/i.test(String(byId[id].unit || "").trim()),
+          // kilo products can be part of a kilo (to the gram); everything else stays whole numbers
+          q = kg
+            ? Math.round(Number(it && it.qty) * 1000) / 1000
+            : Math.floor(Number(it && it.qty));
         if (byId[id] && q > 0)
-          merged[id] = Math.min(9999, (merged[id] || 0) + q);
+          merged[id] = Math.min(
+            9999,
+            Math.round(((merged[id] || 0) + q) * 1000) / 1000,
+          );
       });
       const ids = Object.keys(merged);
       if (!ids.length)
@@ -1867,6 +1875,8 @@ function salesApi(req, res, s, p, url) {
           code: x.code,
           name: x.name,
           unit: x.unit || "",
+          hsn: String(x.hsn || ""),
+          tax: Number(x.tax) || 0, // GST % at the time of the order
           price,
           qty: merged[id],
           amount: num(price * merged[id]),

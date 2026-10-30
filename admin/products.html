@@ -97,7 +97,7 @@
         " Add product</a></div></div>" +
         '<div class="pr-tiles" id="pTiles"></div>' +
         '<section class="pr-panel" aria-label="Product list"><div class="pr-bar"><div class="field"><select id="pSeg" aria-label="Filter by status"></select></div>' +
-        '<div class="field"><select id="pCat" aria-label="Filter by category"></select></div><div class="field"><select id="pTax" aria-label="Filter by tax rate"><option value="">All tax rates</option><option value="0">Exempt (0%)</option><option value="5">5%</option><option value="12">12%</option><option value="18">18%</option><option value="28">28%</option></select></div><div class="field"><select id="pChk" aria-label="Quick checks"><option value="">Quick checks: none</option><option value="hsn">Missing HSN</option><option value="mrp">Missing MRP</option><option value="cat">Missing category</option><option value="cost">Missing purchase price</option><option value="lowm">Low margin (under 5%)</option><option value="loss">Selling below cost</option><option value="lows">Low stock</option><option value="fast">Fast moving</option><option value="slow">Slow moving</option></select></div><span class="pr-sp"></span>' +
+        '<div class="field"><select id="pCat" aria-label="Filter by category"></select></div><div class="field"><select id="pTax" aria-label="Filter by tax rate"><option value="">All tax rates</option><option value="0">Exempt (0%)</option><option value="5">5%</option><option value="12">12%</option><option value="18">18%</option><option value="28">28%</option></select></div><div class="field"><select id="pChk" aria-label="Quick checks"><option value="">Quick checks: none</option><option value="hsn">Missing HSN</option><option value="nostock">No stock number</option><option value="gst">Missing GST rate</option><option value="mrp">Missing MRP</option><option value="cat">Missing category</option><option value="cost">Missing purchase price</option><option value="lowm">Low margin (under 5%)</option><option value="loss">Selling below cost</option><option value="lows">Low stock</option><option value="fast">Fast moving</option><option value="slow">Slow moving</option></select></div><span class="pr-sp"></span>' +
         '<div class="field"><select id="pSort" aria-label="Sort products"><option value="name">Sort: Name (A-Z)</option><option value="namez">Sort: Name (Z-A)</option><option value="pricel">Sort: Price (low first)</option><option value="priceh">Sort: Price (high first)</option><option value="mrp">Sort: MRP (high first)</option><option value="mgh">Sort: Margin % (high first)</option><option value="mgl">Sort: Margin % (low first)</option><option value="code">Sort: Code</option><option value="new">Sort: Recently added</option></select></div>' +
         '<div class="pr-view" role="group" aria-label="View"><button type="button" id="vList" aria-label="List view" title="List view">' +
         DP.icon("menu") +
@@ -171,6 +171,8 @@
             var m = PR.margin(p),
               c = st.chk;
             if (c === "hsn" && p.hsn) return false;
+            if (c === "nostock" && p.stock !== "" && p.stock != null) return false;
+            if (c === "gst" && p.tax !== "" && p.tax != null) return false;
             if (c === "mrp" && p.mrp) return false;
             if (c === "cat" && p.category) return false;
             if (c === "cost" && p.cost !== "" && p.cost != null && p.cost !== 0)
@@ -582,7 +584,7 @@
           bar.innerHTML =
             "<b>" +
             n +
-            ' selected</b><button type="button" class="btn btn-secondary a-btn" data-b="on">Activate</button><button type="button" class="btn btn-secondary a-btn" data-b="off">Deactivate</button><button type="button" class="btn btn-secondary a-btn" data-b="del" style="color:var(--danger)">Delete</button><button type="button" class="btn btn-secondary a-btn" data-b="clr">Clear selection</button>';
+            ' selected</b><button type="button" class="btn btn-secondary a-btn" data-b="on">Activate</button><button type="button" class="btn btn-secondary a-btn" data-b="off">Deactivate</button><button type="button" class="btn btn-secondary a-btn" data-b="tax">Set GST / HSN</button><button type="button" class="btn btn-secondary a-btn" data-b="trk">Track stock</button><button type="button" class="btn btn-secondary a-btn" data-b="utrk">Stop tracking</button><button type="button" class="btn btn-secondary a-btn" data-b="del" style="color:var(--danger)">Delete</button><button type="button" class="btn btn-secondary a-btn" data-b="clr">Clear selection</button>';
         var all = $("pAll");
         if (all && part) {
           var k = part.filter(function (p) {
@@ -715,6 +717,13 @@
             },
           },
           {
+            label: "Set GST / HSN",
+            icon: "edit",
+            run: function () {
+              askTax([p.code]);
+            },
+          },
+          {
             label: PR.isOn(p) ? "Mark inactive" : "Mark active",
             icon: "power",
             run: function () {
@@ -741,6 +750,9 @@
           st.sel = {};
           render();
         } else if (k === "del") askDelete(cs);
+        else if (k === "tax") askTax(cs);
+        else if (k === "trk") askTrack(cs);
+        else if (k === "utrk") stopTrack(cs);
         else setActive(cs, k === "on");
       };
 
@@ -988,6 +1000,226 @@
         );
       }
 
+      /* ---------- GST rate and HSN (one product or many) ---------- */
+      function askTax(codes) {
+        var ps = codes.map(byCode).filter(Boolean);
+        if (!ps.length) return;
+        var one = ps.length === 1,
+          p0 = ps[0],
+          opts =
+            '<option value="">' +
+            (one ? "Not set" : "Keep as it is") +
+            "</option>" +
+            PR.TAX.map(function (t) {
+              return (
+                '<option value="' +
+                t +
+                '"' +
+                (one && String(p0.tax) === t && p0.tax !== "" ? " selected" : "") +
+                ">" +
+                (t === "0" ? "Exempt (0%)" : t + "%") +
+                "</option>"
+              );
+            }).join("");
+        DP.dialog({
+          title: one ? "GST rate and HSN" : "GST rate and HSN for " + ps.length + " products",
+          cls: "dp-small",
+          html:
+            '<p style="margin:2px 0 12px">' +
+            (one
+              ? "<b>" + esc(p0.name) + "</b> (" + esc(p0.code) + ")"
+              : "Fill in only what you want to change. A blank box keeps each product's current value.") +
+            '</p><div class="a-fg"><label for="tGst">GST rate</label><div class="field a-f"><select id="tGst">' +
+            opts +
+            '</select></div></div><div class="a-fg"><label for="tHsn">HSN code</label><div class="field a-f"><input id="tHsn" inputmode="numeric" maxlength="8" placeholder="' +
+            (one ? "21039090" : "Keep as it is") +
+            '" value="' +
+            (one ? esc(p0.hsn || "") : "") +
+            '"></div></div><div class="msg" id="tErr" style="margin:10px 0"></div><div class="btn-group"><button class="btn btn-secondary a-btn" data-x2 type="button">Cancel</button><button class="btn a-btn" id="tOk" type="button">Save</button></div>',
+          onOpen: function (api) {
+            api.q("[data-x2]").onclick = function () {
+              api.close();
+            };
+            api.q("#tOk").onclick = function () {
+              var btn = this,
+                g = api.q("#tGst").value,
+                h = api.q("#tHsn").value.replace(/\D/g, ""),
+                err = api.q("#tErr");
+              if (!g && !h) {
+                err.textContent = "Choose a GST rate or type an HSN code.";
+                err.className = "msg";
+                return;
+              }
+              if (h && (h.length < 4 || h.length > 8)) {
+                err.textContent = "HSN code must be 4 to 8 digits.";
+                err.className = "msg";
+                return;
+              }
+              DP.setBusy(api, btn, true, "Saving...");
+              var n = 0;
+              change(
+                function (cur) {
+                  cur.forEach(function (p) {
+                    if (codes.indexOf(p.code) < 0) return;
+                    var c = false;
+                    if (g && String(p.tax) !== g) {
+                      p.tax = g;
+                      c = true;
+                    }
+                    if (h && p.hsn !== h) {
+                      p.hsn = h;
+                      c = true;
+                    }
+                    if (c) n++;
+                  });
+                  if (!n) return false;
+                },
+                one ? p0.name + " updated." : n + " products updated.",
+                function () {
+                  st.sel = {};
+                },
+              ).then(function () {
+                DP.setBusy(api, btn, false);
+                api.close();
+              });
+            };
+          },
+        });
+      }
+
+      /* ---------- track stock (one product or many) ---------- */
+      function hasStock(p) {
+        return p.stock !== "" && p.stock != null && !isNaN(Number(p.stock));
+      }
+      function stopTrack(codes) {
+        var n = 0;
+        change(
+          function (cur) {
+            cur.forEach(function (p) {
+              if (codes.indexOf(p.code) > -1 && p.track) {
+                p.track = false;
+                n++;
+              }
+            });
+            if (!n) return false;
+          },
+          n + (n === 1 ? " product is" : " products are") + " no longer tracked. Their stock numbers are kept.",
+          function () {
+            st.sel = {};
+          },
+        );
+      }
+      function askTrack(codes) {
+        var ps = codes.map(byCode).filter(Boolean);
+        if (!ps.length) return;
+        var has = ps.filter(hasStock).length,
+          none = ps.length - has,
+          already = ps.filter(function (p) {
+            return p.track;
+          }).length;
+        DP.dialog({
+          title: "Track stock for " + ps.length + (ps.length === 1 ? " product" : " products"),
+          cls: "dp-small",
+          html:
+            '<p style="margin:2px 0 10px">Tracked products show their stock to the sales people, and an order cannot go above it. <b>' +
+            has +
+            "</b> of these already have a stock number, which is kept. <b>" +
+            none +
+            "</b> have none." +
+            (already ? " " + already + " are already tracked." : "") +
+            "</p>" +
+            (none
+              ? '<div class="a-fg"><label for="kStart">Starting stock for the ' +
+                none +
+                ' with no number <small>(leave blank to set it later)</small></label><div class="field a-f"><input id="kStart" inputmode="decimal" placeholder="Blank = no limit until you import or type it"></div></div>' +
+                '<p class="mu" style="margin:0 0 6px;font-size:13px">Typing 0 means Out of stock, and sales people will not be able to order those products. To fill real numbers, use the menu (the three dots) > Stock sheet to fill in, then Import Stock.</p>'
+              : "") +
+            '<div class="msg" id="kErr" style="margin:8px 0"></div><div class="btn-group"><button class="btn btn-secondary a-btn" data-x2 type="button">Cancel</button><button class="btn a-btn" id="kOk" type="button">Track stock</button></div>',
+          onOpen: function (api) {
+            api.q("[data-x2]").onclick = function () {
+              api.close();
+            };
+            api.q("#kOk").onclick = function () {
+              var btn = this,
+                err = api.q("#kErr"),
+                inp = api.q("#kStart"),
+                raw = inp ? inp.value.trim() : "",
+                start = null;
+              if (raw !== "") {
+                start = Number(raw.replace(/,/g, ""));
+                if (isNaN(start) || start < 0) {
+                  err.textContent = "Starting stock must be a number, 0 or more.";
+                  err.className = "msg";
+                  return;
+                }
+              }
+              DP.setBusy(api, btn, true, "Saving...");
+              var n = 0,
+                set = 0;
+              change(
+                function (cur) {
+                  cur.forEach(function (p) {
+                    if (codes.indexOf(p.code) < 0) return;
+                    var c = false;
+                    if (!p.track) {
+                      p.track = true;
+                      c = true;
+                    }
+                    if (start !== null && !hasStock(p)) {
+                      p.stock = start;
+                      set++;
+                      c = true;
+                    }
+                    if (c) n++;
+                  });
+                  if (!n) return false;
+                },
+                n +
+                  (n === 1 ? " product is" : " products are") +
+                  " now tracked" +
+                  (set ? ", " + set + " started at " + start : "") +
+                  ".",
+                function () {
+                  st.sel = {};
+                },
+              ).then(function () {
+                DP.setBusy(api, btn, false);
+                api.close();
+              });
+            };
+          },
+        });
+      }
+      function stockSheet() {
+        var l = L.filter(function (p) {
+          return PR.isOn(p) && !hasStock(p);
+        });
+        if (!l.length) {
+          toast("Every active product already has a stock number.");
+          return;
+        }
+        function q(v) {
+          v = String(v == null ? "" : v);
+          return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+        }
+        var rows = [["Item Name", "Unit", "Close Qty"]].concat(
+          l.map(function (p) {
+            return [p.name, p.unit || "", ""];
+          }),
+        );
+        var blob = new Blob(
+          ["\ufeff" + rows.map(function (r) { return r.map(q).join(","); }).join("\r\n") + "\r\n"],
+          { type: "text/csv;charset=utf-8" },
+        );
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "stock-sheet-" + GA.today() + ".csv";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        toast(l.length + " products in the sheet. Fill in Close Qty, then use Import Stock.");
+      }
+
       /* ---------- delete ---------- */
       function askDelete(codes) {
         var ps = codes.map(byCode).filter(Boolean);
@@ -1075,6 +1307,23 @@
       $("pMore").onclick = function () {
         DP.menu(this, [
           { label: "Download sample CSV", icon: "download", run: sample },
+          {
+            label: "Stock sheet to fill in (products with no stock)",
+            icon: "download",
+            run: stockSheet,
+          },
+          {
+            label: "Track stock for all products...",
+            icon: "box",
+            disabled: !L.length,
+            run: function () {
+              askTrack(
+                L.map(function (p) {
+                  return p.code;
+                }),
+              );
+            },
+          },
           "hr",
           {
             label: "Delete all products",

@@ -665,10 +665,14 @@
         gap: 16px;
         align-items: start;
       }
-      @media (max-width: 960px) {
+      @media (max-width: 1250px) {
         .of-grid {
           grid-template-columns: 1fr;
         }
+      }
+      .of-it th.r,
+      .of-it td.r {
+        white-space: nowrap;
       }
       .of-it {
         width: 100%;
@@ -909,7 +913,10 @@
       function money(n) {
         return (
           "₹" +
-          Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })
+          Number(n || 0).toLocaleString("en-IN", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })
         );
       }
       function when(t) {
@@ -1030,20 +1037,45 @@
       function inRange(o, a, b) {
         return o._day >= a && o._day <= b;
       }
+      // Dropdown lists come from the master data (all sales employees, all customer areas), plus anything already in orders
       function fillSelects(all) {
         var reps = {},
-          areas = {};
-        all.forEach(function (o) {
-          if (o.rep) reps[o.rep] = o._rep;
-          if (o.area) areas[o.area] = 1;
+          areas = {},
+          master = rd("gm_admin_v1", {}),
+          workerData = rd("gm_admin_workers_v1", { workers: [] }),
+          prof = rd("gm_admin_wprofile_v1", {}),
+          workers = Array.isArray(workerData.workers) ? workerData.workers : [];
+
+        // Sales people: the role is kept in the employee's profile (not on the employee record itself)
+        workers.forEach(function (w) {
+          var role = (prof[w.id] && prof[w.id].role) || w.role || "";
+          if (w && w.id && w.name && /sales/i.test(String(role)))
+            reps[w.id] = w.name;
         });
+        // also anyone who has already taken an order
+        all.forEach(function (o) {
+          if (o.rep) reps[o.rep] = o._rep || o.repName || o.rep;
+        });
+
+        // every area on the customer list, plus areas seen in orders
+        (Array.isArray(master.customers) ? master.customers : []).forEach(
+          function (c) {
+            if (c && c.area) areas[c.area] = c.area;
+          },
+        );
+        all.forEach(function (o) {
+          if (o.area) areas[o.area] = o.area;
+        });
+
         function opts(first, map, cur) {
           return (
             '<option value="">' +
             first +
             "</option>" +
             Object.keys(map)
-              .sort()
+              .sort(function (a, b) {
+                return String(map[a]).localeCompare(String(map[b]));
+              })
               .map(function (k) {
                 return (
                   '<option value="' +
@@ -1058,12 +1090,8 @@
               .join("")
           );
         }
-        var A = {};
-        Object.keys(areas).forEach(function (a) {
-          A[a] = a;
-        });
         $("omRep").innerHTML = opts("All Sales Persons", reps, st.rep);
-        $("omArea").innerHTML = opts("All Areas", A, st.area);
+        $("omArea").innerHTML = opts("All Areas", areas, st.area);
       }
       function change(cur, prev) {
         if (!prev) return cur ? "" : "";
@@ -1150,6 +1178,99 @@
             : "")
         );
       }
+      // Business details printed at the top of the order slip. The Super Admin / Admin sets them in Profile > Business Details.
+      function bizInfo() {
+        var b = rd("gm_admin_business_v1", {}) || {};
+        return {
+          name: String(b.name || "").trim() || "General Traders",
+          gstin: String(b.gstin || "").trim().toUpperCase(),
+          address: String(b.address || "").trim(),
+          phone: String(b.phone || "").trim(),
+        };
+      }
+      function r2(n) {
+        return Math.round((Number(n) || 0) * 100) / 100;
+      }
+      function prodOf(id) {
+        pimg(id); // builds the product lookup
+        return (PIMG && PIMG[id]) || {};
+      }
+      // Products sold by the kilo: under a kilo shows as grams ("500 g"), otherwise "1.5 Kg"
+      function qtyText(i) {
+        var q = Number(i && i.qty) || 0;
+        if (!/^kgs?$/i.test(String((i && i.unit) || "").trim())) return String(q);
+        return q < 1 ? Math.round(q * 1000) + " g" : +q.toFixed(3) + " Kg";
+      }
+      // HSN and GST rate of a line: saved on the order when it was placed, else taken from the product
+      function taxInfo(i) {
+        var p = prodOf(i.id);
+        return {
+          hsn: i.hsn != null && i.hsn !== "" ? String(i.hsn) : String(p.hsn || ""),
+          rate: i.tax != null ? Number(i.tax) || 0 : Number(p.tax) || 0,
+        };
+      }
+      // GST on top of the price: line GST = amount (after its share of any discount) x rate.
+      // Same state (first 2 digits of both GSTINs) = CGST + SGST, different state = IGST.
+      function calc(o, cu) {
+        var sub = 0;
+        o._items.forEach(function (i) {
+          sub += Number(i.amount) || 0;
+        });
+        sub = r2(sub);
+        var disc = Math.min(sub, Number(o.discount) || 0),
+          f = sub ? (sub - disc) / sub : 1,
+          lines = o._items.map(function (i) {
+            var t = taxInfo(i),
+              amt = r2(i.amount),
+              gst = r2(amt * f * (t.rate / 100));
+            return {
+              i: i,
+              hsn: t.hsn,
+              rate: t.rate,
+              amt: amt,
+              gst: gst,
+              total: r2(amt + gst),
+            };
+          }),
+          gst = r2(
+            lines.reduce(function (t, l) {
+              return t + l.gst;
+            }, 0),
+          ),
+          sa = String(bizInfo().gstin || "").slice(0, 2),
+          ba = String((cu && cu.gstin) || "").slice(0, 2),
+          inter = /^\d\d$/.test(sa) && /^\d\d$/.test(ba) && sa !== ba,
+          half = r2(gst / 2),
+          rates = {};
+        lines.forEach(function (l) {
+          rates[l.rate] = 1;
+        });
+        var rl = Object.keys(rates);
+        return {
+          lines: lines,
+          sub: sub,
+          disc: r2(disc),
+          taxable: r2(sub - disc),
+          gst: gst,
+          inter: inter,
+          cgst: inter ? 0 : half,
+          sgst: inter ? 0 : r2(gst - half),
+          rate: rl.length === 1 ? Number(rl[0]) : null, // the one rate, when every line has the same
+          grand: r2(sub - disc + gst),
+        };
+      }
+      // CGST / SGST (or IGST) rows for the totals box
+      function gstRows(cc) {
+        function row(l, v) {
+          return "<div><span>" + l + "</span><span>" + money(v) + "</span></div>";
+        }
+        var h = cc.rate != null ? " (" + cc.rate / 2 + "%)" : "",
+          f = cc.rate != null ? " (" + cc.rate + "%)" : "";
+        return cc.inter
+          ? row("IGST" + f, cc.gst)
+          : row("CGST" + h, cc.cgst) + row("SGST" + h, cc.sgst);
+      }
+
       function timeOnly(t) {
         return new Date(t).toLocaleTimeString("en-IN", {
           hour: "numeric",
@@ -1207,10 +1328,7 @@
                 encodeURIComponent(cu.lat + "," + cu.lng)
               : "",
           nx = nextStage(o),
-          sub = o._items.reduce(function (t, i) {
-            return t + (+i.amount || 0);
-          }, 0),
-          disc = +o.discount || 0;
+          cc = calc(o, cu);
         F.innerHTML =
           back +
           "<h2>Order Details</h2>" +
@@ -1250,10 +1368,10 @@
           '">' +
           (LABEL[o.status] || esc(o.status)) +
           "</span></div><div><small>Order value</small><b>" +
-          money(o.total) +
+          money(cc.grand) +
           "</b><small>" +
           o._items.length +
-          " items</small></div>" +
+          " items · incl. GST</small></div>" +
           '<div><small>Sales person</small><div class="om-shp" style="margin-top:2px"><i>' +
           esc(initials(o._rep)) +
           "</i><b>" +
@@ -1261,40 +1379,49 @@
           "</b></div></div></div></div>" +
           '<div class="of-grid"><div><div class="of-card"><h3>Order Items <span class="om-more" style="margin:0">' +
           o._items.length +
-          '</span></h3><div class="om-scroll"><table class="of-it"><thead><tr><th>#</th><th>Product</th><th>Code</th><th class="r">Unit price</th><th class="r">Qty</th><th class="r">Total</th></tr></thead><tbody>' +
-          o._items
-            .map(function (i, n) {
+          '</span></h3><div class="om-scroll"><table class="of-it"><thead><tr><th>#</th><th>Product</th><th>HSN</th><th class="r">Price</th><th class="r">Qty</th><th class="r">Amount</th><th class="r">GST</th><th class="r">Total</th></tr></thead><tbody>' +
+          cc.lines
+            .map(function (l, n) {
               return (
                 "<tr><td>" +
                 (n + 1) +
                 '</td><td><div class="pn">' +
-                pic(i) +
+                pic(l.i) +
                 "<div><b>" +
-                esc(i.name || i.id) +
+                esc(l.i.name || l.i.id) +
                 "</b>" +
-                (i.unit ? "<small>" + esc(i.unit) + "</small>" : "") +
+                (l.i.unit ? "<small>" + esc(l.i.unit) + "</small>" : "") +
                 "</div></div></td><td>" +
-                esc(i.code || "-") +
+                esc(l.hsn || "-") +
                 '</td><td class="r">' +
-                money(i.price) +
+                money(l.i.price) +
                 '</td><td class="r">' +
-                esc(i.qty) +
+                esc(qtyText(l.i)) +
                 '</td><td class="r">' +
-                money(i.amount) +
-                "</td></tr>"
+                money(l.amt) +
+                '</td><td class="r">' +
+                money(l.gst) +
+                "<small>" +
+                l.rate +
+                '%</small></td><td class="r"><b>' +
+                money(l.total) +
+                "</b></td></tr>"
               );
             })
             .join("") +
           '</tbody></table></div><div class="of-tot"><div><span>Subtotal</span><span>' +
-          money(o.subtotal != null ? o.subtotal : sub) +
+          money(cc.sub) +
           "</span></div>" +
-          (disc
+          (cc.disc
             ? "<div><span>Discount</span><span>- " +
-              money(disc) +
+              money(cc.disc) +
+              "</span></div><div><span>Taxable value</span><span>" +
+              money(cc.taxable) +
               "</span></div>"
             : "") +
-          '<div class="g"><span>Total amount</span><span>' +
-          money(o.total) +
+          gstRows(cc) +
+          '<div class="g"><span>Total amount (incl. GST)</span><span>' +
+          money(cc.grand) +
           "</span></div></div></div>" +
           '<div class="of-card"><h3>Order Notes</h3><p style="margin:0;color:var(--muted)">' +
           (o.notes ? esc(o.notes) : "No notes.") +
@@ -1500,7 +1627,7 @@
           rows = L.slice(from, from + st.per);
 
         $("omList").innerHTML = rows.length
-          ? '<table class="om-t"><thead><tr><th>Order ID</th><th>Customer / Shop</th><th>Order Date</th><th>Items</th><th class="r">Amount</th><th>Status</th><th>Order Taken By</th><th class="r">Actions</th></tr></thead><tbody>' +
+          ? '<table class="om-t"><thead><tr><th>Order ID</th><th>Customer / Shop</th><th>Order Date</th><th>Items</th><th class="r" title="Order total before GST">Amount (ex-GST)</th><th>Status</th><th>Order Taken By</th><th class="r">Actions</th></tr></thead><tbody>' +
             rows
               .map(function (o, i) {
                 var can = o.status === "cancelled";
@@ -1987,7 +2114,7 @@
           });
       }
 
-      // The order slip: shop, who took it, every product with quantity, price and amount, and the totals
+      // The order slip: seller and buyer, every product with HSN, quantity, price, GST and total, then the tax totals
       function printOrder(o) {
         if (!o) return;
         // The print rule hides everything on the page except #omPrint, so it must sit directly under <body>
@@ -1997,66 +2124,58 @@
             (rd("gm_admin_v1", {}).customers || []).filter(function (c) {
               return c.code === o.code;
             })[0] || {},
-          qty = o._items.reduce(function (t, i) {
-            return t + (+i.qty || 0);
-          }, 0),
-          sub = o._items.reduce(function (t, i) {
-            return t + (+i.amount || 0);
-          }, 0),
-          disc = +o.discount || 0,
-          cell = "border:1px solid #999;padding:6px 8px;";
+          cc = calc(o, cu),
+          B = bizInfo(),
+          cell = "border:1px solid #999;padding:6px 8px;",
+          tr = "display:flex;justify-content:space-between;";
         $("omPrint").innerHTML =
-          '<div style="font-family:Arial,sans-serif;color:#000;max-width:760px;margin:0 auto">' +
+          '<div style="font-family:Arial,sans-serif;color:#000;max-width:780px;margin:0 auto">' +
           '<div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #000;padding-bottom:8px">' +
-          '<div><h2 style="margin:0">General Traders</h2><div style="font-size:13px">Sales order</div></div>' +
-          '<div style="text-align:right;font-size:13px"><b style="font-size:18px">' +
+          '<div><h2 style="margin:0">' +
+          esc(B.name || "General Traders") +
+          '</h2><div style="font-size:13px">' +
+          (B.address ? esc(B.address) + "<br>" : "") +
+          (B.phone ? "Phone: " + esc(B.phone) + "<br>" : "") +
+          (B.gstin ? "GSTIN: <b>" + esc(B.gstin) + "</b>" : "") +
+          '</div></div><div style="text-align:right;font-size:13px"><div>Sales order</div><b style="font-size:18px">' +
           esc(o.id) +
           "</b><br>" +
           dateOnly(o.t) +
           ", " +
           timeOnly(o.t) +
-          "<br>Status: <b>" +
-          (LABEL[o.status] || esc(o.status)) +
-          "</b>" +
-          (o.stages && o.stages.delivered
-            ? " (Delivered)"
-            : o.stages && o.stages.out
-              ? " (Out for delivery)"
-              : o.stages && o.stages.processing
-                ? " (Processing)"
-                : "") +
           "</div></div>" +
-          '<table style="width:100%;margin:12px 0;font-size:14px"><tr><td style="vertical-align:top;width:60%"><b>' +
+          '<table style="width:100%;margin:12px 0;font-size:14px"><tr><td style="vertical-align:top;width:62%"><b>' +
           esc(o.shop || o.code) +
           "</b> (" +
           esc(o.code || "") +
           ")<br>" +
           (cu.address ? esc(cu.address) + "<br>" : "") +
           (o.area || cu.area ? "Area: " + esc(o.area || cu.area) + "<br>" : "") +
-          (cu.phone ? "Phone: " + esc(cu.phone) : "") +
+          (cu.phone ? "Phone: " + esc(cu.phone) + "<br>" : "") +
+          (cu.gstin ? "GSTIN: <b>" + esc(cu.gstin) + "</b>" : "") +
           '</td><td style="vertical-align:top">Order taken by: <b>' +
           esc(o._rep) +
           "</b></td></tr></table>" +
-          '<table style="width:100%;border-collapse:collapse;font-size:14px"><thead><tr style="background:#eee">' +
-          '<th style="' +
-          cell +
-          'text-align:center;width:34px">#</th><th style="' +
-          cell +
-          'text-align:left">Product</th><th style="' +
-          cell +
-          'text-align:left">Code</th><th style="' +
-          cell +
-          'text-align:center">Unit</th><th style="' +
-          cell +
-          'text-align:right">Price</th><th style="' +
-          cell +
-          'text-align:center">Qty</th><th style="' +
-          cell +
-          'text-align:right">Amount</th></tr></thead><tbody>' +
-          o._items
-            .map(function (i, n) {
+          '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:#eee">' +
+          ["#", "Product", "HSN", "Unit", "Price", "Qty", "Amount", "GST", "Total"]
+            .map(function (h, n) {
               return (
-                "<tr><td style=\"" +
+                '<th style="' +
+                cell +
+                "text-align:" +
+                (n === 1 ? "left" : n >= 4 && n !== 5 ? "right" : "center") +
+                '">' +
+                h +
+                "</th>"
+              );
+            })
+            .join("") +
+          "</tr></thead><tbody>" +
+          cc.lines
+            .map(function (l, n) {
+              var i = l.i;
+              return (
+                '<tr><td style="' +
                 cell +
                 'text-align:center">' +
                 (n + 1) +
@@ -2066,8 +2185,8 @@
                 esc(i.name || i.id) +
                 '</td><td style="' +
                 cell +
-                '">' +
-                esc(i.code || "") +
+                'text-align:center">' +
+                esc(l.hsn || "-") +
                 '</td><td style="' +
                 cell +
                 'text-align:center">' +
@@ -2079,37 +2198,52 @@
                 '</td><td style="' +
                 cell +
                 'text-align:center"><b>' +
-                esc(i.qty) +
+                esc(qtyText(i)) +
                 '</b></td><td style="' +
                 cell +
                 'text-align:right">' +
-                money(i.amount) +
-                "</td></tr>"
+                money(l.amt) +
+                '</td><td style="' +
+                cell +
+                'text-align:right">' +
+                money(l.gst) +
+                '<div style="font-size:11px;color:#555">' +
+                l.rate +
+                '%</div></td><td style="' +
+                cell +
+                'text-align:right"><b>' +
+                money(l.total) +
+                "</b></td></tr>"
               );
             })
             .join("") +
-          '</tbody><tfoot><tr><td colspan="5" style="' +
-          cell +
-          'text-align:right"><b>Total quantity</b></td><td style="' +
-          cell +
-          'text-align:center"><b>' +
-          qty +
-          '</b></td><td style="' +
-          cell +
-          '"></td></tr></tfoot></table>' +
-          '<div style="margin:12px 0 0 auto;max-width:300px;font-size:14px">' +
-          '<div style="display:flex;justify-content:space-between"><span>Items</span><span>' +
+          "</tbody></table>" +
+          '<div style="margin:12px 0 0 auto;max-width:320px;font-size:14px">' +
+          '<div style="' +
+          tr +
+          '"><span>Items</span><span>' +
           o._items.length +
-          '</span></div><div style="display:flex;justify-content:space-between"><span>Subtotal</span><span>' +
-          money(o.subtotal != null ? o.subtotal : sub) +
+          '</span></div><div style="' +
+          tr +
+          '"><span>Subtotal</span><span>' +
+          money(cc.sub) +
           "</span></div>" +
-          (disc
-            ? '<div style="display:flex;justify-content:space-between"><span>Discount</span><span>- ' +
-              money(disc) +
+          (cc.disc
+            ? '<div style="' +
+              tr +
+              '"><span>Discount</span><span>- ' +
+              money(cc.disc) +
+              '</span></div><div style="' +
+              tr +
+              '"><span>Taxable value</span><span>' +
+              money(cc.taxable) +
               "</span></div>"
             : "") +
-          '<div style="display:flex;justify-content:space-between;border-top:2px solid #000;margin-top:4px;padding-top:6px;font-size:18px"><b>Total</b><b>' +
-          money(o.total) +
+          gstRows(cc).replace(/<div>/g, '<div style="' + tr + '">') +
+          '<div style="' +
+          tr +
+          'border-top:2px solid #000;margin-top:4px;padding-top:6px;font-size:18px"><b>Total</b><b>' +
+          money(cc.grand) +
           "</b></div></div>" +
           (o.notes
             ? '<p style="margin-top:14px;font-size:13px"><b>Notes:</b> ' +
@@ -2124,7 +2258,7 @@
           "</div>";
         window.print();
       }
-      // Export: one line per product ordered, so every order shows what was ordered and how much
+      // Export: one line per product ordered, with HSN, GST and totals
       function exportCsv(L) {
         function c(v) {
           return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
@@ -2142,23 +2276,31 @@
             "Customer ID",
             "Shop",
             "Phone",
+            "GSTIN",
             "Address",
             "Area",
             "Order taken by",
             "Product code",
+            "HSN",
             "Product",
             "Unit",
             "Unit price",
             "Qty",
             "Item amount",
+            "GST %",
+            "GST amount",
+            "Line total",
             "Order subtotal",
             "Discount",
-            "Order total",
+            "Taxable value",
+            "Order GST",
+            "Order total (incl. GST)",
             "Notes",
           ],
         ];
         L.forEach(function (o) {
           var cu = custs[o.code] || {},
+            cc = calc(o, cu),
             head = [
               o.id,
               dateOnly(o.t),
@@ -2167,24 +2309,32 @@
               o.code,
               o.shop,
               cu.phone || "",
+              cu.gstin || "",
               cu.address || "",
               o.area || cu.area || "",
               o._rep,
             ],
-            items = o._items.length ? o._items : [{}];
-          items.forEach(function (i, n) {
+            lines = cc.lines.length ? cc.lines : [{ i: {}, hsn: "", rate: "", amt: "", gst: "", total: "" }];
+          lines.forEach(function (l, n) {
+            var i = l.i;
             // order-level amounts appear on the first line only, so adding up a column never counts an order twice
             rows.push(
               head.concat([
                 i.code || "",
+                l.hsn || "",
                 i.name || "",
                 i.unit || "",
                 i.price != null ? i.price : "",
                 i.qty != null ? i.qty : "",
-                i.amount != null ? i.amount : "",
-                n === 0 ? (o.subtotal != null ? o.subtotal : o.total) : "",
-                n === 0 ? +o.discount || 0 : "",
-                n === 0 ? o.total : "",
+                l.amt,
+                l.rate,
+                l.gst,
+                l.total,
+                n === 0 ? cc.sub : "",
+                n === 0 ? cc.disc : "",
+                n === 0 ? cc.taxable : "",
+                n === 0 ? cc.gst : "",
+                n === 0 ? cc.grand : "",
                 n === 0 ? o.notes || "" : "",
               ]),
             );

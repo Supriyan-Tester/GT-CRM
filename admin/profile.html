@@ -303,6 +303,41 @@
           "</div>"
         );
       }
+      var BZ = {};
+      try {
+        BZ = JSON.parse(localStorage.getItem("gm_admin_business_v1")) || {};
+      } catch (e) {}
+      var bzOk = !!me.full || !!me.super,
+        bzDis = bzOk ? "" : " disabled",
+        bizCard =
+          '<div class="card" style="margin:0"><div class="card-title">3. Business Details</div>' +
+          '<p class="pf2-hint">Printed at the top of every order slip. The GSTIN decides CGST + SGST or IGST on the slip, by comparing its first two digits (state code) with each shop\'s GSTIN.' +
+          (bzOk ? "" : " Only the Super Admin or an Admin can change these.") +
+          "</p>" +
+          '<div class="a-fg"><label for="bzName">Business name</label><div class="field a-f"><input id="bzName" maxlength="80" placeholder="General Traders" value="' +
+          esc(BZ.name || "") +
+          '"' +
+          bzDis +
+          "></div></div>" +
+          '<div class="a-fg"><label for="bzGst">GSTIN <small>(15 characters)</small></label><div class="field a-f"><input id="bzGst" maxlength="15" autocapitalize="characters" placeholder="e.g. 33ABCDE1234F1Z5" value="' +
+          esc(BZ.gstin || "") +
+          '"' +
+          bzDis +
+          "></div></div>" +
+          '<div class="a-fg"><label for="bzAddr">Address <small>(printed on the slip, up to 2 lines)</small></label><div class="field a-f"><textarea id="bzAddr" rows="2" maxlength="160" style="width:100%"' +
+          bzDis +
+          ">" +
+          esc(BZ.address || "") +
+          "</textarea></div></div>" +
+          '<div class="a-fg"><label for="bzPh">Phone number</label><div class="field a-f"><input id="bzPh" inputmode="tel" maxlength="30" placeholder="e.g. 0422 1234567" value="' +
+          esc(BZ.phone || "") +
+          '"' +
+          bzDis +
+          "></div></div>" +
+          (bzOk
+            ? '<div class="pf2-acts"><button class="btn a-btn" id="bzSave" type="button">Save business details</button></div>'
+            : "") +
+          '<div class="pf2-msg" id="bzMsg" role="status"></div></div>';
       var rulesCard =
         '<div class="card" style="margin:0"><div class="card-title">2. Work Rules</div>' +
         '<p class="pf2-hint">These rules apply to every employee phone. Changes show on their phones within a minute.</p>' +
@@ -349,7 +384,8 @@
         '<div class="a-fg"><label>Email Address</label><div class="field a-f"><input id="acMail" placeholder="Not set" readonly></div></div>' +
         "</div>" +
         rulesCard +
-        '<div class="card" style="margin:0"><div class="card-title"><span>3. Depot / Godown Location</span><span class="pf2-st" id="dSt"></span></div>' +
+        bizCard +
+        '<div class="card" style="margin:0"><div class="card-title"><span>4. Depot / Godown Location</span><span class="pf2-st" id="dSt"></span></div>' +
         '<div class="pf2-dsum"><div><b id="dSumT">No depot location set</b><small id="dSumS">Set your depot location to enable location-based attendance.</small></div><button class="btn a-btn" id="dOpen" type="button">Set Location</button></div>' +
         '<div id="dEdit" hidden>' +
         '<p class="pf2-hint">Employees can punch in and out only when their phone is inside this circle. Click the map, drag the pin, type the coordinates, or stand at the godown and use your current location.</p>' +
@@ -369,14 +405,14 @@
       GA.bindImport();
       (function () {
         var bk = document.querySelector("#bkCard .card-title");
-        if (bk) bk.textContent = "4. Backup";
+        if (bk) bk.textContent = "5. Backup";
         var cc = [].filter.call(
           document.querySelectorAll(".card-title"),
           function (t) {
             return t.textContent === "Privacy notice accepted";
           },
         )[0];
-        if (cc) cc.textContent = "5. Privacy notice accepted";
+        if (cc) cc.textContent = "6. Privacy notice accepted";
         $("pwOpen").onclick = function () {
           var c = $("pwCard");
           c.hidden = !c.hidden;
@@ -416,6 +452,52 @@
         $("pwCur").value = $("pwNew").value = $("pwNew2").value = "";
         say("Password changed. Other devices were signed out.", "ok");
       };
+      function bmsg(t, k) {
+        var m = $("bzMsg");
+        m.textContent = t || "";
+        m.className = "pf2-msg" + (k ? " " + k : "");
+      }
+      if ($("bzSave"))
+        $("bzSave").onclick = function () {
+          var name = $("bzName").value.trim(),
+            gst = $("bzGst").value.replace(/\s/g, "").toUpperCase(),
+            addr = $("bzAddr")
+              .value.split("\n")
+              .map(function (x) {
+                return x.trim();
+              })
+              .filter(Boolean)
+              .slice(0, 2)
+              .join("\n"),
+            ph = $("bzPh").value.trim();
+          if (
+            gst &&
+            !/^\d{2}[A-Z]{5}\d{4}[A-Z][A-Z\d]Z[A-Z\d]$/.test(gst)
+          ) {
+            bmsg(
+              "That GSTIN does not look right. It has 15 characters, like 33ABCDE1234F1Z5.",
+              "err",
+            );
+            return;
+          }
+          try {
+            localStorage.setItem(
+              "gm_admin_business_v1",
+              JSON.stringify({
+                name: name,
+                gstin: gst,
+                address: addr,
+                phone: ph,
+                updated: new Date().toISOString(),
+              }),
+            );
+          } catch (e) {
+            bmsg("Could not save in this browser.", "err");
+            return;
+          }
+          $("bzGst").value = gst;
+          bmsg("Saved. New order slips will print these details.", "ok");
+        };
       function rmsg(t, k) {
         var m = $("rMsg");
         m.textContent = t || "";

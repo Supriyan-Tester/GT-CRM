@@ -83,7 +83,7 @@
           Object.keys(cart).forEach(function (id) {
             var p = byId[id];
             if (!p) return;
-            n += cart[id];
+            n += Sales.isKg(p) ? 1 : cart[id];
             sub += (Number(p.price) || 0) * cart[id];
           });
           var d = Math.min(sub, Math.max(0, Number(discount) || 0));
@@ -187,15 +187,19 @@
               return;
             }
             if (p && p.stock != null && p.stock <= 0) return notifyOut(p, id);
-            setQty(id, (cart[id] || 0) + (isBox && p.boxQty ? p.boxQty : 1));
+            setQty(
+              id,
+              (cart[id] || 0) +
+                (isBox && p.boxQty ? p.boxQty : 1),
+            );
           };
           grid.onchange = function (e) {
             var c = e.target.closest && e.target.closest(".pc");
-            if (c && e.target.tagName === "INPUT")
-              setQty(
-                c.getAttribute("data-id"),
-                Math.floor(Number(e.target.value)) || 0,
-              );
+            if (c && e.target.tagName === "INPUT") {
+              var gid = c.getAttribute("data-id"),
+                gv = Number(e.target.value) || 0;
+              setQty(gid, Sales.isKg(byId[gid]) ? gv : Math.floor(gv));
+            }
           };
           document.getElementById("scan").onclick = scan;
           document.getElementById("swp").onclick = function () {
@@ -404,6 +408,7 @@
                     "</b><small>" +
                     Sales.esc(p.code || "") +
                     (p.unit ? " · per " + Sales.esc(p.unit) : "") +
+                    (Sales.isKg(p) ? " · in Kg, e.g. 0.5" : "") +
                     "</small>" +
                     '<div class="pr2"><b>' +
                     Sales.money(p.price) +
@@ -412,9 +417,15 @@
                     (n ? "" : " disabled") +
                     ">" +
                     Sales.ic("minus") +
-                    '</button><input type="number" min="0" max="9999" inputmode="numeric" value="' +
+                    '</button><input type="number" min="0" max="9999" step="' +
+                    (Sales.isKg(p) ? "0.1" : "1") +
+                    '" inputmode="' +
+                    (Sales.isKg(p) ? "decimal" : "numeric") +
+                    '" value="' +
                     (n || 0) +
-                    '" aria-label="Quantity"><button class="add" type="button" data-s="+" tabindex="-1" aria-label="Add ' +
+                    '" aria-label="' +
+                    (Sales.isKg(p) ? "Quantity in Kg" : "Quantity") +
+                    '"><button class="add" type="button" data-s="+" tabindex="-1" aria-label="Add ' +
                     Sales.esc(p.name) +
                     '">' +
                     Sales.ic("plus") +
@@ -481,6 +492,7 @@
                     Sales.esc(p.code || "") +
                     " · " +
                     Sales.money(p.price) +
+                    (Sales.isKg(p) ? " / Kg" : "") +
                     "</small>" +
                     (p.boxQty
                       ? '<div class="bxr"><span>' +
@@ -490,9 +502,15 @@
                     "</div>" +
                     '<div class="ctl"><div class="step"><button type="button" data-a="dec" aria-label="Less">' +
                     Sales.ic(n > 1 ? "minus" : "trash") +
-                    '</button><input type="number" min="1" max="9999" inputmode="numeric" value="' +
+                    '</button><input type="number" min="0.001" max="9999" step="' +
+                    (Sales.isKg(p) ? "0.1" : "1") +
+                    '" inputmode="' +
+                    (Sales.isKg(p) ? "decimal" : "numeric") +
+                    '" value="' +
                     n +
-                    '" aria-label="Quantity"><button type="button" data-a="inc" aria-label="More">' +
+                    '" aria-label="' +
+                    (Sales.isKg(p) ? "Quantity in Kg" : "Quantity") +
+                    '"><button type="button" data-a="inc" aria-label="More">' +
                     Sales.ic("plus") +
                     '</button></div><div class="amt">' +
                     Sales.money((Number(p.price) || 0) * n) +
@@ -582,11 +600,11 @@
           };
           el.querySelector(".cl").onchange = function (e) {
             var row = e.target.closest && e.target.closest(".ci");
-            if (row && e.target.tagName === "INPUT")
-              setQty(
-                row.getAttribute("data-id"),
-                Math.floor(Number(e.target.value)) || 0,
-              );
+            if (row && e.target.tagName === "INPUT") {
+              var cid = row.getAttribute("data-id"),
+                cv = Number(e.target.value) || 0;
+              setQty(cid, Sales.isKg(byId[cid]) ? cv : Math.floor(cv));
+            }
           };
           var cl = document.getElementById("clear");
           cl.onclick = function () {
@@ -619,7 +637,7 @@
           };
         }
         function setQty(id, n) {
-          n = Math.min(9999, Math.max(0, n));
+          n = Math.min(9999, Math.max(0, Math.round(n * 1000) / 1000));
           var sp = byId[id];
           if (sp && sp.stock != null && n > sp.stock) {
             n = Math.max(0, sp.stock);

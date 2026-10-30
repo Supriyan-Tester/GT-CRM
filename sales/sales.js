@@ -65,6 +65,16 @@
       : "-";
   };
 
+  // Products sold by the kilo are typed in grams (500 = half a kilo); the order keeps the quantity in kilos.
+  S.isKg = function (p) {
+    return !!p && /^kgs?$/i.test(String(p.unit || "").trim());
+  };
+  // kilo products show as typed ("0.5 Kg", "1.1 Kg"); other units show the plain number
+  S.qty = function (i) {
+    var q = Number(i && i.qty) || 0;
+    if (!S.isKg(i)) return String(q);
+    return +q.toFixed(3) + " Kg";
+  };
   S.money = function (n) {
     return (
       "₹" +
