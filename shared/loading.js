@@ -1,6 +1,6 @@
 /* Loading feedback for every tap (all pages). On a slow network a tap can look like nothing happened, so:
    - a thin progress bar at the top shows at once,
-   - a spinner screen appears if it is still waiting after 0.4 s (it also stops a second accidental tap).
+   - the spinner screen shows at the same moment (it also stops a second accidental tap).
    It starts when a tap/click opens another page or sends a request to the server. Background requests (automatic refresh) are
    ignored: only requests that start within 1.5 s of a tap, click or key press count. It always clears itself after 25 s. */
 (function () {
@@ -9,7 +9,7 @@
   var css =
     "#gml-bar{position:fixed;top:0;left:0;height:4px;width:0;background:#f59e0b;z-index:100000;opacity:0;pointer-events:none;transition:width .4s ease,opacity .25s ease;box-shadow:0 0 8px rgba(245,158,11,.8)}" +
     "#gml-ov{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,.28);-webkit-tap-highlight-color:transparent}" +
-    "#gml-ov.on{display:flex}" +
+    "#gml-ov.on{display:flex;animation:gmlfade .12s ease-out}@keyframes gmlfade{from{opacity:0}to{opacity:1}}" +
     "#gml-box{background:#fff;color:#334155;border-radius:14px;padding:16px 22px;display:flex;align-items:center;gap:12px;font:600 14px/1.2 system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.25)}" +
     "#gml-sp{width:22px;height:22px;border-radius:50%;border:3px solid #cbd5e1;border-top-color:#0f766e;animation:gmlspin .7s linear infinite}" +
     "@keyframes gmlspin{to{transform:rotate(360deg)}}" +
@@ -57,9 +57,7 @@
       bar.style.width = "8%";
       tBar = setTimeout(creep, 300);
       clearTimeout(tShow);
-      tShow = setTimeout(function () {
-        if (pending > 0 && ov) ov.classList.add("on");
-      }, 400);
+      ov.classList.add("on"); // spinner screen shows at the same moment as the bar
     });
     clearTimeout(tSafe);
     tSafe = setTimeout(function () {
