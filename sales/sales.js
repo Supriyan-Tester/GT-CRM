@@ -202,40 +202,51 @@
       );
     });
   };
-  // Best-effort position for the admin's "where it happened": never blocks. Gives {} if the phone does not share it in a few seconds.
+  // The phone's CURRENT position for the admin's "where it happened". Always a fresh reading (never an old saved one):
+  // it follows the GPS for a few seconds so the position sharpens, stops early once it is within 30 m, and never blocks:
+  // gives {err} (denied / unavailable / timeout / unsupported) when no position could be read in time.
   S.locateSoft = function () {
     return new Promise(function (ok) {
-      var done = false;
+      var done = false,
+        best = null,
+        lastErr = "timeout",
+        id = null,
+        tAll = null,
+        tMore = null;
       function fin(v) {
-        if (!done) {
-          done = true;
-          ok(v);
-        }
+        if (done) return;
+        done = true;
+        clearTimeout(tAll);
+        clearTimeout(tMore);
+        if (id != null && navigator.geolocation) navigator.geolocation.clearWatch(id);
+        ok(v);
       }
-      setTimeout(function () {
-        fin({ err: "timeout" });
-      }, 6000);
+      function finBest() {
+        fin(
+          best
+            ? {
+                lat: best.coords.latitude,
+                lng: best.coords.longitude,
+                acc: Math.round(best.coords.accuracy || 0),
+              }
+            : { err: lastErr },
+        );
+      }
       if (!navigator.geolocation) return fin({ err: "unsupported" });
-      navigator.geolocation.getCurrentPosition(
+      tAll = setTimeout(finBest, 20000); // includes the time the person takes to tap Allow
+      id = navigator.geolocation.watchPosition(
         function (p) {
-          fin({
-            lat: p.coords.latitude,
-            lng: p.coords.longitude,
-            acc: Math.round(p.coords.accuracy || 0),
-          });
+          if (done) return;
+          if (!best || p.coords.accuracy < best.coords.accuracy) best = p;
+          if (p.coords.accuracy <= 30) return finBest();
+          if (!tMore) tMore = setTimeout(finBest, 6000); // first reading in: give it a few seconds to sharpen
         },
         function (e) {
-          // why no position, so the office can see the reason
-          fin({
-            err:
-              e && e.code === 1
-                ? "denied"
-                : e && e.code === 3
-                  ? "timeout"
-                  : "unavailable",
-          });
+          if (done) return;
+          if (e && e.code === 1) return fin({ err: "denied" });
+          lastErr = e && e.code === 3 ? "timeout" : "unavailable";
         },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 },
       );
     });
   };
@@ -286,9 +297,10 @@
       if (r.value === "Other" && note.length < 3)
         return (err.textContent = "Write a short note for Other.");
       go.disabled = true;
-      go.textContent = "Saving…";
+      go.textContent = "Getting your location…";
       S.locateSoft()
         .then(function (loc) {
+          go.textContent = "Saving…";
           return S.api("/api/sales/visit", {
             code: shop.code,
             status: "no_order",

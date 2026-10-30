@@ -229,7 +229,7 @@
             } catch (e) {}
           });
         },
-        { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 },
       );
       return true;
     },

@@ -18,12 +18,15 @@
     <link rel="apple-touch-icon" href="/assets/icon-180.png" />
     <link rel="stylesheet" href="sales.css" />
     <link rel="stylesheet" href="../shared/dropdown.css" />
+    <link rel="stylesheet" href="../shared/vendor/leaflet/leaflet.css" />
   </head>
   <body>
     <div id="app"></div>
     <script src="../assets/icons.js"></script>
     <script src="sales.js"></script>
     <script src="../shared/dropdown.js"></script>
+    <script src="../shared/vendor/leaflet/leaflet.js"></script>
+    <script src="../shared/pin-picker.js"></script>
     <script>
       Sales.start("shop", function (me, hello, main) {
         var CODE = new URLSearchParams(location.search).get("c") || "";
@@ -62,7 +65,9 @@
             "</div>" +
             (S.lat && S.lng
               ? ""
-              : '<p class="note">This shop has no map pin yet. Ask the office to share it with the driver.</p>')
+              : '<p class="note">This shop has no map pin yet. If you are at the shop, save its location.</p>' +
+                '<button class="btn line" id="pinBtn" type="button" style="margin-top:8px;width:100%">Save shop location (stand at the shop)</button>' +
+                '<p class="note" id="pinMsg"></p>')
           );
         }
         function history() {
@@ -162,6 +167,33 @@
             Sales.ic("check") +
             (visited ? "Visited" : "Mark visited") +
             "</button></div>";
+          var pb = document.getElementById("pinBtn");
+          if (pb)
+            pb.onclick = function () {
+              var pm = document.getElementById("pinMsg");
+              pm.textContent = "";
+              GMPin.pick(S.name, function (r) {
+                if (!r) return;
+                pb.disabled = true;
+                Sales.api("/api/sales/pin", {
+                  code: S.code,
+                  lat: r.lat,
+                  lng: r.lng,
+                  acc: r.acc,
+                  moved: r.moved,
+                })
+                  .then(function () {
+                    S.lat = r.lat;
+                    S.lng = r.lng;
+                    Sales.toast("Location saved. Thank you.");
+                    draw();
+                  })
+                  .catch(function (e) {
+                    pb.disabled = false;
+                    pm.textContent = e.message || "Could not save the location.";
+                  });
+              });
+            };
           main.querySelector(".tabs").onclick = function (e) {
             var b = e.target.closest("[data-t]");
             if (b) {

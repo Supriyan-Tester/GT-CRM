@@ -2547,6 +2547,7 @@ html.fx-theming *::after {
   opacity: 0.9;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -2707,6 +2708,7 @@ html.fx-theming *::after {
 .a-pop .a-n span:not(.chip) {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

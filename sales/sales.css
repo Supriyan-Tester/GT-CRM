@@ -1080,6 +1080,7 @@ html[data-theme="dark"] .btn.teal.outline {
   overflow-wrap: anywhere;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   min-height: 34px;
@@ -1244,6 +1245,7 @@ html[data-theme="dark"] .add {
 .step input::-webkit-outer-spin-button,
 .step input::-webkit-inner-spin-button {
   -webkit-appearance: none;
+  appearance: none;
 }
 .ci .ctl {
   display: flex;
@@ -2017,6 +2019,7 @@ html[data-theme="dark"] .add {
 .pc .pstep input::-webkit-outer-spin-button,
 .pc .pstep input::-webkit-inner-spin-button {
   -webkit-appearance: none;
+  appearance: none;
   margin: 0;
 }
 .cback {

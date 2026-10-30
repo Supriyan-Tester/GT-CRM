@@ -1,0 +1,774 @@
+﻿<!doctype html>
+<html lang="en">
+  <head>
+    <script src="../shared/loading.js"></script>
+    <script src="../assets/icons.js"></script>
+    <script src="../shared/sync.js"></script>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>General Traders - Shop locations</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <style>
+      .sp-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      .sp-head h1 {
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+      .sp-head p {
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 3px;
+      }
+      .sp-hero {
+        border-radius: var(--radius-card);
+        padding: 16px;
+        margin-bottom: 12px;
+        color: var(--on-hero);
+        background: linear-gradient(135deg, var(--hero1), var(--primary));
+      }
+      .sp-hero small {
+        display: block;
+        font-size: 12.5px;
+        opacity: 0.9;
+      }
+      .sp-hero strong {
+        display: block;
+        font-size: 26px;
+        font-weight: 800;
+        line-height: 1.25;
+      }
+      .sp-bar {
+        height: 8px;
+        border-radius: 99px;
+        background: rgba(255, 255, 255, 0.28);
+        margin-top: 10px;
+        overflow: hidden;
+      }
+      .sp-bar i {
+        display: block;
+        height: 100%;
+        border-radius: 99px;
+        background: #fff;
+        transition: width 0.4s ease;
+      }
+      .sp-search {
+        margin-bottom: 12px;
+      }
+      .sp-filters {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .sp-filters select {
+        flex: 0 0 42%;
+        min-width: 0;
+        height: 44px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--text);
+        padding: 0 10px;
+        font-family: inherit;
+        font-size: 14px;
+      }
+      .sp-filters .sp-search {
+        flex: 1;
+        margin: 0;
+        min-width: 0;
+      }
+      /* theme.js wraps every <select> in a .gt-dd box that is width:100%, so the 42% above no longer reached it and the dropdown squeezed the search box. Size the box instead. */
+      .sp-filters .gt-dd {
+        flex: 0 0 42%;
+        width: auto;
+        min-width: 0;
+      }
+      .sp-more {
+        margin: 4px 0 14px;
+      }
+      .sp-search input {
+        width: 100%;
+        height: 44px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--text);
+        padding: 0 14px;
+        font-family: inherit;
+        font-size: 14px;
+      }
+      .sp-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow);
+        padding: 14px;
+        margin-bottom: 10px;
+      }
+      .sp-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .sp-name {
+        font-size: 15px;
+        font-weight: 700;
+        line-height: 1.3;
+        word-break: break-word;
+      }
+      .sp-sub {
+        font-size: 12.5px;
+        color: var(--muted);
+        margin-top: 3px;
+      }
+      .sp-need {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+      .sp-call {
+        flex: 0 0 auto;
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: var(--t-primary);
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+      }
+      .sp-call svg {
+        width: 18px;
+        height: 18px;
+      }
+      .sp-go {
+        margin-top: 12px;
+      }
+      .sp-msg {
+        font-size: 13px;
+        margin-top: 8px;
+        color: var(--muted);
+      }
+      .sp-msg.bad {
+        color: var(--danger);
+      }
+      .sp-msg.ok {
+        color: var(--success);
+        font-weight: 600;
+      }
+      .sp-form {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px dashed var(--border);
+        display: none;
+      }
+      .sp-form.on {
+        display: block;
+      }
+      .sp-got {
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: var(--success);
+      }
+      .sp-lbl {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--muted);
+        margin: 8px 0 4px;
+      }
+      .sp-in {
+        width: 100%;
+        height: 44px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--text);
+        padding: 0 12px;
+        font-family: inherit;
+        font-size: 14px;
+      }
+      .sp-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .sp-row .btn {
+        flex: 1;
+      }
+      .sp-done {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 11px 14px;
+        border-bottom: 1px solid var(--border);
+        font-size: 14px;
+      }
+      .sp-done:last-child {
+        border-bottom: 0;
+      }
+      .sp-done svg {
+        width: 18px;
+        height: 18px;
+        color: var(--success);
+        flex: 0 0 auto;
+      }
+      .sp-done span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .sp-list {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        margin-bottom: 14px;
+      }
+      .sp-sec {
+        font-size: 14px;
+        font-weight: 700;
+        margin: 16px 0 8px;
+      }
+      .sp-empty {
+        text-align: center;
+        padding: 34px 14px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .sp-empty b {
+        display: block;
+        color: var(--text);
+        font-size: 16px;
+        margin-bottom: 6px;
+      }
+    </style>
+    <style>
+      /* GM-WORKER-FULL-WIDTH-v1 */
+      .app {
+        width: 100% !important;
+        max-width: none !important;
+        box-sizing: border-box !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+      }
+    </style>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/icon-32.png"
+    />
+    <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="sp-head">
+        <div>
+          <h1>Shop locations</h1>
+          <p>
+            Stand at the shop and tap the button. The office needs each shop's
+            location once.
+          </p>
+        </div>
+        <button
+          class="icon-btn"
+          id="themeToggle"
+          aria-label="Switch light or dark theme"
+        >
+          <svg class="icon" data-icon="sun"></svg>
+        </button>
+      </header>
+      <div id="view"></div>
+    </main>
+
+    <nav class="nav" aria-label="Main Navigation">
+      <div>
+        <a href="home.html">
+          <svg class="icon" data-icon="home"></svg>
+          Home
+        </a>
+        <a href="route.html">
+          <svg class="icon" data-icon="map"></svg>
+          Route
+        </a>
+        <a href="advances.html">
+          <svg class="icon" data-icon="coin"></svg>
+          Account
+        </a>
+        <a href="attendance.html">
+          <svg class="icon" data-icon="calendar"></svg>
+          Attendance
+        </a>
+        <a href="profile.html">
+          <svg class="icon" data-icon="user"></svg>
+          Profile
+        </a>
+      </div>
+    </nav>
+
+    <link rel="stylesheet" href="../shared/vendor/leaflet/leaflet.css" />
+    <script src="../shared/vendor/leaflet/leaflet.js"></script>
+    <script src="../shared/theme.js"></script>
+    <script src="../shared/pin-picker.js"></script>
+    <script src="../shared/mock-data.js"></script>
+    <script>
+      if (!localStorage.getItem("gm_logged_in")) {
+        window.location.href = "login.html";
+      }
+      var $ = function (i) {
+        return document.getElementById(i);
+      };
+      function esc(t) {
+        return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+        });
+      }
+      var CALL = '<svg class="icon" data-icon="phone"></svg>';
+      var TICK = '<svg class="icon" data-icon="check-circle"></svg>';
+      var query = "",
+        area = "",
+        shownN = 30,
+        PAGE = 30,
+        open = null,
+        got = {}; // open = code of the card whose form is showing; got[code] = what is waiting to be saved ({lat,lng,acc} or {nogps:true})
+
+      function needText(s) {
+        var n = s.needs.map(function (x) {
+          return x === "pin" ? "location" : x;
+        });
+        return n.length ? "Needs: " + n.join(", ") : "";
+      }
+
+      function card(s) {
+        var g = got[s.code],
+          needPh = s.needs.indexOf("phone") > -1,
+          needAd = s.needs.indexOf("address") > -1,
+          c = esc(s.code);
+        var sub =
+          [s.area, s.address].filter(Boolean).join(" · ") || "No address yet";
+        return (
+          '<div class="sp-card" data-c="' +
+          c +
+          '"><div class="sp-top"><div style="min-width:0"><div class="sp-name">' +
+          esc(s.name) +
+          '</div><div class="sp-sub">' +
+          esc(sub) +
+          '</div><div class="sp-need">' +
+          esc(needText(s)) +
+          "</div></div>" +
+          (s.phone
+            ? '<a class="sp-call" href="tel:' +
+              esc(s.phone) +
+              '" aria-label="Call shop">' +
+              CALL +
+              "</a>"
+            : "") +
+          "</div>" +
+          (s.hasPin
+            ? ""
+            : '<button class="btn sp-go" type="button" data-go="' +
+              c +
+              '">' +
+              (g && !g.nogps
+                ? "Get location again"
+                : "Use my current location") +
+              "</button>") +
+          '<div class="sp-msg' +
+          (g && !g.nogps ? " ok" : "") +
+          '" data-m="' +
+          c +
+          '">' +
+          (g && !g.nogps
+            ? "Location found (accurate to about " + g.acc + " m)"
+            : "") +
+          "</div>" +
+          '<div class="sp-form on" data-f="' +
+          c +
+          '">' +
+          (needPh
+            ? '<label class="sp-lbl" for="ph-' +
+              c +
+              '">Shop phone (optional)</label><input class="sp-in" id="ph-' +
+              c +
+              '" type="tel" inputmode="numeric" maxlength="14" placeholder="10-digit number">'
+            : "") +
+          (needAd
+            ? '<label class="sp-lbl" for="ad-' +
+              c +
+              '">Address (optional)</label><input class="sp-in" id="ad-' +
+              c +
+              '" type="text" maxlength="200" placeholder="Street, area">'
+            : "") +
+          '<div class="sp-row"><button class="btn" type="button" data-save="' +
+          c +
+          '">Save shop</button></div>' +
+          "</div></div>"
+        );
+      }
+
+      var LEFT = [],
+        typeTimer = null;
+
+      // The list part of the page: the shops that match the search and the area. Uses the shops already loaded in LEFT (no recalculation).
+      function listHtml() {
+        var q = query.trim().toLowerCase();
+        var shown = LEFT.filter(function (s) {
+          return (
+            (!area || (s.area || "No area") === area) &&
+            (!q || s._k.indexOf(q) > -1)
+          );
+        });
+        var h = shown.length
+          ? shown.slice(0, shownN).map(card).join("")
+          : '<div class="sp-empty">No shop matches.</div>';
+        if (shown.length > shownN)
+          h +=
+            '<button class="btn btn-secondary sp-more" type="button" id="moreBtn">Show next ' +
+            Math.min(PAGE, shown.length - shownN) +
+            " (" +
+            (shown.length - shownN) +
+            " more)</button>";
+        return h;
+      }
+      function wireList() {
+        var mb = $("moreBtn");
+        if (mb)
+          mb.onclick = function () {
+            shownN += PAGE;
+            paintList();
+          };
+        [].forEach.call($("list").querySelectorAll("[data-go]"), function (b) {
+          b.onclick = function () {
+            locate(b.getAttribute("data-go"));
+          };
+        });
+        [].forEach.call(
+          $("list").querySelectorAll("[data-save]"),
+          function (b) {
+            b.onclick = function () {
+              save(b.getAttribute("data-save"));
+            };
+          },
+        );
+      }
+      // Searching or choosing an area only redraws the list, so the search box keeps what you typed and the dropdown is not rebuilt.
+      function paintList() {
+        var box = $("list");
+        if (!box) return;
+        var typedVals = {};
+        [].forEach.call(box.querySelectorAll(".sp-in"), function (e) {
+          if (e.value) typedVals[e.id] = e.value;
+        });
+        box.innerHTML = listHtml();
+        Object.keys(typedVals).forEach(function (id) {
+          var e = $(id);
+          if (e && !e.value) e.value = typedVals[id];
+        });
+        wireList();
+      }
+
+      function render() {
+        if (GM.paintPinBadge) GM.paintPinBadge();
+        var all = GM.pinTasks(),
+          left = all.filter(function (s) {
+            return !s.done;
+          }),
+          done = all.filter(function (s) {
+            return s.done;
+          });
+        left.forEach(function (s) {
+          s._k = [s.name, s.area, s.address, s.code, s.phone]
+            .join(" ")
+            .toLowerCase();
+        });
+        LEFT = left;
+        var areas = {};
+        left.forEach(function (s) {
+          var a = s.area || "No area";
+          areas[a] = (areas[a] || 0) + 1;
+        });
+        if (area && !areas[area]) area = "";
+        var h = "";
+        if (!all.length) {
+          $("view").innerHTML =
+            '<div class="sp-empty"><b>No shops to save</b>When the office sends you a list of shops, it shows up here.</div>';
+          return;
+        }
+        h +=
+          '<div class="sp-hero"><small>Saved so far</small><strong>' +
+          done.length +
+          " of " +
+          all.length +
+          ' shops</strong><div class="sp-bar"><i style="width:' +
+          Math.round((done.length / all.length) * 100) +
+          '%"></i></div></div>';
+        if (!left.length)
+          h +=
+            '<div class="sp-empty"><b>All done</b>Every shop on your list is saved. Thank you.</div>';
+        else {
+          h +=
+            '<div class="sp-filters"><select id="areaSel" aria-label="Area"><option value="">All areas (' +
+            left.length +
+            ")</option>" +
+            Object.keys(areas)
+              .sort()
+              .map(function (a) {
+                return (
+                  '<option value="' +
+                  esc(a) +
+                  '"' +
+                  (a === area ? " selected" : "") +
+                  ">" +
+                  esc(a) +
+                  " (" +
+                  areas[a] +
+                  ")</option>"
+                );
+              })
+              .join("") +
+            "</select>" +
+            '<div class="sp-search"><input type="search" id="q" placeholder="Search shops" value="' +
+            esc(query) +
+            '" autocomplete="off"></div></div>';
+          h += '<div id="list">' + listHtml() + "</div>";
+        }
+        if (done.length)
+          h +=
+            '<div class="sp-sec">Saved (' +
+            done.length +
+            ')</div><div class="sp-list">' +
+            done
+              .slice(0, 60)
+              .map(function (s) {
+                return (
+                  '<div class="sp-done">' +
+                  TICK +
+                  "<span>" +
+                  esc(s.name) +
+                  "</span></div>"
+                );
+              })
+              .join("") +
+            "</div>";
+        var keep = document.activeElement && document.activeElement.id === "q",
+          typedVals = {};
+        [].forEach.call($("view").querySelectorAll(".sp-in"), function (e) {
+          if (e.value) typedVals[e.id] = e.value;
+        });
+        $("view").innerHTML = h;
+        Object.keys(typedVals).forEach(function (id) {
+          var e = $(id);
+          if (e && !e.value) e.value = typedVals[id];
+        });
+        if (keep && $("q")) {
+          var el = $("q");
+          el.focus();
+          el.setSelectionRange(el.value.length, el.value.length);
+        }
+        var qi = $("q");
+        if (qi)
+          qi.oninput = function () {
+            query = qi.value;
+            shownN = PAGE;
+            clearTimeout(typeTimer);
+            typeTimer = setTimeout(paintList, 150);
+          };
+        var as = $("areaSel");
+        if (as)
+          as.onchange = function () {
+            area = as.value;
+            shownN = PAGE;
+            paintList();
+          };
+        if ($("list")) wireList();
+      }
+
+      function msg(code, text, cls) {
+        var m = $("view").querySelector(
+          '[data-m="' + code.replace(/"/g, "") + '"]',
+        );
+        if (m) {
+          m.textContent = text;
+          m.className = "sp-msg" + (cls ? " " + cls : "");
+        }
+      }
+      function find(code) {
+        return GM.pinTasks().filter(function (s) {
+          return s.code === code;
+        })[0];
+      }
+
+      // Listens to the phone's location for up to 30 seconds and keeps the most accurate reading.
+      // Shops in a market can be only 5 to 10 m apart, so a weak reading can land on the next shop. It stops at once when it is 10 m or better,
+      // and after 10 seconds when it is 20 m or better. A reading weaker than 20 m is not accepted on its own: the employee is told to try again
+      // at the shop front, or can still choose "Use it anyway" (laptops have no GPS, so they stay around 100 m or more).
+      function accept(code, pos) {
+        var acc = Math.round(pos.coords.accuracy || 0);
+        got[code] = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          acc: acc,
+        };
+        open = code;
+        var typed = {};
+        ["ph", "ad"].forEach(function (p) {
+          var e = $(p + "-" + code);
+          if (e) typed[p] = e.value;
+        });
+        render();
+        ["ph", "ad"].forEach(function (p) {
+          var e = $(p + "-" + code);
+          if (e && typed[p]) e.value = typed[p];
+        });
+        suggestAddress(code, got[code]);
+      }
+      function locate(code) {
+        var s = find(code);
+        if (!s) return;
+        if (!window.isSecureContext) {
+          msg(
+            code,
+            "Location works only on a secure (https) address. Ask the office for the app link.",
+            "bad",
+          );
+          return;
+        }
+        if (!navigator.geolocation) {
+          msg(code, "This phone cannot give its location.", "bad");
+          return;
+        }
+        GMPin.pick(s.name, function (r) {
+          if (!r) return;
+          accept(code, {
+            coords: { latitude: r.lat, longitude: r.lng, accuracy: r.acc },
+          });
+        });
+      }
+
+      // Fills the address box with a suggestion from the map service when the shop has no address. The employee can change it. Silent if offline.
+      function suggestAddress(code, fix) {
+        var s = find(code),
+          box = $("ad-" + code);
+        if (!s || s.address || !box) return;
+        var ctl = "AbortController" in window ? new AbortController() : null,
+          to = setTimeout(function () {
+            if (ctl) ctl.abort();
+          }, 8000);
+        fetch(
+          "https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&lat=" +
+            fix.lat +
+            "&lon=" +
+            fix.lng,
+          {
+            headers: { Accept: "application/json" },
+            signal: ctl ? ctl.signal : undefined,
+          },
+        )
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (j) {
+            clearTimeout(to);
+            var a = (j && j.address) || {},
+              parts = [
+                a.house_number,
+                a.road,
+                a.neighbourhood || a.suburb || a.hamlet,
+                a.city || a.town || a.village,
+              ].filter(Boolean);
+            var txt = parts.length
+              ? parts.join(", ")
+              : ((j && j.display_name) || "")
+                  .split(",")
+                  .slice(0, 3)
+                  .join(",")
+                  .trim();
+            var b = $("ad-" + code);
+            if (b && !b.value && got[code] === fix && txt) b.value = txt;
+          })
+          .catch(function () {
+            clearTimeout(to);
+          });
+      }
+
+      function save(code) {
+        var s = find(code);
+        if (!s) return;
+        var g = got[code],
+          ph = $("ph-" + code),
+          ad = $("ad-" + code),
+          phone = ph ? ph.value.trim() : "",
+          addr = ad ? ad.value.trim() : "";
+        if (phone) {
+          var d = phone.replace(/\D/g, "");
+          if (d.length === 12 && d.indexOf("91") === 0) d = d.slice(2);
+          if (d.length === 11 && d.charAt(0) === "0") d = d.slice(1);
+          if (d.length !== 10) {
+            msg(
+              code,
+              "Phone number should have 10 digits. Fix it, or clear it to skip.",
+              "bad",
+            );
+            return;
+          }
+        }
+        var shop = { code: s.code, name: s.name },
+          ok;
+        if (!s.hasPin && !(g && !g.nogps)) {
+          msg(
+            code,
+            'Tap "Use my current location" first, standing at the shop.',
+            "bad",
+          );
+          return;
+        }
+        if (s.hasPin) {
+          if (!phone && !addr) {
+            msg(code, "Type a phone number or an address first.", "bad");
+            return;
+          }
+          ok = GM.saveShopInfo(shop, { phone: phone, address: addr });
+        } else
+          ok = GM.savePin(shop, g.lat, g.lng, g.acc, {
+            phone: phone,
+            address: addr,
+          });
+        if (!ok) {
+          msg(code, "Could not save. This shop may already be saved.", "bad");
+          delete got[code];
+          open = null;
+          render();
+          return;
+        }
+        delete got[code];
+        open = null;
+        render();
+      }
+
+      window.addEventListener("gm-sync", function () {
+        var typing =
+          [].some.call(document.querySelectorAll(".sp-in"), function (e) {
+            return e.value;
+          }) || Object.keys(got).length;
+        if (!typing) render();
+      });
+      render();
+    </script>
+  </body>
+</html>

@@ -1,6 +1,7 @@
 ﻿<!doctype html>
 <html lang="en">
   <head>
+    <script src="../shared/loading.js"></script>
     <script src="../assets/icons.js"></script>
     <script src="../shared/sync.js"></script>
     <meta charset="UTF-8" />
@@ -321,7 +322,10 @@
       </div>
     </nav>
 
+    <link rel="stylesheet" href="../shared/vendor/leaflet/leaflet.css" />
+    <script src="../shared/vendor/leaflet/leaflet.js"></script>
     <script src="../shared/theme.js"></script>
+    <script src="../shared/pin-picker.js"></script>
     <script src="../shared/mock-data.js"></script>
     <script>
       if (!localStorage.getItem("gm_logged_in")) {
@@ -649,99 +653,12 @@
           msg(code, "This phone cannot give its location.", "bad");
           return;
         }
-        var btn = $("view").querySelector(
-          '[data-go="' + code.replace(/"/g, "") + '"]',
-        );
-        if (btn) btn.disabled = true;
-        var best = null,
-          fin = false,
-          wid = null,
-          tick = null,
-          t0 = Date.now();
-        msg(code, "Getting your location...");
-        function stop() {
-          fin = true;
-          if (wid != null) navigator.geolocation.clearWatch(wid);
-          clearInterval(tick);
-          if (btn) btn.disabled = false;
-        }
-        function done() {
-          if (fin) return;
-          stop();
-          if (!best) {
-            msg(
-              code,
-              "Could not get your location. Try again outside the shop.",
-              "bad",
-            );
-            return;
-          }
-          var acc = Math.round(best.coords.accuracy || 0);
-          if (acc <= 20) {
-            accept(code, best);
-            return;
-          }
-          var m = $("view").querySelector(
-            '[data-m="' + code.replace(/"/g, "") + '"]',
-          );
-          if (m) {
-            m.className = "sp-msg bad";
-            m.innerHTML =
-              "Not exact enough (about " +
-              acc +
-              " m). Shops here are close together, so the pin may land on the next shop. Stand at the shop front in the open for a few seconds and try again, or use it anyway. ";
-            var u = document.createElement("button");
-            u.type = "button";
-            u.className = "btn btn-secondary";
-            u.style.cssText = "margin-top:8px;min-height:38px";
-            u.textContent = "Use it anyway (about " + acc + " m)";
-            u.onclick = function () {
-              accept(code, best);
-            };
-            m.appendChild(u);
-          }
-        }
-        wid = navigator.geolocation.watchPosition(
-          function (pos) {
-            if (fin) return;
-            if (!best || pos.coords.accuracy < best.coords.accuracy) best = pos;
-            var acc = Math.round(best.coords.accuracy || 0);
-            if (acc <= 10) {
-              done();
-              return;
-            }
-            msg(
-              code,
-              "Getting a better signal... (about " +
-                acc +
-                " m, waiting for 10 m or better)",
-            );
-          },
-          function (err) {
-            if (fin) return;
-            if (best) {
-              done();
-              return;
-            }
-            stop();
-            msg(
-              code,
-              err && err.code === 1
-                ? "Location is blocked. Allow location for this site in the browser settings, then try again."
-                : "Could not get your location. Try again outside the shop.",
-              "bad",
-            );
-          },
-          { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 },
-        );
-        tick = setInterval(function () {
-          var el = Date.now() - t0;
-          if (
-            el >= 30000 ||
-            (el >= 10000 && best && best.coords.accuracy <= 20)
-          )
-            done();
-        }, 500);
+        GMPin.pick(s.name, function (r) {
+          if (!r) return;
+          accept(code, {
+            coords: { latitude: r.lat, longitude: r.lng, accuracy: r.acc },
+          });
+        });
       }
 
       // Fills the address box with a suggestion from the map service when the shop has no address. The employee can change it. Silent if offline.

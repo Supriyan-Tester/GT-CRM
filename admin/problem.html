@@ -1,0 +1,445 @@
+﻿<!doctype html>
+<html lang="en">
+  <head>
+    <script src="../shared/loading.js"></script>
+    <script src="../assets/icons.js"></script>
+    <script src="../shared/sync.js"></script>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>General Traders - Report Issue</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <style>
+      /* Admin Alert Card */
+      .admin-call-card {
+        background: var(--t-primary);
+        border: 1.5px solid var(--primary);
+        border-radius: var(--radius-card);
+        padding: 14px 16px;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .admin-call-text small {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        margin-top: 2px;
+      }
+      .admin-call-text strong {
+        font-size: 14px;
+        color: var(--primary);
+      }
+      .btn-call-admin {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--primary);
+        color: var(--on-primary);
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 700;
+        text-decoration: none;
+        flex-shrink: 0;
+      }
+
+      /* Reason Cards */
+      .reasons-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .reason-card {
+        background: var(--card);
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius-btn);
+        padding: 14px 16px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          background-color 0.15s;
+      }
+      .reason-card input[type="radio"] {
+        width: 20px;
+        height: 20px;
+        accent-color: var(--primary);
+      }
+      .reason-card.selected {
+        border-color: var(--primary);
+        background: var(--t-primary);
+      }
+      .reason-title {
+        font-size: 15px;
+        font-weight: 700;
+      }
+      .reason-desc {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+
+      /* Photo Proof Box with Auto Stamp */
+      .photo-box {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      .camera-trigger {
+        width: 100%;
+        min-height: 120px;
+        border: 2px dashed var(--border);
+        border-radius: var(--radius-btn);
+        background: var(--bg);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        overflow: hidden;
+        position: relative;
+      }
+      .camera-trigger img {
+        width: 100%;
+        max-height: 200px;
+        object-fit: cover;
+        display: none;
+      }
+      .photo-stamp-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(15, 23, 42, 0.85);
+        color: #ffffff;
+        font-size: 11px;
+        padding: 6px 10px;
+        line-height: 1.3;
+        display: none;
+        font-family: monospace;
+      }
+
+      /* Two Decision Action Buttons */
+      .action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 14px;
+        padding-bottom: 30px;
+      }
+    </style>
+    <style>
+      /* GM-WORKER-FULL-WIDTH-v1 */
+      .app {
+        width: 100% !important;
+        max-width: none !important;
+        box-sizing: border-box !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+      }
+    </style>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/icon-32.png"
+    />
+    <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+  </head>
+  <body>
+    <main class="app">
+      <!-- Top Navigation Header -->
+      <header class="top-bar">
+        <div class="top-bar-left">
+          <a
+            href="route.html"
+            class="back-btn"
+            id="backToDeliveryLink"
+            aria-label="Go Back"
+          >
+            <svg class="icon" data-icon="arrow-left"></svg>
+          </a>
+          <div>
+            <h1 class="page-title">Delivery Problem</h1>
+            <p class="page-sub" id="shopSubtitle">Loading stop info...</p>
+          </div>
+        </div>
+        <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">
+          <svg class="icon" data-icon="sun"></svg>
+        </button>
+      </header>
+
+      <!-- Step 1: Call Fleet Admin Notice -->
+      <div class="admin-call-card">
+        <div class="admin-call-text">
+          <strong>Call Fleet Admin First</strong>
+          <small>Check if shop gave alternate instructions</small>
+        </div>
+        <a href="#" data-admin-call id="callAdminBtn" class="btn-call-admin">
+          <svg style="width: 16px; height: 16px" data-icon="phone"></svg>
+          Call Admin (<span data-admin-phone></span>)
+        </a>
+      </div>
+
+      <!-- Step 2: Select Issue Reason -->
+      <section>
+        <label>Select Reason</label>
+        <div class="reasons-grid">
+          <label class="reason-card selected" id="rc1">
+            <input
+              type="radio"
+              name="issueReason"
+              value="Shop Closed"
+              checked
+            />
+            <div>
+              <div class="reason-title">ðŸšª Shop Closed</div>
+              <div class="reason-desc">
+                Shutter is down or locked. No one at premise.
+              </div>
+            </div>
+          </label>
+
+          <label class="reason-card" id="rc2">
+            <input type="radio" name="issueReason" value="Refused Delivery" />
+            <div>
+              <div class="reason-title">âŒ Refused Delivery</div>
+              <div class="reason-desc">
+                Owner declined goods, wrong order or payment issue.
+              </div>
+            </div>
+          </label>
+
+          <label class="reason-card" id="rc3">
+            <input
+              type="radio"
+              name="issueReason"
+              value="Reschedule Requested"
+            />
+            <div>
+              <div class="reason-title">ðŸ“… Reschedule Requested</div>
+              <div class="reason-desc">
+                Customer requested delivery tomorrow or alternate day.
+              </div>
+            </div>
+          </label>
+        </div>
+      </section>
+
+      <!-- Step 3: Photo Proof with Auto Stamp -->
+      <section class="photo-box">
+        <label>Take Proof Photo (Closed Shutter / Refusal)</label>
+        <label for="proofCameraInput" class="camera-trigger" id="cameraTrigger">
+          <img id="proofPreview" alt="Proof photo" />
+          <div id="cameraPlaceholder" style="text-align: center; padding: 16px">
+            <svg
+              class="icon"
+              style="
+                width: 36px;
+                height: 36px;
+                color: var(--muted);
+                margin: 0 auto 8px;
+              "
+              data-icon="camera"
+            ></svg>
+            <div style="font-size: 14px; font-weight: 600">
+              Tap to Take Photo
+            </div>
+            <small style="color: var(--muted)"
+              >GPS and timestamp will be auto-stamped</small
+            >
+          </div>
+          <div class="photo-stamp-overlay" id="photoStamp">
+            ðŸ“ 18.5204Â° N, 73.8567Â° E â€¢ <span id="stampTime">--:--</span>
+          </div>
+        </label>
+        <input
+          type="file"
+          id="proofCameraInput"
+          accept="image/*"
+          capture="environment"
+          style="display: none"
+        />
+      </section>
+
+      <!-- Notes (Optional) -->
+      <section style="margin-bottom: 16px">
+        <label for="problemNotes">Short Note (Optional)</label>
+        <div class="field">
+          <input
+            type="text"
+            id="problemNotes"
+            placeholder="e.g. Owner said shop will open at 4 PM"
+          />
+        </div>
+      </section>
+
+      <!-- Step 4: Two Clear Action Decisions -->
+      <div class="action-buttons">
+        <button
+          class="btn btn-outline"
+          id="retryLaterBtn"
+          style="
+            height: 52px;
+            font-size: 16px;
+            border-color: var(--accent);
+            color: var(--accent);
+          "
+        >
+          ðŸ”„ Retry Later Today (Move to End of Route)
+        </button>
+        <button
+          class="btn btn-danger"
+          id="cancelTodayBtn"
+          style="height: 52px; font-size: 16px"
+        >
+          ðŸš« Cancel for Today (Return Goods to Warehouse)
+        </button>
+      </div>
+    </main>
+
+    <script src="../shared/theme.js"></script>
+    <script src="../shared/mock-data.js"></script>
+    <script>
+      var urlParams = new URLSearchParams(window.location.search);
+      var shopId = urlParams.get("id") || "s1";
+      var shop = GM.getShop(shopId) || GM.getShops()[0];
+      var worker = GM.getWorker();
+
+      // Populate Shop & Admin Details
+      document.getElementById("shopSubtitle").textContent =
+        shop.name + " â€¢ " + shop.address;
+      document.getElementById("backToDeliveryLink").href =
+        "delivery.html?id=" + shop.id;
+      if (worker && worker.adminPhone) {
+        document.getElementById("callAdminBtn").href =
+          "tel:" + worker.adminPhone.replace(/\s+/g, "");
+      }
+
+      // Handle Radio Card Highlighting
+      var reasonCards = document.querySelectorAll(".reason-card");
+      reasonCards.forEach(function (card) {
+        card.addEventListener("click", function () {
+          reasonCards.forEach(function (c) {
+            c.classList.remove("selected");
+          });
+          card.classList.add("selected");
+        });
+      });
+
+      // Handle Photo Preview & Auto Stamp
+      var cameraInput = document.getElementById("proofCameraInput");
+      var previewImg = document.getElementById("proofPreview");
+      var placeholder = document.getElementById("cameraPlaceholder");
+      var stamp = document.getElementById("photoStamp");
+      var stampTime = document.getElementById("stampTime");
+
+      cameraInput.addEventListener("change", function (e) {
+        var file = e.target.files[0];
+        if (file) {
+          var reader = new FileReader();
+          reader.onload = function (evt) {
+            previewImg.src = evt.target.result;
+            previewImg.style.display = "block";
+            placeholder.style.display = "none";
+
+            var now = new Date();
+            stampTime.textContent =
+              now.toLocaleDateString("en-IN", {
+                day: "numeric",
+                month: "short",
+              }) +
+              " " +
+              now.toLocaleTimeString("en-IN", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+              });
+            stamp.style.display = "block";
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      function getSelectedReason() {
+        var sel = document.querySelector('input[name="issueReason"]:checked');
+        return sel ? sel.value : "Shop Closed";
+      }
+
+      // ACTION 1: RETRY LATER TODAY
+      document
+        .getElementById("retryLaterBtn")
+        .addEventListener("click", function () {
+          var reason = getSelectedReason();
+          var notes = document.getElementById("problemNotes").value;
+
+          GM.updateShop(shop.id, {
+            status: "retry",
+            problemReason: reason,
+            problemNotes: notes,
+            reportedAt: new Date().toLocaleTimeString("en-IN", {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            }),
+          });
+
+          this.disabled = true;
+          this.textContent = "Moved to end of route! Loading next stop...";
+
+          setTimeout(function () {
+            var next = GM.getNextShop();
+            if (next && next.id !== shop.id) {
+              window.location.href = "delivery.html?id=" + next.id;
+            } else {
+              window.location.href = "route.html";
+            }
+          }, 700);
+        });
+
+      // ACTION 2: CANCEL FOR TODAY (RETURN GOODS)
+      document
+        .getElementById("cancelTodayBtn")
+        .addEventListener("click", function () {
+          var reason = getSelectedReason();
+          var notes = document.getElementById("problemNotes").value;
+
+          GM.updateShop(shop.id, {
+            status: "cancelled",
+            problemReason: reason,
+            problemNotes: notes,
+            boxesToReturn: shop.boxes,
+            cancelledAt: new Date().toLocaleTimeString("en-IN", {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            }),
+          });
+
+          this.disabled = true;
+          this.textContent = "Cancelled for today. Updating route...";
+
+          setTimeout(function () {
+            var next = GM.getNextShop();
+            if (next) {
+              window.location.href = "delivery.html?id=" + next.id;
+            } else {
+              window.location.href = "route.html";
+            }
+          }, 700);
+        });
+    </script>
+  </body>
+</html>

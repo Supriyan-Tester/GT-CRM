@@ -1,0 +1,806 @@
+﻿<!doctype html>
+<html lang="en">
+  <head>
+    <script src="../shared/loading.js"></script>
+    <script src="../assets/icons.js"></script>
+    <script src="../shared/sync.js"></script>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>General Traders - Punch Out</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <style>
+      body:not(:has(.nav)) .app {
+        max-width: 1040px;
+      }
+      .po-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+      .po-back {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text);
+        flex-shrink: 0;
+        box-shadow: var(--shadow);
+      }
+      .po-back svg {
+        width: 20px;
+        height: 20px;
+      }
+      .po-title {
+        flex: 1;
+        min-width: 0;
+      }
+      .po-title h1 {
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+      .po-title p {
+        font-size: 12.5px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+      .po-gps {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        border-radius: var(--radius-card);
+        border: 1.5px solid var(--success);
+        background: var(--t-success);
+        margin-bottom: 14px;
+      }
+      .po-gps .ic {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: var(--card);
+        color: var(--success);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .po-gps .ic svg {
+        width: 20px;
+        height: 20px;
+      }
+      .po-gps .tx {
+        flex: 1;
+        min-width: 0;
+      }
+      .po-gps b {
+        display: block;
+        font-size: 14px;
+        color: var(--success);
+      }
+      .po-gps span.s {
+        display: block;
+        font-size: 12.5px;
+        color: var(--muted);
+        margin-top: 1px;
+      }
+      .po-gps.warn {
+        border-color: var(--accent);
+        background: var(--t-accent);
+      }
+      .po-gps.warn .ic,
+      .po-gps.warn b {
+        color: var(--accent);
+      }
+      .po-gps.idle {
+        border-color: var(--border);
+        background: var(--card);
+      }
+      .po-gps.idle .ic,
+      .po-gps.idle b {
+        color: var(--muted);
+      }
+      .po-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 14px;
+        align-items: start;
+      }
+      @media (min-width: 900px) {
+        .po-grid {
+          grid-template-columns: 1.35fr 1fr;
+          gap: 18px;
+        }
+        .po-side {
+          position: sticky;
+          top: 16px;
+        }
+      }
+      .po-col,
+      .po-side {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        min-width: 0;
+      }
+      .po-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow);
+        padding: 16px;
+      }
+      .po-step {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 15.5px;
+        font-weight: 700;
+        margin-bottom: 14px;
+      }
+      .po-num {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: var(--primary);
+        color: var(--on-primary);
+        font-size: 13px;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .po-km {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      @media (max-width: 420px) {
+        .po-km {
+          grid-template-columns: 1fr;
+        }
+      }
+      .po-box {
+        background: var(--t-info);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px;
+      }
+      .po-box small,
+      .po-lab {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 4px;
+      }
+      .po-box strong {
+        font-size: 20px;
+        font-weight: 800;
+      }
+      .po-driven {
+        margin-top: 12px;
+        text-align: center;
+        padding: 14px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--hero1), var(--hero2));
+        color: var(--on-hero);
+      }
+      .po-driven small {
+        display: block;
+        font-size: 12px;
+        opacity: 0.9;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .po-driven strong {
+        display: block;
+        font-size: 30px;
+        font-weight: 800;
+        line-height: 1.2;
+      }
+      .po-ret {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 13.5px;
+      }
+      .po-ret .chip {
+        width: 34px;
+        height: 34px;
+        flex-shrink: 0;
+      }
+      .po-ret small {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+      .po-ret small.bad {
+        color: var(--danger);
+      }
+      .po-clean {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13.5px;
+        color: var(--success);
+        font-weight: 600;
+        padding: 4px 0 12px;
+      }
+      .po-clean svg,
+      .po-ret svg,
+      .po-gps svg {
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .po-clean svg {
+        width: 18px;
+        height: 18px;
+      }
+      .po-check {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px;
+        border: 1.5px solid var(--border);
+        border-radius: 12px;
+        background: var(--bg);
+        cursor: pointer;
+        margin-top: 12px;
+      }
+      .po-check:first-of-type {
+        margin-top: 0;
+      }
+      .po-check input {
+        width: 22px;
+        height: 22px;
+        accent-color: var(--primary);
+        margin-top: 1px;
+        flex-shrink: 0;
+      }
+      .po-check b {
+        display: block;
+        font-size: 14px;
+      }
+      .po-check span {
+        display: block;
+        font-size: 12.5px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+      .po-check:has(input:checked) {
+        border-color: var(--primary);
+        background: var(--t-primary);
+      }
+      .po-sum {
+        border-radius: var(--radius-card);
+        padding: 18px;
+        color: var(--on-hero);
+        background: linear-gradient(135deg, var(--hero1), var(--hero2));
+        box-shadow: 0 4px 12px rgba(15, 118, 110, 0.18);
+        position: relative;
+        overflow: hidden;
+      }
+      .po-sum::after {
+        content: "";
+        position: absolute;
+        width: 140px;
+        height: 140px;
+        border-radius: 50%;
+        right: -40px;
+        top: -50px;
+        background: rgba(255, 255, 255, 0.12);
+      }
+      .po-sum > * {
+        position: relative;
+        z-index: 1;
+      }
+      .po-sum .pill-l {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 700;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 999px;
+        padding: 4px 12px;
+      }
+      .po-sum h2 {
+        font-size: 22px;
+        font-weight: 800;
+        margin: 10px 0 2px;
+      }
+      .po-sum p {
+        font-size: 13px;
+        opacity: 0.9;
+      }
+      .po-sg {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 14px;
+      }
+      .po-sg > div {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 12px;
+        padding: 10px 12px;
+        min-width: 0;
+      }
+      .po-sg small {
+        display: block;
+        font-size: 11.5px;
+        opacity: 0.85;
+      }
+      .po-sg strong {
+        display: block;
+        font-size: 14px;
+        margin-top: 2px;
+        overflow-wrap: anywhere;
+      }
+      .po-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding-bottom: 24px;
+      }
+      .po-out {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        height: 54px;
+        border: 0;
+        border-radius: var(--radius-btn);
+        background: var(--danger);
+        color: #fff;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .po-out svg {
+        width: 20px;
+        height: 20px;
+      }
+      .po-out:disabled {
+        background: var(--border);
+        color: var(--muted);
+        cursor: not-allowed;
+      }
+      .po-todo {
+        font-size: 12.5px;
+        color: var(--muted);
+        text-align: center;
+        min-height: 18px;
+      }
+      .po-wa {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 46px;
+        border-radius: var(--radius-btn);
+        border: 1.5px solid #25d366;
+        color: #16a34a;
+        font-weight: 700;
+        font-size: 14px;
+        text-decoration: none;
+        background: var(--card);
+      }
+    </style>
+    <style>
+      /* GM-WORKER-FULL-WIDTH-v1 */
+      .app {
+        width: 100% !important;
+        max-width: none !important;
+        box-sizing: border-box !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+      }
+    </style>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/icon-32.png"
+    />
+    <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="po-head">
+        <a href="home.html" class="po-back" aria-label="Back"
+          ><svg class="icon" data-icon="arrow-left"></svg
+        ></a>
+        <div class="po-title">
+          <h1>Punch Out</h1>
+          <p>Close your vehicle and day summary</p>
+        </div>
+        <button
+          class="icon-btn"
+          id="themeToggle"
+          aria-label="Switch light or dark theme"
+        >
+          <svg class="icon" data-icon="sun"></svg>
+        </button>
+      </header>
+
+      <div class="po-gps idle" id="gps">
+        <span class="ic"><svg data-icon="map-pin"></svg></span>
+        <div class="tx">
+          <b id="gpsT">Checking your location...</b
+          ><span class="s" id="gpsS">Allow location when your phone asks.</span>
+        </div>
+        <span class="badge b-muted" id="gpsB">Checking</span>
+      </div>
+
+      <div class="po-grid">
+        <div class="po-col">
+          <section class="po-card">
+            <div class="po-step">
+              <span class="po-num">1</span> Ending Odometer Reading
+            </div>
+            <div class="po-km">
+              <div class="po-box">
+                <small>Morning Starting KM</small
+                ><strong id="startKmDisplay">--</strong>
+              </div>
+              <div>
+                <label class="po-lab" for="endKmInput">Enter Ending KM</label>
+                <div class="field" id="endKmField">
+                  <input
+                    type="number"
+                    id="endKmInput"
+                    inputmode="numeric"
+                    placeholder="Odometer reading"
+                    style="font-weight: 700; font-size: 18px"
+                  />
+                </div>
+              </div>
+            </div>
+            <div class="msg" id="kmErrorMsg" style="margin-top: 8px"></div>
+            <div class="po-driven">
+              <small>Total distance driven today</small
+              ><strong id="drivenKmDisplay">-- km</strong>
+            </div>
+          </section>
+
+          <section class="po-card">
+            <div class="po-step">
+              <span class="po-num">2</span> Returns &amp; Undelivered Stock
+            </div>
+            <div id="returnsListContainer"></div>
+            <label class="po-check"
+              ><input type="checkbox" id="checkReturns" />
+              <div>
+                <b>Returned items handed to supervisor</b
+                ><span
+                  >All returned or cancelled parcels placed back on racks</span
+                >
+              </div></label
+            >
+          </section>
+
+          <section class="po-card">
+            <div class="po-step">
+              <span class="po-num">3</span> Keys &amp; Paper Invoices
+            </div>
+            <label class="po-check"
+              ><input type="checkbox" id="checkInvoices" />
+              <div>
+                <b>Vehicle keys &amp; signed invoices deposited</b
+                ><span>Handed over physical papers to office desk</span>
+              </div></label
+            >
+          </section>
+        </div>
+
+        <aside class="po-side">
+          <div class="po-sum">
+            <span class="pill-l">Day Wrap-up</span>
+            <h2><span data-worker-name></span></h2>
+            <p id="summaryDutyHours">Shift time: --</p>
+            <div class="po-sg">
+              <div>
+                <small>Vehicle</small><strong id="sumVehicle">--</strong>
+              </div>
+              <div>
+                <small>Deliveries</small><strong id="sumDeliveries">--</strong>
+              </div>
+            </div>
+          </div>
+          <div class="po-actions">
+            <button class="po-out" id="punchOutBtn" type="button" disabled>
+              <svg class="icon" data-icon="logout"></svg>
+              Confirm &amp; Punch Out
+            </button>
+            <div class="po-todo" id="todo"></div>
+            <a
+              href="#"
+              id="shareWhatsAppBtn"
+              class="po-wa"
+              target="_blank"
+              rel="noopener"
+              >Share day summary on WhatsApp (optional)</a
+            >
+          </div>
+        </aside>
+      </div>
+    </main>
+
+    <script src="../shared/theme.js"></script>
+    <script src="../shared/mock-data.js"></script>
+    <script src="../shared/visit.js"></script>
+    <script>
+      if (!localStorage.getItem("gm_logged_in")) {
+        window.location.href = "login.html";
+      }
+      GM.applyTodayPlan();
+      var $ = function (id) {
+        return document.getElementById(id);
+      };
+      function esc(t) {
+        return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+        });
+      }
+      var shift = GM.getShift(),
+        shops = GM.getShops() || [],
+        returns = GM.getReturns() || [],
+        worker = GM.getWorker() || {};
+      var startKm = shift.startKm || shift.lastRecordedKm || 0;
+      var endKmInput = $("endKmInput"),
+        endKmField = $("endKmField"),
+        kmErr = $("kmErrorMsg"),
+        checkReturns = $("checkReturns"),
+        checkInvoices = $("checkInvoices"),
+        outBtn = $("punchOutBtn");
+      var now = new Date(),
+        endTimeStr = now.toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        });
+
+      $("startKmDisplay").textContent = startKm.toLocaleString("en-IN") + " km";
+      endKmInput.placeholder = String(startKm);
+      $("sumVehicle").textContent = shift.assignedVehicle || "--";
+      var done = shops.filter(function (s) {
+        return s.status === "delivered";
+      }).length;
+      $("sumDeliveries").textContent =
+        done + " of " + shops.length + " delivered";
+      $("summaryDutyHours").textContent =
+        "Shift time: " + (shift.punchInTime || "--") + " to " + endTimeStr;
+
+      // Depot location check (does not block punch-out)
+      (function () {
+        var box = $("gps"),
+          wh = GM.getWarehouse() || {};
+        function set(cls, t, s, b, bc) {
+          box.className = "po-gps " + cls;
+          $("gpsT").textContent = t;
+          $("gpsS").textContent = s;
+          $("gpsB").textContent = b;
+          $("gpsB").className = "badge " + bc;
+        }
+        if (!navigator.geolocation || wh.lat == null) {
+          set(
+            "idle",
+            "Location not checked",
+            "Location is not available on this device.",
+            "Unverified",
+            "b-muted",
+          );
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          function (pos) {
+            var R = 6371000,
+              r = Math.PI / 180,
+              dLat = (wh.lat - pos.coords.latitude) * r,
+              dLng = (wh.lng - pos.coords.longitude) * r;
+            var a =
+              Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(pos.coords.latitude * r) *
+                Math.cos(wh.lat * r) *
+                Math.sin(dLng / 2) *
+                Math.sin(dLng / 2);
+            var m = Math.round(
+                2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)),
+              ),
+              ok = m <= (wh.radiusMeters || 200);
+            if (ok)
+              set(
+                "",
+                "Location verified: at depot",
+                "Vehicle is back at " +
+                  (wh.name || "the depot") +
+                  " (" +
+                  m +
+                  " m)",
+                "At Depot",
+                "b-success",
+              );
+            else
+              set(
+                "warn",
+                "You are away from the depot",
+                (m >= 1000 ? (m / 1000).toFixed(1) + " km" : m + " m") +
+                  " from " +
+                  (wh.name || "the depot"),
+                "Not at depot",
+                "b-accent",
+              );
+          },
+          function () {
+            set(
+              "idle",
+              "Turn on location",
+              "Location is needed to verify you are at the depot.",
+              "Unverified",
+              "b-muted",
+            );
+          },
+          { enableHighAccuracy: true, timeout: 10000 },
+        );
+      })();
+
+      // Returns & undelivered stock
+      var cancelled = shops.filter(function (s) {
+          return s.status === "cancelled";
+        }),
+        rows = [];
+      returns.forEach(function (r) {
+        rows.push(
+          '<div class="po-ret"><span class="chip c-a"><svg data-icon="box"></svg></span><div><b>' +
+            esc(r.productName) +
+            "</b> (" +
+            esc(r.quantity) +
+            " units) &bull; " +
+            esc(r.shopName) +
+            "<small>" +
+            esc(r.reason) +
+            " &middot; Deduction &#8377;" +
+            esc(r.deductionAmount) +
+            "</small></div></div>",
+        );
+      });
+      cancelled.forEach(function (s) {
+        rows.push(
+          '<div class="po-ret"><span class="chip c-d"><svg data-icon="ban"></svg></span><div><b>' +
+            esc(s.name) +
+            "</b> (" +
+            (s.items && s.items.length
+              ? s.items.length + " items"
+              : esc(s.boxes) + " unopened boxes") +
+            ')<small class="bad">Cancelled: ' +
+            esc(s.problemReason || "Closed") +
+            "</small></div></div>",
+        );
+      });
+      if (!rows.length) {
+        $("returnsListContainer").innerHTML =
+          '<div class="po-clean"><svg data-icon="check-circle"></svg> All deliveries completed. No returned goods to hand over.</div>';
+        checkReturns.checked = true;
+      } else $("returnsListContainer").innerHTML = rows.join("");
+
+      var HELPER = GM.getData().crewRole === "helper";
+      if (HELPER) {
+        var kc = $("startKmDisplay").closest(".po-card");
+        if (kc) kc.style.display = "none";
+      }
+      function calc() {
+        if (HELPER) return true;
+        var v = parseInt(endKmInput.value, 10);
+        endKmField.classList.remove("err");
+        kmErr.textContent = "";
+        kmErr.style.color = "";
+        if (isNaN(v)) {
+          $("drivenKmDisplay").textContent = "-- km";
+          return false;
+        }
+        if (v < startKm) {
+          endKmField.classList.add("err");
+          kmErr.textContent =
+            "Ending KM cannot be lower than morning start (" +
+            startKm.toLocaleString("en-IN") +
+            " km)";
+          $("drivenKmDisplay").textContent = "Invalid";
+          return false;
+        }
+        var d = v - startKm;
+        $("drivenKmDisplay").textContent = d + " km";
+        if (d > GM.settings().highKm) {
+          kmErr.style.color = "var(--accent)";
+          kmErr.textContent = "High mileage: " + d + " km driven today.";
+        }
+        return true;
+      }
+      function waLink() {
+        var v = parseInt(endKmInput.value, 10),
+          driven = isNaN(v) ? "--" : v - startKm;
+        $("shareWhatsAppBtn").href =
+          "https://api.whatsapp.com/send?text=" +
+          encodeURIComponent(
+            "GM-CRM Day Summary - " +
+              (worker.name || "") +
+              "\nDate: " +
+              now.toLocaleDateString("en-IN") +
+              "\nVehicle: " +
+              (shift.assignedVehicle || "--") +
+              "\nStart KM: " +
+              startKm +
+              " | End KM: " +
+              (endKmInput.value || "--") +
+              " (Driven: " +
+              driven +
+              " km)\nDeliveries: " +
+              done +
+              " / " +
+              shops.length +
+              " completed",
+          );
+      }
+      function validate() {
+        var okKm = calc(),
+          todo = [];
+        if (!okKm) todo.push("enter ending KM");
+        if (!checkReturns.checked) todo.push("confirm returns handed over");
+        if (!checkInvoices.checked)
+          todo.push("confirm keys & invoices deposited");
+        outBtn.disabled = todo.length > 0;
+        $("todo").textContent = todo.length ? "To do: " + todo.join(", ") : "";
+        waLink();
+      }
+      endKmInput.addEventListener("input", validate);
+      checkReturns.addEventListener("change", validate);
+      checkInvoices.addEventListener("change", validate);
+      validate();
+
+      outBtn.addEventListener("click", function () {
+        var endVal = parseInt(endKmInput.value, 10);
+        GM.updateShift(
+          HELPER
+            ? {
+                punchedOut: true,
+                punchOutTime: endTimeStr,
+                endKm: null,
+                drivenKm: 0,
+                handoverCompleted: true,
+              }
+            : {
+                punchedOut: true,
+                punchOutTime: endTimeStr,
+                endKm: endVal,
+                drivenKm: endVal - startKm,
+                handoverCompleted: true,
+              },
+        );
+        outBtn.disabled = true;
+        outBtn.textContent = "Day closed. Summary sent to the office.";
+        setTimeout(function () {
+          localStorage.removeItem("gm_logged_in");
+          alert(
+            "Shift completed successfully! See you tomorrow, " +
+              (worker.name || "") +
+              ".",
+          );
+          window.location.href = "login.html";
+        }, 1000);
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,1183 @@
+﻿<!doctype html>
+<html lang="en">
+  <head>
+    <script src="../shared/loading.js"></script>
+    <script src="../assets/icons.js"></script>
+    <script src="../shared/sync.js"></script>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>General Traders - Home</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="../shared/vendor/leaflet/leaflet.css" />
+    <style>
+      /* ===== Home redesign v2 ===== */
+      :root {
+        --h-card-r: 22px;
+      }
+      .app {
+        background: none;
+        padding: 14px 16px 100px;
+        gap: 14px;
+      }
+      body {
+        background: var(--bg);
+      }
+      html[data-theme="dark"] body {
+        background: #0b1316;
+      }
+      .app > * {
+        flex-shrink: 0;
+      }
+      .col-l,
+      .col-r {
+        display: contents;
+      }
+      .o-hd {
+        order: 0;
+      }
+      .o-no {
+        order: 1;
+      }
+      .o-pn {
+        order: 2;
+      }
+      .o-hero {
+        order: 3;
+      }
+      .o-next {
+        order: 4;
+      }
+      .o-prog {
+        order: 5;
+        display: none;
+      }
+      .o-qa {
+        order: 6;
+      }
+      .app .card {
+        margin: 0;
+        border-radius: var(--h-card-r);
+        padding: 16px;
+      }
+      .app .hero {
+        margin: 0;
+      }
+
+      /* header */
+      .hm-hd {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .hm-logo {
+        width: 44px;
+        height: 44px;
+        border-radius: 13px;
+        background: #fff;
+        border: 1px solid var(--border);
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+      .hm-logo img {
+        width: 40px;
+        height: auto;
+        display: block;
+      }
+      .hm-t {
+        flex: 1;
+        min-width: 0;
+      }
+      .hm-t small {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .hm-t b {
+        display: block;
+        font:
+          800 19px/1.2 "Plus Jakarta Sans",
+          "Inter",
+          sans-serif;
+      }
+      .hm-av {
+        width: 42px;
+        height: 42px;
+        border-radius: 14px;
+        background: var(--primary);
+        color: var(--on-primary);
+        display: grid;
+        place-items: center;
+        font:
+          800 16px "Plus Jakarta Sans",
+          "Inter",
+          sans-serif;
+        text-decoration: none;
+        flex-shrink: 0;
+      }
+      .hm-hd .gt-switch {
+        box-shadow: none;
+      }
+      .hm-hd .gt-switch button {
+        width: 32px;
+        height: 30px;
+      }
+      .hm-t b {
+        font-size: 17px;
+      }
+
+      /* hero with truck image */
+      .app .hero.hm-hero {
+        border-radius: 24px;
+        padding: 18px;
+        color: #fff;
+        background: #0f766e;
+        box-shadow: 0 8px 24px rgba(15, 118, 110, 0.18);
+      }
+      .hm-hero::before,
+      .hm-hero::after {
+        display: none;
+      }
+      .hm-bg {
+        position: absolute;
+        inset: 0;
+        background: url(../assets/login-day.jpg) 70% 60% / cover;
+        z-index: 0;
+      }
+      html[data-theme="dark"] .hm-bg {
+        background-image: url(../assets/login-night.jpg);
+      }
+      .hm-ov {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        background: linear-gradient(
+          100deg,
+          rgba(6, 70, 64, 0.96) 0%,
+          rgba(10, 100, 92, 0.88) 45%,
+          rgba(15, 118, 110, 0.25) 100%
+        );
+      }
+      html[data-theme="dark"] .hm-ov {
+        background: linear-gradient(
+          100deg,
+          rgba(4, 30, 32, 0.97) 0%,
+          rgba(8, 60, 58, 0.88) 45%,
+          rgba(8, 60, 58, 0.2) 100%
+        );
+      }
+      .hm-hero.is-muted .hm-ov {
+        background: linear-gradient(
+          100deg,
+          rgba(30, 41, 59, 0.97) 0%,
+          rgba(30, 41, 59, 0.88) 50%,
+          rgba(30, 41, 59, 0.35) 100%
+        );
+      }
+      .hm-hero .pill {
+        background: rgba(255, 255, 255, 0.16);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        backdrop-filter: blur(6px);
+        padding: 6px 12px;
+        font-size: 12.5px;
+        white-space: nowrap;
+      }
+      .hm-hero .pill i {
+        box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3);
+      }
+      .hm-hero .pill.green i {
+        box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.3);
+      }
+      .hm-hero .pill.grey i {
+        background: #cbd5e1;
+        box-shadow: none;
+      }
+      .hm-hero h2 {
+        font:
+          800 25px/1.15 "Plus Jakarta Sans",
+          "Inter",
+          sans-serif;
+        margin: 12px 0 4px;
+      }
+      .hm-hero .sub {
+        font-size: 13px;
+        opacity: 0.92;
+        line-height: 1.45;
+        max-width: 260px;
+      }
+      .hm-veh {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 18px;
+        margin-top: 12px;
+        font-size: 12px;
+        opacity: 0.95;
+      }
+      .hm-veh b {
+        display: block;
+        font:
+          700 15px "Plus Jakarta Sans",
+          "Inter",
+          sans-serif;
+        margin-top: 1px;
+      }
+      .hm-pb {
+        height: 9px;
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.22);
+        margin: 14px 0 8px;
+        overflow: hidden;
+      }
+      .hm-pb div {
+        height: 100%;
+        border-radius: 9px;
+        background: linear-gradient(90deg, #5eead4, #a7f3d0);
+        transition: width 0.3s ease;
+      }
+      .hm-pr {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12.5px;
+        font-weight: 600;
+      }
+      .hm-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .hm-stats div {
+        background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 14px;
+        padding: 9px 6px;
+        text-align: center;
+        font-size: 11px;
+        backdrop-filter: blur(6px);
+      }
+      .hm-stats b {
+        display: block;
+        font:
+          800 20px "Plus Jakarta Sans",
+          "Inter",
+          sans-serif;
+      }
+      .hm-cta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        height: 42px;
+        padding: 0 18px;
+        border-radius: 13px;
+        background: #fff;
+        color: #0f766e;
+        font:
+          700 13.5px Inter,
+          sans-serif;
+        margin-top: 14px;
+        text-decoration: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+      }
+      .hm-cta.alt {
+        background: rgba(255, 255, 255, 0.16);
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        margin-top: 10px;
+        height: 44px;
+        font-size: 14px;
+      }
+      .hm-cta .icon {
+        width: 17px;
+        height: 17px;
+      }
+      .app .hm-hero {
+        min-height: 230px;
+      }
+      .hm-hero .hm-pb,
+      .hm-hero .hm-pr {
+        position: relative;
+      }
+
+      /* next stop */
+      .hm-ch {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        gap: 8px;
+      }
+      .hm-ch b {
+        font:
+          800 16px "Plus Jakarta Sans",
+          "Inter",
+          sans-serif;
+      }
+      .hm-tag {
+        background: var(--t-primary);
+        color: var(--primary);
+        font:
+          700 11px Inter,
+          sans-serif;
+        padding: 4px 9px;
+        border-radius: 99px;
+        white-space: nowrap;
+      }
+      .hm-link {
+        font:
+          600 12.5px Inter,
+          sans-serif;
+        color: var(--primary);
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      .hm-shop {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      .hm-thumb {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #f59e0b, #b45309);
+        display: grid;
+        place-items: center;
+        color: #fff;
+        flex-shrink: 0;
+        overflow: hidden;
+      }
+      .hm-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .hm-shop > div:last-child {
+        min-width: 0;
+      }
+      .hm-shop b {
+        font:
+          700 15px Inter,
+          sans-serif;
+        display: block;
+      }
+      .hm-shop small {
+        font-size: 12.5px;
+        color: var(--muted);
+        display: block;
+        margin-top: 2px;
+      }
+      .hm-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 12px;
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 5px;
+      }
+      .hm-meta span {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+      }
+      .hm-meta .icon {
+        width: 13px;
+        height: 13px;
+        color: var(--primary);
+      }
+      .hm-map {
+        display: none;
+        height: 150px;
+        border-radius: 16px;
+        margin-bottom: 12px;
+        overflow: hidden;
+        background: var(--t-primary);
+        position: relative;
+        z-index: 0;
+      }
+      .hm-two {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 9px;
+        margin-top: 13px;
+      }
+      .hm-b2 {
+        height: 42px;
+        border-radius: 13px;
+        border: 1.5px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        font:
+          600 13.5px Inter,
+          sans-serif;
+        color: var(--text);
+        text-decoration: none;
+        background: transparent;
+      }
+      .hm-b2 .icon {
+        width: 16px;
+        height: 16px;
+        color: var(--primary);
+      }
+      .hm-b1 {
+        height: 50px;
+        border-radius: 15px;
+        background: var(--primary);
+        color: var(--on-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        font:
+          700 15px Inter,
+          sans-serif;
+        margin-top: 10px;
+        text-decoration: none;
+        box-shadow: 0 6px 16px rgba(15, 118, 110, 0.25);
+      }
+      .hm-b1 .icon {
+        width: 19px;
+        height: 19px;
+      }
+
+      /* progress card (desktop) */
+      .hm-ring {
+        display: flex;
+        gap: 18px;
+        align-items: center;
+      }
+      .hm-ring svg {
+        flex-shrink: 0;
+      }
+      .hm-rl {
+        display: grid;
+        gap: 8px;
+        flex: 1;
+      }
+      .hm-rl div {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .hm-rl b {
+        font:
+          800 16px "Plus Jakarta Sans",
+          "Inter",
+          sans-serif;
+        color: var(--text);
+      }
+      .hm-rl i {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+      }
+
+      /* notices */
+      .app .gm-notice {
+        margin: 0;
+        border: 1px solid rgba(245, 158, 11, 0.35);
+        border-left-width: 1px;
+        background: var(--t-accent);
+        border-radius: 18px;
+        padding: 12px 13px;
+        box-shadow: none;
+      }
+      .app .gm-notice-head b {
+        font:
+          700 13.5px Inter,
+          sans-serif;
+      }
+      .app .gm-notice p {
+        font-size: 12.5px;
+        margin: 3px 0 0;
+      }
+      .app .gm-notice .btn {
+        min-height: 32px !important;
+        background: rgba(245, 158, 11, 0.18);
+        border: 0;
+        color: var(--accent);
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      /* quick access */
+      .hm-qa {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 9px;
+      }
+      .hm-q {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 11px 4px 10px;
+        text-align: center;
+        box-shadow: var(--shadow);
+        text-decoration: none;
+        color: var(--text);
+        transition: transform 0.1s;
+        min-width: 0;
+      }
+      .hm-q:active {
+        transform: scale(0.97);
+      }
+      .hm-q .chip {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        margin: 0 auto 7px;
+      }
+      .hm-q .chip .icon {
+        width: 19px;
+        height: 19px;
+      }
+      .hm-q b {
+        font:
+          700 12px Inter,
+          sans-serif;
+        display: block;
+      }
+      .hm-q small {
+        font-size: 10.5px;
+        color: var(--muted);
+        display: block;
+        margin-top: 1px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .hm-q .st-p {
+        display: inline;
+      }
+
+      .brand-side .brand-name {
+        font:
+          800 16px "Plus Jakarta Sans",
+          "Inter",
+          sans-serif;
+        display: block;
+      }
+      .nav a.brand-side {
+        display: none;
+      }
+
+      @media (min-width: 900px) {
+        .app {
+          max-width: 1120px;
+          padding: 28px 32px 48px;
+          display: grid;
+          align-content: start;
+          grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+          gap: 16px;
+          align-items: start;
+        }
+        .hm-hd {
+          grid-column: 1 / -1;
+        }
+        .hm-t b {
+          font-size: 26px !important;
+        }
+        .col-l,
+        .col-r {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          min-width: 0;
+        }
+        .o-hd,
+        .o-no,
+        .o-pn,
+        .o-hero,
+        .o-next,
+        .o-prog,
+        .o-qa {
+          order: 0;
+        }
+        .o-prog {
+          display: block;
+        }
+        .hm-qa {
+          grid-template-columns: 1fr 1fr;
+        }
+        .hm-q {
+          display: flex;
+          gap: 11px;
+          align-items: center;
+          text-align: left;
+          padding: 12px;
+        }
+        .hm-q .chip {
+          margin: 0;
+        }
+        .hm-q b {
+          font-size: 13px;
+        }
+        .hm-q small {
+          font-size: 11.5px;
+        }
+        .hm-hero h2 {
+          font-size: 30px;
+        }
+        .hm-hero .sub {
+          max-width: 380px;
+        }
+        .hm-map.on {
+          display: block;
+        }
+        .hm-act {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1.6fr;
+          gap: 9px;
+          margin-top: 13px;
+        }
+        .hm-act .hm-two {
+          display: contents;
+        }
+        .hm-act .hm-b1 {
+          margin: 0;
+          height: 42px;
+          font-size: 14px;
+          box-shadow: none;
+        }
+        .hm-act .hm-two {
+          margin: 0;
+        }
+        .app .hm-hero {
+          min-height: 240px;
+        }
+        .nav a.brand-side {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          gap: 12px;
+          min-height: 0;
+          padding: 4px 8px 20px;
+          margin-bottom: 12px;
+          border-radius: 0;
+          border-bottom: 1px solid var(--border);
+          color: var(--text);
+          background: none;
+        }
+        .nav a.brand-side:hover {
+          background: none;
+        }
+        .nav a.brand-side .brand-sub {
+          display: block;
+          font-size: 11.5px;
+          color: var(--muted);
+          font-weight: 500;
+        }
+        .brand-logo {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          background: #fff;
+          border: 1px solid var(--border);
+          display: grid;
+          place-items: center;
+          overflow: hidden;
+          flex-shrink: 0;
+        }
+        .brand-logo img {
+          width: 40px;
+          display: block;
+        }
+        .nav a {
+          font-weight: 600;
+        }
+      }
+      @media (max-width: 899px) {
+        .hm-logo {
+          display: grid;
+        }
+      }
+      @media (min-width: 900px) {
+        .hm-logo {
+          display: none;
+        }
+      }
+    </style>
+    <style>
+      /* GM-WORKER-FULL-WIDTH-v1 */
+      .app {
+        width: 100% !important;
+        max-width: none !important;
+        box-sizing: border-box !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+      }
+    </style>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/icon-32.png"
+    />
+    <link rel="apple-touch-icon" href="/assets/icon-180.png" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="hm-hd o-hd">
+        <a class="hm-logo" href="home.html" aria-label="General Traders"
+          ><img src="../assets/logo.png" alt=""
+        /></a>
+        <div class="hm-t">
+          <small id="todayDate">&nbsp;</small><b id="greeting">Hello</b>
+        </div>
+        <button
+          class="icon-btn"
+          id="themeToggle"
+          aria-label="Switch light or dark theme"
+        >
+          <svg class="icon" data-icon="sun"></svg>
+        </button>
+        <a href="profile.html" class="hm-av" id="avatar" aria-label="My profile"
+          >S</a
+        >
+      </header>
+
+      <div class="col-l">
+        <div id="heroCardWrap" class="o-hero"></div>
+        <div id="nextWrap" class="o-next"></div>
+      </div>
+      <div class="col-r">
+        <div id="gmNotices" class="o-no"></div>
+        <div id="gmPins" class="o-pn"></div>
+        <section
+          class="card o-prog"
+          id="progCard"
+          aria-label="Today's Progress"
+        >
+          <div class="hm-ch">
+            <b>Today's Progress</b
+            ><a href="route.html" class="hm-link">View route</a>
+          </div>
+          <div class="hm-ring" id="progRing"></div>
+        </section>
+        <div class="hm-qa o-qa">
+          <a href="route.html" class="hm-q"
+            ><span class="chip c-p"
+              ><svg class="icon" data-icon="map"></svg
+            ></span>
+            <div><b>Route</b><small id="routeShopsCount">&nbsp;</small></div></a
+          >
+          <a href="advances.html" class="hm-q"
+            ><span class="chip c-a"
+              ><svg class="icon" data-icon="coin"></svg
+            ></span>
+            <div>
+              <b>Account</b><small id="accountSummary">Advances</small>
+            </div></a
+          >
+          <a href="attendance.html" class="hm-q"
+            ><span class="chip c-s"
+              ><svg class="icon" data-icon="calendar"></svg
+            ></span>
+            <div>
+              <b>Attendance</b><small id="attendanceSummary">&nbsp;</small>
+            </div></a
+          >
+          <a href="profile.html" class="hm-q"
+            ><span class="chip c-i"
+              ><svg class="icon" data-icon="user"></svg
+            ></span>
+            <div><b>Profile</b><small>Password &amp; help</small></div></a
+          >
+        </div>
+      </div>
+    </main>
+
+    <nav class="nav" aria-label="Main Navigation">
+      <a href="home.html" class="brand-side" aria-label="General Traders">
+        <span class="brand-logo"><img src="../assets/logo.png" alt="" /></span>
+        <span
+          ><b class="brand-name">General Traders</b
+          ><small class="brand-sub">Distribution &amp; Delivery</small></span
+        >
+      </a>
+      <div>
+        <a href="home.html" aria-current="page"
+          ><svg class="icon" data-icon="home"></svg>Home</a
+        >
+        <a href="route.html"><svg class="icon" data-icon="map"></svg>Route</a>
+        <a href="advances.html"
+          ><svg class="icon" data-icon="coin"></svg>Account</a
+        >
+        <a href="attendance.html"
+          ><svg class="icon" data-icon="calendar"></svg>Attendance</a
+        >
+        <a href="profile.html"
+          ><svg class="icon" data-icon="user"></svg>Profile</a
+        >
+      </div>
+    </nav>
+
+    <script src="../shared/theme.js"></script>
+    <script src="../shared/mock-data.js"></script>
+    <script src="../shared/punch-modal.js"></script>
+    <script src="../shared/consent.js"></script>
+    <script src="../shared/vendor/leaflet/leaflet.js"></script>
+    <script>
+      // Ensure session is active
+      if (!localStorage.getItem("gm_logged_in")) {
+        // If not logged in, redirect to login
+        window.location.href = "login.html";
+      }
+
+      GM.applyTodayPlan();
+      window.addEventListener("gm-sync", function () {
+        if (GM.applyTodayPlan()) location.reload();
+      });
+      var worker = GM.getWorker();
+      var shift = GM.getShift();
+      var shops = GM.getShops();
+      var nextShop = GM.getNextShop();
+
+      GM.applyTodayPlan();
+      window.addEventListener("gm-sync", function () {
+        if (GM.applyTodayPlan()) location.reload();
+      });
+      var worker = GM.getWorker();
+      var shift = GM.getShift();
+      var shops = GM.getShops();
+      var nextShop = GM.getNextShop();
+      function esc(t) {
+        return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+        });
+      }
+      var total = shops.length;
+      var doneCount = shops.filter(function (s) {
+        return s.status === "delivered";
+      }).length;
+      var pendingCount = shops.filter(function (s) {
+        return s.status === "pending";
+      }).length;
+      var pct = total ? Math.round((doneCount / total) * 100) : 0;
+      var first = worker && worker.name ? worker.name.split(" ")[0] : "";
+      var routeName = (shops[0] && shops[0].owner) || "";
+
+      // Messages from the admin about today's plan (priority shop added, new order, employee or vehicle change, cancellation)
+      (function () {
+        var box = document.getElementById("gmNotices"),
+          L = GM.getNotices ? GM.getNotices() : [];
+        function esc(t) {
+          return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+          });
+        }
+        if (!box || !L.length) return;
+        box.innerHTML =
+          '<section class="gm-notice" role="status">' +
+          '<div class="gm-notice-head"><b>Update from the office</b><button type="button" id="gmNoticeOk" class="btn btn-secondary" style="width:auto;min-height:34px;padding:0 12px;font-size:13px">Got it</button></div>' +
+          L.slice(0, 5)
+            .map(function (n) {
+              return "<p>" + esc(n.text) + "</p>";
+            })
+            .join("") +
+          "</section>";
+        document.getElementById("gmNoticeOk").onclick = function () {
+          GM.markNoticesRead();
+          box.innerHTML = "";
+        };
+      })();
+
+      // Shops the office asked this employee to save (location, phone, address)
+      (function () {
+        var box = document.getElementById("gmPins");
+        if (!box || !GM.pinTasks) return;
+        var ALL = GM.pinTasks(),
+          L = ALL.filter(function (s) {
+            return !s.done;
+          });
+        if (!L.length) return;
+        box.innerHTML =
+          '<section class="gm-notice" role="status"><div class="gm-notice-head"><b>Shop locations to save</b></div>' +
+          "<p><b>" +
+          L.length +
+          " left</b> \u00b7 " +
+          (ALL.length - L.length) +
+          " completed (of " +
+          ALL.length +
+          ")</p><p>Tap the button at each shop to save its location.</p>" +
+          '<a class="btn" href="shop-pins.html" style="margin-top:8px;text-decoration:none;display:flex;align-items:center;justify-content:center">Open shop list</a></section>';
+      })();
+
+      // Date and greeting
+      function updateTime() {
+        var now = new Date(),
+          h = now.getHours();
+        document.getElementById("greeting").textContent =
+          (h < 12
+            ? "Good morning"
+            : h < 17
+              ? "Good afternoon"
+              : "Good evening") + (first ? ", " + first : "");
+        document.getElementById("todayDate").textContent =
+          now.toLocaleDateString("en-IN", {
+            weekday: "short",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          });
+        document.getElementById("avatar").textContent = (first || "U")
+          .charAt(0)
+          .toUpperCase();
+      }
+      updateTime();
+
+      // Hero card (one of four shift states)
+      function hero(cls, inner) {
+        return (
+          '<section class="hero hm-hero ' +
+          cls +
+          '"><div class="hm-bg"></div><div class="hm-ov"></div>' +
+          inner +
+          "</section>"
+        );
+      }
+      var heroWrap = document.getElementById("heroCardWrap"),
+        nextWrap = document.getElementById("nextWrap");
+      var onDuty = false;
+
+      if (!shift.punchedIn && !GM.hasPlanToday()) {
+        heroWrap.innerHTML = hero(
+          "is-muted",
+          '<span class="pill grey"><i></i> No plan today</span><h2>No route assigned yet</h2><p class="sub">Fleet Admin has not assigned you a plan for today. Contact Fleet Admin if you think this is a mistake.</p>',
+        );
+      } else if (!shift.punchedIn) {
+        heroWrap.innerHTML = hero(
+          "",
+          '<span class="pill"><i></i> Ready for shift</span><h2>Start your day</h2><p class="sub">Assigned vehicle <b>' +
+            esc(shift.assignedVehicle || "--") +
+            '</b>. A quick GPS check at the depot unlocks your route.</p><a class="hm-cta" href="punch-in.html">' +
+            GMIcons.svg("login", "icon") +
+            "Punch In &amp; Unlock Route</a>",
+        );
+      } else if (!shift.punchedOut) {
+        onDuty = true;
+        var left = total - doneCount;
+        var title = !total
+          ? "No stops assigned"
+          : nextShop || left
+            ? doneCount + " of " + total + " delivered"
+            : "All stops handled";
+        var inner =
+          '<span class="pill green"><i></i> On Duty</span><h2>' +
+          title +
+          "</h2>" +
+          '<div class="hm-veh"><div>Vehicle<b>' +
+          esc(shift.assignedVehicle || "--") +
+          "</b></div>" +
+          (GM.getData().crewRole === "helper"
+            ? ""
+            : "<div>Start KM<b>" + esc(shift.startKm || "--") + "</b></div>") +
+          (routeName ? "<div>Route<b>" + esc(routeName) + "</b></div>" : "") +
+          "</div>" +
+          '<div class="hm-pb"><div style="width:' +
+          pct +
+          '%"></div></div><div class="hm-pr"><span>' +
+          (nextShop
+            ? pendingCount +
+              " shop" +
+              (pendingCount === 1 ? "" : "s") +
+              " remaining"
+            : "Return to the depot") +
+          "</span><span>" +
+          pct +
+          "%</span></div>";
+        if (!nextShop)
+          inner +=
+            '<a class="hm-cta" href="punch-out.html">End Day &amp; Punch Out</a>';
+        heroWrap.innerHTML = hero("", inner);
+      } else {
+        heroWrap.innerHTML = hero(
+          "",
+          '<span class="pill green"><i></i> Day finished</span><h2>Good job' +
+            (first ? ", " + esc(first) : "") +
+            '!</h2><p class="sub">Your summary has been recorded with Fleet Admin.</p>' +
+            '<div class="hm-stats"><div><b>' +
+            doneCount +
+            "/" +
+            total +
+            "</b>Delivered</div>" +
+            (GM.getData().crewRole === "helper"
+              ? ""
+              : "<div><b>" + (shift.drivenKm || 0) + " km</b>Driven</div>") +
+            "<div><b>" +
+            esc(shift.punchInTime || "--") +
+            "</b>Punched in</div></div>",
+        );
+      }
+
+      // Next stop card (on duty only)
+      if (onDuty && nextShop) {
+        var thumb =
+          nextShop.img && !/logo\.png$/.test(nextShop.img)
+            ? '<img src="' +
+              esc(nextShop.img) +
+              '" alt="" onerror="this.remove()">'
+            : GMIcons.svg("store", "icon", 'style="width:26px;height:26px"');
+        var pos = 0;
+        shops.forEach(function (x, i) {
+          if (x.id === nextShop.id) pos = i + 1;
+        });
+        var meta =
+          (nextShop.distance
+            ? "<span>" +
+              GMIcons.svg("map-pin", "icon") +
+              esc(nextShop.distance) +
+              "</span>"
+            : "") +
+          "<span>" +
+          GMIcons.svg("check", "icon") +
+          esc(GM.qtyLabel(nextShop)) +
+          "</span>" +
+          (nextShop.visitTime
+            ? "<span>" +
+              GMIcons.svg("clock", "icon") +
+              esc(nextShop.visitTime) +
+              "</span>"
+            : "");
+        nextWrap.innerHTML =
+          '<section class="card"><div class="hm-ch"><b>Next Stop</b><span class="hm-tag">Stop ' +
+          pos +
+          " of " +
+          total +
+          "</span></div>" +
+          '<div class="hm-map" id="hmMap"></div>' +
+          '<div class="hm-shop"><div class="hm-thumb">' +
+          thumb +
+          "</div><div><b>" +
+          esc(nextShop.name) +
+          "</b><small>" +
+          esc(
+            nextShop.address && nextShop.address !== "-"
+              ? nextShop.address
+              : "",
+          ) +
+          '</small><div class="hm-meta">' +
+          meta +
+          "</div></div></div>" +
+          '<div class="hm-act"><div class="hm-two"><a class="hm-b2" href="' +
+          esc(GM.mapsUrl(nextShop)) +
+          '" target="_blank" rel="noopener">' +
+          GMIcons.svg("navigate", "icon") +
+          "Directions</a>" +
+          (nextShop.phone
+            ? '<a class="hm-b2" href="tel:' +
+              esc(nextShop.phone) +
+              '">' +
+              GMIcons.svg("phone", "icon") +
+              "Call shop</a>"
+            : '<span class="hm-b2" style="opacity:.45">' +
+              GMIcons.svg("phone", "icon") +
+              "No phone</span>") +
+          "</div>" +
+          '<a class="hm-b1" href="delivery.html?id=' +
+          encodeURIComponent(nextShop.id) +
+          '">' +
+          GMIcons.svg("check", "icon") +
+          "I\u2019ve Arrived \u00b7 Deliver</a></div></section>";
+        // Small map on desktop when the shop has a saved pin
+        try {
+          var pin = GM.shopPin(nextShop);
+          if (
+            pin &&
+            window.L &&
+            window.matchMedia("(min-width:900px)").matches
+          ) {
+            var mb = document.getElementById("hmMap");
+            mb.classList.add("on");
+            var map = L.map(mb, {
+              zoomControl: false,
+              attributionControl: false,
+              dragging: false,
+              scrollWheelZoom: false,
+              doubleClickZoom: false,
+              touchZoom: false,
+              keyboard: false,
+            }).setView([pin.lat, pin.lng], 15);
+            L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+              maxZoom: 19,
+            }).addTo(map);
+            L.circleMarker([pin.lat, pin.lng], {
+              radius: 9,
+              color: "#fff",
+              weight: 3,
+              fillColor: "#EF4444",
+              fillOpacity: 1,
+            }).addTo(map);
+          }
+        } catch (e) {}
+      }
+
+      // Progress ring (desktop card)
+      (function () {
+        var c = 2 * Math.PI * 44,
+          off = c * (1 - pct / 100);
+        document.getElementById("progRing").innerHTML =
+          '<svg width="108" height="108" viewBox="0 0 108 108"><circle cx="54" cy="54" r="44" fill="none" stroke="var(--border)" stroke-width="11"/><circle cx="54" cy="54" r="44" fill="none" stroke="var(--primary)" stroke-width="11" stroke-linecap="round" stroke-dasharray="' +
+          c.toFixed(1) +
+          '" stroke-dashoffset="' +
+          off.toFixed(1) +
+          '" transform="rotate(-90 54 54)"/><text x="54" y="60" text-anchor="middle" fill="var(--text)" font-family="Plus Jakarta Sans,Inter,sans-serif" font-weight="800" font-size="' +
+          (String(pct).length > 2 ? 19 : 24) +
+          '">' +
+          pct +
+          "%</text></svg>" +
+          '<div class="hm-rl"><div><span><i style="background:var(--success)"></i>Delivered</span><b>' +
+          doneCount +
+          '</b></div><div><span><i style="background:var(--accent)"></i>Remaining</span><b>' +
+          (total - doneCount) +
+          '</b></div><div><span><i style="background:var(--muted)"></i>Total shops</span><b>' +
+          total +
+          "</b></div></div>";
+      })();
+
+      // Quick access sub-lines
+      document.getElementById("routeShopsCount").textContent = total
+        ? pendingCount + " pending"
+        : "No shops";
+      var nowD = new Date(),
+        ym =
+          nowD.getFullYear() +
+          "-" +
+          String(nowD.getMonth() + 1).padStart(2, "0");
+      var att = GM.getMonthlyAttendance(ym) || [];
+      var nPresent = att.filter(function (d) {
+        return d.status === "present";
+      }).length;
+      var nLate = att.filter(function (d) {
+        return d.status === "late";
+      }).length;
+      document.getElementById("attendanceSummary").textContent =
+        nPresent + " present \u00b7 " + nLate + " late";
+      try {
+        var adv = 0,
+          ded = 0;
+        (GM.getMonthlyAdvances(ym) || []).forEach(function (i) {
+          var a = Number(i.amount) || 0;
+          if (i.type === "advance") adv += a;
+          else if (i.type === "deduction") ded += a;
+        });
+        var bal = adv + ded;
+        document.getElementById("accountSummary").textContent = bal
+          ? "\u20b9" + bal.toLocaleString("en-IN") + " to cut"
+          : "No advances";
+      } catch (e) {}
+    </script>
+  </body>
+</html>

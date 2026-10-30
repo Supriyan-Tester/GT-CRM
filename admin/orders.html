@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script src="../shared/loading.js"></script>
     <script src="../assets/icons.js"></script>
     <script src="../shared/sync.js"></script>
     <meta charset="utf-8" />
@@ -862,6 +863,9 @@
           grid-template-columns: 1fr 1fr;
         }
       }
+      @page {
+        margin: 12mm;
+      }
       @media print {
         body > *:not(#omPrint) {
           display: none !important;
@@ -1593,7 +1597,9 @@
             .join("") +
           '<span class="om-sp"></span><button type="button" class="om-ib" id="omExp">' +
           I("download") +
-          'Export</button><button type="button" class="om-ib" id="omRf" aria-label="Refresh">' +
+          'Export</button><button type="button" class="om-ib" id="omPrAll">' +
+          I("print") +
+          'Print all</button><button type="button" class="om-ib" id="omRf" aria-label="Refresh">' +
           I("refresh") +
           "</button>";
         [].forEach.call($("omTabs").querySelectorAll(".om-tab"), function (b) {
@@ -1620,6 +1626,9 @@
           });
         $("omExp").onclick = function () {
           exportCsv(L);
+        };
+        $("omPrAll").onclick = function () {
+          printAll(L);
         };
         var pages = Math.max(1, Math.ceil(L.length / st.per));
         if (st.page > pages) st.page = pages;
@@ -2258,6 +2267,144 @@
           "</div>";
         window.print();
       }
+      // Print every order in the current list (date, sales person, area, search and status filters), grouped by shop,
+      // followed by the total of each product. The browser's print window can save it as a PDF.
+      function printAll(L) {
+        var live = L.filter(function (o) {
+          return o.status !== "cancelled";
+        });
+        if (!L.length) {
+          alert("There are no orders to print for these filters.");
+          return;
+        }
+        if ($("omPrint").parentNode !== document.body)
+          document.body.appendChild($("omPrint"));
+        var custs = {};
+        (rd("gm_admin_v1", {}).customers || []).forEach(function (x) {
+          custs[x.code] = x;
+        });
+        var B = bizInfo(),
+          cell = "border:1px solid #999;padding:4px 6px;",
+          shops = {},
+          items = {},
+          tot = { sub: 0, gst: 0, grand: 0 };
+        L.forEach(function (o) {
+          var k = o.code || o.shop || "-";
+          (shops[k] = shops[k] || { code: o.code, name: o.shop || o.code || "-", list: [] }).list.push(o);
+        });
+        var order = Object.keys(shops).sort(function (a, b) {
+          return String(shops[a].name).toLowerCase() < String(shops[b].name).toLowerCase() ? -1 : 1;
+        });
+        function th(h, al) {
+          return '<th style="' + cell + "text-align:" + al + '">' + h + "</th>";
+        }
+        function td(v, al, b) {
+          return '<td style="' + cell + "text-align:" + al + '">' + (b ? "<b>" + v + "</b>" : v) + "</td>";
+        }
+        var shopHtml = order
+          .map(function (k) {
+            var sh = shops[k],
+              cu = custs[sh.code] || {},
+              sTot = 0,
+              orders = sh.list
+                .slice()
+                .sort(function (a, b) {
+                  return (a.t || 0) - (b.t || 0);
+                })
+                .map(function (o) {
+                  var cc = calc(o, cu),
+                    off = o.status === "cancelled";
+                  if (!off) {
+                    tot.sub += cc.sub;
+                    tot.gst += cc.gst;
+                    tot.grand += cc.grand;
+                    sTot += cc.grand;
+                    cc.lines.forEach(function (l) {
+                      var i = l.i,
+                        key = (i.id || i.name) + "|" + (i.unit || ""),
+                        e = (items[key] = items[key] || { name: i.name || i.id, unit: i.unit || "", qty: 0, amt: 0, shops: {} });
+                      e.qty += Number(i.qty) || 0;
+                      e.amt += l.amt;
+                      e.shops[sh.code || sh.name] = 1;
+                    });
+                  }
+                  return (
+                    '<div style="margin:0 0 10px;page-break-inside:avoid;' + (off ? "opacity:.6" : "") + '">' +
+                    '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span><b>' +
+                    esc(o.id) + "</b> &middot; " + dateOnly(o.t) + ", " + timeOnly(o.t) + " &middot; taken by " + esc(o._rep) +
+                    (off ? ' &middot; <b style="color:#b00">CANCELLED' + (o.cancelReason ? " - " + esc(o.cancelReason) : "") + "</b>" : "") +
+                    "</span></div>" +
+                    '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#eee">' +
+                    th("#", "center") + th("Product", "left") + th("HSN", "center") + th("Qty", "center") + th("Price", "right") + th("Amount", "right") + th("GST", "right") + th("Total", "right") +
+                    "</tr></thead><tbody>" +
+                    cc.lines
+                      .map(function (l, n) {
+                        var i = l.i;
+                        return (
+                          "<tr>" + td(n + 1, "center") + td(esc(i.name || i.id), "left") + td(esc(l.hsn || "-"), "center") +
+                          td(esc(qtyText(i)), "center", 1) + td(money(i.price), "right") + td(money(l.amt), "right") +
+                          td(money(l.gst) + " (" + l.rate + "%)", "right") + td(money(l.total), "right", 1) + "</tr>"
+                        );
+                      })
+                      .join("") +
+                    '<tr style="background:#f6f6f6">' + '<td colspan="5" style="' + cell + 'text-align:right"><b>Order total</b></td>' +
+                    td(money(cc.sub - cc.disc), "right") + td(money(cc.gst), "right") + td(money(cc.grand), "right", 1) + "</tr>" +
+                    "</tbody></table>" +
+                    (o.notes ? '<div style="font-size:11px;margin-top:2px">Notes: ' + esc(o.notes) + "</div>" : "") +
+                    "</div>"
+                  );
+                })
+                .join("");
+            return (
+              '<div style="margin-bottom:14px"><div style="border-top:2px solid #000;border-bottom:1px solid #000;padding:5px 2px;font-size:13px;page-break-after:avoid;display:flex;justify-content:space-between"><span><b>' +
+              esc(sh.name) + "</b>" + (sh.code ? " (" + esc(sh.code) + ")" : "") +
+              (sh.list[0].area || cu.area ? " &middot; " + esc(sh.list[0].area || cu.area) : "") +
+              (cu.phone ? " &middot; " + esc(cu.phone) : "") + "</span><span>" + sh.list.length + (sh.list.length === 1 ? " order" : " orders") +
+              (sTot ? " &middot; " + money(sTot) : "") + "</span></div>" +
+              (cu.address || cu.gstin ? '<div style="font-size:11px;margin:3px 0 6px;color:#333">' + (cu.address ? esc(cu.address) : "") + (cu.gstin ? " &middot; GSTIN " + esc(cu.gstin) : "") + "</div>" : '<div style="height:6px"></div>') +
+              orders + "</div>"
+            );
+          })
+          .join("");
+        var itemRows = Object.keys(items)
+          .map(function (k) {
+            return items[k];
+          })
+          .sort(function (a, b) {
+            return String(a.name).toLowerCase() < String(b.name).toLowerCase() ? -1 : 1;
+          });
+        var itemHtml =
+          '<div style="page-break-before:always"><h3 style="margin:0 0 6px">Item totals (all shops)</h3>' +
+          '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#eee">' +
+          th("#", "center") + th("Product", "left") + th("Total qty", "center") + th("Shops", "center") + th("Amount (ex-GST)", "right") +
+          "</tr></thead><tbody>" +
+          itemRows
+            .map(function (e, n) {
+              return (
+                "<tr>" + td(n + 1, "center") + td(esc(e.name), "left") +
+                td(esc(qtyText({ qty: Math.round(e.qty * 1000) / 1000, unit: e.unit })) + (/^kgs?$/i.test(e.unit) ? "" : e.unit ? " " + esc(e.unit) : ""), "center", 1) +
+                td(Object.keys(e.shops).length, "center") + td(money(e.amt), "right") + "</tr>"
+              );
+            })
+            .join("") +
+          "</tbody></table></div>";
+        var range = st.from === st.to ? dateOnly(st.from + "T12:00:00+05:30") : dateOnly(st.from + "T12:00:00+05:30") + " to " + dateOnly(st.to + "T12:00:00+05:30"),
+          filt = [
+            "Status: " + (st.status === "all" ? "all" : st.status),
+            st.rep ? "Sales person: " + esc((L.filter(function (o) { return o.rep === st.rep; })[0] || {})._rep || st.rep) : "",
+            st.area ? "Area: " + esc(st.area) : "",
+            st.q ? "Search: " + esc(st.q) : "",
+          ].filter(Boolean).join(" &middot; ");
+        $("omPrint").innerHTML =
+          '<div style="font-family:Arial,sans-serif;color:#000;max-width:780px;margin:0 auto">' +
+          '<div style="border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:10px"><h2 style="margin:0">' + esc(B.name || "General Traders") + '</h2><div style="font-size:12px">' +
+          (B.address ? esc(B.address) + " &middot; " : "") + (B.phone ? "Phone: " + esc(B.phone) + " &middot; " : "") + (B.gstin ? "GSTIN: " + esc(B.gstin) : "") + "</div></div>" +
+          '<h3 style="margin:0 0 4px">Orders report</h3><div style="font-size:12px;margin-bottom:8px">' + range + " &middot; " + filt + "<br>" +
+          "<b>" + live.length + "</b> " + (live.length === 1 ? "order" : "orders") + (L.length !== live.length ? " (" + (L.length - live.length) + " cancelled, not counted)" : "") + " from <b>" + order.length + "</b> " + (order.length === 1 ? "shop" : "shops") + " &middot; Subtotal " + money(tot.sub) + " &middot; GST " + money(tot.gst) + " &middot; <b>Total " + money(tot.grand) + "</b></div>" +
+          shopHtml + (itemRows.length ? itemHtml : "") + "</div>";
+        window.print();
+      }
+
       // Export: one line per product ordered, with HSN, GST and totals
       function exportCsv(L) {
         function c(v) {

@@ -891,6 +891,7 @@
   }
   function pinExtra(e, x) {
     if (!x) return;
+    if (x.moved) e.moved = true;
     var d = String(x.phone || "").replace(/\D/g, "");
     if (d.length === 12 && d.indexOf("91") === 0) d = d.slice(2);
     if (d.length === 11 && d.charAt(0) === "0") d = d.slice(1);
@@ -2391,7 +2392,7 @@
       function () {
         cb && cb(null);
       },
-      { enableHighAccuracy: true, maximumAge: 30000, timeout: 8000 },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 },
     );
   };
   var bat = null;

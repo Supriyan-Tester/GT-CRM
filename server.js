@@ -1647,6 +1647,31 @@ function salesApi(req, res, s, p, url) {
     setItem(SALES_DAYS, JSON.stringify(all));
   };
 
+  // Shops the office sent to this Sales person to save the map location of (Admin > Customers > Shop locations).
+  // Only shops that still have no location anywhere (Customers or another employee's saved pin) are listed.
+  if (p === "/api/sales/pintasks" && req.method === "GET") {
+    const T = (stored("gm_pintasks_v1") || {}).tasks || {},
+      have = {};
+    for (const k of Object.keys(db.items)) {
+      if (k !== "gm_pins_v1" && k.indexOf("gm_pins_v1_") !== 0) continue;
+      const o = stored(k) || {};
+      for (const c of Object.keys(o))
+        if (o[c] && typeof o[c].lat === "number") have[c] = 1;
+    }
+    const out = [];
+    for (const k of Object.keys(T)) {
+      const t = T[k];
+      if (!t || !t.code || have[t.code]) continue;
+      if ([].concat(t.to == null ? [] : t.to).indexOf(s.id) < 0) continue;
+      if ((t.need || []).indexOf("pin") < 0) continue;
+      const sh = shop(t.code);
+      if (!sh || (Number(sh.lat) && Number(sh.lng))) continue;
+      out.push({ code: sh.code, name: sh.name, area: sh.area || "", address: sh.address || "" });
+    }
+    out.sort((a, b) => String(a.area || "~").localeCompare(String(b.area || "~")) || String(a.name).localeCompare(String(b.name)));
+    return send(res, 200, { ok: true, tasks: out.slice(0, 300) });
+  }
+
   if (p === "/api/sales/mine" && req.method === "GET") {
     const q = url.searchParams.get("date"),
       date = isDate(q) ? q : istDay(),
@@ -1758,6 +1783,53 @@ function salesApi(req, res, s, p, url) {
         ]);
       }
       return send(res, 200, { ok: true, visits: d.visits });
+    }
+
+    // Sales person saves a shop's map pin (only when the shop has no pin yet). It goes in the same place as the delivery staff's pins,
+    // so the admin adds it to Customers from there. A weak GPS reading must have been moved onto the shop by hand (b.moved).
+    if (p === "/api/sales/pin") {
+      const code = String(b.code || ""),
+        sh = shop(code);
+      if (!sh) return send(res, 400, { error: "Shop not found" });
+      const lat = Number(b.lat),
+        lng = Number(b.lng),
+        acc = Math.max(0, Math.round(Number(b.acc) || 0)),
+        moved = b.moved === true;
+      if (!(Math.abs(lat) <= 90 && Math.abs(lng) <= 180) || (!lat && !lng))
+        return send(res, 400, { error: "The location is not valid." });
+      if (acc > 20 && !moved)
+        return send(res, 400, {
+          error: "The signal is weak. Move the pin onto the shop, then save.",
+        });
+      if (Number(sh.lat) && Number(sh.lng))
+        return send(res, 400, { error: "This shop already has a location." });
+      for (const k of Object.keys(db.items)) {
+        if (k !== "gm_pins_v1" && k.indexOf("gm_pins_v1_") !== 0) continue;
+        const o = stored(k);
+        if (o && o[code] && typeof o[code].lat === "number")
+          return send(res, 400, { error: "This shop already has a location." });
+      }
+      const key = "gm_pins_v1_" + s.id,
+        mine = stored(key),
+        P = mine && typeof mine === "object" && !Array.isArray(mine) ? mine : {},
+        who = actorOf(s).name;
+      P[code] = {
+        lat: Math.round(lat * 1e6) / 1e6,
+        lng: Math.round(lng * 1e6) / 1e6,
+        acc,
+        ...(moved ? { moved: true } : {}),
+        by: who,
+        at: new Date().toISOString(),
+      };
+      setItem(key, JSON.stringify(P));
+      notifyAdmin(
+        "pin",
+        "Shop location saved: " + sh.name,
+        who + " saved the location of " + sh.name + ". It is added to Customers when you open that page.",
+        who,
+      );
+      logEvents(s, [{ type: "pin", text: "Saved shop location: " + sh.name }]);
+      return send(res, 200, { ok: true });
     }
 
     if (p === "/api/sales/cancel") {

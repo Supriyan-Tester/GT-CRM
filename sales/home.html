@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script src="../shared/loading.js"></script>
     <meta charset="utf-8" />
     <meta
       name="viewport"
@@ -108,6 +109,37 @@
             "</div>"
           );
         }
+        // Shops the office asked this person to save the location of: shown at the top of Home until each one is saved
+        Sales.api("/api/sales/pintasks")
+          .then(function (j) {
+            var L = (j && j.tasks) || [];
+            if (!L.length) return;
+            var box = document.createElement("div");
+            box.className = "card";
+            box.innerHTML =
+              '<h2 style="margin-bottom:4px">Save shop locations (' +
+              L.length +
+              ")</h2>" +
+              '<p style="margin:0 0 10px;color:var(--muted,#64748b);font-size:13px">The office asked you to save the location of these shops. Stand at the shop, open it and tap "Save shop location".</p>' +
+              L.slice(0, 8)
+                .map(function (t) {
+                  return (
+                    '<a class="oh" href="shop.html?c=' +
+                    encodeURIComponent(t.code) +
+                    '"><div class="grow"><b>' +
+                    Sales.esc(t.name) +
+                    "</b><small>" +
+                    Sales.esc([t.area, t.address].filter(Boolean).join(" · ") || t.code) +
+                    "</small></div></a>"
+                  );
+                })
+                .join("") +
+              (L.length > 8
+                ? '<p style="margin:8px 0 0;font-size:13px">+ ' + (L.length - 8) + " more shops. Open Customers to find them.</p>"
+                : "");
+            main.insertBefore(box, main.firstChild);
+          })
+          .catch(function () {});
         Promise.all([Sales.data(), Sales.mine()])
           .then(function (r) {
             var D = r[0],
