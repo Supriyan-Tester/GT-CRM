@@ -18,15 +18,19 @@
     <link rel="apple-touch-icon" href="/assets/icon-180.png" />
     <link rel="stylesheet" href="sales.css" />
     <link rel="stylesheet" href="../shared/dropdown.css" />
-    <link rel="stylesheet" href="../shared/vendor/leaflet/leaflet.css" />
+    <style>
+      .gps-wait { display:flex; align-items:center; gap:8px; font-size:14px; }
+      .gps-spin { width:16px; height:16px; flex:none; border:3px solid #cbd5e1; border-top-color:#2563eb; border-radius:50%; animation:gpsSpin .8s linear infinite; }
+      @keyframes gpsSpin { to { transform:rotate(360deg); } }
+      .gps-bar { height:6px; margin-top:8px; border-radius:3px; background:#e2e8f0; overflow:hidden; }
+      .gps-bar i { display:block; height:100%; width:0; background:#2563eb; transition:width .5s linear; }
+    </style>
   </head>
   <body>
     <div id="app"></div>
     <script src="../assets/icons.js"></script>
     <script src="sales.js"></script>
     <script src="../shared/dropdown.js"></script>
-    <script src="../shared/vendor/leaflet/leaflet.js"></script>
-    <script src="../shared/pin-picker.js"></script>
     <script>
       Sales.start("shop", function (me, hello, main) {
         var CODE = new URLSearchParams(location.search).get("c") || "";
@@ -172,19 +176,27 @@
             pb.onclick = function () {
               var pm = document.getElementById("pinMsg");
               pm.textContent = "";
-              GMPin.pick(S.name, function (r) {
-                if (!r) return;
-                pb.disabled = true;
+              if (!navigator.geolocation) {
+                pm.textContent = "This phone cannot give its location.";
+                return;
+              }
+              pb.disabled = true;
+              var best = null,
+                fin = false,
+                wid = null,
+                tick = null,
+                t0 = Date.now();
+              function save(p) {
+                pm.textContent = "Saving...";
                 Sales.api("/api/sales/pin", {
                   code: S.code,
-                  lat: r.lat,
-                  lng: r.lng,
-                  acc: r.acc,
-                  moved: r.moved,
+                  lat: p.coords.latitude,
+                  lng: p.coords.longitude,
+                  acc: Math.round(p.coords.accuracy || 0),
                 })
                   .then(function () {
-                    S.lat = r.lat;
-                    S.lng = r.lng;
+                    S.lat = p.coords.latitude;
+                    S.lng = p.coords.longitude;
                     Sales.toast("Location saved. Thank you.");
                     draw();
                   })
@@ -192,7 +204,95 @@
                     pb.disabled = false;
                     pm.textContent = e.message || "Could not save the location.";
                   });
-              });
+              }
+              function stop() {
+                fin = true;
+                if (wid != null) navigator.geolocation.clearWatch(wid);
+                clearInterval(tick);
+              }
+              // spinner + countdown + progress bar while the phone finds the location
+              function show() {
+                if (fin) return;
+                if (!pm.querySelector(".gps-bar"))
+                  pm.innerHTML =
+                    '<div class="gps-wait"><span class="gps-spin"></span><b class="gps-t"></b></div>' +
+                    '<div class="gps-bar"><i></i></div><div class="gps-s"></div>';
+                var el = Math.min(30000, Date.now() - t0),
+                  left = Math.max(0, Math.ceil((30000 - el) / 1000)),
+                  acc = best ? Math.round(best.coords.accuracy || 0) : null;
+                pm.querySelector(".gps-t").textContent =
+                  "Getting your location... " + left + " s";
+                pm.querySelector(".gps-bar i").style.width =
+                  Math.round(el / 300) + "%";
+                pm.querySelector(".gps-s").textContent =
+                  (acc == null
+                    ? "Searching for GPS. Stay at the shop front, in the open."
+                    : "Signal about " + acc + " m. Waiting for a better signal.") +
+                  " Please do not close this page.";
+              }
+              function done() {
+                if (fin) return;
+                stop();
+                if (!best) {
+                  pb.disabled = false;
+                  pm.textContent =
+                    "Could not get your location. Go outside the shop and try again.";
+                  return;
+                }
+                var acc = Math.round(best.coords.accuracy || 0);
+                if (acc <= 100) return save(best); // 100 m or better: save it
+                if (acc > 500) {
+                  pb.disabled = false;
+                  pm.textContent =
+                    "Signal too weak (about " +
+                    acc +
+                    " m). Go outside, stand at the shop front in the open and try again.";
+                  return;
+                }
+                // 100 to 500 m: the person may choose to save it anyway
+                pm.textContent =
+                  "Signal weak (about " +
+                  acc +
+                  " m). Shops here are close together. Go outside and try again, or save it anyway. ";
+                var u = document.createElement("button");
+                u.type = "button";
+                u.className = "btn line";
+                u.style.cssText = "margin-top:8px;width:100%";
+                u.textContent = "Use it anyway (about " + acc + " m)";
+                u.onclick = function () {
+                  u.disabled = true;
+                  save(best);
+                };
+                pm.appendChild(u);
+                pb.disabled = false;
+              }
+              show();
+              wid = navigator.geolocation.watchPosition(
+                function (pos) {
+                  if (fin) return;
+                  if (!best || pos.coords.accuracy < best.coords.accuracy)
+                    best = pos;
+                  if (best.coords.accuracy <= 10) return done();
+                  show();
+                },
+                function (err) {
+                  if (fin) return;
+                  if (best) return done();
+                  stop();
+                  pb.disabled = false;
+                  pm.textContent =
+                    err && err.code === 1
+                      ? "Location is blocked. Allow location for this site in the browser settings, then try again."
+                      : "Could not get your location. Go outside the shop and try again.";
+                },
+                { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 },
+              );
+              tick = setInterval(function () {
+                var el = Date.now() - t0;
+                if (el >= 30000 || (el >= 10000 && best && best.coords.accuracy <= 20))
+                  done();
+                else show();
+              }, 500);
             };
           main.querySelector(".tabs").onclick = function (e) {
             var b = e.target.closest("[data-t]");

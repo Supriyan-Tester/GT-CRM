@@ -1797,9 +1797,9 @@ function salesApi(req, res, s, p, url) {
         moved = b.moved === true;
       if (!(Math.abs(lat) <= 90 && Math.abs(lng) <= 180) || (!lat && !lng))
         return send(res, 400, { error: "The location is not valid." });
-      if (acc > 20 && !moved)
+      if (acc > 500 && !moved)
         return send(res, 400, {
-          error: "The signal is weak. Move the pin onto the shop, then save.",
+          error: "The signal is too weak. Go outside the shop and try again.",
         });
       if (Number(sh.lat) && Number(sh.lng))
         return send(res, 400, { error: "This shop already has a location." });

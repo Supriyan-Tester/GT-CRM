@@ -1846,7 +1846,6 @@
     <script src="../shared/mock-data.js"></script>
     <script src="../shared/visit.js"></script>
     <script src="../shared/road-line.js"></script>
-    <script src="../shared/pin-picker.js"></script>
     <script>
       var urlParams = new URLSearchParams(window.location.search);
       var shopId = urlParams.get("id");
@@ -2212,19 +2211,50 @@
             msg.textContent = "This phone cannot give its location.";
             return;
           }
-          msg.textContent = "";
-          GMPin.pick(shop.name, function (r) {
-            if (!r) return;
-            if (
-              GM.savePin(shop, r.lat, r.lng, r.acc, { moved: r.moved })
-            ) {
-              btn.style.display = "none";
-              msg.textContent = "Location saved. Thank you.";
-              document.getElementById("directionsBtn").href =
-                document.getElementById("directionsBtn2").href =
-                  GM.mapsUrl(shop);
-            } else msg.textContent = "Could not save the location.";
-          });
+          btn.disabled = true;
+          var t0 = Date.now(),
+            tm = setInterval(function () {
+              var left = Math.max(0, 15 - Math.floor((Date.now() - t0) / 1000));
+              msg.textContent =
+                "Getting your location... " +
+                left +
+                " s. Stay at the shop front and please do not close this page.";
+            }, 500);
+          msg.textContent = "Getting your location... 15 s";
+          navigator.geolocation.getCurrentPosition(
+            function (pos) {
+              clearInterval(tm);
+              btn.disabled = false;
+              if (pos.coords.accuracy > 100) {
+                msg.textContent =
+                  "Signal is weak (about " +
+                  Math.round(pos.coords.accuracy) +
+                  " m). Step outside the shop and try again.";
+                return;
+              }
+              if (
+                GM.savePin(
+                  shop,
+                  pos.coords.latitude,
+                  pos.coords.longitude,
+                  pos.coords.accuracy,
+                )
+              ) {
+                btn.style.display = "none";
+                msg.textContent = "Location saved. Thank you.";
+                document.getElementById("directionsBtn").href =
+                  document.getElementById("directionsBtn2").href =
+                    GM.mapsUrl(shop);
+              } else msg.textContent = "Could not save the location.";
+            },
+            function () {
+              clearInterval(tm);
+              btn.disabled = false;
+              msg.textContent =
+                "Location was blocked or could not be found. Allow location for this site, step outside and try again.";
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+          );
         };
       })();
       document.getElementById("callShopBtn").href = "tel:" + (shop.phone || "");
