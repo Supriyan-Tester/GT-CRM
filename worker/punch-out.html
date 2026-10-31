@@ -545,7 +545,7 @@
     <script src="../shared/visit.js"></script>
     <script>
       if (!localStorage.getItem("gm_logged_in")) {
-        window.location.href = "login.html";
+        window.location.href = "../login.html";
       }
       GM.applyTodayPlan();
       var $ = function (id) {
@@ -798,7 +798,7 @@
               (worker.name || "") +
               ".",
           );
-          window.location.href = "login.html";
+          window.location.href = "../login.html";
         }, 1000);
       });
     </script>

@@ -797,7 +797,7 @@
     <script src="../shared/mock-data.js"></script>
     <script>
       if (!localStorage.getItem("gm_logged_in")) {
-        window.location.href = "login.html";
+        window.location.href = "../login.html";
       }
       GM.applyTodayPlan();
       var $ = function (id) {
@@ -1127,7 +1127,7 @@
         if (lo)
           lo.onclick = function () {
             localStorage.removeItem("gm_logged_in");
-            window.location.href = "login.html";
+            window.location.href = "../login.html";
           };
         var ee = $("emEdit");
         if (ee) ee.onclick = openEmergency;

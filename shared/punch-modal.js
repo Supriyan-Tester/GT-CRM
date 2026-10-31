@@ -585,7 +585,7 @@
       $("pmFoot").innerHTML = "";
       setTimeout(function () {
         localStorage.removeItem("gm_logged_in");
-        location.href = "login.html";
+        location.href = "../login.html";
       }, 2500);
     };
     show();
