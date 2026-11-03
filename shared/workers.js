@@ -803,7 +803,7 @@
         esc(w.name) +
         "</h2>" +
         fgm(
-          "New password (at least 6 characters)",
+          "New password (6 to 15 characters)",
           "kP",
           GA.randomPassword(),
           'maxlength="30" autocomplete="off"',
@@ -986,9 +986,9 @@
       "</textarea></div></div></div>" +
       (w
         ? '<p class="wk-sub" style="margin-top:8px">To change the route, use the Routes tab on the employee page. To change the password use Reset password.</p>'
-        : '<label class="wk-lbl" for="fK">Login password <i>(share it with the employee)</i></label><div class="field"><input id="fK" value="' +
+        : '<label class="wk-lbl" for="fK">Login password <i>(6 to 15 characters, share it with the employee)</i></label><div class="field"><input id="fK" value="' +
           esc(F.pw) +
-          '" maxlength="30" autocomplete="off"></div>') +
+          '" maxlength="15" autocomplete="off"></div>') +
       '</div></div><div class="wk-col"><div class="wk-card wk-ph"><h3>Profile photo</h3><div id="phv">' +
       (w
         ? av(w, "xl")

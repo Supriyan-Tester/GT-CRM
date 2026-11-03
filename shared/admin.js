@@ -240,10 +240,10 @@
     },
     // Change password: needs the current one. Returns { ok:true } or { ok:false, error }.
     changePassword: function (id, current, next) {
-      if (String(next || "").length < 8)
+      if (String(next || "").length < 6 || String(next || "").length > 15)
         return {
           ok: false,
-          error: "The new password must be at least 8 characters.",
+          error: "The new password must be 6 to 15 characters.",
         };
       if (next === current)
         return {
@@ -512,8 +512,8 @@
     addWorker: function (w) {
       var d = load(),
         err = check(d, w);
-      if ((w.password || "").length < 6)
-        err = err || "Password must be at least 6 characters.";
+      if ((w.password || "").length < 6 || (w.password || "").length > 15)
+        err = err || "Password must be 6 to 15 characters.";
       if (err) return { ok: false, error: err };
       var n =
         d.workers.reduce(function (m, x) {
@@ -547,8 +547,8 @@
       return { ok: true };
     },
     setPassword: function (id, password) {
-      if ((password || "").length < 6)
-        return { ok: false, error: "Password must be at least 6 characters." };
+      if ((password || "").length < 6 || (password || "").length > 15)
+        return { ok: false, error: "Password must be 6 to 15 characters." };
       var d = load();
       d.workers.forEach(function (x) {
         if (x.id === id) x.password = password;

@@ -2339,9 +2339,9 @@ function api(req, res, url) {
             error: "The current password is not correct.",
           });
         }
-        if (b.next.length < 8)
+        if (b.next.length < 6 || b.next.length > 15)
           return send(res, 400, {
-            error: "The new password must be at least 8 characters.",
+            error: "The new password must be 6 to 15 characters.",
           });
         if (b.next === b.current)
           return send(res, 400, {
@@ -2674,16 +2674,18 @@ function api(req, res, url) {
               }, 0) + 1;
           const id = "A" + n,
             pw =
-              typeof b.password === "string" && b.password.length >= 8
+              typeof b.password === "string" &&
+              b.password.length >= 6 &&
+              b.password.length <= 15
                 ? b.password.slice(0, 100)
                 : tempPassword();
           if (
             typeof b.password === "string" &&
             b.password &&
-            b.password.length < 8
+            (b.password.length < 6 || b.password.length > 15)
           )
             return send(res, 400, {
-              error: "A password you set must be at least 8 characters.",
+              error: "A password you set must be 6 to 15 characters.",
             });
           list.push(Object.assign({ id, created: Date.now() }, c.rec));
           auth.admins[id] = { h: hashPw(pw), must: true };

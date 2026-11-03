@@ -220,16 +220,16 @@
                 "manual",
                 mode,
                 "Set password manually",
-                "Choose a password now (at least 8 characters)",
+                "Choose a password now (6 to 15 characters)",
               ) +
               "</div>" +
               (mode === "manual"
                 ? '<div class="us-pw">' +
                   '<div class="a-fg"><label for="f_password">Password <b aria-hidden="true">*</b></label><div class="field a-f"' +
                   (errs.password ? ' style="border-color:var(--danger)"' : "") +
-                  '><input id="f_password" type="text" autocomplete="off" maxlength="100" value="' +
+                  '><input id="f_password" type="text" autocomplete="off" maxlength="15" value="' +
                   esc(d.password || "") +
-                  '" placeholder="At least 8 characters"></div>' +
+                  '" placeholder="6 to 15 characters"></div>' +
                   (errs.password
                     ? '<div class="us-fe" role="alert">' +
                       esc(errs.password) +
@@ -343,8 +343,9 @@
         if (!d.role) e.role = "Choose a role.";
         else if (!US.isFullRole(d.role) && !d.perms.length)
           e.perms = "Tick at least one module.";
-        if (!editId && mode === "manual" && String(d.password || "").length < 8)
-          e.password = "Use at least 8 characters.";
+        if (!editId && mode === "manual" && (String(d.password || "").length < 6 ||
+          String(d.password || "").length > 15))
+          e.password = "Use 6 to 15 characters.";
         return e;
       }
       function save() {

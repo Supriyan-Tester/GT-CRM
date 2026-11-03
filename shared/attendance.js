@@ -1162,79 +1162,128 @@
       })
       .join("");
     var times = M.st === "present" || M.st === "late";
+    var dis = times ? "" : " disabled";
+    var ini = function (n) {
+      var q = String(n || "?").trim().split(/\s+/);
+      return (q[0][0] + (q[1] ? q[1][0] : q[0][1] || "")).toUpperCase();
+    };
+    var cnt = { present: 0, late: 0, absent: 0, leave: 0 };
+    DB.workers.forEach(function (x) {
+      var o = dayRec(x, M.ds);
+      if (cnt[o.st] != null) cnt[o.st]++;
+      else if (o.st !== "none" && o.st) cnt.absent++;
+    });
+    var side2 = DB.workers
+      .map(function (x) {
+        var o = dayRec(x, M.ds);
+        return (
+          '<div class="am-sl' +
+          (x.id === M.wid ? " sel" : "") +
+          '" data-w="' +
+          esc(x.id) +
+          '"><span class="am-sa">' +
+          esc(ini(x.name)) +
+          '</span><span class="am-st"><b>' +
+          esc(x.name) +
+          "</b><small>" +
+          (attended(o)
+            ? t12(o.inT) + (o.outT && o.outT !== "-" ? " - " + t12(o.outT) : " · not closed")
+            : "&nbsp;") +
+          "</small></span>" +
+          badge(o) +
+          "</div>"
+        );
+      })
+      .join("");
     $("atM").innerHTML =
-      '<div class="at-box"><div style="display:flex;justify-content:space-between"><div><h2>Mark attendance</h2><p class="at-sub">Update attendance for an employee. Corrections are kept separately and logged.</p></div><button class="at-ib" id="mX">&times;</button></div><div class="at" style="grid-template-columns:minmax(0,1fr) 300px">' +
-      '<div class="at-card"><div class="row"><div><label class="at-lbl">Employee</label><div class="field"><select id="mW">' +
+      '<div class="at-box am-box">' +
+      '<div class="am-hd"><span class="am-av">' +
+      esc(ini(w.name)) +
+      '</span><div class="am-hn"><div class="field"><select id="mW">' +
       wopts +
-      '</select></div></div><div><label class="at-lbl">Date</label><div class="field"><input type="date" id="mD" value="' +
+      '</select></div><p class="at-sub">Mark or correct attendance. Every change is logged.</p></div>' +
+      '<div class="field am-dt"><input type="date" id="mD" value="' +
       M.ds +
       '" max="' +
       GA.today() +
-      '"></div></div></div>' +
-      '<label class="at-lbl">Attendance status</label><div class="at-seg">' +
+      '"></div><button class="at-ib" id="mX">&times;</button></div>' +
+      '<div class="am-body"><div class="am-main">' +
+      '<label class="at-lbl am-l">Status</label><div class="am-seg">' +
       [
         ["present", "Present"],
         ["late", "Late"],
         ["absent", "Absent"],
         ["leave", "On leave"],
       ]
-        .map(function (s) {
+        .map(function (x) {
           return (
             '<button type="button" data-s="' +
-            s[0] +
+            x[0] +
             '" class="' +
-            (M.st === s[0] ? "on" : "") +
-            '">' +
-            s[1] +
+            (M.st === x[0] ? "on" : "") +
+            '"><i></i>' +
+            x[1] +
             "</button>"
           );
         })
         .join("") +
       "</div>" +
-      '<div class="row"' +
+      '<label class="at-lbl am-l">Time</label><div class="am-r3"' +
       (times ? "" : ' style="opacity:.45"') +
-      '><div><label class="at-lbl">Check in time</label><div class="field"><input type="time" id="mIn" value="' +
+      '><div class="am-fb"><small>Check in</small><input type="time" id="mIn" value="' +
       inV +
       '"' +
-      (times ? "" : " disabled") +
-      '></div></div><div><label class="at-lbl">Check out time</label><div class="field"><input type="time" id="mOut" value="' +
+      dis +
+      '></div><div class="am-fb"><small>Check out</small><input type="time" id="mOut" value="' +
       outV +
       '"' +
-      (times ? "" : " disabled") +
-      "></div></div></div>" +
-      '<div class="row"><div><label class="at-lbl">Route (optional)</label><div class="field"><select id="mRt">' +
-      ropts +
-      '</select></div></div><div><label class="at-lbl">Vehicle (optional)</label><div class="field"><select id="mVh">' +
+      dis +
+      '></div><div class="am-fb am-ro"><small>Working hours</small><b id="mHrs">-</b></div></div>' +
+      '<div class="am-card"><h4>Vehicle &amp; odometer</h4>' +
+      '<div class="am-r2"><div class="am-fb"><small>Vehicle</small><select id="mVh">' +
       vopts +
-      "</select></div></div></div>" +
-      '<label class="at-lbl">Kilometres (optional)</label><div class="field"><input type="number" min="0" step="0.1" id="mKm" value="' +
-      esc(km) +
-      '"></div>' +
-      '<label class="at-lbl">Start km, odometer (optional)</label><div class="field"><input type="number" min="0" step="1" id="mSk" placeholder="Opening odometer reading" value="' +
+      '</select></div><div class="am-fb"><small>Route</small><select id="mRt">' +
+      ropts +
+      "</select></div></div>" +
+      '<div class="am-ref" id="mRef"></div>' +
+      '<div class="am-r2"><div class="am-fb" id="mSkB"><small>Start km (odometer)</small><input type="number" min="0" step="1" id="mSk" placeholder="Opening odometer reading" value="' +
       esc(sk2) +
       '"' +
-      (times ? "" : " disabled") +
-      '></div>' +
-      '<label class="at-lbl">End km, odometer (optional)</label><div class="field"><input type="number" min="0" step="1" id="mEk" placeholder="Closing odometer reading" value="' +
+      dis +
+      '></div><div class="am-fb"><small>End km (needs a check-out time)</small><input type="number" min="0" step="1" id="mEk" placeholder="Closing odometer reading" value="' +
       esc(ek) +
       '"' +
-      (times ? "" : " disabled") +
-      '></div><p class="at-sub" style="margin:4px 0 10px">' +
+      dis +
+      "></div></div>" +
+      '<div class="am-warn" id="mWarn" style="display:none"></div>' +
+      '<div class="am-dist"><span>Distance for the day (calculated)</span><b id="mDist">-</b></div>' +
+      '<div class="am-fb" id="mKmB" style="margin-top:10px"><small>Kilometres, only when there is no odometer reading</small><input type="number" min="0" step="0.1" id="mKm" value="' +
+      esc(km) +
+      '"></div>' +
+      '<p class="at-sub" style="margin:10px 0 0">' +
       (d.startKm != null ? "Start km was " + esc(d.startKm) + ". " : "") +
-      "Change the start km if it was entered wrongly; the day's distance is recalculated. Add an end km when the employee forgot to punch out: it closes the day in their record, so Vehicles shows it as returned and the odometer moves up. An end km needs a check-out time.</p>" +
-      '<label class="at-lbl">Remarks (optional)</label><div class="field"><textarea id="mRm" rows="2" placeholder="Add any remarks...">' +
+      "Change the start km if it was entered wrongly. Add an end km when the employee forgot to punch out: it closes the day in their record, so Vehicles shows it as returned and the odometer moves up.</p></div>" +
+      '<label class="at-lbl am-l">Remarks</label><div class="field"><textarea id="mRm" rows="2" placeholder="Add any remarks...">' +
       esc(rm) +
-      '</textarea></div><div class="at-err" id="mErr"></div>' +
-      '<div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">' +
-      (e
-        ? '<button class="btn btn-outline" id="mReset" style="margin-right:auto">Remove my correction</button>'
-        : "") +
-      '<button class="btn btn-outline" id="mCan">Cancel</button><button class="btn" id="mSave">Save attendance</button></div></div>' +
-      '<div class="at-card"><h3>Attendance on ' +
+      '</textarea></div><div class="at-err" id="mErr"></div></div>' +
+      '<div class="am-side"><label class="at-lbl am-l" style="margin-top:0">Attendance on ' +
       esc(dshort(M.ds)) +
-      "</h3>" +
-      side +
-      '<p class="at-sub" style="margin-top:10px">Edit attendance only with proper authorization. Changes are logged.</p></div></div></div>';
+      '</label><div class="am-cnt"><div class="p"><b>' +
+      cnt.present +
+      '</b>Present</div><div class="l"><b>' +
+      cnt.late +
+      '</b>Late</div><div class="a"><b>' +
+      cnt.absent +
+      '</b>Absent</div><div class="v"><b>' +
+      cnt.leave +
+      "</b>Leave</div></div>" +
+      side2 +
+      "</div></div>" +
+      '<div class="am-foot"><span class="at-sub">Edit attendance only with proper authorization. Changes are logged.</span>' +
+      (e
+        ? '<button class="btn btn-outline" id="mReset">Remove my correction</button>'
+        : "") +
+      '<button class="btn btn-outline" id="mCan">Cancel</button><button class="btn" id="mSave">Save attendance</button></div></div>';
     function keep() {
       M.keep = true;
       M.inV = $("mIn").value;
@@ -1265,6 +1314,101 @@
         fillEdit();
       };
     });
+    // live helpers: working hours, the vehicle's odometer reference and the km warnings (they only warn, saving is never blocked)
+    function vehOf(label) {
+      var l = String(label || "");
+      return (
+        DB.vehicles.filter(function (v) {
+          return l === v.number || l.indexOf(v.number) === 0;
+        })[0] || null
+      );
+    }
+    function lastClose(num, before) {
+      var best = null;
+      DB.workers.forEach(function (x) {
+        var lg = (DB.rec[x.id] || {}).attendanceLog || {};
+        Object.keys(lg).forEach(function (mk) {
+          Object.keys(lg[mk] || {}).forEach(function (dk) {
+            var en = lg[mk][dk],
+              ds2 = mk + "-" + p2(+dk);
+            if (!en || !(Number(en.endKm) > 0) || ds2 >= before) return;
+            if (String(en.vehicle || "").indexOf(num) < 0) return;
+            if (!best || ds2 > best.ds)
+              best = { ds: ds2, km: Number(en.endKm), name: x.name };
+          });
+        });
+      });
+      return best;
+    }
+    function nf(n) {
+      return Number(n).toLocaleString("en-IN");
+    }
+    function upd() {
+      var sk = Number($("mSk").value) || 0,
+        ek = Number($("mEk").value) || 0,
+        v = vehOf($("mVh").value),
+        last = v ? lastClose(v.number, M.ds) : null,
+        a = mins($("mIn").value),
+        b = mins($("mOut").value),
+        warn = [],
+        sbad = false;
+      $("mHrs").textContent = a != null && b != null && b >= a ? hm(b - a) : "Not closed yet";
+      $("mRef").style.display = v ? "" : "none";
+      if (v)
+        $("mRef").textContent =
+          "Vehicle odometer on record: " +
+          nf(v.lastKm || 0) +
+          " km" +
+          (last
+            ? "  ·  last trip closed at " + nf(last.km) + " km (" + last.name + ", " + dshort(last.ds) + ")"
+            : "  ·  no earlier closing found");
+      if (v && last && sk > 0) {
+        if (sk - last.km > 300) {
+          sbad = true;
+          warn.push(
+            "Start km is " + nf(sk - last.km) + " km above the last trip (" + nf(last.km) + " km). Check the meter reading.",
+          );
+        } else if (sk < last.km) {
+          sbad = true;
+          warn.push("Start km is " + nf(last.km - sk) + " km below the last trip's closing km (" + nf(last.km) + ").");
+        }
+      }
+      if (v && last && Number(v.lastKm) - last.km > 300)
+        warn.push(
+          "The vehicle's saved odometer (" +
+            nf(v.lastKm) +
+            ") is " +
+            nf(Number(v.lastKm) - last.km) +
+            " km above the last closing km (" +
+            nf(last.km) +
+            "). If that is wrong, correct the Odometer in Vehicles, otherwise employees cannot punch in with the real reading.",
+        );
+      if (sk > 0 && ek > 0 && ek - sk > 800)
+        warn.push("End km is " + nf(ek - sk) + " km above the start km. Check the reading.");
+      var w2 = $("mWarn");
+      w2.style.display = warn.length && times ? "" : "none";
+      w2.innerHTML = warn
+        .map(function (t) {
+          return "<div>" + esc(t) + "</div>";
+        })
+        .join("");
+      $("mSkB").classList.toggle("bad", !!(sbad && times));
+      $("mDist").textContent = sk > 0 && ek >= sk ? nf(ek - sk) + " km" : "-";
+      $("mKmB").style.display = sk > 0 && ek > 0 ? "none" : "";
+    }
+    ["mIn", "mOut", "mSk", "mEk"].forEach(function (id) {
+      $(id).addEventListener("input", upd);
+    });
+    $("mVh").addEventListener("change", upd);
+    [].forEach.call(document.querySelectorAll(".am-sl[data-w]"), function (r) {
+      r.onclick = function () {
+        M.wid = r.getAttribute("data-w");
+        M.st = null;
+        M.keep = false;
+        fillEdit();
+      };
+    });
+    upd();
     $("mSave").onclick = function () {
       keep();
       saveEdit(w);

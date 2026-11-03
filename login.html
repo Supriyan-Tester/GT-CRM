@@ -1032,16 +1032,16 @@
         box.style.display = "";
         box.className = "";
         box.innerHTML =
-          '<h2 style="margin:0 0 6px;font-size:20px">Choose your own password</h2><p style="margin:0 0 14px;color:var(--muted)">This was a temporary password. Pick a new one (at least 8 characters).</p>' +
-          '<div class="field" style="margin-bottom:10px"><input id="np1" type="password" autocomplete="new-password" placeholder="New password"></div>' +
-          '<div class="field" style="margin-bottom:10px"><input id="np2" type="password" autocomplete="new-password" placeholder="Repeat new password"></div>' +
+          '<h2 style="margin:0 0 6px;font-size:20px">Choose your own password</h2><p style="margin:0 0 14px;color:var(--muted)">This was a temporary password. Pick a new one (6 to 15 characters).</p>' +
+          '<div class="field" style="margin-bottom:10px"><input id="np1" type="password" autocomplete="new-password" maxlength="15" placeholder="New password"></div>' +
+          '<div class="field" style="margin-bottom:10px"><input id="np2" type="password" autocomplete="new-password" maxlength="15" placeholder="Repeat new password"></div>' +
           '<div class="msg" id="npMsg" role="alert"></div><button class="btn" id="npGo" type="button">Save and continue</button>';
         document.getElementById("npGo").onclick = function () {
           var a = document.getElementById("np1").value,
             b = document.getElementById("np2").value,
             m = document.getElementById("npMsg");
-          if (a.length < 8) {
-            m.textContent = "Use at least 8 characters.";
+          if (a.length < 6 || a.length > 15) {
+            m.textContent = "Use 6 to 15 characters.";
             return;
           }
           if (a !== b) {
