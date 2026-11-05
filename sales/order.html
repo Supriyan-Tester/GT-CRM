@@ -52,7 +52,9 @@
             "k" +
             Date.now().toString(36) +
             Math.random().toString(36).slice(2, 8),
-          placed = false;
+          placed = false,
+          AH = false, // punched out today: orders are "after hours" and need a reason
+          reason = "";
         var byId = {},
           LIST = [];
         function norm(s) {
@@ -551,13 +553,18 @@
             '<div class="tot"><span>Total Amount</span><span>' +
             Sales.money(T.total) +
             "</span></div></div>" +
+            (AH
+              ? '<div style="background:var(--amber-soft);border-radius:12px;padding:12px"><label for="ahr" style="color:var(--amber);font-weight:700">After-hours order</label><p style="font-size:12px;color:var(--muted);margin:2px 0 8px">You have punched out for today. Tell the office why you are taking this order.</p><textarea class="notes" id="ahr" maxlength="200" placeholder="Reason (e.g. Phone order from customer)">' +
+                Sales.esc(reason) +
+                "</textarea></div>"
+              : "") +
             '<div><label for="nt">Notes (optional)</label><textarea class="notes" id="nt" maxlength="500" placeholder="Add order notes…">' +
             Sales.esc(notes) +
             "</textarea></div>" +
             '<div class="cbtns"><button class="btn line" id="draft" type="button"' +
             (T.lines ? "" : " disabled") +
             '>Save as Draft</button><button class="btn teal" id="place" type="button"' +
-            (T.lines ? "" : " disabled") +
+            (T.lines && (!AH || reason.trim().length >= 3) ? "" : " disabled") +
             ">" +
             Sales.ic("check") +
             "Place Order</button></div>";
@@ -630,6 +637,14 @@
           document.getElementById("nt").oninput = function () {
             notes = this.value;
           };
+          var ahr = document.getElementById("ahr");
+          if (ahr)
+            ahr.oninput = function () {
+              reason = this.value;
+              document.getElementById("place").disabled = !(
+                T.lines && reason.trim().length >= 3
+              );
+            };
           document.getElementById("draft").onclick = function () {
             send(true);
           };
@@ -668,6 +683,7 @@
             discount: totals().disc,
             notes: notes,
             draft: draft,
+            afterHours: !draft && AH ? reason.trim() : undefined,
             id: draftId || undefined,
             k: key,
             replaces: REPL || undefined,
@@ -678,15 +694,25 @@
           busy = true;
           var b = document.getElementById(draft ? "draft" : "place");
           if (b) b.disabled = true;
-          // the phone's position is only recorded for the admin; it never blocks the order
-          (draft ? Promise.resolve({}) : Sales.locateSoft())
-            .then(function (loc) {
-              var pl = payload(draft);
-              pl.lat = loc.lat;
-              pl.lng = loc.lng;
-              pl.acc = loc.acc;
-              pl.lerr = loc.err;
-              return Sales.api("/api/sales/order", pl);
+          // the phone's position is only recorded for the admin; it never delays the order.
+          // The order is sent at once and the position is attached to it when the GPS has it.
+          var locP = draft ? null : Sales.locateSoft();
+          Promise.resolve()
+            .then(function () {
+              return Sales.api("/api/sales/order", payload(draft));
+            })
+            .then(function (j) {
+              if (locP)
+                locP.then(function (loc) {
+                  return Sales.api("/api/sales/order-location", {
+                    id: j.order.id,
+                    lat: loc.lat,
+                    lng: loc.lng,
+                    acc: loc.acc,
+                    lerr: loc.err,
+                  });
+                }).catch(function () {});
+              return j;
             })
             .then(function (j) {
               busy = false;
@@ -744,6 +770,16 @@
             e.returnValue = "";
           }
         });
+
+        // Punched out today: the order becomes an after-hours order and needs a reason (the server checks this too)
+        Sales.api("/api/sales/attendance?month=" + Sales.today().slice(0, 7))
+          .then(function (r) {
+            if (r && r.todayEntry && r.todayEntry.outAt) {
+              AH = true;
+              if (document.getElementById("nt")) drawCart();
+            }
+          })
+          .catch(function () {});
 
         Promise.all([
           Sales.data(),

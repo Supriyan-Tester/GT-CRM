@@ -1,0 +1,19 @@
+# Create this as a SEPARATE Render Blueprint/service from render.yaml.
+# Point it at a staging branch and a dedicated staging Supabase project.
+services:
+  - type: web
+    name: gm-crm-staging
+    runtime: node
+    plan: free
+    buildCommand: npm test
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NODE_ENV
+        value: staging
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false

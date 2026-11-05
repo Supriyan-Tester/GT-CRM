@@ -1,6 +1,7 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
   <head>
+    <script src="shared/loading.js"></script>
     <script src="assets/icons.js"></script>
     <script src="shared/sync.js"></script>
     <meta charset="utf-8" />
@@ -968,11 +969,17 @@
           });
       }
       function enter(j, typedPw) {
-        // Forget whatever the previous person left in this browser, then load only what this account may see.
+        // Forget the previous account's cached data, then asynchronously load only
+        // the newly authenticated account's data before opening its workspace.
         if (window.GMSync) {
           GMSync.clearLocal();
-          if (j.role !== "sales") GMSync.pull(); // Sales pages load their own price list; nothing is copied to this browser
+          var ready = j.role !== "sales" ? GMSync.pull() : Promise.resolve(true);
+          ready.then(function () { continueEnter(j, typedPw); });
+          return;
         }
+        continueEnter(j, typedPw);
+      }
+      function continueEnter(j, typedPw) {
         if (j.role === "sales") {
           if (j.must) {
             askNewPassword(typedPw, "sales/home.html");

@@ -21,6 +21,7 @@
     "attendance.html": ["helper"],
     "advances.html": ["billing"],
     "products.html": ["inventory", "billing", "sales"],
+    "returns.html": ["inventory"],
     "workers.html": "full",
     "activity.html": "full",
     "super.html": "super",
@@ -112,8 +113,16 @@
     return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
   }
   function esc(s) {
-    return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    // Escape every HTML-sensitive delimiter, including apostrophes. This helper is
+    // used for both text nodes and quoted attributes throughout Admin components.
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      }[c];
     });
   }
   function onLeave(d, id, date) {
@@ -436,6 +445,9 @@
                 "</b><br>" +
                 j.records +
                 " records" +
+                (j.integrity === "verified-sha256"
+                  ? " · integrity verified"
+                  : " · legacy backup (no checksum)") +
                 (j.exportedAt
                   ? ", saved on " + esc(String(j.exportedAt).slice(0, 10))
                   : "") +
@@ -990,6 +1002,7 @@
           ["customers.html", "Customers", "store"],
           ["orders.html", "Orders", "clipboard-list"],
           ["products.html", "Products", "box"],
+          ["returns.html", "Returns", "swap"],
           ["attendance.html", "Attendance", "clock"],
           ["advances.html", "Advances", "coin"],
           ["live.html", "Live location", "map"],

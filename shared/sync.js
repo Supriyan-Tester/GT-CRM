@@ -111,7 +111,7 @@ window.GMImg = {
   // readRev[k] = the version of it the page last READ. A save is sent together with that version, and the server refuses it when
   // someone else has saved a newer one in between, so an old open tab or phone can no longer wipe out newer work.
   var PROT =
-      /^(gm_admin_v1|gm_admin_workers_v1|gm_admin_wprofile_v1|gm_pintasks_v1|gm_depot_v1|gm_admin_account_v1)$/,
+      /^(gm_admin_v1|gm_admin_workers_v1|gm_admin_wprofile_v1|gm_pintasks_v1|gm_depot_v1|gm_admin_account_v1|gm_admin_products_v1|gm_admin_vehicles_v1|gm_admin_vfuel_v1|gm_admin_vehsync_v1|gm_admin_vservice_v1|gm_admin_ledger_v1|gm_admin_business_v1|gm_admin_settings_v1|gm_admin_attedit_v1)$/,
     krev = {},
     readRev = {};
   function staleBanner() {
@@ -121,20 +121,63 @@ window.GMImg = {
       d.id = "gmStale";
       d.setAttribute("role", "alert");
       d.style.cssText =
-        "position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:2147483600;max-width:min(560px,calc(100vw - 24px));background:#7c2d12;color:#fff;padding:12px 14px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);font:14px/1.4 system-ui,sans-serif;display:flex;gap:12px;align-items:center";
+        "position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:2147483600;max-width:min(680px,calc(100vw - 24px));background:#7c2d12;color:#fff;padding:12px 14px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);font:14px/1.4 system-ui,sans-serif;display:flex;gap:12px;align-items:center;flex-wrap:wrap";
       var t = document.createElement("span");
+      t.style.cssText = "flex:1 1 260px";
       t.textContent =
-        "Someone else changed this data while this page was open, so your last change was not saved. Reload to see the latest and try again.";
-      var b = document.createElement("button");
-      b.type = "button";
-      b.textContent = "Reload";
-      b.style.cssText =
-        "flex:0 0 auto;border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer";
-      b.onclick = function () {
+        "Another device saved newer data. Your conflicting local changes are preserved on this device but are not synced. Download a copy before choosing whether to discard them.";
+      var exportBtn = document.createElement("button");
+      exportBtn.type = "button";
+      exportBtn.textContent = "Download local copy";
+      exportBtn.style.cssText =
+        "border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer";
+      exportBtn.onclick = function () {
+        try {
+          var m = dirtyMap(), out = {};
+          Object.keys(m).forEach(function (k) {
+            if (m[k] && m[k].conflict)
+              out[k] = {
+                localValue: rawGet.call(ls, k),
+                baseRevision: m[k].base,
+                serverRevision: m[k].serverRev,
+                capturedAt: new Date(m[k].at || Date.now()).toISOString()
+              };
+          });
+          var blob = new Blob(
+            [JSON.stringify({ type: "GM-CRM local conflict copy", exportedAt: new Date().toISOString(), records: out }, null, 2)],
+            { type: "application/json" }
+          );
+          var url = URL.createObjectURL(blob), a = document.createElement("a");
+          a.href = url;
+          a.download = "gm-crm-local-conflicts-" + Date.now() + ".json";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        } catch (e) {
+          alert("Could not create the local conflict copy. Keep this page open and try again.");
+        }
+      };
+      var discardBtn = document.createElement("button");
+      discardBtn.type = "button";
+      discardBtn.textContent = "Discard local copy & reload";
+      discardBtn.style.cssText =
+        "border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer";
+      discardBtn.onclick = function () {
+        var m = dirtyMap();
+        Object.keys(m).forEach(function (k) {
+          if (m[k] && m[k].conflict) {
+            delete m[k];
+            delete pending[k];
+            delete written[k];
+          }
+        });
+        dirtySave(m);
         location.reload();
       };
       d.appendChild(t);
-      d.appendChild(b);
+      d.appendChild(exportBtn);
+      d.appendChild(discardBtn);
       document.body.appendChild(d);
     } catch (e) {}
   }
@@ -152,7 +195,10 @@ window.GMImg = {
   // page keeps this phone's copy and sends it again instead of replacing it. It is not a gm_ key, so it is never synced itself.
   var DIRTY = "gmq_dirty";
   function track(k) {
-    return isWorker && typeof k === "string" && k.indexOf(NS) === 0;
+    return (
+      (isWorker && typeof k === "string" && k.indexOf(NS) === 0) ||
+      ok(k)
+    );
   }
   function dirtyMap() {
     try {
@@ -169,8 +215,21 @@ window.GMImg = {
   }
   function markDirty(k) {
     if (!track(k)) return;
-    var m = dirtyMap();
-    m[k] = Date.now();
+    var m = dirtyMap(), previous = m[k];
+    // Persist only a small marker, not a second copy of the record. The actual
+    // value remains in localStorage; deleted keys are represented by a null read.
+    // A stale conflict stays blocked until the user exports or discards that copy.
+    if (previous && previous.conflict) {
+      previous.at = Date.now();
+      m[k] = previous;
+    } else {
+      m[k] = {
+        at: Date.now(),
+        base: PROT.test(k) && typeof readRev[k] === "number"
+          ? readRev[k]
+          : null
+      };
+    }
     dirtySave(m);
   }
   function markClean(k) {
@@ -180,6 +239,21 @@ window.GMImg = {
       delete m[k];
       dirtySave(m);
     }
+  }
+  function markConflict(k, base, serverRev) {
+    if (!track(k)) return;
+    var m = dirtyMap();
+    m[k] = {
+      at: Date.now(),
+      base: typeof base === "number" ? base : null,
+      serverRev: typeof serverRev === "number" ? serverRev : null,
+      conflict: true
+    };
+    dirtySave(m);
+  }
+  function isConflict(k) {
+    var m = dirtyMap();
+    return !!(m[k] && m[k].conflict);
   }
   function jget(k) {
     try {
@@ -217,7 +291,7 @@ window.GMImg = {
   // One request at a time per record, so an older save can never arrive after a newer one
   var inflight = {};
   function send(k, force) {
-    if (!(k in pending) || (inflight[k] && !force)) return;
+    if (!(k in pending) || isConflict(k) || (inflight[k] && !force)) return;
     var v = pending[k],
       body = JSON.stringify(
         isAdmin && PROT.test(k) && typeof readRev[k] === "number"
@@ -229,7 +303,7 @@ window.GMImg = {
         headers: { "Content-Type": "application/json" },
         keepalive: !!force && body.length < 60000,
       };
-    if (v !== null) opt.body = body;
+    if (v !== null || (isAdmin && PROT.test(k))) opt.body = body;
     inflight[k] = true;
     try {
       fetch(API + "/kv/" + encodeURIComponent(k), opt)
@@ -273,7 +347,7 @@ window.GMImg = {
                 if (pending[k] === v) {
                   delete pending[k];
                   delete written[k];
-                  markClean(k);
+                  markConflict(k, readRev[k], j && j.rev);
                 }
                 try {
                   window.dispatchEvent(
@@ -350,9 +424,19 @@ window.GMImg = {
   }
   function apply(items, startedAt) {
     var changed = false;
+    var savedDirty = dirtyMap();
     for (var k in items) {
-      if (k in pending || (startedAt && (written[k] || 0) >= startedAt))
-        continue; // never overwrite a save made after this refresh began
+      // A locally edited key remains authoritative until its queued save is
+      // accepted or explicitly rejected. Server hydration must not erase it.
+      if (
+        k in pending ||
+        k in savedDirty ||
+        (startedAt && (written[k] || 0) >= startedAt)
+      ) {
+        if (PROT.test(k) && typeof items[k].rev === "number")
+          krev[k] = items[k].rev;
+        continue;
+      }
       if (k.indexOf(NS) === 0) {
         var id = k.slice(NS.length);
         if (isAdmin) {
@@ -369,79 +453,142 @@ window.GMImg = {
     return changed;
   }
 
-  // 1) Before the page's own scripts run: load server data (blocking, once per page)
-  try {
-    window.GMSync = {
-      view: null,
-      has: false,
-      isAdmin: isAdmin,
-      // Sign-in page only: forget the previous person's data kept in this browser, then load what this account may see.
-      clearLocal: function () {
-        var ks = [];
-        for (var i = 0; i < ls.length; i++) ks.push(ls.key(i));
-        ks.forEach(function (k) {
-          if (DATA_KEY.test(k)) rawRem.call(ls, k);
-        });
-        rawRem.call(ls, DIRTY);
-        pending = {};
-        written = {};
-      },
-      pull: function () {
-        try {
-          var q = new XMLHttpRequest();
-          q.open("GET", API + "/state?since=0", false);
-          q.send();
-          if (q.status !== 200) return false;
-          var j = JSON.parse(q.responseText);
-          rev = j.rev;
-          for (var k in j.items) if (ok(k)) applyOne(k, k, j.items);
-          return true;
-        } catch (e) {
-          return false;
-        }
-      },
-    };
-    var x = new XMLHttpRequest();
-    x.open("GET", API + "/state?since=0", false);
-    x.send();
-    if (x.status === 401) signedOut();
-    if (x.status === 200) {
-      var r = JSON.parse(x.responseText);
-      rev = r.rev;
-      var items = r.items;
-      for (var k in items) if (ok(k)) applyOne(k, k, items);
-      window.GMSync.view = null;
+  // 1) Render from the local cache immediately, then hydrate from the server asynchronously.
+  // Pages already listen for gm-sync and repaint when newer server data arrives.
+  function hydrate(items, initial) {
+    if (!items || typeof items !== "object") return false;
+    var startedAt = Date.now() - 50;
+
+    // Set the selected worker before applying namespaced worker records.
+    if (isAdmin) {
+      var vid = viewId();
+      window.GMSync.view = vid;
       window.GMSync.has = false;
-      window.GMSync.isAdmin = isAdmin;
-      if (isAdmin) {
-        var vid = viewId(),
-          it = items[NS + vid],
-          lg = items[BLOB];
-        if (!(it && it.v !== null) && lg && lg.v !== null && wid(lg.v) === vid)
-          it = lg; // data saved by the first version of the backend
-        window.GMSync.view = vid;
-        if (it && it.v !== null) {
-          window.GMSync.has = true;
-          rawSet.call(ls, BLOB, it.v);
-        } else rawRem.call(ls, BLOB);
-      } else if (isWorker) {
-        var cur = rawGet.call(ls, BLOB),
-          id = wid(cur);
-        if (id) {
-          var mine = items[NS + id];
-          if (dirtyMap()[NS + id])
-            push(NS + id, cur); // an earlier page's save never reached the server: keep this phone's copy and send it again
-          else if (mine && mine.v !== null) rawSet.call(ls, BLOB, mine.v);
-          else push(NS + id, cur);
+    }
+
+    var changed = apply(items, startedAt);
+
+    // Preserve compatibility with the first backend format, where the worker blob
+    // was stored under the un-namespaced gm_crm_data_v5 key.
+    if (isAdmin) {
+      var legacy = items[BLOB];
+      var current = items[NS + window.GMSync.view];
+      if (!(current && current.v !== null) && legacy && legacy.v !== null &&
+          wid(legacy.v) === window.GMSync.view) {
+        if (rawGet.call(ls, BLOB) !== legacy.v) {
+          rawSet.call(ls, BLOB, legacy.v);
+          changed = true;
+        }
+        window.GMSync.has = true;
+      } else if (current && current.v !== null) {
+        window.GMSync.has = true;
+      } else {
+        rawRem.call(ls, BLOB);
+      }
+    } else if (isWorker) {
+      var cur = rawGet.call(ls, BLOB);
+      var id = wid(cur);
+      if (id) {
+        var mine = items[NS + id];
+        if (dirtyMap()[NS + id]) {
+          push(NS + id, cur);
+        } else if (mine && mine.v !== null && cur !== mine.v) {
+          rawSet.call(ls, BLOB, mine.v);
+          changed = true;
+        } else if (!mine) {
+          push(NS + id, cur);
         }
       }
+    }
+
+    // Restore the durable outbox after a reload. The marker survives navigation
+    // and browser restarts; the current value is read from localStorage so large
+    // CRM records are not duplicated in the outbox.
+    var queued = dirtyMap();
+    Object.keys(queued).forEach(function (k) {
+      if (k.indexOf(NS) === 0) {
+        if (!isWorker || k !== NS + wid(rawGet.call(ls, BLOB))) return;
+      } else if (!ok(k)) {
+        return;
+      }
+      var entry = queued[k];
+      if (entry && entry.conflict) return; // preserve for explicit export/discard
+      if (PROT.test(k) && entry && typeof entry.base === "number")
+        readRev[k] = entry.base;
+      push(k, rawGet.call(ls, k));
+    });
+
+    // First-run migration: upload local keys not yet present on the server.
+    if (initial) {
       var keys = [];
       for (var i = 0; i < ls.length; i++) keys.push(ls.key(i));
       keys.forEach(function (k) {
-        if (ok(k) && !(k in items)) push(k, rawGet.call(ls, k));
-      }); // first run: upload what this browser already has
+        if (ok(k) && !(k in items) && !(k in queued))
+          push(k, rawGet.call(ls, k));
+      });
     }
-  } catch (e) {}
+    if (changed) {
+      try { window.dispatchEvent(new Event("gm-sync")); } catch (e) {}
+    }
+    return true;
+  }
+
+  window.GMSync = {
+    view: null,
+    has: false,
+    isAdmin: isAdmin,
+    ready: Promise.resolve(false),
+    // Sign-in page only: forget the previous person's data kept in this browser.
+    clearLocal: function () {
+      var ks = [];
+      for (var i = 0; i < ls.length; i++) ks.push(ls.key(i));
+      ks.forEach(function (k) {
+        if (DATA_KEY.test(k)) rawRem.call(ls, k);
+      });
+      rawRem.call(ls, DIRTY);
+      pending = {};
+      written = {};
+    },
+    // Always asynchronous. Callers that need fresh data before navigation can await it.
+    pull: function () {
+      return fetch(API + "/state?since=0", { cache: "no-store", credentials: "same-origin" })
+        .then(function (r) {
+          if (r.status === 401) {
+            signedOut();
+            throw new Error("Session expired");
+          }
+          if (!r.ok) throw new Error("Could not load server data (" + r.status + ")");
+          return r.json();
+        })
+        .then(function (j) {
+          rev = j.rev || 0;
+          hydrate(j.items || {}, false);
+          return true;
+        })
+        .catch(function () { return false; });
+    }
+  };
+
+  // The local cache remains available immediately so existing page scripts can render.
+  // The server refresh runs without blocking the browser's main thread.
+  window.GMSync.ready = fetch(API + "/state?since=0", {
+    cache: "no-store",
+    credentials: "same-origin"
+  })
+    .then(function (r) {
+      if (r.status === 401) {
+        signedOut();
+        throw new Error("Session expired");
+      }
+      if (!r.ok) throw new Error("Could not load server data (" + r.status + ")");
+      return r.json();
+    })
+    .then(function (r) {
+      rev = r.rev || 0;
+      hydrate(r.items || {}, true);
+      return true;
+    })
+    .catch(function () { return false; });
 
   // 2) Keep in step: pick up other devices' changes and retry anything unsent
   function poll() {

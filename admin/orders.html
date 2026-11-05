@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script src="../shared/loading.js"></script>
     <script src="../assets/icons.js"></script>
     <script src="../shared/sync.js"></script>
     <meta charset="utf-8" />
@@ -230,8 +231,38 @@
         cursor: pointer;
       }
       .om-t tbody tr:hover,
-      .om-t tbody tr.sel {
+      .om-t tbody tr.sel,
+      .om-t tbody tr.ck {
         background: var(--t-primary);
+      }
+      .om-t .oc-ck {
+        width: 36px;
+        padding-right: 0;
+      }
+      .om-t .oc-ck input {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--primary);
+        cursor: pointer;
+        vertical-align: middle;
+      }
+      .om-bulk {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: var(--t-primary);
+        border: 1px solid var(--border);
+      }
+      .om-bulk b {
+        margin-right: 4px;
+        font-size: 14px;
+      }
+      .om-bulk[hidden] {
+        display: none;
       }
       .om-t td.oc-id,
       .om-t td.oc-dt {
@@ -955,6 +986,20 @@
         draft: "Draft",
         cancelled: "Cancelled",
       };
+      // Only known order states may become CSS classes. Unknown/imported values
+      // are displayed as escaped text and never interpolated into an attribute.
+      function statusClass(value) {
+        var key = String(value == null ? "" : value);
+        return Object.prototype.hasOwnProperty.call(LABEL, key)
+          ? key
+          : "unknown";
+      }
+      function statusLabel(value) {
+        var key = String(value == null ? "" : value);
+        return Object.prototype.hasOwnProperty.call(LABEL, key)
+          ? LABEL[key]
+          : esc(key || "Unknown");
+      }
       var I = function (n) {
         return GMIcons.svg(n, "icon");
       };
@@ -970,6 +1015,7 @@
         page: 1,
         sel: "",
         tab: "details",
+        pick: {}, // orders ticked for a bulk action (id -> true)
       };
 
       pg.innerHTML =
@@ -984,6 +1030,7 @@
         '<div class="om-k" id="omK"></div>' +
         '<div class="om-main" id="omMain">' +
         '<div class="om-box"><div class="om-tabs" id="omTabs"></div>' +
+        '<div class="om-bulk" id="omBulk" hidden></div>' +
         '<div class="om-scroll" id="omList"></div>' +
         '<div class="om-foot" id="omFoot"></div></div>' +
         '<div class="om-d" id="omD" hidden></div>' +
@@ -1345,9 +1392,9 @@
           back +
           "<h2>Order Details</h2>" +
           '<span class="om-st ' +
-          o.status +
+          statusClass(o.status) +
           '">' +
-          (LABEL[o.status] || esc(o.status)) +
+          statusLabel(o.status) +
           '</span><div class="of-act"><button type="button" class="om-ib" id="ofPr">' +
           I("print") +
           "Print</button>" +
@@ -1376,9 +1423,9 @@
           "</b><small>" +
           timeOnly(o.t) +
           '</small></div><div><small>Status</small><span class="om-st ' +
-          o.status +
+          statusClass(o.status) +
           '">' +
-          (LABEL[o.status] || esc(o.status)) +
+          statusLabel(o.status) +
           "</span></div><div><small>Order value</small><b>" +
           money(cc.grand) +
           "</b><small>" +
@@ -1642,9 +1689,17 @@
         if (st.page > pages) st.page = pages;
         var from = (st.page - 1) * st.per,
           rows = L.slice(from, from + st.per);
+        // keep only ticked orders that are still in this list (a filter change drops the rest)
+        var inL = {};
+        L.forEach(function (o) {
+          inL[o.id] = true;
+        });
+        Object.keys(st.pick).forEach(function (id) {
+          if (!inL[id]) delete st.pick[id];
+        });
 
         $("omList").innerHTML = rows.length
-          ? '<table class="om-t"><thead><tr><th>Order ID</th><th>Customer / Shop</th><th>Order Date</th><th>Items</th><th class="r" title="Order total before GST">Amount (ex-GST)</th><th>Status</th><th>Order Taken By</th><th class="r">Actions</th></tr></thead><tbody>' +
+          ? '<table class="om-t"><thead><tr><th class="oc-ck"><input type="checkbox" id="omCkAll" aria-label="Select all orders on this page"></th><th>Order ID</th><th>Customer / Shop</th><th>Order Date</th><th>Items</th><th class="r" title="Order total before GST">Amount (ex-GST)</th><th>Status</th><th>Order Taken By</th><th class="r">Actions</th></tr></thead><tbody>' +
             rows
               .map(function (o, i) {
                 var can = o.status === "cancelled";
@@ -1652,8 +1707,19 @@
                   '<tr data-id="' +
                   esc(o.id) +
                   '"' +
-                  (st.sel === o.id ? ' class="sel"' : "") +
-                  '><td class="oc-id">' +
+                  (st.sel === o.id || st.pick[o.id]
+                    ? ' class="' +
+                      (st.sel === o.id ? "sel " : "") +
+                      (st.pick[o.id] ? "ck" : "") +
+                      '"'
+                    : "") +
+                  '><td class="oc-ck"><input type="checkbox" data-ck="' +
+                  esc(o.id) +
+                  '" aria-label="Select order ' +
+                  esc(o.id) +
+                  '"' +
+                  (st.pick[o.id] ? " checked" : "") +
+                  '></td><td class="oc-id">' +
                   (can ? "<s>" + esc(o.id) + "</s>" : esc(o.id)) +
                   '</td><td class="oc-sh om-s"><div class="om-shp"><i>' +
                   esc(initials(o.shop || o.code)) +
@@ -1670,9 +1736,9 @@
                   '</td><td class="oc-amt r">' +
                   (can ? "<s>" + money(o.total) + "</s>" : money(o.total)) +
                   '</td><td class="oc-st"><span class="om-st ' +
-                  o.status +
+                  statusClass(o.status) +
                   '">' +
-                  (LABEL[o.status] || esc(o.status)) +
+                  statusLabel(o.status) +
                   '</span></td><td class="oc-a"><span class="om-av">' +
                   esc(initials(o._rep)) +
                   "</span>" +
@@ -1786,7 +1852,226 @@
             removeOrder(find(all, b.dataset.x));
           };
         });
+        [].forEach.call($("omList").querySelectorAll("[data-ck]"), function (c) {
+          c.onclick = function (e) {
+            e.stopPropagation();
+            if (c.checked) st.pick[c.dataset.ck] = true;
+            else delete st.pick[c.dataset.ck];
+            draw();
+          };
+        });
+        var ca = $("omCkAll");
+        if (ca) {
+          var nOn = rows.filter(function (o) {
+            return st.pick[o.id];
+          }).length;
+          ca.checked = rows.length > 0 && nOn === rows.length;
+          ca.indeterminate = nOn > 0 && nOn < rows.length;
+          ca.onclick = function (e) {
+            e.stopPropagation();
+            rows.forEach(function (o) {
+              if (ca.checked) st.pick[o.id] = true;
+              else delete st.pick[o.id];
+            });
+            draw();
+          };
+        }
+        drawBulk(
+          L.filter(function (o) {
+            return st.pick[o.id];
+          }),
+          L,
+        );
         drawDetail(all);
+      }
+
+      // ---- Bulk actions on the ticked orders. They reuse the same single-order server calls, one after another, so every
+      // permission and rule is checked by the server for each order; a summary lists any that were refused. ----
+      var bulkBusy = false;
+      function bulkRun(list, label, req, onOk) {
+        if (bulkBusy) return;
+        bulkBusy = true;
+        var ok = 0,
+          bad = [];
+        (function next(i) {
+          if (i >= list.length) return finish();
+          var o = list[i],
+            r = req(o);
+          fetch(r.url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(r.body),
+          })
+            .then(function (res) {
+              return res
+                .json()
+                .catch(function () {
+                  return {};
+                })
+                .then(function (j) {
+                  if (!res.ok) throw new Error(j.error || "Not allowed");
+                });
+            })
+            .then(function () {
+              ok++;
+              delete st.pick[o.id];
+              if (onOk) onOk(o);
+            })
+            .catch(function (e) {
+              bad.push(o.id + ": " + e.message);
+            })
+            .then(function () {
+              next(i + 1);
+            });
+        })(0);
+        function finish() {
+          bulkBusy = false;
+          alert(
+            label +
+              ": " +
+              ok +
+              " done" +
+              (bad.length
+                ? ", " +
+                  bad.length +
+                  " failed.\n\n" +
+                  bad.slice(0, 8).join("\n") +
+                  (bad.length > 8 ? "\n..." : "")
+                : "."),
+          );
+          // fetch the new state now, so the list and counts are right straight away
+          (window.GMSync && GMSync.pull ? GMSync.pull() : Promise.resolve()).then(
+            draw,
+          );
+        }
+      }
+      function drawBulk(picked, L) {
+        var box = $("omBulk");
+        if (!picked.length) {
+          box.hidden = true;
+          box.innerHTML = "";
+          return;
+        }
+        var nxt = picked.filter(function (o) {
+            return nextStage(o);
+          }),
+          live = picked.filter(function (o) {
+            return o.status === "placed";
+          });
+        box.hidden = false;
+        box.innerHTML =
+          "<b>" +
+          picked.length +
+          " selected</b>" +
+          (L.length > picked.length
+            ? '<button type="button" class="om-ib" id="bkAll">Select all ' +
+              L.length +
+              "</button>"
+            : "") +
+          '<button type="button" class="om-ib" id="bkPr">' +
+          I("print") +
+          "Print</button>" +
+          '<button type="button" class="om-ib" id="bkEx">' +
+          I("download") +
+          "Export</button>" +
+          (nxt.length
+            ? '<button type="button" class="om-ib" id="bkNx">Next step (' +
+              nxt.length +
+              ")</button>"
+            : "") +
+          (live.length
+            ? '<button type="button" class="om-ib danger" id="bkCx">Cancel (' +
+              live.length +
+              ")</button>"
+            : "") +
+          (CAN_DEL
+            ? '<button type="button" class="om-ib danger" id="bkDel">' +
+              I("trash") +
+              "Delete (" +
+              picked.length +
+              ")</button>"
+            : "") +
+          '<span class="om-sp"></span><button type="button" class="om-ib" id="bkClr">Clear</button>';
+        if ($("bkAll"))
+          $("bkAll").onclick = function () {
+            L.forEach(function (o) {
+              st.pick[o.id] = true;
+            });
+            draw();
+          };
+        $("bkClr").onclick = function () {
+          st.pick = {};
+          draw();
+        };
+        $("bkPr").onclick = function () {
+          printAll(picked);
+        };
+        $("bkEx").onclick = function () {
+          exportCsv(picked);
+        };
+        if ($("bkNx"))
+          $("bkNx").onclick = function () {
+            if (
+              !confirm(
+                "Move " +
+                  nxt.length +
+                  " order(s) to their next step?\n\nEach order moves one step (for example Processing, then Out for delivery).",
+              )
+            )
+              return;
+            bulkRun(nxt, "Next step", function (o) {
+              return {
+                url: "/api/salesadmin/stage",
+                body: { id: o.id, stage: nextStage(o)[0] },
+              };
+            });
+          };
+        if ($("bkCx"))
+          $("bkCx").onclick = function () {
+            var why = prompt(
+              "Why are these " + live.length + " order(s) being cancelled? (needed)",
+            );
+            if (!why || why.trim().length < 3) return;
+            bulkRun(live, "Cancel", function (o) {
+              return {
+                url: "/api/salesadmin/cancel",
+                body: { id: o.id, reason: why.trim() },
+              };
+            });
+          };
+        if ($("bkDel"))
+          $("bkDel").onclick = function () {
+            if (
+              !confirm(
+                "Delete " +
+                  picked.length +
+                  " order(s) permanently?\n\nThis cannot be undone.",
+              )
+            )
+              return;
+            bulkRun(
+              picked,
+              "Delete",
+              function (o) {
+                return { url: "/api/salesadmin/delete", body: { id: o.id } };
+              },
+              function (o) {
+                // same as a single delete: drop it from this browser's copy straight away
+                var ord = rd("gm_sales_orders_v1", []);
+                if (Array.isArray(ord))
+                  try {
+                    localStorage.setItem(
+                      "gm_sales_orders_v1",
+                      JSON.stringify(
+                        ord.filter(function (x) {
+                          return x && x.id !== o.id;
+                        }),
+                      ),
+                    );
+                  } catch (e) {}
+              },
+            );
+          };
       }
       function find(all, id) {
         return all.filter(function (o) {
@@ -1901,9 +2186,9 @@
             '</b></div></div></div><div class="om-sec"><h3>Order Info</h3><div class="om-g"><div><small>Order date</small><b>' +
             when(o.t) +
             '</b></div><div><small>Status</small><span class="om-st ' +
-            o.status +
+            statusClass(o.status) +
             '">' +
-            (LABEL[o.status] || esc(o.status)) +
+            statusLabel(o.status) +
             "</span></div><div><small>Items</small><b>" +
             o._items.length +
             " items</b></div><div><small>Total amount</small><b>" +
@@ -1912,6 +2197,25 @@
             '<div class="om-sec"><h3>Order Status Timeline</h3>' +
             timeline(o) +
             "</div>" +
+            (o.status === "placed" && o.stages && o.stages.out && !(o.stages.delivered)
+              ? (function () {
+                  var wd = rd("gm_admin_workers_v1", { workers: [] }),
+                    prof = rd("gm_admin_wprofile_v1", {}),
+                    crew = (Array.isArray(wd.workers) ? wd.workers : []).filter(function (w) {
+                      if (!w || !w.id || w.active === false) return false;
+                      var role = String((prof[w.id] && prof[w.id].role) || w.role || "Delivery").toLowerCase();
+                      return /^(delivery|helper|loading)/.test(role);
+                    });
+                  return '<div class="om-sec"><h3>Delivery Assignment</h3><p style="margin:0 0 10px;font-size:13px;color:var(--muted)">' +
+                    (o.deliveryAssignment ? "Currently assigned to " + esc(o.deliveryAssignment.workerName || o.deliveryAssignment.workerId) : "Assign this order to a delivery employee.") +
+                    '</p><div style="display:flex;gap:8px;flex-wrap:wrap"><select id="omDeliveryWorker" class="om-ib" style="min-width:190px;flex:1"><option value="">Select delivery employee</option>' +
+                    crew.map(function (w) { return '<option value="' + esc(w.id) + '"' + (o.deliveryAssignment && o.deliveryAssignment.workerId === w.id ? " selected" : "") + '>' + esc(w.name || w.id) + '</option>'; }).join("") +
+                    '</select><button type="button" class="om-ib om-pri" id="omAssignDelivery">' + (o.deliveryAssignment ? "Reassign" : "Assign") + '</button></div>' +
+                    (crew.length ? "" : '<small style="display:block;margin-top:8px;color:var(--muted)">No active Delivery, Helper or Loading employees found.</small>') + '</div>';
+                })()
+              : "") +
+            (o.deliveryResult ? '<div class="om-sec"><h3>Delivery Result</h3><p style="font-size:12px;color:var(--muted)">Completed by ' + esc(o.deliveryResult.workerName || "Delivery worker") + ' · ' + when(o.deliveryResult.at) + '</p><table class="om-it"><thead><tr><th>Product</th><th class="r">Ordered</th><th class="r">Delivered</th><th class="r">Returned</th></tr></thead><tbody>' +
+              o.deliveryResult.items.map(function (it) { return '<tr><td>' + esc(it.name || it.id) + (it.returnReason ? '<small style="display:block;color:var(--muted)">' + esc(it.returnReason) + '</small>' : '') + '</td><td class="r">' + it.orderedQty + '</td><td class="r">' + it.deliveredQty + '</td><td class="r">' + it.returnedQty + '</td></tr>'; }).join("") + '</tbody></table>' + (o.deliveryResult.note ? '<small>' + esc(o.deliveryResult.note) + '</small>' : '') + '</div>' : "") +
             '<div class="om-sec"><h3>Notes</h3><p style="margin:0;font-size:13.5px;color:var(--muted)">' +
             (o.notes ? esc(o.notes) : "No notes.") +
             "</p></div>" +
@@ -1992,9 +2296,9 @@
           '<div class="om-box"><div class="om-dh"><h2>Order #' +
           esc(o.id) +
           '</h2><span class="om-st ' +
-          o.status +
+          statusClass(o.status) +
           '">' +
-          (LABEL[o.status] || "") +
+          statusLabel(o.status) +
           '</span><button type="button" class="om-dx" id="omClose" aria-label="Close">' +
           I("close") +
           '</button></div><div class="om-dt">' +
@@ -2043,6 +2347,17 @@
           st.sel = "";
           draw();
         };
+        if ($("omAssignDelivery"))
+          $("omAssignDelivery").onclick = function () {
+            var workerId = $("omDeliveryWorker").value;
+            if (!workerId) { alert("Select a delivery employee first."); return; }
+            this.disabled = true;
+            fetch("/api/salesadmin/assign-delivery", { method:"POST", headers:{"Content-Type":"application/json"},
+              body:JSON.stringify({ orderId:o.id, workerId:workerId }) })
+              .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Could not assign order."); return j; }); })
+              .then(function () { load(); draw(); })
+              .catch(function (e) { alert(e.message); if ($("omAssignDelivery")) $("omAssignDelivery").disabled = false; });
+          };
         [].forEach.call(D.querySelectorAll("[data-t]"), function (b) {
           b.onclick = function () {
             st.tab = b.dataset.t;

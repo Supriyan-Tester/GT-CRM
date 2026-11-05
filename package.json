@@ -5,9 +5,16 @@
     "node": ">=18"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node tools/run-regression-suite.js",
+    "test:staging": "node tools/staging-smoke.js",
+    "test:e2e": "playwright test",
+    "test:workflow": "node tools/sales-order-workflow-regression.js",
+    "test:delivery": "node tools/sales-order-workflow-regression.js",
+    "test:returns": "node tools/returns-reconciliation-regression.js"
   },
   "devDependencies": {
-    "prettier": "^3.9.10"
+    "prettier": "^3.9.10",
+    "@playwright/test": "^1.56.1"
   }
 }

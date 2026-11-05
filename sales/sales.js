@@ -453,7 +453,7 @@
     ["products", "Products", "products.html", "box"],
     ["payments", "Payments", "", "credit-card"],
     ["route", "My Route", "route.html", "route"],
-    ["attendance", "Attendance", "", "clock"],
+    ["attendance", "Attendance", "attendance.html", "clock"],
     ["reports", "Reports", "", "chart"],
   ];
   // phone bottom bar; everything else is under "More"
@@ -525,6 +525,54 @@
       return d.products;
     });
   };
+
+  /* Punch-in popup. Until Sales has punched in today, a popup covers the whole panel (no close button) so nothing else can be
+     used. Only Punch In (or Logout) works. If attendance cannot be read, nothing is blocked here: the server still refuses orders. */
+  function punchPopup() {
+    S.api("/api/sales/attendance?month=" + S.today().slice(0, 7))
+      .then(function (r) {
+        if (r && !r.todayEntry) openPopup();
+      })
+      .catch(function () {});
+  }
+  function openPopup() {
+    var st = document.createElement("style");
+    st.textContent =
+      ".pi-bg{position:fixed;inset:0;z-index:450;background:rgba(2,6,12,.65);display:flex;align-items:center;justify-content:center;padding:18px}" +
+      ".pi-box{background:var(--card);color:var(--text);width:100%;max-width:380px;border-radius:20px;padding:26px 22px 20px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.35)}" +
+      ".pi-ic{width:64px;height:64px;border-radius:50%;margin:0 auto 14px;display:grid;place-items:center;background:var(--teal-soft);color:var(--teal)}" +
+      ".pi-ic svg{width:30px;height:30px}.pi-box h2{font-size:19px;margin-bottom:6px}.pi-box p{font-size:14px;color:var(--muted);line-height:1.5;margin-bottom:18px}" +
+      ".pi-box .btn{width:100%;justify-content:center}.pi-lo{margin-top:12px;background:none;border:0;color:var(--muted);font:inherit;font-size:13px;cursor:pointer;text-decoration:underline}";
+    document.head.appendChild(st);
+    var bg = document.createElement("div");
+    bg.className = "pi-bg";
+    bg.innerHTML =
+      '<div class="pi-box" role="alertdialog" aria-modal="true" aria-labelledby="piT"><div class="pi-ic">' +
+      S.ic("clock") +
+      '</div><h2 id="piT">Punch in to start your day</h2><p>Record your attendance for today. You can use the other features after you punch in.</p>' +
+      '<button type="button" class="btn teal" id="piGo">Punch In</button>' +
+      '<button type="button" class="pi-lo" id="piOut">Log out</button></div>';
+    document.body.appendChild(bg);
+    document.getElementById("piOut").onclick = S.logout;
+    var go = document.getElementById("piGo");
+    go.onclick = function () {
+      go.disabled = true;
+      go.textContent = "Punching in…";
+      S.api("/api/sales/attendance", { action: "punch-in" })
+        .then(function () {
+          bg.remove();
+          st.remove();
+          S.toast("Punched in successfully.");
+          // reload so the page shows today's data now that Sales is punched in
+          location.reload();
+        })
+        .catch(function (e) {
+          go.disabled = false;
+          go.textContent = "Punch In";
+          S.toast(e.message || "Could not punch in. Try again.", true);
+        });
+    };
+  }
 
   /* S.start(page, build): checks the sign-in, draws the menu and header, then calls build(user, titleEl, mainEl). */
   S.start = function (page, build) {
@@ -641,5 +689,6 @@
       document.getElementById("hello"),
       document.getElementById("main"),
     );
+    punchPopup();
   }
 })();
