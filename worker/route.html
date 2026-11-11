@@ -885,9 +885,9 @@
         var url = routeUrl(shops);
         $("rtViewMap").href = url;
         $("rtOpen").href = url;
-        $("rtOpen").style.display = $("rtViewMap").style.display = shops.length
-          ? ""
-          : "none";
+        // Route buttons are only useful while a stop is still waiting; hide them once everything is done.
+        $("rtOpen").style.display = $("rtViewMap").style.display =
+          cnt.pending + cnt.retry > 0 ? "" : "none";
         $("rtCard").style.display = $("rtChips").style.display = shops.length
           ? ""
           : "none";

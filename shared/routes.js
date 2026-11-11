@@ -832,7 +832,16 @@
       noPin = n - s.pin;
     $("rtStats").innerHTML =
       GA.tile("s-p", "store", n, "Total shops") +
-      (showArea ? GA.tile("s-i", "map", esc(areaLabel(s)), "Area") : "") +
+      (showArea
+        ? all
+          ? GA.tile("s-i", "map", S.routes.length, "Routes")
+          : GA.tile(
+              "s-i",
+              "map",
+              '<span class="rt-aname">' + esc(areaLabel(s)) + "</span>",
+              "Area"
+            )
+        : "") +
       GA.tile(noPhone ? "s-a" : "s-s", "phone", s.phone, "With phone") +
       GA.tile(noPin ? "s-a" : "s-s", "map-pin", s.pin, "With map pin") +
       GA.tile(s.off ? "s-a" : "s-i", "ban", s.off, "Inactive");

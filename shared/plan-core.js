@@ -300,13 +300,21 @@
       ? r
       : null;
   };
+  // A second plan for the same day is only "its own" once the phone has applied it (tag = date:builtAt).
+  function mine(p, r, date) {
+    return !p.again || (r && r.appliedPlan === date + ":" + p.builtAt);
+  }
   DP.started = function (p, date) {
     var r = DP.rec(p.workerId, date);
-    return !!(r && r.shift && r.shift.punchedIn);
+    return !!(r && mine(p, r, date) && r.shift && r.shift.punchedIn);
   };
   DP.closed = function (p, date) {
     var r = DP.rec(p.workerId, date);
-    return !!(r && r.shift && r.shift.punchedOut);
+    return !!(r && mine(p, r, date) && r.shift && r.shift.punchedOut);
+  };
+  // A plan is finished when its day is closed, or a later plan has taken over (done).
+  DP.finished = function (p, date) {
+    return !!p.done || DP.closed(p, date);
   };
   // pending | delivered | retry | cancelled | unknown (a past day whose employee record has moved on)
   DP.stopState = function (p, s, date) {
@@ -320,7 +328,7 @@
   DP.planStatus = function (p, date) {
     if (p.status === "cancelled")
       return { key: "cancelled", label: "Cancelled", cls: "b-danger" };
-    if (DP.closed(p, date))
+    if (p.done || DP.closed(p, date))
       return { key: "completed", label: "Completed", cls: "b-muted" };
     if (DP.started(p, date))
       return { key: "progress", label: "In Progress", cls: "b-success" };
@@ -363,7 +371,11 @@
   DP.workerBusy = function (S, date, wid, exceptId) {
     return (
       DP.activeOn(S, date).filter(function (p) {
-        return p.id !== exceptId && DP.crew(p).indexOf(wid) > -1;
+        return (
+          p.id !== exceptId &&
+          !DP.finished(p, date) &&
+          DP.crew(p).indexOf(wid) > -1
+        );
       })[0] || null
     );
   };
@@ -394,9 +406,31 @@
   DP.vehicleBusy = function (S, date, vid, exceptId) {
     return (
       DP.activeOn(S, date).filter(function (p) {
-        return p.id !== exceptId && p.vehicleId === vid;
+        return (
+          p.id !== exceptId && !DP.finished(p, date) && p.vehicleId === vid
+        );
       })[0] || null
     );
+  };
+  // Which other customer already owns this invoice number (any date, any active plan)? null if none.
+  DP.invOwner = function (S, inv, code) {
+    var k = String(inv || "").trim().toLowerCase(),
+      hit = null;
+    if (!k) return null;
+    Object.keys(S.plans || {}).forEach(function (d) {
+      DP.activeOn(S, d).forEach(function (p) {
+        (p.stops || []).forEach(function (s) {
+          if (
+            !hit &&
+            s.code &&
+            s.code !== code &&
+            String(s.inv || "").trim().toLowerCase() === k
+          )
+            hit = s;
+        });
+      });
+    });
+    return hit;
   };
   DP.invTaken = function (S, date, exceptId) {
     var t = {};

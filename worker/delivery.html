@@ -13,7 +13,13 @@
     <link rel="stylesheet" href="../shared/theme.css" />
     <link rel="stylesheet" href="../shared/vendor/leaflet/leaflet.css" />
     <style>
-      .app {
+      /* ===== BILL TOTAL ROW COLOURS: change these two values to any colour you like ===== */
+      :root {
+        --total-bg: var(--t-primary);   /* background of the Total row */
+        --total-text: var(--text); /* text colour of the Total row */
+      }
+
+      .app {  
         background: none;
         padding: 14px 16px 190px;
         gap: 12px;
@@ -537,7 +543,7 @@
       }
       .bl-tr {
         display: grid;
-        grid-template-columns: 1fr 34px 28px 46px 58px;
+        grid-template-columns: minmax(0, 1fr) 46px 38px 56px 80px;
         gap: 5px;
         align-items: start;
         padding: 9px 12px;
@@ -569,6 +575,7 @@
       .bl-tr .r {
         text-align: right;
         font-variant-numeric: tabular-nums;
+        white-space: nowrap;
       }
       .bl-tr .mt {
         color: var(--muted);
@@ -624,7 +631,8 @@
       }
       .bl-tf.g b {
         color: var(--primary);
-        font-size: 16px;
+        font-size: 26px;
+        line-height: 1.1;
       }
       .bl-tr .nm small.gs {
         display: block;
@@ -680,7 +688,7 @@
         padding: 12px 14px;
       }
       .bl-reg.gc .bl-tr {
-        grid-template-columns: 1fr 34px 28px 44px 44px 56px;
+        grid-template-columns: minmax(0, 1fr) 44px 36px 52px 48px 76px;
       }
       @media (min-width: 900px) {
         .bl-tr {
@@ -692,6 +700,30 @@
           grid-template-columns: 1fr 70px 50px 72px 80px 92px;
         }
       }
+
+      /* Bill items as a bordered table */
+      .bl-scroll { overflow-x: auto; }
+      .bl-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+      .bl-table th, .bl-table td { border: 1px solid var(--border); padding: 8px 7px; vertical-align: top; }
+      .bl-table th:first-child, .bl-table td:first-child { border-left: 0; }
+      .bl-table th:last-child, .bl-table td:last-child { border-right: 0; }
+      .bl-table thead th { background: var(--t-primary); font: 700 10.5px Inter, sans-serif; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); text-align: left; white-space: nowrap; border-top: 0; }
+      .bl-table .nm { font-weight: 700; line-height: 1.25; color: var(--text); overflow-wrap: anywhere; min-width: 96px; }
+      .bl-table .nm em { font-style: normal; color: var(--muted); font-weight: 600; }
+      .bl-table .nm small { display: block; font-weight: 500; color: var(--muted); font-size: 11px; margin-top: 2px; }
+      .bl-table .r { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+      .bl-table th.r { text-align: right; }
+      .bl-table .mt { color: var(--muted); }
+      .bl-table .q { text-align: center; white-space: nowrap; }
+      .bl-table .q span { display: inline-block; min-width: 26px; text-align: center; padding: 2px 6px; border-radius: 7px; background: var(--t-accent); color: var(--accent); font: 800 12.5px Inter, sans-serif; }
+      .bl-table .a { font-weight: 700; color: var(--primary); }
+      .bl-table tr.ret td { background: var(--t-danger); }
+      .bl-table tr.ret .nm { color: var(--danger); }
+      .bl-table tfoot td { background: var(--total-bg); color: var(--total-text); font-weight: 700; font-size: 13px; border: 0; padding: 12px 8px; }
+      .bl-table tfoot td.nm { color: var(--total-text); text-transform: uppercase; letter-spacing: 0.04em; font-size: 13px; }
+      .bl-table tfoot td.a { color: var(--total-text); font-size: 14px; }
+      .bl-table tfoot .q span { background: var(--t-accent); color: var(--accent); }
+      .bl-table td.bl-empty { text-align: center; color: var(--muted); padding: 22px 14px; }
 
       /* Sheets */
       .modal-overlay {
@@ -1508,6 +1540,7 @@
             </div>
           </div>
           <div id="billItems" class="o5"></div>
+          <div id="creditCard" style="margin:10px 0"></div>
           <section class="dv-note o6" id="noteCard">
             <span class="ic"
               ><svg class="icon" data-icon="clipboard-list"></svg
@@ -1896,6 +1929,19 @@
           g.lastChild.textContent =
             shop.status === "delivered" ? " Delivered" : " Cancelled";
           document.getElementById("problemBtn").disabled = true;
+          // Delivered shop: let the employee open the payment screen again (for example after pressing Cancel).
+          if (shop.status === "delivered") {
+            g.style.display = "none";
+            var cb = document.createElement("button");
+            cb.type = "button";
+            cb.className = "dv-mark";
+            cb.id = "collectAgainBtn";
+            cb.textContent = "\u20b9 Collect payment";
+            g.parentNode.insertBefore(cb, g);
+            cb.onclick = function () {
+              collectThenAdvance();
+            };
+          }
         }
       })();
       document.getElementById("shopBoxes").textContent = GM.qtyLabel(shop);
@@ -1980,47 +2026,49 @@
               mrp = Number(i.mrp) || 0,
               gp = itemGst(i);
             rows +=
-              '<div class="bl-tr' +
-              (rn[String(i.name).toUpperCase()] ? " ret" : "") +
-              '"><span class="nm"><em>' +
+              "<tr" +
+              (rn[String(i.name).toUpperCase()] ? ' class="ret"' : "") +
+              '><td class="nm"><em>' +
               (n + 1) +
               ".</em> " +
               e(i.name) +
               (hasGst
-                ? '<small class="gs">' +
-                  (gp > 0 ? gp + "% GST included" : "No GST") +
-                  "</small>"
+                ? '<small>' + (gp > 0 ? gp + "% GST included" : "No GST") + "</small>"
                 : "") +
-              '</span><span class="r mt">' +
+              '</td><td class="r mt">' +
               (mrp > 0 ? money(mrp) : "\u2014") +
-              '</span><span class="q"><span>' +
+              '</td><td class="q"><span>' +
               qt +
-              '</span></span><span class="r">' +
+              '</span></td><td class="r">' +
               money(r) +
+              "</td>" +
               (hasGst
-                ? '</span><span class="r mt">' +
-                  (gp > 0 ? money(lineGst(i, lineAmt(i), gp)) : "\u2014")
+                ? '<td class="r mt">' + (gp > 0 ? money(lineGst(i, lineAmt(i), gp)) : "\u2014") + "</td>"
                 : "") +
-              '</span><span class="r a">' +
+              '<td class="r a">' +
               money(lineAmt(i)) +
-              "</span></div>";
+              "</td></tr>";
           });
-          var h =
-            '<div class="bl-bh"><b>Items on this bill</b><span>' +
-            L.length +
-            (L.length === 1 ? " item" : " items") +
-            "</span></div>" +
-            '<div class="bl-tr h"><span>Item</span><span class="r">MRP</span><span class="q">Qty</span><span class="r">Rate</span>' +
-            (hasGst ? '<span class="r">GST</span>' : "") +
-            '<span class="r">Amount</span></div>' +
-            (shown ? rows : '<div class="bl-empty">No matching item.</div>') +
-            '<div class="bl-tr tot"><span class="nm">Total</span><span></span><span class="q"><span>' +
-            totalQty +
-            "</span></span><span></span>" +
-            (hasGst ? "<span></span>" : "") +
-            '<span class="r a">' +
-            money(total) +
-            "</span></div>";
+          var cols = hasGst ? 6 : 5,
+            h =
+              '<div class="bl-bh"><b>Items on this bill</b><span>' +
+              L.length +
+              (L.length === 1 ? " item" : " items") +
+              "</span></div>" +
+              '<div class="bl-scroll"><table class="bl-table"><thead><tr><th>Item</th><th class="r">MRP</th><th class="q">Qty</th><th class="r">Rate</th>' +
+              (hasGst ? '<th class="r">GST</th>' : "") +
+              '<th class="r">Amount</th></tr></thead><tbody>' +
+              (shown ? rows : '<tr><td colspan="' + cols + '" class="bl-empty">No matching item.</td></tr>') +
+              '</tbody><tfoot><tr class="tot"><td class="nm">Total</td><td></td><td class="q"><span>' +
+              totalQty +
+              "</span></td><td></td>" +
+              (hasGst ? "<td></td>" : "") +
+              '<td class="r a">' +
+              money(total) +
+              "</td></tr></tfoot></table></div>";
+          var net = total - ded,
+            pay = Math.round(net),
+            ro = Math.round((pay - net) * 100) / 100;
           if (ded > 0) {
             rets.forEach(function (r) {
               h +=
@@ -2032,11 +2080,12 @@
                 money(r.deductionAmount) +
                 "</b></div>";
             });
-            h +=
-              '<div class="bl-tf g"><span>Net payable</span><b>' +
-              money(total - ded) +
-              "</b></div>";
+            h += '<div class="bl-tf"><span>Net after returns</span><b>' + money(net) + "</b></div>";
           }
+          // Round off to the nearest rupee: 50 paise and above goes up.
+          if (ro !== 0)
+            h += '<div class="bl-tf"><span>Round off</span><b>' + (ro > 0 ? "+ " : "\u2212 ") + money(Math.abs(ro)) + "</b></div>";
+          h += '<div class="bl-tf g"><span>Amount to pay</span><b>' + money(pay) + "</b></div>";
           document.getElementById("billReg").innerHTML = h;
         }
         draw("");
@@ -2047,9 +2096,50 @@
           });
       })();
       document.getElementById("shopBillNo").textContent = shop.billNo;
+      // Credit bills this shop still owes (from Accounts), so the employee sees them before collecting.
+      (function () {
+        var code = shop.code || shop.customerCode || "",
+          box = document.getElementById("creditCard");
+        if (!code || !box) return;
+        function e(v) {
+          return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+          });
+        }
+        function dmy(d) {
+          var q = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || "");
+          return q ? q[3] + "/" + q[2] + "/" + q[1] : e(d);
+        }
+        function m(v) {
+          return "\u20b9" + Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        fetch("/api/accounts/customers/" + encodeURIComponent(code) + "/invoices", { credentials: "same-origin" })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) {
+            if (!d || !d.invoices) return;
+            var open = d.invoices.filter(function (x) { return Number(x.outstanding) > 0 && x.invoice_no !== shop.billNo; }),
+              sum = open.reduce(function (a, x) { return a + Number(x.outstanding || 0); }, 0);
+            if (!open.length) {
+              box.innerHTML = '<div style="padding:10px 12px;border-radius:12px;border:1px solid var(--border)"><b>\u2713 No old credit from this shop</b></div>';
+              return;
+            }
+            box.innerHTML =
+              "<style>#creditCard summary::-webkit-details-marker{display:none}#creditCard details[open] .cc-arrow{transform:rotate(180deg)}</style>" +
+              '<details style="padding:10px 12px;border-radius:12px;border:1px solid #f59e0b;background:rgba(245,158,11,.10)">' +
+              '<summary style="display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;list-style:none"><b>Old credit: ' + open.length + (open.length > 1 ? " bills" : " bill") + ' <span class="cc-arrow" style="display:inline-block;transition:transform .15s">\u25be</span></b><b style="padding:3px 10px;border-radius:8px;background:rgba(220,38,38,.12);color:var(--danger,#dc2626);font-size:17px">' + m(sum) + "</b></summary>" +
+              '<div style="display:grid;gap:12px;margin-top:12px">' +
+              open.map(function (x) {
+                var t = String(x.evidence_path || "").split("/").pop().replace(/\.(jpg|png|webp)$/i, "");
+                return '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:14px"><span>' +
+                  "<b>Invoice no: " + e(x.invoice_no) + '</b><br><small style="color:var(--muted)">Invoice date: ' + dmy(x.invoice_date) + '</small><br><b style="display:inline-block;margin-top:5px;padding:3px 10px;border-radius:8px;background:rgba(220,38,38,.12);color:var(--danger,#dc2626);font-size:15px">Due: ' + m(x.outstanding) + "</b></span>" +
+                  (t ? '<a href="/api/accounts/evidence/' + e(t) + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:0 16px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--hero1),var(--hero2));color:var(--on-hero);font:800 13px Inter,sans-serif;text-decoration:none;box-shadow:0 4px 12px rgba(15,118,110,.25)">View bill</a>' : "") + "</div>";
+              }).join("") + "</div></details>";
+          })
+          .catch(function () {});
+      })();
       document.getElementById("shopAmount").textContent =
         Number(shop.billAmount) > 0
-          ? "₹" + Number(shop.billAmount).toLocaleString("en-IN")
+          ? "₹" + Math.round(Number(shop.billAmount)).toLocaleString("en-IN")
           : "\u2014";
 
       // Live arrival check. While this page is open the phone's GPS is watched:
@@ -2438,7 +2528,7 @@
             }),
           });
 
-          advanceToNext();
+          collectThenAdvance();
         });
 
       // Yes Returns: product, quantity, reason
@@ -2852,7 +2942,7 @@
 
         this.disabled = true;
         this.textContent = "Saved";
-        advanceToNext();
+        collectThenAdvance();
       });
 
       // --- MODAL 2: PROBLEM ABOUT SHOP FLOW ---
@@ -2945,6 +3035,106 @@
           this.textContent = "Cancelled for today...";
           advanceToNext();
         });
+
+      // After a delivery is saved: offer to collect payment in a popup, then go on to the next shop.
+      function collectThenAdvance() {
+        var code = shop.code || shop.customerCode || "";
+        if (!code) return advanceToNext();
+        var box = document.createElement("div");
+        box.style.cssText =
+          "position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center";
+        box.innerHTML =
+          '<div style="background:var(--bg,#fff);width:100%;max-width:560px;height:92vh;border-radius:18px 18px 0 0;display:flex;flex-direction:column;overflow:hidden">' +
+          '<div style="padding:14px 16px;font-weight:700;border-bottom:1px solid var(--border,#ddd)">Collect payment</div>' +
+          '<iframe style="flex:1;border:0;width:100%" title="Collect payment"></iframe>' +
+          '</div>';
+        box.querySelector("iframe").src =
+          "collect-sheet.html?embed=1&code=" + encodeURIComponent(code) +
+          "&area=" + encodeURIComponent(shop.area || shop.address || "") +
+          "&phone=" + encodeURIComponent(shop.phone || "") +
+          "&name=" + encodeURIComponent(shop.name || "") +
+          "&inv=" + encodeURIComponent(shop.billNo || "") +
+          "&amt=" + encodeURIComponent(Math.round(Number(shop.billAmount)) || "");
+        document.body.appendChild(box);
+        window.__collectBox = box;
+        // Remember that this shop's payment popup is open, so a page refresh brings it back until "Done" is tapped.
+        try {
+          localStorage.setItem("gm_collect_open", collectKey());
+        } catch (e) {}
+      }
+      // The payment sheet tells us when the collection is saved and the employee taps "Proceed".
+      window.addEventListener("message", function (ev) {
+        if (ev.origin !== location.origin || !ev.data) return;
+        if (ev.data.gmCollect === "saved") {
+          // Collection saved: close the payment popup and show the result in its own popup.
+          try {
+            localStorage.removeItem("gm_collect_open");
+          } catch (e) {}
+          if (window.__collectBox) {
+            window.__collectBox.remove();
+            window.__collectBox = null;
+          }
+          var ov = document.createElement("div");
+          ov.style.cssText =
+            "position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px";
+          ov.innerHTML =
+            '<div style="background:var(--card,#fff);color:var(--text,#111);border-radius:22px;padding:22px;width:100%;max-width:420px;display:grid;gap:12px;text-align:center">' +
+            '<div style="width:64px;height:64px;border-radius:50%;background:#16a34a;color:#fff;font-size:34px;display:grid;place-items:center;margin:auto">\u2713</div>' +
+            '<h2 style="margin:0">Payment collected!</h2>' +
+            '<div id="pcInv" style="font-size:12px;opacity:.7"></div>' +
+            '<div id="pcAmt" style="padding:14px;border-radius:14px;background:var(--t-primary,#e6f7f3);font-size:28px;font-weight:800"></div>' +
+            '<div id="pcRows" style="border:1px solid var(--border,#ddd);border-radius:14px;padding:4px 12px;text-align:left"></div>' +
+            '<button type="button" id="pcGo" style="width:100%;padding:16px;border:0;border-radius:14px;font-weight:800;font-size:16px;cursor:pointer;background:var(--primary,#0f766e);color:#fff">Proceed to next shop \u2192</button></div>';
+          document.body.appendChild(ov);
+          var dt = ev.data;
+          ov.querySelector("#pcInv").textContent = dt.inv ? "Invoice #" + dt.inv : "";
+          ov.querySelector("#pcAmt").textContent =
+            "\u20b9" + Number(dt.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          [["Method", dt.method], ["Collected on", dt.time], ["Bill photo", dt.photos], ["Status", "Waiting for office approval"]].forEach(function (r, i) {
+            var row = document.createElement("div");
+            row.style.cssText = "display:flex;justify-content:space-between;gap:10px;padding:9px 0;font-size:14px" + (i ? ";border-top:1px solid var(--border,#ddd)" : "");
+            var l = document.createElement("span"), v = document.createElement("b");
+            l.textContent = r[0];
+            v.textContent = r[1] || "-";
+            row.appendChild(l);
+            row.appendChild(v);
+            ov.querySelector("#pcRows").appendChild(row);
+          });
+          ov.querySelector("#pcGo").onclick = function () {
+            ov.remove();
+            advanceToNext();
+          };
+          return;
+        }
+        if (ev.data.gmCollect === "done" || ev.data.gmCollect === "cancel") {
+          try {
+            localStorage.removeItem("gm_collect_open");
+          } catch (e) {}
+          if (window.__collectBox) {
+            window.__collectBox.remove();
+            window.__collectBox = null;
+          }
+          if (ev.data.gmCollect === "done") {
+            // The employee chose "Credit: no payment now": tell the office.
+            if (ev.data.credit && window.GMnotify)
+              try {
+                window.GMnotify("credit", "Credit, not collected: " + (shop.name || ""), "Invoice " + (shop.billNo || "-") + " (" + "\u20b9" + Math.round(Number(shop.billAmount) || 0).toLocaleString("en-IN") + ") was left as credit. No payment was collected.");
+              } catch (e) {}
+            advanceToNext();
+          }
+        }
+      });
+      function collectKey() {
+        return shop.id + "|" + new Date().toISOString().slice(0, 10);
+      }
+      // Page refreshed while the payment popup was open: open it again.
+      try {
+        if (
+          shop.status === "delivered" &&
+          localStorage.getItem("gm_collect_open") === collectKey()
+        )
+          collectThenAdvance();
+      } catch (e) {}
 
       // Helper to move to next pending stop
       function advanceToNext() {

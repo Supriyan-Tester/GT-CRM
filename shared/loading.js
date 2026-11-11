@@ -7,6 +7,11 @@
 (function () {
   "use strict";
   if (window.GMLoading) return;
+  // Admin pages: no loading bar or spinner. Keep a no-op API so nothing breaks.
+  if (/^\/admin(\/|$)/.test(location.pathname)) {
+    window.GMLoading = { begin: function () { return function () {}; }, end: function () {}, reset: function () {} };
+    return;
+  }
 
   var css =
     "#gml-bar{position:fixed;top:0;left:0;height:3px;width:0;background:#0f9f91;z-index:100000;opacity:0;pointer-events:none;transition:width .25s ease,opacity .2s ease}" +

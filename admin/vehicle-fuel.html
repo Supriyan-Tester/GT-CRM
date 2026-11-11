@@ -23,6 +23,7 @@
   </head>
   <body>
     <script src="../shared/mock-data.js"></script>
+    <script src="../shared/form-check.js"></script>
     <script src="../shared/admin.js"></script>
     <script src="../shared/plan-core.js"></script>
     <script src="../shared/vehicles.js"></script>
@@ -362,24 +363,24 @@
           wide: true,
           html:
             '<div class="vx-form" style="grid-template-columns:1fr 1fr">' +
-            f("date", "Date *", e.date || T, "date", 'max="' + T + '"') +
+            f("date", "Date <span class='fc-star'>*</span>", e.date || T, "date", 'max="' + T + '"') +
             f(
               "odo",
-              "Odometer (km) *",
+              "Odometer (km) <span class='fc-star'>*</span>",
               e.odometer != null ? e.odometer : v.lastKm,
               "number",
               'min="0" step="1" inputmode="numeric"',
             ) +
             f(
               "lit",
-              "Litres *",
+              "Litres <span class='fc-star'>*</span>",
               e.litres,
               "number",
               'min="0" step="any" inputmode="decimal"',
             ) +
             f(
               "rate",
-              "Cost per litre (₹) *",
+              "Cost per litre (₹) <span class='fc-star'>*</span>",
               e.rate,
               "number",
               'min="0" step="any" inputmode="decimal"',
@@ -418,6 +419,19 @@
                 station: q("#ff_stn").value,
                 notes: q("#ff_notes").value,
               };
+              q("#ff_err").textContent = "";
+              var pos = function (v) {
+                return Number(v) > 0;
+              };
+              if (
+                !FC.check([
+                  ["ff_date", "Choose the date."],
+                  ["ff_odo", "Enter the odometer reading.", function (v) { return Number(v) >= 0; }],
+                  ["ff_lit", "Enter the litres (above 0).", pos],
+                  ["ff_rate", "Enter the cost per litre (above 0).", pos],
+                ])
+              )
+                return;
               var er = VX.checkFuel(rec, e.id);
               if (er) {
                 q("#ff_err").textContent = er;

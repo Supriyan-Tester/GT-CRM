@@ -1,0 +1,22 @@
+#!/usr/bin/env node
+"use strict";
+const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
+const root = path.join(__dirname, "..");
+const html = fs.readFileSync(path.join(root, "admin/accounts.html"), "utf8");
+const admin = fs.readFileSync(path.join(root, "shared/admin.js"), "utf8");
+const server = fs.readFileSync(path.join(root, "server.js"), "utf8");
+for (const token of ["Customer Ledger", "Collection Approvals", "/api/accounts/customers/", "/api/accounts/collections/pending", "source_kind", "approvedPaid", "acEvidenceChecked", "acApprove", "Open invoice bill photo", "Import legacy opening invoice"]) assert(html.includes(token), "Missing Accounts UI contract: " + token);
+assert(admin.includes('"accounts.html": ["billing"]'), "Accounts page must be Billing permission gated in navigation");
+assert(admin.includes('"Cash & Accounts"') && admin.includes('["accounts.html", "Accounts & Ledger", "receipt"]') && admin.includes('["accounts-dashboard.html", "Dashboard", "chart"]'), "Cash & Accounts menu group missing");
+assert(server.includes('"accounts.html": ["billing"]'), "Accounts page must be Billing permission gated by server");
+const sales = fs.readFileSync(path.join(root, "sales/collections.html"), "utf8");
+const worker = fs.readFileSync(path.join(root, "worker/collections.html"), "utf8");
+const routes = fs.readFileSync(path.join(root, "backend/modules/accounts/accounts.routes.js"), "utf8");
+const storage = fs.readFileSync(path.join(root, "storage.js"), "utf8");
+for (const token of ["/api/accounts/evidence", "availableToCollect", "requestKey"]) assert(sales.includes(token), "Missing Sales collection contract: " + token);
+for (const token of ["assigned customer", "/api/accounts/evidence", "/api/accounts/collections"]) assert(worker.includes(token), "Missing Delivery collection contract: " + token);
+for (const token of ["MAX_EVIDENCE", "valid.evidencePath", "files.has", "canAccessCustomer", "sendEvidence"]) assert(routes.includes(token), "Missing evidence API safeguard: " + token);
+assert(storage.includes('accounts: "accounts"'), "Accounts evidence storage directory missing");
+console.log("Accounts UI regression: ledger, opening invoices, evidence-gated approvals, Sales/Delivery collection UI, storage and RBAC checks passed.");

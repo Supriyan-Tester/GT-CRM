@@ -12,6 +12,9 @@ const PORT = parseInt(process.env.PORT, 10) || 3000;
 const MAX_BODY = 5 * 1024 * 1024;
 
 // Where data lives: this computer's data folder (default), or Supabase when these two settings exist (used on Render).
+const {
+  createAccountsRoutes,
+} = require("./backend/modules/accounts/accounts.routes");
 const storage = require("./storage")({
   DATA,
   URL: process.env.SUPABASE_URL,
@@ -64,6 +67,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const activity = require("./activity");
 const { isWithinRoot } = require("./shared/static-path");
 const BackupIntegrity = require("./backup-integrity");
+const {
+  createHealthRoutes,
+} = require("./backend/modules/health/health.routes");
 let db = { rev: 0, items: {}, activity: {} };
 function readLocalDb() {
   try {
@@ -144,24 +150,54 @@ function setItem(key, v) {
 const PEOPLE_KEYS = new Set(["gm_admin_account_v1", "gm_admin_workers_v1"]);
 let renaming = false;
 const NAME_FIELDS = new Set([
-  "by", "createdBy", "cancelBy", "assignedBy", "inspectedBy", "replacementInspectedBy",
-  "approvedBy", "updatedBy", "editedBy", "closedBy", "worker", "workerName", "repName",
+  "by",
+  "createdBy",
+  "cancelBy",
+  "assignedBy",
+  "inspectedBy",
+  "replacementInspectedBy",
+  "approvedBy",
+  "updatedBy",
+  "editedBy",
+  "closedBy",
+  "worker",
+  "workerName",
+  "repName",
 ]);
-const ID_COPIES = { workerId: ["worker", "workerName"], rep: ["repName"], uid: ["by"], salesId: ["repName"] };
+const ID_COPIES = {
+  workerId: ["worker", "workerName"],
+  rep: ["repName"],
+  uid: ["by"],
+  salesId: ["repName"],
+};
 const TEXT_FIELDS = new Set(["text", "title"]);
 const PLAIN_WORDS = new Set([
-  "sales", "admin", "helper", "delivery", "employee", "worker", "billing", "inventory",
-  "system", "super admin", "driver", "user", "staff", "manager",
+  "sales",
+  "admin",
+  "helper",
+  "delivery",
+  "employee",
+  "worker",
+  "billing",
+  "inventory",
+  "system",
+  "super admin",
+  "driver",
+  "user",
+  "staff",
+  "manager",
 ]);
 function peopleNames() {
   const out = {};
   const a = stored("gm_admin_account_v1");
   (Array.isArray(a) ? a : []).forEach((x) => {
-    if (x && x.id && typeof x.name === "string" && x.name.trim()) out[x.id] = x.name;
+    if (x && x.id && typeof x.name === "string" && x.name.trim())
+      out[x.id] = x.name;
   });
   const w = stored("gm_admin_workers_v1");
   ((w && Array.isArray(w.workers) && w.workers) || []).forEach((x) => {
-    if (x && x.id && typeof x.name === "string" && x.name.trim()) out[x.id] = x.name;
+    if (x && x.id && typeof x.name === "string" && x.name.trim())
+      out[x.id] = x.name;
   });
   return out;
 }
@@ -180,8 +216,10 @@ function renameWalk(o, r, st) {
   if (!o || typeof o !== "object") return;
   // a notification about this person starts with their name, whatever the name is
   if (
-    typeof o.worker === "string" && o.worker === r.old &&
-    typeof o.text === "string" && o.text.indexOf(r.old + " ") === 0
+    typeof o.worker === "string" &&
+    o.worker === r.old &&
+    typeof o.text === "string" &&
+    o.text.indexOf(r.old + " ") === 0
   ) {
     o.text = r.next + o.text.slice(r.old.length);
     st.n++;
@@ -211,23 +249,34 @@ function renameWalk(o, r, st) {
     });
   });
   // a delivery result keeps the employee's id in "by" and their name in workerName
-  if (o.by === r.id && typeof o.workerName === "string" && o.workerName !== r.next) {
+  if (
+    o.by === r.id &&
+    typeof o.workerName === "string" &&
+    o.workerName !== r.next
+  ) {
     o.workerName = r.next;
     st.n++;
   }
 }
 function propagateRenames(before, after) {
   const count = {};
-  Object.keys(before).forEach((id) => (count[before[id]] = (count[before[id]] || 0) + 1));
+  Object.keys(before).forEach(
+    (id) => (count[before[id]] = (count[before[id]] || 0) + 1),
+  );
   const renames = [];
   Object.keys(after).forEach((id) => {
     const old = before[id],
       next = after[id];
     if (old && next && old !== next)
       renames.push({
-        id, old, next,
+        id,
+        old,
+        next,
         unique: count[old] === 1,
-        words: count[old] === 1 && old.length >= 3 && !PLAIN_WORDS.has(old.toLowerCase()),
+        words:
+          count[old] === 1 &&
+          old.length >= 3 &&
+          !PLAIN_WORDS.has(old.toLowerCase()),
       });
   });
   return applyRenames(renames);
@@ -237,7 +286,13 @@ function propagateRenames(before, after) {
 function resyncPeopleNames() {
   const now = peopleNames();
   return applyRenames(
-    Object.keys(now).map((id) => ({ id, old: "\u0000", next: now[id], unique: false, words: false })),
+    Object.keys(now).map((id) => ({
+      id,
+      old: "\u0000",
+      next: now[id],
+      unique: false,
+      words: false,
+    })),
   );
 }
 function applyRenames(renames) {
@@ -251,11 +306,20 @@ function applyRenames(renames) {
     const st = { n: 0 };
     renames.forEach((r) => {
       // records stored one per person, named after the person's id
-      if (key === "gm_crm_data_v5__" + r.id && val.worker && typeof val.worker === "object" && val.worker.name !== r.next) {
+      if (
+        key === "gm_crm_data_v5__" + r.id &&
+        val.worker &&
+        typeof val.worker === "object" &&
+        val.worker.name !== r.next
+      ) {
         val.worker.name = r.next;
         st.n++;
       }
-      if (key === "gm_loc_" + r.id && typeof val.name === "string" && val.name !== r.next) {
+      if (
+        key === "gm_loc_" + r.id &&
+        typeof val.name === "string" &&
+        val.name !== r.next
+      ) {
         val.name = r.next;
         st.n++;
       }
@@ -359,7 +423,9 @@ async function flush() {
         "db-" + new Date().toISOString().slice(0, 10) + ".json",
       );
       if (!fs.existsSync(bk)) {
-        const bytes = Buffer.from(JSON.stringify(BackupIntegrity.createBackup(db)));
+        const bytes = Buffer.from(
+          JSON.stringify(BackupIntegrity.createBackup(db)),
+        );
         const tmpBackup = bk + ".tmp";
         fs.writeFileSync(tmpBackup, bytes);
         const saved = fs.readFileSync(tmpBackup);
@@ -368,7 +434,8 @@ async function flush() {
           throw new Error("Daily backup verification failed");
         fs.renameSync(tmpBackup, bk);
       }
-      const retained = fs.readdirSync(backupDir)
+      const retained = fs
+        .readdirSync(backupDir)
         .filter((n) => /^db-\d{4}-\d{2}-\d{2}\.json$/.test(n))
         .sort();
       while (retained.length > 30) {
@@ -413,7 +480,11 @@ async function flush() {
       console.error("Daily backup failed:", e.message);
     }
   } catch (e) {
-    console.error("Save to Supabase failed, will retry:", e.message);
+    console.error(
+      "Save to Supabase failed, will retry:",
+      e.message,
+      e.cause && (e.cause.code || e.cause.message),
+    );
     keys.forEach((k) => dirty.add(k));
     setTimeout(persist, 5000);
   } finally {
@@ -867,6 +938,14 @@ const PAGE_RULES = {
   "problems.html": ["delivery", "helper"],
   "attendance.html": ["helper"],
   "advances.html": ["billing"],
+  "accounts.html": ["billing"],
+  "accounts-dashboard.html": ["billing"],
+  "collections.html": ["billing"],
+  "statement.html": ["billing"],
+  "accounts-reports.html": ["billing"],
+  "office-cash.html": ["billing"],
+  "upi-settlements.html": ["billing"],
+  "daily-closing.html": ["billing"],
   "products.html": ["inventory", "billing", "sales"],
   "sales.html": ["sales", "billing"],
   "orders.html": ["sales", "billing"],
@@ -921,8 +1000,7 @@ function adminMayWrite(s, key) {
       (isFull(a) || hasAny(a, ["delivery"])) &&
       (workerData().workers || []).some((w) => w && w.id === locRequest[1])
     );
-  if (/^(gm_crm_data_v5__|gm_(?:loc|crew)_|gm_sales_)/.test(key))
-    return false;
+  if (/^(gm_crm_data_v5__|gm_(?:loc|crew)_|gm_sales_)/.test(key)) return false;
   const r = KEY_RULES[key];
   if (!r) return false;
   return r === "full" ? isFull(a) : hasAny(a, r);
@@ -946,7 +1024,8 @@ function customerPlanHistory(plans) {
             .map((stop) => ({ code: stop.code })),
         }))
         .filter((p) => p.stops.length);
-    if (history.length) out[date] = Array.isArray(source) ? history : history[0];
+    if (history.length)
+      out[date] = Array.isArray(source) ? history : history[0];
   });
   return out;
 }
@@ -1307,13 +1386,11 @@ function viewFor(s, key, raw) {
   ) {
     const d = jparse(raw);
     if (!d || typeof d !== "object" || Array.isArray(d)) return raw;
-    return JSON.stringify(
-      {
-        customers: Array.isArray(d.customers) ? d.customers : [],
-        routes: Array.isArray(d.routes) ? d.routes : [],
-        plans: customerPlanHistory(d.plans),
-      },
-    );
+    return JSON.stringify({
+      customers: Array.isArray(d.customers) ? d.customers : [],
+      routes: Array.isArray(d.routes) ? d.routes : [],
+      plans: customerPlanHistory(d.plans),
+    });
   }
   if (s.role === "admin" && key === "gm_admin_account_v1" && raw != null) {
     // only the Super Admin sees everybody; others see just their own record
@@ -1476,7 +1553,10 @@ function mergeNotifs(oldRaw, newRaw, s) {
       title: String(n.title || "").slice(0, 200),
       text: String(n.text || "").slice(0, 600),
       worker: String(n.worker || "").slice(0, 80),
-      wid: s && s.role === "worker" && s.id ? String(s.id).slice(0, 60) : undefined,
+      wid:
+        s && s.role === "worker" && s.id
+          ? String(s.id).slice(0, 60)
+          : undefined,
       read: false,
       loc: validLoc(n.loc),
     }));
@@ -1504,7 +1584,9 @@ function reconcileAttendance(onlyId) {
   const byName = {};
   (workerData().workers || []).forEach((w) => {
     if (!w || !w.id) return;
-    const k = String(w.name || "").trim().toLowerCase();
+    const k = String(w.name || "")
+      .trim()
+      .toLowerCase();
     (byName[k] = byName[k] || []).push(w.id);
   });
   const set = stored("gm_admin_settings_v1") || {},
@@ -1525,7 +1607,12 @@ function reconcileAttendance(onlyId) {
   for (const n of list) {
     let id = n.wid;
     if (!id) {
-      const c = byName[String(n.worker || "").trim().toLowerCase()];
+      const c =
+        byName[
+          String(n.worker || "")
+            .trim()
+            .toLowerCase()
+        ];
       if (c && c.length === 1) id = c[0]; // older notifications carry only a name: use it only when it is unique
     }
     if (!id || (onlyId && id !== onlyId)) continue;
@@ -1569,7 +1656,10 @@ function reconcileAttendance(onlyId) {
       e.outTime = tm[1];
       e.hours =
         a != null && b != null && b >= a
-          ? Math.floor((b - a) / 60) + "h " + String((b - a) % 60).padStart(2, "0") + "m"
+          ? Math.floor((b - a) / 60) +
+            "h " +
+            String((b - a) % 60).padStart(2, "0") +
+            "m"
           : "-";
       e.km = dr ? +dr[1] : Number(e.km) || 0;
       e.endKm = ek ? +ek[1] : e.endKm == null ? null : e.endKm;
@@ -1641,11 +1731,21 @@ const MIME = {
 const BLOCKED = ["data", "node_modules", "backup-before-backend", "test files"];
 const KEY_RE = /^gm_[A-Za-z0-9_\-]{1,80}$/;
 const PROTECTED = new Set([
-  "gm_admin_v1", "gm_admin_workers_v1", "gm_admin_wprofile_v1",
-  "gm_pintasks_v1", "gm_depot_v1", "gm_admin_account_v1",
-  "gm_admin_products_v1", "gm_admin_vehicles_v1", "gm_admin_vfuel_v1",
-  "gm_admin_vehsync_v1", "gm_admin_vservice_v1", "gm_admin_ledger_v1",
-  "gm_admin_business_v1", "gm_admin_settings_v1", "gm_admin_attedit_v1",
+  "gm_admin_v1",
+  "gm_admin_workers_v1",
+  "gm_admin_wprofile_v1",
+  "gm_pintasks_v1",
+  "gm_depot_v1",
+  "gm_admin_account_v1",
+  "gm_admin_products_v1",
+  "gm_admin_vehicles_v1",
+  "gm_admin_vfuel_v1",
+  "gm_admin_vehsync_v1",
+  "gm_admin_vservice_v1",
+  "gm_admin_ledger_v1",
+  "gm_admin_business_v1",
+  "gm_admin_settings_v1",
+  "gm_admin_attedit_v1",
 ]);
 
 function send(res, code, obj, hdr) {
@@ -1679,6 +1779,9 @@ function send(res, code, obj, hdr) {
 const SALES_ORDERS = "gm_sales_orders_v1",
   SALES_DAYS = "gm_sales_days_v1",
   SALES_ATTENDANCE = "gm_sales_attendance_v1";
+const {
+  handleSalesAttendanceRoute,
+} = require("./backend/modules/attendance/attendance.routes");
 function istDay() {
   return new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
 }
@@ -1826,7 +1929,8 @@ function salesApi(req, res, s, p, url) {
       acc,
     };
     if (!(Number(sh.lat) && Number(sh.lng))) loc.nopin = true;
-    else loc.dist = Math.round(metres(Number(sh.lat), Number(sh.lng), lat, lng));
+    else
+      loc.dist = Math.round(metres(Number(sh.lat), Number(sh.lng), lat, lng));
     return { loc };
   };
   // Short note for the admin about where it happened
@@ -1854,68 +1958,39 @@ function salesApi(req, res, s, p, url) {
     all[s.id] = out;
     setItem(SALES_DAYS, JSON.stringify(all));
   };
+  // Shared by the attendance route and the Sales order/after-hours rules below.
   const attendanceAll = () => {
-    const v = stored(SALES_ATTENDANCE);
-    return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+    const value = stored(SALES_ATTENDANCE);
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? value
+      : {};
   };
-  const attendanceTime = (ts) => {
-    const d = new Date(ts + 5.5 * 3600e3);
-    return String(d.getUTCHours()).padStart(2, "0") + ":" + String(d.getUTCMinutes()).padStart(2, "0");
+  const attendanceTime = (timestamp) => {
+    const date = new Date(timestamp + 5.5 * 3600e3);
+    return (
+      String(date.getUTCHours()).padStart(2, "0") +
+      ":" +
+      String(date.getUTCMinutes()).padStart(2, "0")
+    );
   };
-  const attendanceHours = (a, b) => {
-    const n = Math.max(0, Math.round((b - a) / 60000));
-    return Math.floor(n / 60) + "h " + String(n % 60).padStart(2, "0") + "m";
-  };
-  const syncSalesAttendanceToEmployee = (date, entry) => {
-    // Employee-based Sales logins share the employee attendance record used by the office Attendance dashboard.
-    const recKey = "gm_crm_data_v5__" + s.id;
-    const rec = stored(recKey) || (s.emp ? {} : null);
-    if (!rec || typeof rec !== "object" || Array.isArray(rec)) return;
-    const month = date.slice(0, 7), day = String(Number(date.slice(8)));
-    rec.attendanceLog = rec.attendanceLog || {};
-    rec.attendanceLog[month] = rec.attendanceLog[month] || {};
-    rec.attendanceLog[month][day] = Object.assign({}, entry);
-    setItem(recKey, JSON.stringify(rec));
-  };
-  if (p === "/api/sales/attendance" && req.method === "GET") {
-    const q = url.searchParams.get("month"), month = /^\d{4}-\d{2}$/.test(q || "") ? q : istDay().slice(0, 7);
-    const all = attendanceAll(), mine = all[s.id] || {}, days = {};
-    Object.keys(mine).forEach((d) => { if (d.slice(0, 7) === month) days[d] = mine[d]; });
-    return send(res, 200, { ok: true, today: istDay(), month, days, todayEntry: mine[istDay()] || null });
-  }
-  if (p === "/api/sales/attendance" && req.method === "POST") {
-    return body(req, (err, b) => {
-      if (err || !b || (b.action !== "punch-in" && b.action !== "punch-out"))
-        return send(res, 400, { error: "Choose Punch In or Punch Out." });
-      const now = Date.now(), date = istDay(), all = attendanceAll();
-      const mine = all[s.id] || (all[s.id] = {}), existing = mine[date] || null;
-      if (b.action === "punch-in") {
-        if (existing) return send(res, 409, { error: existing.outAt ? "Attendance is already completed for today." : "You have already punched in." });
-        const time = attendanceTime(now), settings = stored("gm_admin_settings_v1") || {};
-        const late = clockMins(time) > clockMins(/^\d{1,2}:\d{2}$/.test(settings.lateAfter || "") ? settings.lateAfter : "08:30");
-        const entry = { day: Number(date.slice(8)), weekday: ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][new Date(date + "T00:00:00Z").getUTCDay()], status: late ? "late" : "present", inTime: time, outTime: "-", hours: "-", km: 0, vehicle: "", startKm: null, endKm: null, inAt: now, outAt: null, source: "sales" };
-        mine[date] = entry;
-        const keep = Object.keys(mine).sort().slice(-90), trimmed = {};
-        keep.forEach((d) => trimmed[d] = mine[d]); all[s.id] = trimmed;
-        setItem(SALES_ATTENDANCE, JSON.stringify(all));
-        syncSalesAttendanceToEmployee(date, entry);
-        logEvents(s, [{ type: "attendance", text: "Sales punched in at " + time }]);
-        notifyAdmin("sales_attendance", "Sales punched in", actorOf(s).name + " punched in at " + time + ".", actorOf(s).name);
-        return send(res, 200, { ok: true, action: b.action, entry });
-      }
-      if (!existing || !existing.inAt || existing.outAt)
-        return send(res, 409, { error: "You must punch in before punching out." });
-      const time = attendanceTime(now), entry = Object.assign({}, existing, { outTime: time, outAt: now, hours: attendanceHours(existing.inAt, now) });
-      mine[date] = entry;
-      const keep = Object.keys(mine).sort().slice(-90), trimmed = {};
-      keep.forEach((d) => trimmed[d] = mine[d]); all[s.id] = trimmed;
-      setItem(SALES_ATTENDANCE, JSON.stringify(all));
-      syncSalesAttendanceToEmployee(date, entry);
-      logEvents(s, [{ type: "attendance", text: "Sales punched out at " + time + " (" + entry.hours + ")" }]);
-      notifyAdmin("sales_attendance", "Sales punched out", actorOf(s).name + " punched out at " + time + " (" + entry.hours + ").", actorOf(s).name);
-      return send(res, 200, { ok: true, action: b.action, entry });
-    }, 4096);
-  }
+
+  const attendanceRouteResult = handleSalesAttendanceRoute({
+    req,
+    res,
+    s,
+    p,
+    url,
+    stored,
+    setItem,
+    send,
+    body,
+    istDay,
+    clockMins,
+    logEvents,
+    notifyAdmin,
+    actorOf,
+  });
+  if (attendanceRouteResult !== null) return attendanceRouteResult;
 
   // Shops the office sent to this Sales person to save the map location of (Admin > Customers > Shop locations).
   // Only shops that still have no location anywhere (Customers or another employee's saved pin) are listed.
@@ -1936,9 +2011,18 @@ function salesApi(req, res, s, p, url) {
       if ((t.need || []).indexOf("pin") < 0) continue;
       const sh = shop(t.code);
       if (!sh || (Number(sh.lat) && Number(sh.lng))) continue;
-      out.push({ code: sh.code, name: sh.name, area: sh.area || "", address: sh.address || "" });
+      out.push({
+        code: sh.code,
+        name: sh.name,
+        area: sh.area || "",
+        address: sh.address || "",
+      });
     }
-    out.sort((a, b) => String(a.area || "~").localeCompare(String(b.area || "~")) || String(a.name).localeCompare(String(b.name)));
+    out.sort(
+      (a, b) =>
+        String(a.area || "~").localeCompare(String(b.area || "~")) ||
+        String(a.name).localeCompare(String(b.name)),
+    );
     return send(res, 200, { ok: true, tasks: out.slice(0, 300) });
   }
 
@@ -2081,7 +2165,8 @@ function salesApi(req, res, s, p, url) {
       }
       const key = "gm_pins_v1_" + s.id,
         mine = stored(key),
-        P = mine && typeof mine === "object" && !Array.isArray(mine) ? mine : {},
+        P =
+          mine && typeof mine === "object" && !Array.isArray(mine) ? mine : {},
         who = actorOf(s).name;
       P[code] = {
         lat: Math.round(lat * 1e6) / 1e6,
@@ -2095,7 +2180,10 @@ function salesApi(req, res, s, p, url) {
       notifyAdmin(
         "pin",
         "Shop location saved: " + sh.name,
-        who + " saved the location of " + sh.name + ". It is added to Customers when you open that page.",
+        who +
+          " saved the location of " +
+          sh.name +
+          ". It is added to Customers when you open that page.",
         who,
       );
       logEvents(s, [{ type: "pin", text: "Saved shop location: " + sh.name }]);
@@ -2148,7 +2236,10 @@ function salesApi(req, res, s, p, url) {
             o.status === "placed",
         )[0];
       if (!rec) return send(res, 404, { error: "Order not found" });
-      if (Date.now() - rec.t > 10 * 60 * 1000 || (rec.loc && typeof rec.loc.lat === "number"))
+      if (
+        Date.now() - rec.t > 10 * 60 * 1000 ||
+        (rec.loc && typeof rec.loc.lat === "number")
+      )
         return send(res, 200, { ok: true, skipped: true });
       const sh = shop(rec.code);
       if (!sh) return send(res, 200, { ok: true, skipped: true });
@@ -2163,7 +2254,10 @@ function salesApi(req, res, s, p, url) {
       }
       const notes = arr("gm_admin_notifs_v1"),
         n = notes.filter(
-          (x) => x && x.type === "sales_order" && String(x.title).indexOf("New order " + rec.id + ":") === 0,
+          (x) =>
+            x &&
+            x.type === "sales_order" &&
+            String(x.title).indexOf("New order " + rec.id + ":") === 0,
         )[0];
       if (n) {
         n.text =
@@ -2171,7 +2265,8 @@ function salesApi(req, res, s, p, url) {
             / (Location was not shared.*|Marked \d+ m from the shop\.|Shop has no map pin.*)$/,
             "",
           ) + whereText(loc);
-        if (typeof loc.lat === "number") n.loc = { lat: loc.lat, lng: loc.lng, acc: loc.acc || 0 };
+        if (typeof loc.lat === "number")
+          n.loc = { lat: loc.lat, lng: loc.lng, acc: loc.acc || 0 };
         setItem("gm_admin_notifs_v1", JSON.stringify(notes));
       }
       return send(res, 200, { ok: true });
@@ -2212,10 +2307,13 @@ function salesApi(req, res, s, p, url) {
             code: "punch_in_required",
           });
         if (todayAtt.outAt) {
-          const why = String(b.afterHours || "").trim().slice(0, 200);
+          const why = String(b.afterHours || "")
+            .trim()
+            .slice(0, 200);
           if (why.length < 3)
             return send(res, 403, {
-              error: "You have punched out for today. Enter a reason to place an after-hours order.",
+              error:
+                "You have punched out for today. Enter a reason to place an after-hours order.",
               code: "after_hours_reason",
             });
           afterHours = { reason: why, outAt: todayAtt.outAt };
@@ -2284,7 +2382,9 @@ function salesApi(req, res, s, p, url) {
           price,
           qty: merged[id],
           amount: num(price * merged[id]),
-          ...(Number(x.boxQty) >= 2 ? { boxQty: Math.floor(Number(x.boxQty)) } : {}),
+          ...(Number(x.boxQty) >= 2
+            ? { boxQty: Math.floor(Number(x.boxQty)) }
+            : {}),
         };
       });
       const subtotal = num(items.reduce((t, i) => t + i.amount, 0)),
@@ -2315,10 +2415,9 @@ function salesApi(req, res, s, p, url) {
           discount,
           total: num(subtotal - discount),
           // an after-hours reason is also written at the front of the notes so every office screen that shows notes shows it
-          notes: (
+          notes:
             (afterHours ? "[After hours: " + afterHours.reason + "] " : "") +
-            String(b.notes || "").slice(0, 500)
-          ),
+            String(b.notes || "").slice(0, 500),
         };
       if (afterHours) rec.afterHours = afterHours;
       if (b.k) rec.k = String(b.k).slice(0, 60);
@@ -2351,7 +2450,11 @@ function salesApi(req, res, s, p, url) {
         const who = rec.repName;
         notifyAdmin(
           "sales_order",
-          "New order " + id + ": " + sh.name + (afterHours ? " (after hours)" : ""),
+          "New order " +
+            id +
+            ": " +
+            sh.name +
+            (afterHours ? " (after hours)" : ""),
           who +
             " took an order for " +
             sh.name +
@@ -2407,6 +2510,41 @@ function body(req, cb, limit) {
 // Daily plan rules, enforced here as well as in the browser:
 // on one date a worker, a vehicle and an invoice can each be in only one active (not cancelled) plan.
 // Only conflicts that a save INTRODUCES are rejected, so data that was already inconsistent never blocks saving.
+// Invoice numbers already in the Accounts ledger and the customer each belongs to (refreshed every minute),
+// so a Daily plan cannot reuse a ledger invoice number for a different shop.
+const ledgerOwner = new Map();
+async function refreshLedgerOwners() {
+  const U = process.env.SUPABASE_URL,
+    K = process.env.SUPABASE_SERVICE_KEY;
+  if (!U || !K || typeof fetch !== "function") return;
+  try {
+    const next = new Map();
+    for (let off = 0; off < 200000; off += 1000) {
+      const r = await fetch(
+        U +
+          "/rest/v1/gm_accounts_invoices?select=invoice_no,customer_code,customer_name_snapshot&order=created_at.asc,id.asc&limit=1000&offset=" +
+          off,
+        { headers: { apikey: K, Authorization: "Bearer " + K } },
+      );
+      if (!r.ok) return;
+      const rows = await r.json();
+      for (const x of rows) {
+        const k =
+          x && x.invoice_no ? String(x.invoice_no).trim().toLowerCase() : "";
+        if (k && !next.has(k))
+          next.set(k, {
+            code: String(x.customer_code),
+            name: x.customer_name_snapshot || x.customer_code,
+          });
+      }
+      if (rows.length < 1000) break;
+    }
+    ledgerOwner.clear();
+    next.forEach((v, k) => ledgerOwner.set(k, v));
+  } catch (e) {}
+}
+refreshLedgerOwners();
+setInterval(refreshLedgerOwners, 60000).unref();
 function planConflicts(raw) {
   const out = new Set();
   let S;
@@ -2427,8 +2565,9 @@ function planConflicts(raw) {
       v = {},
       inv = {};
     for (const p of list) {
-      const crew = [p.workerId]
-        .concat(Array.isArray(p.helpers) ? p.helpers : [])
+      // A plan marked done (a later plan took over) no longer holds its people or vehicle for that date.
+      const crew = (p.done ? [] : [p.workerId])
+        .concat(!p.done && Array.isArray(p.helpers) ? p.helpers : [])
         .filter((x) => typeof x === "string" && x);
       for (const id of crew) {
         if (w[id])
@@ -2441,7 +2580,7 @@ function planConflicts(raw) {
           );
         w[id] = 1;
       }
-      if (p.vehicleId) {
+      if (p.vehicleId && !p.done) {
         if (v[p.vehicleId])
           out.add(
             d + "|vehicle|" + p.vehicleId + "|" + (p.vehicle || p.vehicleId),
@@ -2455,13 +2594,36 @@ function planConflicts(raw) {
       }
     }
   }
+  // One invoice number belongs to one customer, on any date.
+  const owner = {};
+  for (const d of Object.keys(plans)) {
+    for (const p of Array.isArray(plans[d]) ? plans[d] : [plans[d]]) {
+      if (!p || typeof p !== "object" || p.status === "cancelled") continue;
+      for (const s of Array.isArray(p.stops) ? p.stops : []) {
+        if (!s || !s.inv || !s.code) continue;
+        const k = String(s.inv).trim().toLowerCase();
+        const lo = ledgerOwner.get(k);
+        if (lo && lo.code !== String(s.code))
+          out.add("-|invoiceledger|" + k + "|" + s.inv + "|" + lo.name);
+        if (owner[k] && owner[k] !== String(s.code))
+          out.add("-|invoiceowner|" + k + "|" + s.inv);
+        else if (!owner[k]) owner[k] = String(s.code);
+      }
+    }
+  }
   return out;
 }
 function planConflict(oldRaw, newRaw) {
   const before = oldRaw ? planConflicts(oldRaw) : new Set();
   for (const c of planConflicts(newRaw)) {
     if (before.has(c)) continue;
-    const [d, kind, , label] = c.split("|");
+    const [d, kind, , label, extra] = c.split("|");
+    if (kind === "invoiceledger")
+      return (
+        "Invoice " + label + " already belongs to " + extra + " in Accounts."
+      );
+    if (kind === "invoiceowner")
+      return "Invoice " + label + " already belongs to another customer.";
     return kind === "invoice"
       ? "Invoice " + label + " is already in another plan on " + d + "."
       : (kind === "worker" ? "Employee " : "Vehicle ") +
@@ -2473,21 +2635,17 @@ function planConflict(oldRaw, newRaw) {
   return "";
 }
 
+const handleHealthRoute = createHealthRoutes({
+  send,
+  cloud: CLOUD,
+  ping: () => storage.kv.ping(),
+  logger: console,
+});
+
 function api(req, res, url) {
   const p = url.pathname;
-  // Liveness stays independent of external services so Render does not restart-loop
-  // during a temporary Supabase outage. Use /api/ready for dependency monitoring.
-  if (p === "/api/health") return send(res, 200, { ok: true });
-  if (p === "/api/ready" && req.method === "GET") {
-    if (!CLOUD) return send(res, 200, { ok: true, storage: "local" });
-    return storage.kv
-      .ping()
-      .then(() => send(res, 200, { ok: true, storage: "supabase" }))
-      .catch((e) => {
-        console.error("Readiness check failed:", e && e.message);
-        return send(res, 503, { ok: false, error: "Storage dependency unavailable" });
-      });
-  }
+  const healthResponse = handleHealthRoute(req, res, url);
+  if (healthResponse !== null) return healthResponse;
   if (req.method !== "GET" && req.method !== "HEAD" && req.headers.origin) {
     // another website cannot make the browser act for the user
     let okOrigin = false;
@@ -2653,245 +2811,750 @@ function api(req, res, url) {
     !s.emp &&
     auth.admins[s.id] &&
     auth.admins[s.id].must;
+  if (p.startsWith("/api/accounts/")) {
+    if (mustChange)
+      return send(res, 403, {
+        error: "Change your password before using Accounts.",
+      });
+    const accountsRoutes = createAccountsRoutes({
+      url: process.env.SUPABASE_URL,
+      key: process.env.SUPABASE_SERVICE_KEY,
+      db: stored,
+      files: Files,
+      notifyAdmin,
+      send,
+      body,
+      customerList: () => (stored("gm_admin_v1") || {}).customers || [],
+      customerLookup: (code) => {
+        const customers = (stored("gm_admin_v1") || {}).customers || [];
+        return (
+          customers.find((c) => c && String(c.code) === String(code)) || null
+        );
+      },
+      planStopFor: (session, code, inv) => {
+        const k = String(inv || "")
+          .trim()
+          .toLowerCase();
+        const today = new Date().toLocaleDateString("en-CA", {
+          timeZone: "Asia/Kolkata",
+        });
+        const raw = ((stored("gm_admin_v1") || {}).plans || {})[today];
+        for (const p of Array.isArray(raw) ? raw : raw ? [raw] : []) {
+          if (!p || p.status === "cancelled") continue;
+          if (
+            session.role === "worker" &&
+            p.workerId !== session.id &&
+            !(Array.isArray(p.helpers) && p.helpers.includes(session.id))
+          )
+            continue;
+          for (const s of Array.isArray(p.stops) ? p.stops : [])
+            if (
+              s &&
+              String(s.code) === String(code) &&
+              String(s.inv || "")
+                .trim()
+                .toLowerCase() === k
+            )
+              return s;
+        }
+        return null;
+      },
+      planInvoiceOwner: (inv, code) => {
+        const k = String(inv || "")
+          .trim()
+          .toLowerCase();
+        const plans = (stored("gm_admin_v1") || {}).plans || {};
+        for (const d of Object.keys(plans))
+          for (const p of Array.isArray(plans[d]) ? plans[d] : [plans[d]]) {
+            if (!p || p.status === "cancelled") continue;
+            for (const s of Array.isArray(p.stops) ? p.stops : [])
+              if (
+                s &&
+                s.code &&
+                String(s.code) !== String(code) &&
+                String(s.inv || "")
+                  .trim()
+                  .toLowerCase() === k
+              )
+                return { code: String(s.code), name: s.name || s.code };
+          }
+        return null;
+      },
+      canAccessCustomer: (session, code) => {
+        if (session.role !== "worker") return true;
+        // A shop on this worker's own Daily plan for today (as driver or helper) can be collected from.
+        const today = new Date().toLocaleDateString("en-CA", {
+          timeZone: "Asia/Kolkata",
+        });
+        const rawPlans = ((stored("gm_admin_v1") || {}).plans || {})[today];
+        const onPlan = (
+          Array.isArray(rawPlans) ? rawPlans : rawPlans ? [rawPlans] : []
+        ).some(
+          (pl) =>
+            pl &&
+            pl.status !== "cancelled" &&
+            (pl.workerId === session.id ||
+              (Array.isArray(pl.helpers) && pl.helpers.includes(session.id))) &&
+            (Array.isArray(pl.stops) ? pl.stops : []).some(
+              (st) => st && String(st.code) === String(code),
+            ),
+        );
+        if (onPlan) return true;
+        const list = stored("gm_sales_orders_v1");
+        return (Array.isArray(list) ? list : []).some(
+          (o) =>
+            o &&
+            String(o.code) === String(code) &&
+            o.deliveryAssignment &&
+            o.deliveryAssignment.workerId === session.id &&
+            o.status === "placed" &&
+            o.stages &&
+            o.stages.out &&
+            (!o.stages.delivered ||
+              Date.now() -
+                new Date(String(o.date || "") + "T00:00:00").getTime() <=
+                7 * 86400000),
+        );
+      },
+      employeeList: () =>
+        adminList()
+          .map((a) => ({ id: a.id, name: a.name, active: a.active !== false }))
+          .concat(
+            (workerData().workers || []).map((w) => ({
+              id: w.id,
+              name: w.name,
+              active: w.active !== false,
+            })),
+          ),
+      employeeExists: (id) =>
+        adminList().some(
+          (a) => a && String(a.id) === String(id) && a.active !== false,
+        ) ||
+        (workerData().workers || []).some(
+          (w) => w && String(w.id) === String(id) && w.active !== false,
+        ),
+      canBill: (session) =>
+        session.role === "admin" && hasAny(acctOf(session), ["billing"]),
+      canCollect: (session) =>
+        (session.role === "admin" && hasAny(acctOf(session), ["billing"])) ||
+        (session.role === "sales" && hasAny(acctOf(session), ["sales"])) ||
+        (session.role === "worker" &&
+          (workerData().workers || []).some(
+            (w) => w && w.id === session.id && w.active !== false,
+          ) &&
+          empRoleOf(session.id) === "Delivery"),
+      isActiveDeliveryWorker: (id) =>
+        (workerData().workers || []).some(
+          (w) => w && w.id === id && w.active !== false,
+        ) && empRoleOf(id) === "Delivery",
+      employeeName: (id) => {
+        const worker = (workerData().workers || []).find(
+          (w) => w && w.id === id,
+        );
+        const account = adminList().find((a) => a && a.id === id);
+        return (
+          (worker && worker.name) || (account && account.name) || "Employee"
+        );
+      },
+    });
+    if (accountsRoutes.handle(req, res, url, s)) return;
+  }
   // ---- Delivery order bridge: workers see only orders explicitly assigned to them ----
   if (p === "/api/worker/orders" && req.method === "GET") {
-    if (s.role !== "worker") return send(res, 403, { error: "Delivery worker access required." });
+    if (s.role !== "worker")
+      return send(res, 403, { error: "Delivery worker access required." });
     const wk = (workerData().workers || []).find((x) => x && x.id === s.id);
     if (!wk || wk.active === false || empPanel(empRoleOf(s.id)) !== "worker")
-      return send(res, 403, { error: "Active delivery worker account required." });
-    const L = stored("gm_sales_orders_v1"), list = Array.isArray(L) ? L : [];
-    const orders = list.filter((o) => o && o.status === "placed" && o.stages && o.stages.out &&
-      !(o.stages && o.stages.delivered) && o.deliveryAssignment && o.deliveryAssignment.workerId === s.id)
-      .map((o) => ({ id:o.id, shop:o.shop, code:o.code, area:o.area, date:o.date, items:o.items,
-        total:o.total, notes:o.notes || "", assignedAt:o.deliveryAssignment.assignedAt }));
-    return send(res, 200, { ok:true, orders });
+      return send(res, 403, {
+        error: "Active delivery worker account required.",
+      });
+    const L = stored("gm_sales_orders_v1"),
+      list = Array.isArray(L) ? L : [];
+    const orders = list
+      .filter(
+        (o) =>
+          o &&
+          o.status === "placed" &&
+          o.stages &&
+          o.stages.out &&
+          !(o.stages && o.stages.delivered) &&
+          o.deliveryAssignment &&
+          o.deliveryAssignment.workerId === s.id,
+      )
+      .map((o) => ({
+        id: o.id,
+        shop: o.shop,
+        code: o.code,
+        area: o.area,
+        date: o.date,
+        items: o.items,
+        total: o.total,
+        notes: o.notes || "",
+        assignedAt: o.deliveryAssignment.assignedAt,
+      }));
+    return send(res, 200, { ok: true, orders });
   }
   if (p === "/api/worker/order-result" && req.method === "POST") {
-    if (s.role !== "worker") return send(res, 403, { error: "Delivery worker access required." });
+    if (s.role !== "worker")
+      return send(res, 403, { error: "Delivery worker access required." });
     const wk = (workerData().workers || []).find((x) => x && x.id === s.id);
     if (!wk || wk.active === false || empPanel(empRoleOf(s.id)) !== "worker")
-      return send(res, 403, { error: "Active delivery worker account required." });
-    return body(req, (err, b) => {
-      if (err || !b || typeof b.orderId !== "string" || !Array.isArray(b.items))
-        return send(res, 400, { error: "Invalid delivery result." });
-      const L = stored("gm_sales_orders_v1"), list = Array.isArray(L) ? L : [];
-      const o = list.find((x) => x && x.id === b.orderId);
-      if (!o || !o.deliveryAssignment || o.deliveryAssignment.workerId !== s.id)
-        return send(res, 403, { error: "This order is not assigned to you." });
-      if (o.deliveryResult) return send(res, 200, { ok:true, alreadyApplied:true });
-      if (o.status !== "placed" || !o.stages || !o.stages.out || o.stages.delivered)
-        return send(res, 409, { error: "This order is not awaiting delivery." });
-      const submitted = new Map();
-      for (const row of b.items) {
-        if (!row || typeof row.id !== "string" || submitted.has(row.id))
-          return send(res, 400, { error: "Invalid or duplicate product line." });
-        submitted.set(row.id, row);
-      }
-      if (!Array.isArray(o.items) || submitted.size !== o.items.length)
-        return send(res, 400, { error: "Submit a result for every ordered product." });
-      const resultItems = [];
-      for (const item of o.items) {
-        const row = submitted.get(item.id), ordered = Number(item.qty), delivered = row && Number(row.deliveredQty);
-        if (!row || !Number.isFinite(ordered) || !Number.isFinite(delivered) || delivered < 0 || delivered > ordered)
-          return send(res, 400, { error: "Delivered quantity must be between zero and the ordered quantity." });
-        const returned = Math.round((ordered - delivered) * 1000) / 1000;
-        const reason = String(row.returnReason || "").trim().slice(0, 160);
-        if (returned > 0 && !reason)
-          return send(res, 400, { error: "Add a return reason for every quantity not delivered." });
-        resultItems.push({ id:item.id, name:String(item.name || item.id).slice(0,120), orderedQty:ordered,
-          deliveredQty:delivered, returnedQty:returned, returnReason:returned ? reason : "" });
-      }
-      const now = Date.now();
-      o.deliveryResult = { at:now, by:s.id, workerName:wk.name, items:resultItems,
-        note:String(b.note || "").trim().slice(0,300) };
-      // Returned quantities enter a quarantine workflow; they are NOT available stock.
-      const returnedLines = resultItems.filter((x) => x.returnedQty > 0);
-      if (returnedLines.length) {
-        const returnData = stored("gm_inventory_returns_v1");
-        const returns = Array.isArray(returnData) ? returnData : [];
-        const returnId = "RET-" + String(o.id).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 48);
-        if (!returns.some((r) => r && r.id === returnId)) returns.push({
-          id:returnId, orderId:o.id, orderCode:o.code || o.id, shop:o.shop || "",
-          workerId:s.id, workerName:wk.name, createdAt:now, status:"pending_inspection",
-          note:String(b.note || "").trim().slice(0,300),
-          items:returnedLines.map((x) => ({ productId:x.id, productName:x.name,
-            returnedQty:x.returnedQty, returnReason:x.returnReason,
-            restockQty:0, companyQty:0, damagedQty:0, companyStatus:"not_applicable" }))
-        });
-        setItem("gm_inventory_returns_v1", JSON.stringify(returns));
-      }
-      o.stages = o.stages || {};
-      o.stages.delivered = { at:now, by:wk.name + " (Delivery)" };
-      setItem("gm_sales_orders_v1", JSON.stringify(list));
-      logEvents(s, [{ type:"order", text:"Submitted delivery result for " + o.id }]);
-      return send(res, 200, { ok:true, orderId:o.id });
-    }, 8192);
+      return send(res, 403, {
+        error: "Active delivery worker account required.",
+      });
+    return body(
+      req,
+      (err, b) => {
+        if (
+          err ||
+          !b ||
+          typeof b.orderId !== "string" ||
+          !Array.isArray(b.items)
+        )
+          return send(res, 400, { error: "Invalid delivery result." });
+        const L = stored("gm_sales_orders_v1"),
+          list = Array.isArray(L) ? L : [];
+        const o = list.find((x) => x && x.id === b.orderId);
+        if (
+          !o ||
+          !o.deliveryAssignment ||
+          o.deliveryAssignment.workerId !== s.id
+        )
+          return send(res, 403, {
+            error: "This order is not assigned to you.",
+          });
+        if (o.deliveryResult)
+          return send(res, 200, { ok: true, alreadyApplied: true });
+        if (
+          o.status !== "placed" ||
+          !o.stages ||
+          !o.stages.out ||
+          o.stages.delivered
+        )
+          return send(res, 409, {
+            error: "This order is not awaiting delivery.",
+          });
+        const submitted = new Map();
+        for (const row of b.items) {
+          if (!row || typeof row.id !== "string" || submitted.has(row.id))
+            return send(res, 400, {
+              error: "Invalid or duplicate product line.",
+            });
+          submitted.set(row.id, row);
+        }
+        if (!Array.isArray(o.items) || submitted.size !== o.items.length)
+          return send(res, 400, {
+            error: "Submit a result for every ordered product.",
+          });
+        const resultItems = [];
+        for (const item of o.items) {
+          const row = submitted.get(item.id),
+            ordered = Number(item.qty),
+            delivered = row && Number(row.deliveredQty);
+          if (
+            !row ||
+            !Number.isFinite(ordered) ||
+            !Number.isFinite(delivered) ||
+            delivered < 0 ||
+            delivered > ordered
+          )
+            return send(res, 400, {
+              error:
+                "Delivered quantity must be between zero and the ordered quantity.",
+            });
+          const returned = Math.round((ordered - delivered) * 1000) / 1000;
+          const reason = String(row.returnReason || "")
+            .trim()
+            .slice(0, 160);
+          if (returned > 0 && !reason)
+            return send(res, 400, {
+              error: "Add a return reason for every quantity not delivered.",
+            });
+          resultItems.push({
+            id: item.id,
+            name: String(item.name || item.id).slice(0, 120),
+            orderedQty: ordered,
+            deliveredQty: delivered,
+            returnedQty: returned,
+            returnReason: returned ? reason : "",
+          });
+        }
+        const now = Date.now();
+        o.deliveryResult = {
+          at: now,
+          by: s.id,
+          workerName: wk.name,
+          items: resultItems,
+          note: String(b.note || "")
+            .trim()
+            .slice(0, 300),
+        };
+        // Returned quantities enter a quarantine workflow; they are NOT available stock.
+        const returnedLines = resultItems.filter((x) => x.returnedQty > 0);
+        if (returnedLines.length) {
+          const returnData = stored("gm_inventory_returns_v1");
+          const returns = Array.isArray(returnData) ? returnData : [];
+          const returnId =
+            "RET-" +
+            String(o.id)
+              .replace(/[^A-Za-z0-9_-]/g, "")
+              .slice(0, 48);
+          if (!returns.some((r) => r && r.id === returnId))
+            returns.push({
+              id: returnId,
+              orderId: o.id,
+              orderCode: o.code || o.id,
+              shop: o.shop || "",
+              workerId: s.id,
+              workerName: wk.name,
+              createdAt: now,
+              status: "pending_inspection",
+              note: String(b.note || "")
+                .trim()
+                .slice(0, 300),
+              items: returnedLines.map((x) => ({
+                productId: x.id,
+                productName: x.name,
+                returnedQty: x.returnedQty,
+                returnReason: x.returnReason,
+                restockQty: 0,
+                companyQty: 0,
+                damagedQty: 0,
+                companyStatus: "not_applicable",
+              })),
+            });
+          setItem("gm_inventory_returns_v1", JSON.stringify(returns));
+        }
+        o.stages = o.stages || {};
+        o.stages.delivered = { at: now, by: wk.name + " (Delivery)" };
+        setItem("gm_sales_orders_v1", JSON.stringify(list));
+        logEvents(s, [
+          { type: "order", text: "Submitted delivery result for " + o.id },
+        ]);
+        return send(res, 200, { ok: true, orderId: o.id });
+      },
+      8192,
+    );
   }
 
   // ---- Office assigns an order to an active delivery-app employee ----
   if (p === "/api/salesadmin/assign-delivery" && req.method === "POST") {
     const ac = acctOf(s);
-    if (s.role !== "admin" || !ac || !hasAny(ac, ["sales", "billing", "delivery"]))
+    if (
+      s.role !== "admin" ||
+      !ac ||
+      !hasAny(ac, ["sales", "billing", "delivery"])
+    )
       return send(res, 403, { error: "Not allowed" });
-    return body(req, (err, b) => {
-      if (err || !b || typeof b.orderId !== "string" || typeof b.workerId !== "string")
-        return send(res, 400, { error: "Choose an order and delivery worker." });
-      const wk = (workerData().workers || []).find((x) => x && x.id === b.workerId);
-      if (!wk || wk.active === false || empPanel(empRoleOf(wk.id)) !== "worker")
-        return send(res, 400, { error: "Choose an active Delivery, Helper or Loading employee." });
-      const L = stored("gm_sales_orders_v1"), list = Array.isArray(L) ? L : [];
-      const o = list.find((x) => x && x.id === b.orderId);
-      if (!o || o.status !== "placed" || !o.stages || !o.stages.out || o.stages.delivered)
-        return send(res, 409, { error: "Move the order to Out for delivery before assigning it." });
-      if (o.deliveryResult) return send(res, 409, { error: "A completed delivery cannot be reassigned." });
-      if (o.deliveryAssignment && o.deliveryAssignment.workerId === wk.id)
-        return send(res, 200, { ok:true, alreadyAssigned:true });
-      o.deliveryAssignment = { workerId:wk.id, workerName:String(wk.name || "Delivery worker").slice(0,80),
-        assignedAt:Date.now(), assignedBy:ac.name };
-      setItem("gm_sales_orders_v1", JSON.stringify(list));
-      logEvents(s, [{ type:"order", text:"Assigned " + o.id + " to " + wk.name }]);
-      return send(res, 200, { ok:true });
-    }, 4096);
+    return body(
+      req,
+      (err, b) => {
+        if (
+          err ||
+          !b ||
+          typeof b.orderId !== "string" ||
+          typeof b.workerId !== "string"
+        )
+          return send(res, 400, {
+            error: "Choose an order and delivery worker.",
+          });
+        const wk = (workerData().workers || []).find(
+          (x) => x && x.id === b.workerId,
+        );
+        if (
+          !wk ||
+          wk.active === false ||
+          empPanel(empRoleOf(wk.id)) !== "worker"
+        )
+          return send(res, 400, {
+            error: "Choose an active Delivery, Helper or Loading employee.",
+          });
+        const L = stored("gm_sales_orders_v1"),
+          list = Array.isArray(L) ? L : [];
+        const o = list.find((x) => x && x.id === b.orderId);
+        if (
+          !o ||
+          o.status !== "placed" ||
+          !o.stages ||
+          !o.stages.out ||
+          o.stages.delivered
+        )
+          return send(res, 409, {
+            error: "Move the order to Out for delivery before assigning it.",
+          });
+        if (o.deliveryResult)
+          return send(res, 409, {
+            error: "A completed delivery cannot be reassigned.",
+          });
+        if (o.deliveryAssignment && o.deliveryAssignment.workerId === wk.id)
+          return send(res, 200, { ok: true, alreadyAssigned: true });
+        o.deliveryAssignment = {
+          workerId: wk.id,
+          workerName: String(wk.name || "Delivery worker").slice(0, 80),
+          assignedAt: Date.now(),
+          assignedBy: ac.name,
+        };
+        setItem("gm_sales_orders_v1", JSON.stringify(list));
+        logEvents(s, [
+          { type: "order", text: "Assigned " + o.id + " to " + wk.name },
+        ]);
+        return send(res, 200, { ok: true });
+      },
+      4096,
+    );
   }
 
   // ---- Return inspection and supplier reconciliation (server-owned; never writable via generic KV) ----
   if (p === "/api/inventory/returns" && req.method === "GET") {
     const ac = acctOf(s);
     if (s.role !== "admin" || !(isFull(ac) || hasAny(ac, ["inventory"])))
-      return send(res, 403, { error:"Inventory permission required." });
+      return send(res, 403, { error: "Inventory permission required." });
     const returnData = stored("gm_inventory_returns_v1");
-    return send(res, 200, { ok:true, returns:Array.isArray(returnData) ? returnData : [] });
+    return send(res, 200, {
+      ok: true,
+      returns: Array.isArray(returnData) ? returnData : [],
+    });
   }
   if (p === "/api/inventory/returns/inspect" && req.method === "POST") {
     const ac = acctOf(s);
     if (s.role !== "admin" || !(isFull(ac) || hasAny(ac, ["inventory"])))
-      return send(res, 403, { error:"Inventory permission required." });
-    return body(req, (err, b) => {
-      if (err || !b || typeof b.returnId !== "string" || !Array.isArray(b.items))
-        return send(res, 400, { error:"Invalid return inspection." });
-      const returnData = stored("gm_inventory_returns_v1");
-      const returns = Array.isArray(returnData) ? returnData : [];
-      const ret = returns.find((x) => x && x.id === b.returnId);
-      if (!ret) return send(res, 404, { error:"Return record not found." });
-      if (ret.status === "closed" || ret.inspectedAt) return send(res, 409, { error:"This return has already been inspected." });
-      const productData = stored("gm_admin_products_v1");
-      const products = Array.isArray(productData) ? productData : [];
-      const submitted = new Map();
-      for (const row of b.items) {
-        if (!row || typeof row.productId !== "string" || submitted.has(row.productId))
-          return send(res, 400, { error:"Invalid or duplicate return item." });
-        submitted.set(row.productId, row);
-      }
-      if (submitted.size !== ret.items.length) return send(res, 400, { error:"Submit a decision for every returned item." });
-      const nextItems = [];
-      for (const item of ret.items) {
-        const row = submitted.get(item.productId), qty = Number(item.returnedQty);
-        const restock = row && Number(row.restockQty), company = row && Number(row.companyQty), damaged = row && Number(row.damagedQty);
-        if (!row || ![restock,company,damaged].every(Number.isFinite) || [restock,company,damaged].some((n) => n < 0) || Math.round((restock+company+damaged)*1000) !== Math.round(qty*1000))
-          return send(res, 400, { error:"Reusable, company-return and damaged quantities must add up exactly to the returned quantity." });
-        if (company > 0 && !String(row.companyName || "").trim())
-          return send(res, 400, { error:"Enter the company/supplier for items being returned." });
-        const product = products.find((x) => x && x.id === item.productId);
-        if (restock > 0 && (!product || product.track !== true || product.stock === "" || product.stock == null || !Number.isFinite(Number(product.stock))))
-          return send(res, 409, { error:"Stock tracking must be enabled with a valid stock value before approving reusable quantity for " + item.productName + "." });
-        nextItems.push({ ...item, restockQty:restock, companyQty:company, damagedQty:damaged,
-          companyName:String(row.companyName || "").trim().slice(0,120),
-          inspectionNote:String(row.inspectionNote || "").trim().slice(0,300),
-          companyStatus:company > 0 ? (item.companyStatus && item.companyStatus !== "not_applicable" ? item.companyStatus : "awaiting_dispatch") : "not_applicable" });
-      }
-      // All validation completes before any stock mutation; each return can be applied only once.
-      nextItems.forEach((item) => {
-        if (item.restockQty > 0) {
-          const product = products.find((x) => x && x.id === item.productId);
-          product.stock = Math.round((Number(product.stock) + item.restockQty) * 1000) / 1000;
+      return send(res, 403, { error: "Inventory permission required." });
+    return body(
+      req,
+      (err, b) => {
+        if (
+          err ||
+          !b ||
+          typeof b.returnId !== "string" ||
+          !Array.isArray(b.items)
+        )
+          return send(res, 400, { error: "Invalid return inspection." });
+        const returnData = stored("gm_inventory_returns_v1");
+        const returns = Array.isArray(returnData) ? returnData : [];
+        const ret = returns.find((x) => x && x.id === b.returnId);
+        if (!ret) return send(res, 404, { error: "Return record not found." });
+        if (ret.status === "closed" || ret.inspectedAt)
+          return send(res, 409, {
+            error: "This return has already been inspected.",
+          });
+        const productData = stored("gm_admin_products_v1");
+        const products = Array.isArray(productData) ? productData : [];
+        const submitted = new Map();
+        for (const row of b.items) {
+          if (
+            !row ||
+            typeof row.productId !== "string" ||
+            submitted.has(row.productId)
+          )
+            return send(res, 400, {
+              error: "Invalid or duplicate return item.",
+            });
+          submitted.set(row.productId, row);
         }
-      });
-      ret.items = nextItems; ret.inspectedAt = Date.now(); ret.inspectedBy = actorOf(s).name;
-      ret.status = nextItems.some((x) => x.companyQty > 0) ? "company_return_pending" : "closed";
-      setItem("gm_admin_products_v1", JSON.stringify(products));
-      setItem("gm_inventory_returns_v1", JSON.stringify(returns));
-      logEvents(s, [{ type:"inventory", text:"Inspected return " + ret.id + "; approved " + nextItems.reduce((n,x)=>n+x.restockQty,0) + " units to stock" }]);
-      return send(res, 200, { ok:true, return:ret });
-    }, 8192);
+        if (submitted.size !== ret.items.length)
+          return send(res, 400, {
+            error: "Submit a decision for every returned item.",
+          });
+        const nextItems = [];
+        for (const item of ret.items) {
+          const row = submitted.get(item.productId),
+            qty = Number(item.returnedQty);
+          const restock = row && Number(row.restockQty),
+            company = row && Number(row.companyQty),
+            damaged = row && Number(row.damagedQty);
+          if (
+            !row ||
+            ![restock, company, damaged].every(Number.isFinite) ||
+            [restock, company, damaged].some((n) => n < 0) ||
+            Math.round((restock + company + damaged) * 1000) !==
+              Math.round(qty * 1000)
+          )
+            return send(res, 400, {
+              error:
+                "Reusable, company-return and damaged quantities must add up exactly to the returned quantity.",
+            });
+          if (company > 0 && !String(row.companyName || "").trim())
+            return send(res, 400, {
+              error: "Enter the company/supplier for items being returned.",
+            });
+          const product = products.find((x) => x && x.id === item.productId);
+          if (
+            restock > 0 &&
+            (!product ||
+              product.track !== true ||
+              product.stock === "" ||
+              product.stock == null ||
+              !Number.isFinite(Number(product.stock)))
+          )
+            return send(res, 409, {
+              error:
+                "Stock tracking must be enabled with a valid stock value before approving reusable quantity for " +
+                item.productName +
+                ".",
+            });
+          nextItems.push({
+            ...item,
+            restockQty: restock,
+            companyQty: company,
+            damagedQty: damaged,
+            companyName: String(row.companyName || "")
+              .trim()
+              .slice(0, 120),
+            inspectionNote: String(row.inspectionNote || "")
+              .trim()
+              .slice(0, 300),
+            companyStatus:
+              company > 0
+                ? item.companyStatus && item.companyStatus !== "not_applicable"
+                  ? item.companyStatus
+                  : "awaiting_dispatch"
+                : "not_applicable",
+          });
+        }
+        // All validation completes before any stock mutation; each return can be applied only once.
+        nextItems.forEach((item) => {
+          if (item.restockQty > 0) {
+            const product = products.find((x) => x && x.id === item.productId);
+            product.stock =
+              Math.round((Number(product.stock) + item.restockQty) * 1000) /
+              1000;
+          }
+        });
+        ret.items = nextItems;
+        ret.inspectedAt = Date.now();
+        ret.inspectedBy = actorOf(s).name;
+        ret.status = nextItems.some((x) => x.companyQty > 0)
+          ? "company_return_pending"
+          : "closed";
+        setItem("gm_admin_products_v1", JSON.stringify(products));
+        setItem("gm_inventory_returns_v1", JSON.stringify(returns));
+        logEvents(s, [
+          {
+            type: "inventory",
+            text:
+              "Inspected return " +
+              ret.id +
+              "; approved " +
+              nextItems.reduce((n, x) => n + x.restockQty, 0) +
+              " units to stock",
+          },
+        ]);
+        return send(res, 200, { ok: true, return: ret });
+      },
+      8192,
+    );
   }
   if (p === "/api/inventory/returns/company" && req.method === "POST") {
     const ac = acctOf(s);
     if (s.role !== "admin" || !(isFull(ac) || hasAny(ac, ["inventory"])))
-      return send(res, 403, { error:"Inventory permission required." });
-    return body(req, (err, b) => {
-      if (err || !b || typeof b.returnId !== "string" || typeof b.productId !== "string")
-        return send(res, 400, { error:"Invalid company return update." });
-      const returnData = stored("gm_inventory_returns_v1");
-      const returns = Array.isArray(returnData) ? returnData : [];
-      const ret = returns.find((x) => x && x.id === b.returnId);
-      const item = ret && (ret.items || []).find((x) => x && x.productId === b.productId);
-      if (!item || !ret.inspectedAt || !(item.companyQty > 0)) return send(res, 409, { error:"Inspect and allocate a company-return quantity first." });
-      const allowed = ["awaiting_dispatch","dispatched","acknowledged","replacement_received","credit_note_issued","refund_received","rejected_by_company"];
-      if (!allowed.includes(b.companyStatus)) return send(res, 400, { error:"Unsupported company response." });
-      if (b.companyStatus === "dispatched" && !String(b.dispatchRef || "").trim())
-        return send(res, 400, { error:"Enter the dispatch reference before marking this return as dispatched." });
-      item.companyStatus = b.companyStatus;
-      if (b.companyStatus === "dispatched") { item.dispatchRef=String(b.dispatchRef || "").trim().slice(0,100); item.dispatchedAt=Date.now(); }
-      if (b.companyStatus === "acknowledged") {
-        item.acknowledgementRef=String(b.reference || "").trim().slice(0,100);
-        item.acknowledgedAt=Date.now();
-      }
-      if (["replacement_received","credit_note_issued","refund_received","rejected_by_company"].includes(b.companyStatus)) {
-        item.companyResponseRef=String(b.reference || "").trim().slice(0,100);
-        item.companyResponseNote=String(b.note || "").trim().slice(0,300);
-        item.companyResponseAt=Date.now();
-        if (["credit_note_issued","refund_received"].includes(b.companyStatus)) {
-          const amount=Number(b.amount);
-          if (!Number.isFinite(amount) || amount < 0) return send(res, 400, { error:"Enter a valid credit/refund amount." });
-          item.companyAmount=Math.round(amount*100)/100;
+      return send(res, 403, { error: "Inventory permission required." });
+    return body(
+      req,
+      (err, b) => {
+        if (
+          err ||
+          !b ||
+          typeof b.returnId !== "string" ||
+          typeof b.productId !== "string"
+        )
+          return send(res, 400, { error: "Invalid company return update." });
+        const returnData = stored("gm_inventory_returns_v1");
+        const returns = Array.isArray(returnData) ? returnData : [];
+        const ret = returns.find((x) => x && x.id === b.returnId);
+        const item =
+          ret &&
+          (ret.items || []).find((x) => x && x.productId === b.productId);
+        if (!item || !ret.inspectedAt || !(item.companyQty > 0))
+          return send(res, 409, {
+            error: "Inspect and allocate a company-return quantity first.",
+          });
+        const allowed = [
+          "awaiting_dispatch",
+          "dispatched",
+          "acknowledged",
+          "replacement_received",
+          "credit_note_issued",
+          "refund_received",
+          "rejected_by_company",
+        ];
+        if (!allowed.includes(b.companyStatus))
+          return send(res, 400, { error: "Unsupported company response." });
+        if (
+          b.companyStatus === "dispatched" &&
+          !String(b.dispatchRef || "").trim()
+        )
+          return send(res, 400, {
+            error:
+              "Enter the dispatch reference before marking this return as dispatched.",
+          });
+        item.companyStatus = b.companyStatus;
+        if (b.companyStatus === "dispatched") {
+          item.dispatchRef = String(b.dispatchRef || "")
+            .trim()
+            .slice(0, 100);
+          item.dispatchedAt = Date.now();
         }
-        if (b.companyStatus === "replacement_received") {
-          const received=Number(b.receivedQty);
-          if (!Number.isFinite(received) || received <= 0 || received > item.companyQty) return send(res, 400, { error:"Enter a valid replacement quantity. Replacement stock must be received and inspected separately." });
-          item.replacementReceivedQty=received;
-          item.replacementStockPending=true; // never add stock from a supplier response alone
+        if (b.companyStatus === "acknowledged") {
+          item.acknowledgementRef = String(b.reference || "")
+            .trim()
+            .slice(0, 100);
+          item.acknowledgedAt = Date.now();
         }
-      }
-      ret.status = (ret.items || []).some((x) => x.companyQty > 0 && ["awaiting_dispatch","dispatched","acknowledged"].includes(x.companyStatus)) ? "company_return_pending" : "reconciliation_complete";
-      setItem("gm_inventory_returns_v1", JSON.stringify(returns));
-      logEvents(s, [{ type:"inventory", text:"Updated company reconciliation for " + ret.id + " / " + item.productName }]);
-      return send(res, 200, { ok:true, item });
-    }, 4096);
+        if (
+          [
+            "replacement_received",
+            "credit_note_issued",
+            "refund_received",
+            "rejected_by_company",
+          ].includes(b.companyStatus)
+        ) {
+          item.companyResponseRef = String(b.reference || "")
+            .trim()
+            .slice(0, 100);
+          item.companyResponseNote = String(b.note || "")
+            .trim()
+            .slice(0, 300);
+          item.companyResponseAt = Date.now();
+          if (
+            ["credit_note_issued", "refund_received"].includes(b.companyStatus)
+          ) {
+            const amount = Number(b.amount);
+            if (!Number.isFinite(amount) || amount < 0)
+              return send(res, 400, {
+                error: "Enter a valid credit/refund amount.",
+              });
+            item.companyAmount = Math.round(amount * 100) / 100;
+          }
+          if (b.companyStatus === "replacement_received") {
+            const received = Number(b.receivedQty);
+            if (
+              !Number.isFinite(received) ||
+              received <= 0 ||
+              received > item.companyQty
+            )
+              return send(res, 400, {
+                error:
+                  "Enter a valid replacement quantity. Replacement stock must be received and inspected separately.",
+              });
+            item.replacementReceivedQty = received;
+            item.replacementStockPending = true; // never add stock from a supplier response alone
+          }
+        }
+        ret.status = (ret.items || []).some(
+          (x) =>
+            x.companyQty > 0 &&
+            ["awaiting_dispatch", "dispatched", "acknowledged"].includes(
+              x.companyStatus,
+            ),
+        )
+          ? "company_return_pending"
+          : "reconciliation_complete";
+        setItem("gm_inventory_returns_v1", JSON.stringify(returns));
+        logEvents(s, [
+          {
+            type: "inventory",
+            text:
+              "Updated company reconciliation for " +
+              ret.id +
+              " / " +
+              item.productName,
+          },
+        ]);
+        return send(res, 200, { ok: true, item });
+      },
+      4096,
+    );
   }
 
-  if (p === "/api/inventory/returns/replacement-inspect" && req.method === "POST") {
+  if (
+    p === "/api/inventory/returns/replacement-inspect" &&
+    req.method === "POST"
+  ) {
     const ac = acctOf(s);
     if (s.role !== "admin" || !(isFull(ac) || hasAny(ac, ["inventory"])))
-      return send(res, 403, { error:"Inventory permission required." });
-    return body(req, (err, b) => {
-      if (err || !b || typeof b.returnId !== "string" || typeof b.productId !== "string")
-        return send(res, 400, { error:"Invalid replacement inspection." });
-      const returnData = stored("gm_inventory_returns_v1");
-      const returns = Array.isArray(returnData) ? returnData : [];
-      const ret = returns.find((x) => x && x.id === b.returnId);
-      const item = ret && (ret.items || []).find((x) => x && x.productId === b.productId);
-      if (!item || !item.replacementStockPending || !(item.replacementReceivedQty > 0))
-        return send(res, 409, { error:"Record a supplier replacement receipt before inspecting it." });
-      if (item.replacementInspectedAt) return send(res, 409, { error:"This replacement has already been inspected." });
-      const accepted = Number(b.acceptedQty), damaged = Number(b.damagedQty);
-      if (![accepted,damaged].every(Number.isFinite) || accepted < 0 || damaged < 0 || Math.round((accepted+damaged)*1000) !== Math.round(Number(item.replacementReceivedQty)*1000))
-        return send(res, 400, { error:"Accepted and damaged quantities must total the replacement quantity received." });
-      const productData = stored("gm_admin_products_v1");
-      const products = Array.isArray(productData) ? productData : [];
-      const product = products.find((x) => x && x.id === item.productId);
-      if (accepted > 0 && (!product || product.track !== true || product.stock === "" || product.stock == null || !Number.isFinite(Number(product.stock))))
-        return send(res, 409, { error:"Stock tracking must be enabled with a valid stock value before accepting replacement stock." });
-      if (accepted > 0) product.stock = Math.round((Number(product.stock) + accepted) * 1000) / 1000;
-      item.replacementStockAcceptedQty = accepted;
-      item.replacementDamagedQty = damaged;
-      item.replacementStockPending = false;
-      item.replacementInspectedAt = Date.now();
-      item.replacementInspectedBy = actorOf(s).name;
-      setItem("gm_admin_products_v1", JSON.stringify(products));
-      setItem("gm_inventory_returns_v1", JSON.stringify(returns));
-      logEvents(s, [{ type:"inventory", text:"Inspected supplier replacement for " + ret.id + "; accepted " + accepted + " units" }]);
-      return send(res, 200, { ok:true, item });
-    }, 4096);
+      return send(res, 403, { error: "Inventory permission required." });
+    return body(
+      req,
+      (err, b) => {
+        if (
+          err ||
+          !b ||
+          typeof b.returnId !== "string" ||
+          typeof b.productId !== "string"
+        )
+          return send(res, 400, { error: "Invalid replacement inspection." });
+        const returnData = stored("gm_inventory_returns_v1");
+        const returns = Array.isArray(returnData) ? returnData : [];
+        const ret = returns.find((x) => x && x.id === b.returnId);
+        const item =
+          ret &&
+          (ret.items || []).find((x) => x && x.productId === b.productId);
+        if (
+          !item ||
+          !item.replacementStockPending ||
+          !(item.replacementReceivedQty > 0)
+        )
+          return send(res, 409, {
+            error:
+              "Record a supplier replacement receipt before inspecting it.",
+          });
+        if (item.replacementInspectedAt)
+          return send(res, 409, {
+            error: "This replacement has already been inspected.",
+          });
+        const accepted = Number(b.acceptedQty),
+          damaged = Number(b.damagedQty);
+        if (
+          ![accepted, damaged].every(Number.isFinite) ||
+          accepted < 0 ||
+          damaged < 0 ||
+          Math.round((accepted + damaged) * 1000) !==
+            Math.round(Number(item.replacementReceivedQty) * 1000)
+        )
+          return send(res, 400, {
+            error:
+              "Accepted and damaged quantities must total the replacement quantity received.",
+          });
+        const productData = stored("gm_admin_products_v1");
+        const products = Array.isArray(productData) ? productData : [];
+        const product = products.find((x) => x && x.id === item.productId);
+        if (
+          accepted > 0 &&
+          (!product ||
+            product.track !== true ||
+            product.stock === "" ||
+            product.stock == null ||
+            !Number.isFinite(Number(product.stock)))
+        )
+          return send(res, 409, {
+            error:
+              "Stock tracking must be enabled with a valid stock value before accepting replacement stock.",
+          });
+        if (accepted > 0)
+          product.stock =
+            Math.round((Number(product.stock) + accepted) * 1000) / 1000;
+        item.replacementStockAcceptedQty = accepted;
+        item.replacementDamagedQty = damaged;
+        item.replacementStockPending = false;
+        item.replacementInspectedAt = Date.now();
+        item.replacementInspectedBy = actorOf(s).name;
+        setItem("gm_admin_products_v1", JSON.stringify(products));
+        setItem("gm_inventory_returns_v1", JSON.stringify(returns));
+        logEvents(s, [
+          {
+            type: "inventory",
+            text:
+              "Inspected supplier replacement for " +
+              ret.id +
+              "; accepted " +
+              accepted +
+              " units",
+          },
+        ]);
+        return send(res, 200, { ok: true, item });
+      },
+      4096,
+    );
   }
 
   if (p === "/api/keepalive" && req.method === "POST")
@@ -3063,7 +3726,9 @@ function api(req, res, url) {
   if (p === "/api/salesadmin/delete" && req.method === "POST") {
     const ac = acctOf(s);
     if (s.role !== "admin" || s.emp || !isSuper(ac))
-      return send(res, 403, { error: "Only the Super Admin can delete orders." });
+      return send(res, 403, {
+        error: "Only the Super Admin can delete orders.",
+      });
     return body(
       req,
       (err, b) => {
@@ -3534,7 +4199,9 @@ function api(req, res, url) {
             return send(res, 400, { error: "Enter the check-in time." });
           const set = stored("gm_admin_settings_v1") || {},
             late = clockMins(
-              /^\d{1,2}:\d{2}$/.test(set.lateAfter || "") ? set.lateAfter : "08:30",
+              /^\d{1,2}:\d{2}$/.test(set.lateAfter || "")
+                ? set.lateAfter
+                : "08:30",
             );
           e = rec.attendanceLog[mk][dk] = {
             day: +date.slice(8),
@@ -3560,11 +4227,7 @@ function api(req, res, url) {
               : Number(e.startKm);
         // end km: the new one if given, else the one already saved on this day
         const ek =
-          endKm > 0
-            ? endKm
-            : Number(e.endKm) > 0
-              ? Number(e.endKm)
-              : null;
+          endKm > 0 ? endKm : Number(e.endKm) > 0 ? Number(e.endKm) : null;
         if (sk != null && ek != null && ek < sk)
           return send(res, 400, {
             error:
@@ -3608,7 +4271,14 @@ function api(req, res, url) {
             type: "employee",
             text:
               (endKm > 0
-                ? "Closed " + w.name + "'s day " + date + " from the office: " + e.outTime + ", end km " + endKm
+                ? "Closed " +
+                  w.name +
+                  "'s day " +
+                  date +
+                  " from the office: " +
+                  e.outTime +
+                  ", end km " +
+                  endKm
                 : "Changed " + w.name + "'s start km on " + date) +
               (stKm > 0 ? (endKm > 0 ? ", start km " : ": ") + stKm : ""),
           },
@@ -3715,9 +4385,7 @@ function api(req, res, url) {
       "Content-Disposition":
         'attachment; filename="gm-crm-backup-' + ist + '.json"',
     });
-    return res.end(
-      JSON.stringify(BackupIntegrity.createBackup(db), null, 2),
-    );
+    return res.end(JSON.stringify(BackupIntegrity.createBackup(db), null, 2));
   }
   // Import backup (Super Admin only). POST /api/import?preview=1 only checks the file; without it the data is replaced.
   // Logins (auth.json), sessions and the admin account list are never touched, so nobody is locked out.
@@ -3743,7 +4411,9 @@ function api(req, res, url) {
         if (b.app && b.app !== "GM-CRM backup")
           return send(res, 400, { error: "This file is not a GM-CRM backup." });
         if (b.formatVersion != null && b.formatVersion !== 1)
-          return send(res, 400, { error: "This backup format version is not supported." });
+          return send(res, 400, {
+            error: "This backup format version is not supported.",
+          });
         if (!b.items || typeof b.items !== "object" || Array.isArray(b.items))
           return send(res, 400, {
             error: "This file is not a GM-CRM backup (no data found).",
@@ -3821,7 +4491,9 @@ function api(req, res, url) {
           ok: true,
           records: keys.length,
           exportedAt: b.exportedAt || null,
-          integrity: integrity.legacy ? "legacy-unchecksummed" : "verified-sha256",
+          integrity: integrity.legacy
+            ? "legacy-unchecksummed"
+            : "verified-sha256",
           current: Object.keys(db.items).filter(live).length,
           removed: Object.keys(db.items).filter(
             (k) => live(k) && !b.items[k] && KEEP.indexOf(k) < 0,
@@ -3845,18 +4517,34 @@ function api(req, res, url) {
           // 1. safety copy of what is there now
           const stamp = new Date().toISOString().replace(/[:.]/g, "-"),
             name = "backups/before-import-" + stamp + ".json",
-            snap = Buffer.from(JSON.stringify(BackupIntegrity.createBackup(db)));
+            snap = Buffer.from(
+              JSON.stringify(BackupIntegrity.createBackup(db)),
+            );
           if (CLOUD) {
             await Files.put(name, snap, "application/json");
             const saved = await Files.get(name);
-            if (!saved || !saved.equals(snap) || !BackupIntegrity.verifyBackup(JSON.parse(saved.toString("utf8"))).ok)
-              throw new Error("Safety backup verification failed; restore was not started");
+            if (
+              !saved ||
+              !saved.equals(snap) ||
+              !BackupIntegrity.verifyBackup(JSON.parse(saved.toString("utf8")))
+                .ok
+            )
+              throw new Error(
+                "Safety backup verification failed; restore was not started",
+              );
           } else {
-            const target = path.join(DATA, name), temp = target + ".tmp";
+            const target = path.join(DATA, name),
+              temp = target + ".tmp";
             fs.writeFileSync(temp, snap);
             const saved = fs.readFileSync(temp);
-            if (!saved.equals(snap) || !BackupIntegrity.verifyBackup(JSON.parse(saved.toString("utf8"))).ok)
-              throw new Error("Safety backup verification failed; restore was not started");
+            if (
+              !saved.equals(snap) ||
+              !BackupIntegrity.verifyBackup(JSON.parse(saved.toString("utf8")))
+                .ok
+            )
+              throw new Error(
+                "Safety backup verification failed; restore was not started",
+              );
             fs.renameSync(temp, target);
           }
           // 2. replace the data (account list kept as it is now)
@@ -3953,7 +4641,8 @@ function api(req, res, url) {
             return send(res, 200, { ok: true, rev: currentRev }); // safe idempotent retry
           if (!Number.isFinite(b.base) || b.base !== currentRev)
             return send(res, 409, {
-              error: "This record changed or its revision is missing. Reload the page and try again.",
+              error:
+                "This record changed or its revision is missing. Reload the page and try again.",
               code: "stale",
               rev: currentRev,
             });
@@ -4060,7 +4749,8 @@ function api(req, res, url) {
             return send(res, 200, { ok: true, rev: currentRev });
           if (!b || !Number.isFinite(b.base) || b.base !== currentRev)
             return send(res, 409, {
-              error: "This record changed or its revision is missing. Reload the page and try again.",
+              error:
+                "This record changed or its revision is missing. Reload the page and try again.",
               code: "stale",
               rev: currentRev,
             });
@@ -4068,7 +4758,8 @@ function api(req, res, url) {
         setItem(key, null);
         return send(res, 200, { ok: true, rev: db.rev });
       };
-      if (PROTECTED.has(key)) return body(req, (err, b) => remove(err ? null : b), 4096);
+      if (PROTECTED.has(key))
+        return body(req, (err, b) => remove(err ? null : b), 4096);
       return remove(null);
     }
   }
@@ -4099,11 +4790,22 @@ function api(req, res, url) {
   const validFileSignature = (buf, mime) => {
     if (!Buffer.isBuffer(buf)) return false;
     if (mime === "image/jpeg")
-      return buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+      return (
+        buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff
+      );
     if (mime === "image/png")
-      return buf.length >= 8 && buf.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+      return (
+        buf.length >= 8 &&
+        buf
+          .subarray(0, 8)
+          .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+      );
     if (mime === "image/webp")
-      return buf.length >= 12 && buf.toString("ascii", 0, 4) === "RIFF" && buf.toString("ascii", 8, 12) === "WEBP";
+      return (
+        buf.length >= 12 &&
+        buf.toString("ascii", 0, 4) === "RIFF" &&
+        buf.toString("ascii", 8, 12) === "WEBP"
+      );
     if (mime === "application/pdf")
       return buf.length >= 5 && buf.toString("ascii", 0, 5) === "%PDF-";
     return false;
@@ -4113,7 +4815,8 @@ function api(req, res, url) {
       b &&
       typeof b.data === "string" &&
       /^data:([a-z]+\/[a-z]+);base64,([A-Za-z0-9+/=]+)$/.exec(b.data);
-    if (!m || !VEXT[m[1]] || (!pdfOk && m[1] === "application/pdf")) return null;
+    if (!m || !VEXT[m[1]] || (!pdfOk && m[1] === "application/pdf"))
+      return null;
     // Reject oversized encoded data before allocating its decoded Buffer.
     if (m[2].length > Math.ceil((VMAX + 2) / 3) * 4 + 8) return null;
     const buf = Buffer.from(m[2], "base64");
@@ -4184,13 +4887,18 @@ function api(req, res, url) {
     if (req.method === "GET" && s.role === "sales") {
       // Sales sessions may view product images but cannot upload or delete them.
     } else {
-      if (s.role !== "admin")
-        return send(res, 403, { error: "Not allowed" });
+      if (s.role !== "admin") return send(res, 403, { error: "Not allowed" });
       const productAccess = acctOf(s);
       if (req.method === "GET") {
-        if (!isFull(productAccess) && !hasAny(productAccess, ["sales", "billing", "inventory"]))
+        if (
+          !isFull(productAccess) &&
+          !hasAny(productAccess, ["sales", "billing", "inventory"])
+        )
           return send(res, 403, { error: "Not allowed" });
-      } else if (!isFull(productAccess) && !hasAny(productAccess, ["inventory"])) {
+      } else if (
+        !isFull(productAccess) &&
+        !hasAny(productAccess, ["inventory"])
+      ) {
         return send(res, 403, { error: "Not allowed" });
       }
     }
@@ -4251,10 +4959,12 @@ function api(req, res, url) {
       .replace(/[^A-Za-z0-9_-]/g, "")
       .slice(0, 60);
     if (!code) return send(res, 400, { error: "bad code" });
-    if (s.role !== "admin")
-      return send(res, 403, { error: "Not allowed" });
+    if (s.role !== "admin") return send(res, 403, { error: "Not allowed" });
     const customerPhotoAccess = acctOf(s);
-    if (!isFull(customerPhotoAccess) && !hasAny(customerPhotoAccess, ["sales", "billing"]))
+    if (
+      !isFull(customerPhotoAccess) &&
+      !hasAny(customerPhotoAccess, ["sales", "billing"])
+    )
       return send(res, 403, { error: "Not allowed" });
     const photoFiles = ["jpg", "png", "webp"].map((ext) => ({
       path: "c/" + code + "." + ext,
@@ -4262,7 +4972,11 @@ function api(req, res, url) {
     }));
     const existing = photoFiles
       .filter((f) => Files.has(f.path))
-      .sort((a, b) => ((Files.meta(b.path) || {}).at || 0) - ((Files.meta(a.path) || {}).at || 0));
+      .sort(
+        (a, b) =>
+          ((Files.meta(b.path) || {}).at || 0) -
+          ((Files.meta(a.path) || {}).at || 0),
+      );
     if (req.method === "GET") {
       const f = existing[0];
       if (!f) {
@@ -4275,14 +4989,23 @@ function api(req, res, url) {
       return body(req, (err, b) => {
         const d = !err && decode(b, false);
         if (!d)
-          return send(res, 400, { error: "send a valid JPG, PNG or WEBP picture" });
+          return send(res, 400, {
+            error: "send a valid JPG, PNG or WEBP picture",
+          });
         if (d.buf.length > 3 * 1024 * 1024)
           return send(res, 400, { error: "picture is too large" });
         if (!existing.length && Files.count() >= MAX_FILES)
           return send(res, 507, { error: "Storage limit reached" });
-        const ext = VEXT[d.mime], fp = "c/" + code + "." + ext;
+        const ext = VEXT[d.mime],
+          fp = "c/" + code + "." + ext;
         Files.put(fp, d.buf, d.mime)
-          .then(() => Promise.all(existing.filter((f) => f.path !== fp).map((f) => Files.del(f.path))))
+          .then(() =>
+            Promise.all(
+              existing
+                .filter((f) => f.path !== fp)
+                .map((f) => Files.del(f.path)),
+            ),
+          )
           .then(() => send(res, 200, { ok: true, v: Date.now() }))
           .catch(fail);
       });
@@ -4539,7 +5262,8 @@ async function boot() {
   moveStaffToEmployees();
   try {
     const fixed = resyncPeopleNames();
-    if (fixed) console.log("Names refreshed to match current employee names:", fixed);
+    if (fixed)
+      console.log("Names refreshed to match current employee names:", fixed);
   } catch (e) {
     console.error("Name refresh skipped:", e && e.message);
   }
@@ -4558,11 +5282,14 @@ async function boot() {
   http
     .createServer((req, res) => {
       res.setHeader("X-Content-Type-Options", "nosniff");
-      res.setHeader("X-Frame-Options", "DENY");
+      res.setHeader("X-Frame-Options", "SAMEORIGIN"); // only this site may show its own pages inside a popup
       res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
       // Safe CSP directives that do not restrict the app's existing inline scripts,
       // styles, map providers or image sources during this compatibility-focused phase.
-      res.setHeader("Content-Security-Policy", "base-uri 'self'; object-src 'none'; frame-ancestors 'none'");
+      res.setHeader(
+        "Content-Security-Policy",
+        "base-uri 'self'; object-src 'none'; frame-ancestors 'self'",
+      );
       if (isHttps(req))
         res.setHeader("Strict-Transport-Security", "max-age=31536000");
       let url;

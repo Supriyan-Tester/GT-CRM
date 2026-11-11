@@ -283,6 +283,59 @@
           '</tbody></table></div><p class="mu" style="margin-top:10px">Arrived = GPS found the employee at the shop, or they tapped “I’ve reached”. Left = GPS saw them leave, or they tapped “I’ve left”. If neither happened, the time after delivery is shown as not noted.</p></div>'
         );
       }
+      // Money collected from customers on the chosen day (cash, UPI, bank), read from the Accounts collections list.
+      var COLL = { key: "", at: 0, data: null, busy: false };
+      function collFetch(d, w) {
+        var key = d + "|" + w;
+        if (COLL.busy) return;
+        if (COLL.key === key && Date.now() - COLL.at < 30000) return;
+        COLL.busy = true;
+        var sums = { approved: 0, waiting: 0, n: 0 },
+          q = "from=" + d + "&to=" + d + (w !== "all" ? "&collector=" + encodeURIComponent(w) : "");
+        function page(i) {
+          return fetch("/api/accounts/collections?" + q + "&page=" + i, { credentials: "same-origin", cache: "no-store" })
+            .then(function (r) {
+              if (!r.ok) throw new Error("no access");
+              return r.json();
+            })
+            .then(function (j) {
+              (j.rows || []).forEach(function (x) {
+                var a = Number(x.total_amount) || 0;
+                if (x.status === "approved") {
+                  sums.approved += a;
+                  sums.n++;
+                } else if (x.status === "pending_approval") {
+                  sums.waiting += a;
+                  sums.n++;
+                }
+              });
+              if (i * (j.pageSize || 25) < (j.total || 0) && i < 40) return page(i + 1);
+            });
+        }
+        page(1)
+          .then(function () {
+            COLL = { key: key, at: Date.now(), data: sums, busy: false };
+          })
+          .catch(function () {
+            COLL = { key: key, at: Date.now(), data: "none", busy: false };
+          })
+          .then(function () {
+            draw();
+          });
+      }
+      function collTile() {
+        collFetch(date, who);
+        var d = COLL.key === date + "|" + who ? COLL.data : null;
+        if (d === "none") return "";
+        if (!d) return GA.tile("s-s", "coin", "...", "Collected");
+        return GA.tile(
+          "s-s",
+          "coin",
+          R(d.approved + d.waiting),
+          "Collected",
+          R(d.approved) + " approved \u00b7 " + R(d.waiting) + " waiting",
+        );
+      }
       function draw() {
         var nice = new Date(date + "T00:00:00").toLocaleDateString("en-IN", {
             weekday: "long",
@@ -441,6 +494,7 @@
           ) +
           GA.tile("s-i", "map", c("pending").length, "Still pending") +
           GA.tile("s-p", "coin", R(billed), "Bills delivered") +
+          collTile() +
           GA.tile("s-a", "trash", R(ded), "Return deductions") +
           GA.tile("s-i", "truck", km + " km", "Km driven") +
           "</div>" +

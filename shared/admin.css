@@ -526,20 +526,53 @@
   position: relative;
   display: inline-block;
 }
+/* Count badge: green with a soft ring, capped at 99+ */
+.a-bellwrap .a-ib {
+  overflow: visible;
+}
 .a-dot {
   position: absolute;
-  top: -6px;
-  right: -6px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  border-radius: 9px;
-  background: var(--danger);
+  top: -11px;
+  right: -11px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: #1d9e75;
   color: #fff;
   font: 700 11px/1 inherit;
   font-style: normal;
+  letter-spacing: 0;
+  white-space: nowrap;
   display: none;
   place-items: center;
+  pointer-events: none;
+  z-index: 1;
+}
+.a-dot.new::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 999px;
+  background: rgba(29, 158, 117, 0.45);
+  z-index: -1;
+  animation: a-ring 2.2s ease-out infinite;
+}
+@keyframes a-ring {
+  0% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .a-dot.new::after {
+    animation: none;
+  }
 }
 .a-pop {
   display: none;
@@ -622,7 +655,7 @@
 }
 .a-nb {
   margin-left: auto;
-  background: var(--danger);
+  background: #1d9e75;
   color: #fff;
   font-style: normal;
   font-size: 11px;
@@ -2711,4 +2744,650 @@ html.fx-theming *::after {
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+/* Menu group (Cash & Accounts): title link, small arrow, and the pages under it */
+.a-grp {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: none;
+}
+.a-grp > a.grp-on {
+  color: var(--primary);
+}
+.a-grp-t {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 28px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+/* The arrow is part of the menu row: hovering the row or the arrow lights up the whole row, no separate box */
+.a-grp-t:hover {
+  background: none;
+  color: var(--primary);
+}
+.a-grp:hover > a:not(.grp-on),
+.a-grp > a.grp-on {
+  background: var(--t-primary);
+}
+.a-grp:hover > a {
+  color: var(--primary);
+}
+.a-grp-t .icon {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.15s;
+}
+.a-grp.open .a-grp-t .icon {
+  transform: rotate(180deg);
+}
+.a-subnav {
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 4px 22px;
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+}
+.a-grp.open .a-subnav {
+  display: flex;
+}
+.a-subnav a {
+  font-size: 13.5px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.a-subnav a .icon {
+  width: 17px;
+  height: 17px;
+}
+.a-wrap.col .a-subnav,
+.a-wrap.col .a-grp-t {
+  display: none;
+}
+/* Mobile header: keep the page title on one line by compacting the controls */
+@media (max-width: 640px) {
+  .a-top {
+    gap: 6px;
+  }
+  .a-top h1 {
+    font-size: 17px;
+    min-width: 0;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .a-top .a-ib {
+    width: 36px;
+    height: 36px;
+  }
+  .a-top .a-uchip {
+    padding: 0;
+    min-width: 0;
+    gap: 0;
+  }
+  .a-top #themeToggle.gt-switch {
+    margin-left: 0;
+    padding: 3px;
+  }
+  .a-top #themeToggle.gt-switch::before {
+    top: 3px;
+    bottom: 3px;
+    left: 3px;
+    width: calc(50% - 3px);
+  }
+  .a-top #themeToggle.gt-switch button {
+    width: 28px;
+    height: 24px;
+  }
+  .a-top #themeToggle.gt-switch svg {
+    width: 14px;
+    height: 14px;
+  }
+  .a-top .a-bk ~ h1 {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+}
+/* ---- Stat tiles, one size for every admin page (overrides the shared tile style above) ---- */
+.a-main
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  ) {
+  padding: 18px 20px;
+  min-height: 92px;
+  gap: 14px;
+}
+.a-main
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  )
+  b {
+  font-size: 28px;
+  letter-spacing: -0.02em;
+}
+.a-main
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  )
+  > div
+  > span {
+  font-size: 13.5px;
+}
+@media (max-width: 640px) {
+  .a-main
+    :is(
+      .a-stat,
+      .dp-stat,
+      .wk-tile,
+      .at-tile,
+      .vx-tile,
+      .pr-tile,
+      .gtc-stat,
+      .us-tile,
+      .sa-t,
+      .om-kc
+    ) {
+    padding: 14px;
+    min-height: 80px;
+    gap: 10px;
+  }
+  .a-main
+    :is(
+      .a-stat,
+      .dp-stat,
+      .wk-tile,
+      .at-tile,
+      .vx-tile,
+      .pr-tile,
+      .gtc-stat,
+      .us-tile,
+      .sa-t,
+      .om-kc
+    )
+    b {
+    font-size: 24px;
+  }
+}
+/* ---- Stat tiles, one size for every admin page (overrides the shared tile style above) ---- */
+.a-main
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  ) {
+  padding: 18px 20px;
+  min-height: 92px;
+  gap: 14px;
+}
+.a-main
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  )
+  b {
+  font-size: 28px;
+  letter-spacing: -0.02em;
+}
+.a-main
+  :is(
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  )
+  > div
+  > span {
+  font-size: 13.5px;
+}
+@media (max-width: 640px) {
+  .a-main
+    :is(
+      .a-stat,
+      .dp-stat,
+      .wk-tile,
+      .at-tile,
+      .vx-tile,
+      .pr-tile,
+      .gtc-stat,
+      .us-tile,
+      .sa-t,
+      .om-kc
+    ) {
+    padding: 14px;
+    min-height: 80px;
+    gap: 10px;
+  }
+  .a-main
+    :is(
+      .a-stat,
+      .dp-stat,
+      .wk-tile,
+      .at-tile,
+      .vx-tile,
+      .pr-tile,
+      .gtc-stat,
+      .us-tile,
+      .sa-t,
+      .om-kc
+    )
+    b {
+    font-size: 24px;
+  }
+}
+
+/* ---- Cards and panels: one corner radius and one title size on every admin page ---- */
+.a-main
+  :is(
+    .card,
+    .wk-card,
+    .vx-panel,
+    .us-panel,
+    .dp-panel,
+    .dp-card,
+    .pr-panel,
+    .at-card,
+    .rt-main,
+    .rt-head,
+    .gtc-toolbar,
+    .a-stat,
+    .dp-stat,
+    .wk-tile,
+    .at-tile,
+    .vx-tile,
+    .pr-tile,
+    .gtc-stat,
+    .us-tile,
+    .sa-t,
+    .om-kc
+  ) {
+  border-radius: 16px;
+}
+.a-main :is(.wk-card, .vx-panel, .us-panel, .dp-panel, .pr-panel, .at-card) h3,
+.a-main .vx-ph2 h3,
+.a-main .us-head h2,
+.a-main .us-head-in h2 {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+/* Empty save-status line should not take space */
+.rt-sync:empty { display: none; }
+
+@media (max-width: 640px) {
+  .a-main .a-stats.rt-stats,
+  .a-main .a-stats.rt-stats:has(> :nth-child(5):last-child),
+  .a-main .a-stats.rt-stats:has(> :nth-child(6):last-child) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .a-main .a-stats.rt-stats > * { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .a-main .a-stats.rt-stats:has(> :nth-child(5):last-child) > :last-child { grid-column: 1 / -1; }
+}
+/* ---- Routes: Area tile, mobile tiles, empty status gap ---- */
+/* Long area name (single route) wraps to 2 lines at a smaller size; plain numbers keep the tile size */
+.a-main .a-stats.rt-stats .rt-aname {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 18px;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+/* ---- Daily summary: filters, tiles, empty states ---- */
+.a-main .a-empty {
+  padding: 28px 12px;
+}
+.a-bar:has(#dt) {
+  gap: 10px 12px !important;
+  align-items: center !important;
+}
+.a-bar:has(#dt) label.mu {
+  font-size: 13px;
+  font-weight: 600;
+}
+.a-bar:has(#dt) label[for="wk"] {
+  margin-left: 12px;
+}
+@media (max-width: 640px) {
+  /* empty-state row must not print a hidden column name */
+  .a-table td[colspan][data-label]::before {
+    display: none;
+  }
+  .a-main .a-stats {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .a-main .a-stats > * {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .a-bar:has(#dt) {
+    display: grid !important;
+    grid-template-columns: 160px minmax(0, 1fr);
+    gap: 6px 10px !important;
+  }
+  .a-bar:has(#dt) > label[for="dt"] {
+    order: 1;
+  }
+  .a-bar:has(#dt) > label[for="wk"] {
+    order: 2;
+    margin-left: 0;
+  }
+  .a-bar:has(#dt) > .field:has(#dt) {
+    order: 3;
+    width: 100% !important;
+  }
+  .a-bar:has(#dt) > .field:has(#wk) {
+    order: 4;
+    width: 100% !important;
+  }
+  .a-top .a-acts > .btn:only-child {
+    flex: 1 1 100%;
+  }
+}
+@media (max-width: 420px) {
+  /* six tiles: two per row instead of one long column */
+  .a-main .a-stats:has(> :nth-child(6):last-child) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---- Routes: Area tile, mobile tiles, empty status gap ---- */
+/* Long area name (single route) wraps to 2 lines at a smaller size; plain numbers keep the tile size */
+.a-main .a-stats.rt-stats .rt-aname {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 18px;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+/* Empty save-status line should not take space */
+.rt-sync:empty { display: none; }
+
+@media (max-width: 640px) {
+  .a-main .a-stats.rt-stats,
+  .a-main .a-stats.rt-stats:has(> :nth-child(5):last-child),
+  .a-main .a-stats.rt-stats:has(> :nth-child(6):last-child) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .a-main .a-stats.rt-stats > * { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .a-main .a-stats.rt-stats:has(> :nth-child(5):last-child) > :last-child { grid-column: 1 / -1; }
+}
+
+/* Routes list on mobile: flat rows (no box inside the card), room for the shop name */
+@media (max-width: 760px) {
+  .rt-screen .rt-list { border: 0; border-radius: 0; background: transparent; }
+  .rt-screen .rt-row,
+  .rt-screen .rt-list.all .rt-row {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) 34px 36px;
+    grid-template-areas: "n s g a" ". m m m";
+    align-items: start;
+    gap: 2px 8px;
+    padding: 12px 0;
+    background: transparent;
+  }
+  .rt-screen .rt-row:hover { background: var(--t-primary); }
+  .rt-screen .rt-c-n { grid-area: n; padding-top: 2px; }
+  .rt-screen .rt-c-s { grid-area: s; padding: 0; }
+  .rt-screen .rt-c-g { grid-area: g; }
+  .rt-screen .rt-c-a { grid-area: a; }
+  .rt-screen .rt-meta {
+    grid-area: m;
+    padding: 4px 0 0;
+    gap: 6px 12px;
+  }
+  .rt-screen .rt-c-p, .rt-screen .rt-c-m, .rt-screen .rt-c-r { white-space: nowrap; }
+  .rt-screen .rt-c-r { flex: 1 1 calc(100% - 100px); min-width: 0; }
+  .rt-screen .rt-grip, .rt-screen .rt-dots { width: 34px; height: 34px; min-height: 0; }
+}
+
+/* ---- Customers: header, tiles, filters, table, mobile rows ---- */
+/* Header: title + account on row 1, search and action buttons on row 2 */
+.a-top:has(#sugRt) { flex-wrap: wrap; }
+/* Wide screens: everything stays on the top row, buttons at the right. Narrower: buttons drop to a second row. */
+@media (max-width: 1499px) {
+  .a-top:has(#sugRt) > #aActs { order: 5; flex: 1 1 100%; margin: 0; justify-content: flex-start; flex-wrap: wrap; }
+}
+@media (min-width: 1500px) {
+  .a-top:has(#sugRt) { flex-wrap: nowrap; }
+  .a-top:has(#sugRt) > #aActs { flex: 0 1 auto; flex-wrap: nowrap; }
+}
+.gtc-page .gtc-head { margin-bottom: 14px; }
+.gtc-page #xPageMsg:empty { display: none; }
+
+/* Tiles: % badge sits in the corner, label never wraps */
+.a-main .gtc-stat { position: relative; }
+.a-main .gtc-stat em { position: absolute; top: 12px; right: 14px; margin: 0; align-self: auto; }
+.a-main .gtc-stat > div > span { white-space: nowrap; }
+
+/* Table fits the card; no clipped Actions column */
+.a-main .gtc-table { min-width: 0; width: 100%; }
+.a-main .gtc-table th,
+.a-main .gtc-table td { padding-left: 8px; padding-right: 8px; }
+.a-main .gtc-table th:first-child,
+.a-main .gtc-table td:first-child { padding-left: 12px; padding-right: 0; width: 28px; }
+.a-main .gtc-table td:nth-child(6) { max-width: 160px; }
+.a-main .gtc-table td:nth-child(10), .a-main .gtc-table th:nth-child(10) { width: 52px; padding-left: 0; padding-right: 8px; }
+
+@media (max-width: 640px) {
+  /* Header actions: search, big Add button, then the four others in 2 columns */
+  .a-top:has(#sugRt) > #aActs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .a-top:has(#sugRt) > #aActs > .field { grid-column: 1 / -1; width: 100% !important; order: 0; }
+  .a-top:has(#sugRt) > #aActs > #add { grid-column: 1 / -1; order: 1; }
+  .a-top:has(#sugRt) > #aActs > .btn { order: 2; width: 100%; justify-content: center; }
+  .a-top:has(#sugRt) > #aActs > #add { order: 1; }
+
+  /* Tiles: 2 per row, last one full width */
+  .a-main .gtc-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .a-main .gtc-stats > .gtc-stat { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .a-main .gtc-stats:has(> :nth-child(5):last-child) > :last-child { grid-column: 1 / -1; }
+
+  /* Filters: 2 per row */
+  .gtc-toolbar .gtc-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+  .gtc-toolbar .gtc-filters > .gtc-filter { min-width: 0; width: 100%; }
+  .gtc-toolbar .gtc-filters > :last-child:not(.gtc-filter) { align-self: center; justify-self: start; padding-left: 6px; }
+
+  /* Customer rows: header line + 2-column details */
+  .a-main .gtc-list-card { border-radius: 16px; }
+  .a-main .gtc-table tbody tr {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px;
+    padding: 14px 4px; align-items: start;
+  }
+  .a-main .gtc-table td { width: auto !important; padding: 0 !important; min-height: 0; }
+  .a-main .gtc-table td::before {
+    position: static; display: block; width: auto; margin-bottom: 2px;
+    font-size: 10.5px; letter-spacing: .04em;
+  }
+  .a-main .gtc-table td:first-child { position: absolute; left: 6px; top: 20px; }
+  .a-main .gtc-table td:nth-child(2) { grid-column: 1 / -1; order: 0; padding: 0 44px 0 34px !important; }
+  .a-main .gtc-table td:nth-child(3)  { order: 1; }
+  .a-main .gtc-table td:nth-child(5)  { order: 2; }
+  .a-main .gtc-table td:nth-child(4)  { order: 3; }
+  .a-main .gtc-table td:nth-child(9)  { order: 4; }
+  .a-main .gtc-table td:nth-child(7)  { order: 5; }
+  .a-main .gtc-table td:nth-child(8)  { order: 6; }
+  .a-main .gtc-table td:nth-child(6)  { order: 7; grid-column: 1 / -1; max-width: none; }
+  .a-main .gtc-table td:nth-child(10) { position: absolute; right: 4px; top: 10px; }
+  /* Location and Status are self-explanatory chips: no label, side by side */
+  .a-main .gtc-table td:nth-child(7)::before,
+  .a-main .gtc-table td:nth-child(8)::before { display: none; }
+}
+
+/* Customer details pop-up on phones/tablets: one column, so cards are not squeezed */
+@media (max-width: 860px) {
+  .gtc-detail-overlay #gtcDetailBody .gdt-cols { grid-template-columns: minmax(0, 1fr); }
+  .gtc-detail-overlay #gtcDetailBody .gdt-p { padding: 12px 14px 20px; }
+  .gtc-detail-overlay #gtcDetailBody .gdt-tabs { margin: 10px 14px 0; }
+  .gtc-detail-overlay #gtcDetailBody .gdt-map { height: 180px; }
+}
+/* ---- Orders: filters, tiles, tabs, mobile rows ---- */
+.a-main .om-sub { margin: 0 0 12px; }
+/* Date pickers get the same box as the dropdowns */
+.a-main .om-bar .gtp-date {
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  padding: 0;
+  align-items: stretch;
+}
+.a-main .om-bar .gtp-date .gtp-btn {
+  width: 100%;
+  height: 100%;
+  padding: 0 14px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  align-items: center;
+  justify-content: space-between;
+}
+.a-main .om-bar .gt-dd-trigger { height: 44px; min-height: 44px; }
+.a-main .om-bar input.om-q { height: 44px; border-radius: 12px; }
+.a-main .om-k { gap: 12px; }
+
+@media (max-width: 700px) {
+  /* Long title wraps instead of being cut */
+  .a-top:has(~ #aPage #omBar) h1 { white-space: normal; line-height: 1.2; }
+
+  /* Tiles: 2 per row, last one full width */
+  .a-main .om-k { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .a-main .om-k > .om-kc { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .a-main .om-k:has(> :nth-child(5):last-child) > :last-child { grid-column: 1 / -1; }
+
+  /* Tabs 2 per row, then Export | Print all | refresh */
+  .a-main .om-tabs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+  .a-main .om-tabs .om-tab { grid-column: span 3; text-align: center; padding: 10px 8px; }
+  .a-main .om-tabs .om-sp { display: none; }
+  .a-main .om-tabs #omExp { grid-column: span 2; justify-content: center; }
+  .a-main .om-tabs #omPrAll { grid-column: span 3; justify-content: center; }
+  .a-main .om-tabs #omRf { grid-column: span 1; justify-content: center; padding: 0; }
+
+  /* Order cards: show who took the order and the View / Print / Delete buttons */
+  .a-main .om-t tr { padding: 14px 4px; row-gap: 4px; }
+  .a-main .om-t td.oc-a,
+  .a-main .om-t td.oc-ac {
+    display: flex;
+    align-items: center;
+    padding-top: 8px;
+    margin-top: 6px;
+    border-top: 1px solid var(--border);
+  }
+  .a-main .om-t td.oc-a { grid-column: 1; gap: 8px; font-size: 13px; color: var(--muted); }
+  .a-main .om-t td.oc-ac { grid-column: 2; width: auto; justify-content: flex-end; }
+  .a-main .om-acts button { width: 38px; height: 38px; }
+}
+/* ===== Products ===== */
+.a-main .pr-bar { gap: 8px; }
+.a-main .pr-bar .field { min-width: 128px; }
+.a-main .pr-bar .field:nth-of-type(4) { min-width: 184px; }
+.a-main .pr-bar .field:nth-of-type(2) { min-width: 150px; }
+.a-main .pr-bar .pr-sp { min-width: 0; flex: 1 1 0; }
+.a-main .pr-bar .pr-view { flex: none; }
+.a-main .pr-bar .field:nth-of-type(5) { min-width: 166px; flex: 0 0 166px; }
+.a-main .pr-table td.ck > * { display: block; margin: 0; vertical-align: middle; }
+.a-main .pr-bar .gt-dd-trigger { height: 40px; }
+.a-main .pr-table td.ck, .a-main .pr-table th.ck { vertical-align: middle; }
+.a-main .pr-table td { vertical-align: middle; }
+.a-main .pr-table .pr-cell b { white-space: normal; }
+.a-main .pr-tile span { white-space: normal; line-height: 1.25; }
+
+@media (max-width: 700px) {
+  .a-main .pr-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .a-main .pr-tile { flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px; }
+  .a-main .pr-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; }
+  .a-main .pr-bar .field, .a-main .pr-bar .field:nth-of-type(4), .a-main .pr-bar .field:nth-of-type(5) { min-width: 0; width: 100%; flex: none; }
+  .a-main .pr-bar .pr-sp { display: none; }
+  .a-main .pr-bar .pr-view, .a-main .pr-bar .field:first-child, .a-main .pr-bar .field:nth-of-type(4), .a-main .pr-bar .field:nth-of-type(5) { grid-column: 1 / -1; }
+
+  .a-main .pr-scroll { overflow: visible; }
+  .a-main .pr-table, .a-main .pr-table tbody { display: block; width: 100%; min-width: 0; }
+  .a-main .pr-table thead { display: none; }
+  .a-main .pr-table tbody tr {
+    position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px 10px; padding: 14px 0; border: 0; border-bottom: 1px solid var(--border); background: transparent;
+  }
+  .a-main .pr-table tbody tr:hover { background: var(--t-primary); }
+  .a-main .pr-table tbody tr:last-child { border-bottom: 0; }
+  .a-main .pr-table td { display: block; padding: 0; border: 0; min-width: 0; text-align: left; font-size: 14px; }
+  .a-main .pr-table td[data-l]::before {
+    content: attr(data-l); display: block; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 2px;
+  }
+  .a-main .pr-table td[data-l="Code"] { grid-column: 1 / -1; padding: 0 44px 0 34px; }
+  .a-main .pr-table td[data-l="Code"]::before { display: none; }
+  .a-main .pr-table td.ck { position: absolute; top: 14px; left: 0; width: 28px; }
+  .a-main .pr-table td.ck::before, .a-main .pr-table td.act::before { display: none; }
+  .a-main .pr-table td:has(.pr-cell) { grid-column: 1 / -1; padding: 0; }
+  .a-main .pr-table td:has(.pr-cell)::before { display: none; }
+  .a-main .pr-table td.act { position: absolute; top: 8px; right: 0; }
 }

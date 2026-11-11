@@ -32,14 +32,36 @@ const navSource = fs.readFileSync(path.join(sourceRoot, "sales", "sales.js"), "u
 const pageSource = fs.readFileSync(path.join(sourceRoot, "sales", "attendance.html"), "utf8");
 const uiSource = fs.readFileSync(path.join(sourceRoot, "sales", "attendance.js"), "utf8");
 const cssSource = fs.readFileSync(path.join(sourceRoot, "sales", "sales.css"), "utf8");
+const { findPunchOutDate, getPendingPunchOut } = require(path.join(sourceRoot, "backend", "modules", "attendance", "attendance.service.js"));
+const { handleSalesAttendanceRoute } = require(path.join(sourceRoot, "backend", "modules", "attendance", "attendance.routes.js"));
+// Deterministic IST midnight-boundary tests for the production punch-out date resolver.
+const beforeMidnight = Date.parse("2026-11-04T14:30:00.000Z"); // 20:00 IST, Nov 4
+const afterMidnight = Date.parse("2026-11-04T20:30:00.000Z"); // 02:00 IST, Nov 5
+assert.strictEqual(findPunchOutDate({ "2026-11-04": { inAt: beforeMidnight, outAt: null } }, afterMidnight), "2026-11-04", "overnight punch-out closes the previous IST date");
+assert.strictEqual(findPunchOutDate({ "2026-11-05": { inAt: afterMidnight - 3600000, outAt: null } }, afterMidnight), "2026-11-05", "today's open attendance takes precedence");
+assert.strictEqual(findPunchOutDate({ "2026-11-04": { inAt: beforeMidnight, outAt: afterMidnight - 1000 } }, afterMidnight), null, "completed previous-day attendance cannot be reopened");
+assert.strictEqual(findPunchOutDate({ "2026-11-03": { inAt: beforeMidnight - 86400000, outAt: null } }, afterMidnight), null, "stale attendance older than the immediately previous IST day is not closed");
+assert.strictEqual(findPunchOutDate({ "2026-11-04": { inAt: afterMidnight - 25 * 3600000, outAt: null } }, afterMidnight), null, "stale open session older than 24 hours is not closed");
+const overnightRecord = { inAt: beforeMidnight, outAt: null, inTime: "20:00", outTime: "-", hours: "-", status: "present" };
+assert.deepStrictEqual(getPendingPunchOut({ "2026-11-04": overnightRecord }, afterMidnight), { date: "2026-11-04", entry: overnightRecord }, "GET contract can expose an eligible overnight session to the Sales UI");
+assert.strictEqual(getPendingPunchOut({ "2026-11-05": { inAt: afterMidnight - 3600000, outAt: null } }, afterMidnight), null, "today's open session is not reported as a previous-day pending session");
 assert(navSource.includes('["attendance", "Attendance", "attendance.html", "clock"]'), "Sales menu opens Attendance");
 assert(pageSource.includes('src="attendance.js"') && pageSource.includes('src="sales.js"'), "Attendance page uses authenticated Sales shell");
 assert(uiSource.includes("/api/sales/attendance") && uiSource.includes('id="saPunch"'), "Attendance UI uses server attendance endpoint and punch action");
+assert(uiSource.includes("data.pendingEntry") && uiSource.includes('pending ? "punch-out" : "punch-in"'), "Sales UI offers punch-out for an eligible previous-day session");
+assert(uiSource.includes("OVERNIGHT SESSION") && uiSource.includes("previous-day attendance is still open"), "Sales UI clearly labels overnight attendance state");
+const attendanceRouteSource = fs.readFileSync(path.join(sourceRoot, "backend", "modules", "attendance", "attendance.routes.js"), "utf8");
+assert(attendanceRouteSource.includes("findPunchOutDate(mine, now)"), "Extracted attendance route uses the tested overnight punch-out resolver");
+assert(attendanceRouteSource.includes("pendingEntry"), "Attendance GET response exposes an eligible pending overnight entry");
+assert(attendanceRouteSource.includes("previous attendance session before punching in again"), "API prevents a new punch-in while an overnight session remains open");
+assert(attendanceRouteSource.includes('actorOf(s).name + " punched in", "Punched in at "') && attendanceRouteSource.includes('actorOf(s).name + " punched out", "Punched out"'), "Admin punch notifications put the person's name in the heading and the time in the message");
+assert.strictEqual(handleSalesAttendanceRoute({ p: "/api/sales/orders" }), null, "attendance module does not intercept unrelated Sales routes");
 assert(cssSource.includes("@media (max-width:640px)") && cssSource.includes(".sa-row"), "Attendance UI includes mobile responsive styling");
 (async () => {
   try {
     fs.mkdirSync(app, { recursive: true });
     for (const f of ["server.js", "storage.js", "activity.js", "backup-integrity.js"]) fs.copyFileSync(path.join(sourceRoot, f), path.join(app, f));
+    fs.cpSync(path.join(sourceRoot, "backend"), path.join(app, "backend"), { recursive: true });
     fs.cpSync(path.join(sourceRoot, "shared"), path.join(app, "shared"), { recursive: true });
     const accounts = [{ id: "SA1", phone: "9000000001", name: "Test Super Admin", role: "Super Admin", status: "active" }];
     const workers = [
@@ -68,6 +90,8 @@ assert(cssSource.includes("@media (max-width:640px)") && cssSource.includes(".sa
       assert(m, "session cookie issued"); return m[0];
     };
     const one = await login("9111111111"), two = await login("9222222222");
+    const unauthenticated = await req("GET", "/api/sales/attendance");
+    assert.strictEqual(unauthenticated.status, 401, "attendance requires an authenticated session");
     const initial = await req("GET", "/api/sales/attendance", one);
     assert.strictEqual(initial.status, 200);
     const month = JSON.parse(initial.body).month;
@@ -80,6 +104,24 @@ assert(cssSource.includes("@media (max-width:640px)") && cssSource.includes(".sa
     assert.strictEqual(duplicateIn.status, 409, "duplicate punch in rejected");
     const otherRead = JSON.parse((await req("GET", "/api/sales/attendance", two)).body);
     assert.deepStrictEqual(otherRead.days, {}, "Sales employee cannot read another employee's attendance");
+    const concurrentPunchIns = await Promise.all([
+      req("POST", "/api/sales/attendance", two, { action: "punch-in" }),
+      req("POST", "/api/sales/attendance", two, { action: "punch-in" }),
+    ]);
+    assert.deepStrictEqual(
+      concurrentPunchIns.map((r) => r.status).sort(),
+      [200, 409],
+      "simultaneous duplicate punch-ins accept exactly one request",
+    );
+    const concurrentPunchOuts = await Promise.all([
+      req("POST", "/api/sales/attendance", two, { action: "punch-out" }),
+      req("POST", "/api/sales/attendance", two, { action: "punch-out" }),
+    ]);
+    assert.deepStrictEqual(
+      concurrentPunchOuts.map((r) => r.status).sort(),
+      [200, 409],
+      "simultaneous duplicate punch-outs accept exactly one request",
+    );
     const punchOut = await req("POST", "/api/sales/attendance", one, { action: "punch-out" });
     assert.strictEqual(punchOut.status, 200, "punch out accepted after punch in");
     const duplicateOut = await req("POST", "/api/sales/attendance", one, { action: "punch-out" });
@@ -94,7 +136,7 @@ assert(cssSource.includes("@media (max-width:640px)") && cssSource.includes(".sa
     assert(saved.attendanceLog && saved.attendanceLog[month] && saved.attendanceLog[month][Number(today.slice(8))].outAt, "Sales attendance is mirrored into employee attendance record for office dashboard");
     const ownKeyWrite = await req("PUT", "/api/kv/gm_sales_attendance_v1", one, { v: "{}" });
     assert.strictEqual(ownKeyWrite.status, 403, "Sales cannot bypass dedicated attendance API with generic KV write");
-    console.log("PASS Sales attendance: navigation and responsive UI, punch-in/out lifecycle, duplicate protection, own-record isolation, monthly history, admin attendance mirror and KV protection (12 assertions).");
+    console.log("PASS Sales attendance: navigation and responsive UI, authentication, sequential and concurrent duplicate protection, own-record isolation, monthly history, admin attendance mirror and KV protection.");
   } finally {
     try { child && child.kill("SIGTERM"); } catch {}
     await wait(700);

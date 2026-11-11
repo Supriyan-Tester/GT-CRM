@@ -62,6 +62,7 @@ let child;
     for (const file of ["server.js", "storage.js", "activity.js", "backup-integrity.js"]) {
       fs.copyFileSync(path.join(sourceRoot, file), path.join(app, file));
     }
+    fs.cpSync(path.join(sourceRoot, "backend"), path.join(app, "backend"), { recursive: true });
     fs.cpSync(path.join(sourceRoot, "shared"), path.join(app, "shared"), { recursive: true });
 
     const accounts = [

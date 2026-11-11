@@ -205,6 +205,131 @@
       #dEdit {
         margin-top: 14px;
       }
+
+      /* ---- Profile redesign ---- */
+      .pf2-col {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 18px;
+      }
+      @media (min-width: 1100px) {
+        .pf2-col {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          align-items: start;
+        }
+        .pf2-col > .pf2-hd,
+        .pf2-col > #pwCard,
+        .pf2-col > .card:nth-last-child(-n + 3) {
+          grid-column: 1 / -1;
+        }
+        .pf2-col > .card:nth-child(3) {
+          grid-column: 1 / -1;
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .pf2-col > .card:nth-child(3) > .card-title {
+          grid-column: 1 / -1;
+        }
+        .pf2-col > .card:nth-child(3) > .a-fg {
+          margin-top: 16px;
+        }
+        .pf2-col > .card:nth-child(6) {
+          grid-column: 1 / -1;
+        }
+      }
+      .pf2-col > .card {
+        padding: 0;
+        border-radius: 16px;
+        overflow: hidden;
+      }
+      .pf2-col > .card.pf2-hd {
+        padding: 20px 22px;
+      }
+      .pf2-col > .card > .card-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin: 0;
+        padding: 16px 22px;
+        font-size: 17px;
+        font-weight: 700;
+        border-bottom: 1px solid var(--border);
+      }
+      .pf2-col > .card:not(.pf2-hd) > :not(.card-title) {
+        margin-left: 22px;
+        margin-right: 22px;
+      }
+      .pf2-col > .card > .card-title + * {
+        margin-top: 16px;
+      }
+      .pf2-col > .card > :last-child {
+        margin-bottom: 22px;
+      }
+      .pf2-col .a-fg {
+        margin-bottom: 16px;
+      }
+      .pf2-col .a-fg label {
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      .pf2-col .field {
+        height: 48px;
+        background: var(--card);
+        border: 1.5px solid color-mix(in srgb, var(--muted) 35%, var(--border));
+        border-radius: 12px;
+      }
+      .pf2-col .field:hover {
+        border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+      }
+      .pf2-col .field:focus-within {
+        border-color: var(--primary);
+      }
+      .pf2-col textarea {
+        background: var(--card);
+        border: 1.5px solid color-mix(in srgb, var(--muted) 35%, var(--border));
+        border-radius: 12px;
+        padding: 12px 14px;
+        font: inherit;
+        font-size: 15px;
+        color: var(--text);
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .pf2-hint,
+      .pf2-sub {
+        font-size: 13.5px;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+      .pf2-acts .btn {
+        height: 44px;
+        padding: 0 20px;
+        width: auto;
+      }
+      @media (max-width: 640px) {
+        .pf2-col {
+          gap: 14px;
+        }
+        .pf2-col > .card > .card-title {
+          padding: 14px 16px;
+        }
+        .pf2-col > .card:not(.pf2-hd) > :not(.card-title) {
+          margin-left: 16px;
+          margin-right: 16px;
+        }
+        .pf2-col > .card.pf2-hd {
+          padding: 16px;
+        }
+        .pf2-acts {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .pf2-acts .btn {
+          width: 100%;
+        }
+      }
     </style>
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link
@@ -217,6 +342,7 @@
   </head>
   <body>
     <script src="../shared/mock-data.js"></script>
+    <script src="../shared/form-check.js"></script>
     <script src="../shared/admin.js"></script>
     <script src="../shared/vendor/leaflet/leaflet.js"></script>
     <script>
@@ -346,26 +472,26 @@
         '<p class="pf2-hint">These rules apply to every employee phone. Changes show on their phones within a minute.' +
         (rulesOk ? "" : " Only the Super Admin or an Admin can change these.") +
         "</p>" +
-        '<div class="pf2-two"><div class="a-fg"><label for="rLate">Late after (time)</label><div class="field a-f"><input id="rLate" type="time" value="' +
+        '<div class="pf2-two"><div class="a-fg"><label for="rLate">Late after (time) <span class=\"fc-star\">*</span></label><div class="field a-f"><input id="rLate" type="time" value="' +
         esc(("0" + ST.lateAfter).slice(-5)) +
         '"' +
         rulesDis +
         "></div></div>" +
-        '<div class="a-fg"><label for="rHigh">Warn if driven more than (km a day)</label><div class="field a-f"><input id="rHigh" inputmode="numeric" value="' +
+        '<div class="a-fg"><label for="rHigh">Warn if driven more than (km a day) <span class=\"fc-star\">*</span></label><div class="field a-f"><input id="rHigh" inputmode="numeric" value="' +
         ST.highKm +
         '"' +
         rulesDis +
         "></div></div></div>" +
-        '<div class="a-fg"><label for="rJump">Warn if morning KM is more than (km) above last evening KM</label><div class="field a-f"><input id="rJump" inputmode="numeric" value="' +
+        '<div class="a-fg"><label for="rJump">Warn if morning KM is more than (km) above last evening KM <span class=\"fc-star\">*</span></label><div class="field a-f"><input id="rJump" inputmode="numeric" value="' +
         ST.jumpKm +
         '"' +
         rulesDis +
         "></div></div>" +
-        '<label style="display:flex;gap:10px;align-items:flex-start;margin:4px 0 14px;cursor:pointer"><input type="checkbox" id="rDepot"' +
+        '<label style="display:flex;gap:10px;align-items:flex-start;margin-top:4px;margin-bottom:14px;cursor:pointer"><input type="checkbox" id="rDepot"' +
         (ST.requireDepot ? " checked" : "") +
         rulesDis +
-        ' style="width:20px;height:20px;margin-top:2px"><span><b>Employees must be at the depot to punch in and out</b><br><small style="color:var(--muted)">When off, the app only shows a warning. This works only after you save the depot location.</small></span></label>' +
-        '<div class="a-fg"><label for="rReasons">Reasons for returned goods (one on each line, up to 20)</label><div class="field a-f"><textarea id="rReasons" rows="8"' +
+        ' style="width:20px;height:20px;margin-top:2px"><span><b>Employees must be at the depot to punch in and out</b><br><small style="color:var(--muted);font-size:13px">When off, the app only shows a warning. This works only after you save the depot location.</small></span></label>' +
+        '<div class="a-fg"><label for="rReasons">Reasons for returned goods (one on each line, up to 20) <span class=\"fc-star\">*</span></label><div class="field a-f"><textarea id="rReasons" rows="8"' +
         rulesDis +
         ' style="width:100%">' +
         esc(ST.returnReasons.join("\n")) +
@@ -522,6 +648,8 @@
       }
       if (rulesOk) {
       $("rSave").onclick = function () {
+        rmsg("");
+        FC.clear();
         var late = $("rLate").value,
           hi = parseInt($("rHigh").value, 10),
           jp = parseInt($("rJump").value, 10);
@@ -539,19 +667,19 @@
           return true;
         });
         if (!/^\d{2}:\d{2}$/.test(late)) {
-          rmsg("Choose the time after which a punch-in counts as late.", "err");
+          FC.fail("rLate", "Choose the time after which a punch-in counts as late.");
           return;
         }
         if (!(hi >= 20 && hi <= 2000)) {
-          rmsg("Daily km warning must be between 20 and 2000.", "err");
+          FC.fail("rHigh", "Enter a number between 20 and 2000.");
           return;
         }
         if (!(jp >= 20 && jp <= 5000)) {
-          rmsg("Morning KM warning must be between 20 and 5000.", "err");
+          FC.fail("rJump", "Enter a number between 20 and 5000.");
           return;
         }
         if (!rs.length) {
-          rmsg("Add at least one reason for returned goods.", "err");
+          FC.fail("rReasons", "Add at least one reason for returned goods.");
           return;
         }
         if (rs.length > 20) {

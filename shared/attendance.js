@@ -675,6 +675,27 @@
       S.pgn = 1;
       overview();
     };
+    // Clicking a tile filters the list below (click the same tile again to clear).
+    [].forEach.call(document.querySelectorAll(".at-tiles .at-tile"), function (t, i) {
+      var val = ["present", "absent", "late"][i];
+      if (!val) return;
+      t.style.cursor = "pointer";
+      t.tabIndex = 0;
+      t.setAttribute("role", "button");
+      t.title = "Show only " + val;
+      function pick() {
+        S.f.st = S.f.st === val ? "" : val;
+        S.pgn = 1;
+        overview();
+      }
+      t.onclick = pick;
+      t.onkeydown = function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          pick();
+        }
+      };
+    });
     $("fR").onchange = function () {
       S.f.route = this.value;
       S.pgn = 1;
@@ -1230,7 +1251,7 @@
       "</div>" +
       '<label class="at-lbl am-l">Time</label><div class="am-r3"' +
       (times ? "" : ' style="opacity:.45"') +
-      '><div class="am-fb"><small>Check in</small><input type="time" id="mIn" value="' +
+      '><div class="am-fb"><small>Check in <span style="color:#dc2626">*</span></small><input type="time" id="mIn" value="' +
       inV +
       '"' +
       dis +
@@ -1438,6 +1459,23 @@
       localStorage.setItem(EK, JSON.stringify(DB.edits));
     } catch (e) {}
   }
+  // Red box on the field + message in the error line.
+  function badBox(id, msg) {
+    var e = $(id),
+      b = e && (e.closest(".field") || e);
+    $("mErr").textContent = msg;
+    if (!b) return;
+    b.style.outline = "2px solid #dc2626";
+    b.style.outlineOffset = "1px";
+    b.style.borderRadius = "8px";
+    e.focus();
+    var h = function () {
+      b.style.outline = "";
+      $("mErr").textContent = "";
+      e.removeEventListener("input", h);
+    };
+    e.addEventListener("input", h);
+  }
   function saveEdit(w) {
     var st = M.st,
       inV = M.inV,
@@ -1451,7 +1489,16 @@
       err = "Check-out must be after check-in.";
     else if (!(km >= 0)) err = "Kilometres must be zero or more.";
     if (err) {
-      $("mErr").textContent = err;
+      badBox(
+        /check-in time/.test(err)
+          ? "mIn"
+          : /Check-out/.test(err)
+            ? "mOut"
+            : /Kilometres/.test(err)
+              ? "mKm"
+              : "mD",
+        err,
+      );
       return;
     }
     var times = st === "present" || st === "late";
@@ -1459,16 +1506,16 @@
       sk = M.sk2 === "" || M.sk2 == null ? 0 : Number(M.sk2),
       skChanged = sk > 0 && sk !== Number(M.sk);
     if (times && (ek < 0 || sk < 0 || ek !== ek || sk !== sk)) {
-      $("mErr").textContent = "Start km and end km must be zero or more.";
+      badBox("mSk", "Start km and end km must be zero or more.");
       return;
     }
     if (times && ek > 0 && sk > 0 && ek < sk) {
-      $("mErr").textContent = "End km cannot be less than the start km.";
+      badBox("mEk", "End km cannot be less than the start km.");
       return;
     }
     if (times && (ek > 0 || skChanged)) {
       if (ek > 0 && !outV) {
-        $("mErr").textContent = "Enter the check-out time to close the day with an end km.";
+        badBox("mOut", "Enter the check-out time to close the day with an end km.");
         return;
       }
       $("mSave").disabled = true;

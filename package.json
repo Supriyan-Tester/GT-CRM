@@ -14,7 +14,11 @@
     "test:returns": "node tools/returns-reconciliation-regression.js"
   },
   "devDependencies": {
-    "prettier": "^3.9.10",
-    "@playwright/test": "^1.56.1"
+    "@playwright/test": "^1.56.1",
+    "prettier": "^3.9.10"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.119.0"
   }
 }

@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script src="../shared/loading.js"></script>
+  <script src="../assets/icons.js"></script>
+  <script src="../shared/sync.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Accounts & Ledger - General Traders</title>
+  <link rel="stylesheet" href="../shared/theme.css">
+  <link rel="stylesheet" href="../shared/admin.css">
+  <script src="../shared/theme.js"></script>
+  <style>
+    .ac-card{margin-bottom:16px}
+    .ac-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+    .ac-bar .ac-sel{flex:1 1 280px;min-width:0}
+    .ac-bar .ac-find{flex:1 1 200px;min-width:0}
+    .ac-bar select,.ac-bar input,.ac-field input,.ac-field select{height:42px;width:100%;border:1px solid var(--border);border-radius:var(--radius-btn);background:var(--card);color:var(--text);padding:0 12px;font:inherit;box-sizing:border-box}
+    .ac-btn{width:auto;padding-left:16px;padding-right:16px;white-space:nowrap}
+    .ac-seg{overflow-x:auto;max-width:100%;margin-bottom:14px;display:inline-flex}
+    .ac-seg button{white-space:nowrap;flex:none;display:inline-flex;align-items:center}
+    .ac-seg .n{margin-left:6px;font-size:11px;opacity:.85}
+    .ac-note{padding:12px;border-radius:12px;background:var(--t-info);font-size:13px;margin-bottom:14px}
+    .ac-muted{color:var(--muted)}
+    .ac-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+    .ac-head .card-title{margin:0}
+    .ac-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .ac-field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px}
+    .ac-field input[type=file]{height:auto;padding:9px 12px}
+    .ac-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
+    td.ac-r,th.ac-r{text-align:right;font-variant-numeric:tabular-nums}
+    td.ac-due{font-weight:700}
+    td.ac-due.owing{color:var(--danger)}
+    .ac-bill{margin-left:8px;font-size:12px}
+    .ac-modal{position:fixed;inset:0;z-index:120;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(15,23,42,.55)}
+    .ac-modal.open{display:flex}
+    .ac-modal-card{background:var(--card);color:var(--text);border-radius:16px;width:100%;max-width:640px;max-height:calc(100vh - 32px);overflow-y:auto;padding:20px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+    .ac-modal-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+    .ac-modal-head h3{margin:0}
+    .ac-alloc{border:1px solid var(--border);border-radius:12px;padding:12px;margin:10px 0}
+    .ac-alloc img{max-width:100%;max-height:220px;border-radius:10px;border:1px solid var(--border);margin-top:8px}
+    .ac-chk{display:flex;gap:10px;align-items:flex-start;margin:14px 0;font-size:14px;cursor:pointer}
+    .ac-chk input{margin-top:3px;width:18px;height:18px;flex:none}
+    .ac-more{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+    @media(max-width:700px){.ac-grid2{grid-template-columns:1fr}}
+
+    .ac-crumb{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin:0 0 14px}
+    .ac-crumb a{color:var(--muted);text-decoration:none}.ac-crumb a:hover{color:var(--primary)}
+    .ac-crumb b{color:var(--text);font-weight:600}
+    .s-r{background:var(--t-danger)}
+    .a-main .ac-stats .a-sub{display:inline-block;width:fit-content;max-width:100%;margin-top:6px;padding:3px 10px;border-radius:999px;background:var(--card);color:var(--primary);font-weight:600;font-size:11.5px;-webkit-line-clamp:1;line-clamp:1}
+    .a-main .ac-stats .s-r .a-sub{color:var(--danger)}
+    .a-main .ac-stats .s-s .a-sub{color:var(--success)}
+    .a-main .ac-stats .s-i .a-sub{color:var(--info)}
+    .ac-tabs{display:flex;gap:6px;border-bottom:2px solid var(--border);margin:0 0 16px;overflow-x:auto;overflow-y:hidden}
+    .ac-tabs button{display:inline-flex;align-items:center;gap:8px;border:0;background:none;color:var(--muted);font:inherit;font-size:14px;font-weight:600;padding:11px 18px;border-radius:12px 12px 0 0;cursor:pointer;white-space:nowrap}
+    .ac-tabs button svg{width:18px;height:18px;flex:none}
+    .ac-tabs button:hover{color:var(--primary);background:var(--t-primary)}
+    .ac-tabs button.on{background:var(--primary);color:var(--on-primary)}
+    .ac-tabs .n{background:var(--accent);color:#fff;border-radius:999px;padding:1px 8px;font-size:11px}
+    .ac-tabs .n:empty{display:none}
+    .ac-lbl{font-size:14px;font-weight:600;color:var(--muted)}
+    .ac-gap{flex:1 1 0}
+    .ac-btn svg{width:17px;height:17px;margin-right:7px;vertical-align:-3px}
+    .ac-ico{position:relative}
+    .ac-ico>svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--muted);pointer-events:none}
+    .ac-ico select,.ac-ico input{padding-left:40px}
+    .ac-glyph{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-weight:700;color:var(--muted);pointer-events:none}
+    .ac-bar .ac-sel{flex:0 1 380px}
+    .ac-bar .ac-find{flex:0 1 420px}
+    .ac-note{display:flex;gap:10px;align-items:flex-start;background:var(--t-info);color:var(--text);border:1px solid var(--border)}
+    .ac-note svg{width:20px;height:20px;flex:none;color:var(--info);margin-top:1px}
+    .ac-tw{border:1px solid var(--border);border-radius:12px}
+    .ac-card .a-table thead th{background:var(--t-primary);color:var(--muted);font-size:11.5px;letter-spacing:.05em;text-transform:uppercase}
+    .ac-bill{color:var(--primary);font-weight:600}
+    .ac-imp-card{max-width:760px;padding:22px}
+    .ac-imp-card .ac-grid3{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .ac-x{margin-left:auto;align-self:flex-start;display:grid;place-items:center;width:36px;height:36px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--muted);cursor:pointer;flex:none}
+    .ac-x:hover{color:var(--primary);border-color:var(--primary);background:var(--t-primary)}
+    .ac-x svg{width:18px;height:18px}
+    .ac-imp-head{display:flex;gap:14px;align-items:center;margin-bottom:16px}
+    .ac-imp-head p{margin:2px 0 0;font-size:13px}
+    .ac-imp-ico{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:var(--t-primary);color:var(--primary);flex:none}
+    .ac-imp-ico svg{width:24px;height:24px}
+    .ac-grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+    .ac-field.ac-wide{grid-column:1/-1}
+    .ac-hint{display:block;margin-top:5px;font-size:11.5px;color:var(--muted)}
+    .ac-field label i{color:var(--danger);font-style:normal}
+    .ac-drop{position:relative;display:grid;justify-items:center;align-content:center;gap:2px;min-height:76px;padding:10px 12px;border:1.5px dashed var(--primary);border-radius:var(--radius-btn);background:var(--t-primary);text-align:center;font-size:13px;color:var(--text)}
+    .ac-drop svg{width:22px;height:22px;color:var(--primary)}
+    .ac-drop b{color:var(--primary)}
+    .ac-drop small{color:var(--muted);font-size:11.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .ac-drop.over{background:var(--t-success);border-color:var(--success)}
+    .ac-drop.has small{color:var(--text);font-weight:600}
+    .ac-field .ac-drop input[type=file]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;border:0}
+    .ac-chip{display:inline-flex;align-items:center;padding:8px 14px;border-radius:999px;background:var(--t-info);color:var(--info);font-size:13px;font-weight:600}
+    .ac-chip:empty{display:none}
+    .ac-chip.ok{background:var(--t-success);color:var(--success)}
+    .ac-chip.ok::before{content:"✓";margin-right:6px}
+    .ac-chip.err{background:var(--t-danger);color:var(--danger)}
+    /* Searchable customer picker */
+    .ac-pick-list{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:140;display:none;max-height:220px;overflow-y:auto;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.2);padding:4px}
+    .ac-pick.open .ac-pick-list{display:block}
+    .ac-pick-list div{padding:9px 12px;border-radius:8px;font-size:14px;cursor:pointer}
+    .ac-pick-list div small{color:var(--muted);margin-left:6px}
+    .ac-pick-list div.act,.ac-pick-list div:hover{background:var(--t-primary);color:var(--primary)}
+    .ac-pick-list div.none{color:var(--muted);cursor:default}
+    .ac-pick-list div.none:hover{background:none;color:var(--muted)}
+    .ac-hs{position:relative;width:300px;max-width:100%;flex:0 1 300px}
+    .ac-hs input{height:42px;width:100%;border:1px solid var(--border);border-radius:var(--radius-btn);background:var(--card);color:var(--text);padding:0 12px 0 40px;font:inherit;box-sizing:border-box}
+    .ac-hs .ac-pick-list{left:auto;right:0;width:380px;max-width:90vw}
+    .ac-hs.open .ac-pick-list{display:block}
+    .ac-pick-list div.grp{padding:8px 12px 3px;font-size:11.5px;font-weight:700;color:var(--muted);cursor:default}
+    .ac-pick-list div.grp:hover{background:none;color:var(--muted)}
+    .ac-who{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px;min-height:42px}
+    @media(max-width:1100px){.ac-grid3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:700px){.ac-grid3,.ac-imp-card .ac-grid3{grid-template-columns:1fr}.ac-bar .ac-sel,.ac-bar .ac-find{flex:1 1 100%}.ac-gap{display:none}.ac-tabs button{padding:10px 12px}}
+  </style>
+</head>
+<body>
+<script src="../shared/admin.js"></script>
+<script>
+(function(){
+  "use strict";
+  GA.guard();
+  var pg=GA.mount("accounts.html","Accounts & Ledger"), O=GA.ops, S=O.get();
+  var $=function(id){return document.getElementById(id)};
+  var esc=GA.esc, money=function(v){return "₹"+Number(v||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})};
+  var currentCustomer="", invoices=[], pending=[];
+  function dt(iso){var d=new Date(iso);return isNaN(d)?"":d.toLocaleString("en-IN",{day:"numeric",month:"short",year:"numeric",hour:"numeric",minute:"2-digit",timeZone:"Asia/Kolkata"});}
+  var METHOD={cash:"Cash",upi:"UPI",bank_transfer:"Bank transfer"};
+  pg.innerHTML='<nav class="ac-crumb" aria-label="Breadcrumb"><a href="index.html">Home</a><span>›</span><span>Cash &amp; Accounts</span><span>›</span><b>Accounts &amp; Ledger</b></nav><div id="acStats"></div>'+
+    '<div class="ac-tabs" id="acTabs"><button type="button" class="on" data-tab="ledger">'+GA.icon("receipt")+'Customer Ledger</button><button type="button" data-tab="pending">'+GA.icon("check-circle")+'Collection Approvals<span class="n" id="acPendingCount"></span></button></div>'+
+    '<section id="acLedger"><div class="card ac-card">'+
+    '<div class="ac-bar"><input type="hidden" id="acCustomer"><div class="ac-who" id="acWho"></div></div>'+
+    '<div class="ac-note">'+GA.icon("info")+'<span>Opening balances and collections are kept separate from sales revenue. Approved payments reduce what the customer owes; pending collections stay unapproved until you approve them.</span></div>'+
+    '<div class="a-scroll ac-tw"><table class="a-table"><thead><tr><th>Invoice</th><th>Date</th><th>Source</th><th class="ac-r">Original</th><th class="ac-r">Paid</th><th class="ac-r">Pending</th><th class="ac-r">Outstanding</th></tr></thead><tbody id="acInvoiceRows"><tr><td colspan="7"><div class="a-empty"><b>Select a customer</b>Their invoices and balance will show here.</div></td></tr></tbody></table></div></div></section>'+
+    '<section id="acPending" hidden><div class="card ac-card">'+
+    ''+
+    '<div class="ac-note">Approve only after checking the physical cash or bank money and the bill photo for every invoice. Approval is a final posting; a mistake needs a reversal. For filters, reject and correction requests, use the Collections page.</div>'+
+    '<div class="a-scroll"><table class="a-table"><thead><tr><th>Received</th><th>Customer</th><th>Collector</th><th>Method</th><th class="ac-r">Total</th><th>Status</th><th></th></tr></thead><tbody id="acPendingRows"><tr><td colspan="7"><div class="a-empty">Loading approvals...</div></td></tr></tbody></table></div></div></section>'+
+    '<div class="ac-modal" id="acOpenModal" role="dialog" aria-modal="true" aria-labelledby="acOpenTitle"><div class="ac-modal-card ac-imp-card"><div class="ac-imp-head"><span class="ac-imp-ico">'+GA.icon("upload")+'</span><div><div class="card-title" id="acOpenTitle">Import legacy opening invoice</div><p class="ac-muted">For old handwritten credit bills; records an opening receivable, not new sales revenue.</p></div><button class="ac-x" id="acOpenClose" type="button" aria-label="Close">'+GA.icon("close")+'</button></div><form id="acOpeningForm"><div class="ac-grid3"><div class="ac-field"><label for="acOpenCustomer">Customer <i>*</i></label><div class="ac-ico">'+GA.icon("user")+'<input type="hidden" id="acOpenCustomer"></div></div><div class="ac-field"><label for="acOpenNo">Invoice number <i>*</i></label><div class="ac-ico"><span class="ac-glyph">#</span><input id="acOpenNo" maxlength="80" placeholder="Enter invoice number" required></div></div><div class="ac-field"><label for="acOpenDate">Invoice date <i>*</i></label><div><input id="acOpenDate" type="date" required></div></div><div class="ac-field"><label for="acOpenOriginal">Original invoice amount (₹) <i>*</i></label><div class="ac-ico"><span class="ac-glyph">₹</span><input id="acOpenOriginal" type="number" min="0.01" step="0.01" placeholder="0.00" required></div></div><div class="ac-field"><label for="acOpenDue">Balance still to be paid (₹) <i>*</i></label><div class="ac-ico"><span class="ac-glyph">₹</span><input id="acOpenDue" type="number" min="0.01" step="0.01" placeholder="0.00" required></div><small class="ac-hint">Same as the original amount if nothing is paid yet.</small></div><div class="ac-field ac-wide"><label for="acOpenPhoto">Original bill photo <i>*</i></label><div class="ac-drop" id="acDrop">'+GA.icon("upload")+'<span><b>Choose file</b> or drag &amp; drop</span><small id="acDropName">JPG, PNG or WEBP (max 5 MB)</small><input id="acOpenPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" required></div></div></div>'+
+    '<div class="ac-actions"><button class="btn ac-btn" id="acOpenSubmit" type="submit">'+GA.icon("check")+'Save opening invoice</button><button class="btn btn-outline ac-btn" id="acOpenCancel" type="button">Cancel</button><span class="ac-chip" id="acOpenMsg"></span></div></form></div></div>'+
+    '<div class="ac-modal" id="acDetailModal" role="dialog" aria-modal="true"><div class="ac-modal-card"><div class="ac-modal-head"><h3>Collection details</h3><button class="btn btn-outline ac-btn" id="acModalClose" type="button">Close</button></div><div id="acDetailBody"></div></div></div>';
+  var actsBox=$("aActs");if(actsBox)actsBox.innerHTML='<div class="ac-hs ac-ico">'+GA.icon("search")+'<input id="acSearch" type="search" autocomplete="off" placeholder="Search customer or invoice..." aria-label="Search customer or invoice"><div class="ac-pick-list" id="acHsList" role="listbox"></div></div><button class="btn btn-outline ac-btn" id="acStatement" type="button">'+GA.icon("document")+'Statement</button><button class="btn btn-outline ac-btn" id="acRefresh" type="button">'+GA.icon("refresh")+'Refresh</button><button class="btn" id="acAddInvoice" type="button">'+GA.icon("plus")+'Add invoice</button>';
+  var customers=(S.customers||[]).filter(function(c){return c&&!c.inactive;});
+  $("acStatement").onclick=function(){location.href="statement.html"+($("acCustomer").value?"?customer="+encodeURIComponent($("acCustomer").value):"");};
+
+  // Searchable customer picker: wraps a <select> (a hidden field keeps the real value) with a type-to-filter box.
+  var pickers=[];
+  function makePicker(sel){
+    var wrap=sel.parentNode, inp=document.createElement("input"), list=document.createElement("div"), act=-1, shown=[];
+    inp.type="text";inp.autocomplete="off";inp.placeholder="Search customer by name or code...";inp.setAttribute("role","combobox");inp.setAttribute("aria-label","Search customer");inp.setAttribute("aria-expanded","false");
+    list.className="ac-pick-list";list.setAttribute("role","listbox");
+    wrap.classList.add("ac-pick");wrap.appendChild(inp);wrap.appendChild(list);
+    function label(c){return String(c.name||c.shopName||c.code||"")+" · "+String(c.code||"");}
+    function sync(){var c=null;if(sel.value)customers.some(function(x){if(String(x.code)===sel.value){c=x;return true;}return false;});inp.value=c?label(c):"";}
+    function open(b){wrap.classList.toggle("open",b);inp.setAttribute("aria-expanded",b?"true":"false");}
+    function paint(){[].forEach.call(list.children,function(el,i){el.classList.toggle("act",i===act);if(i===act&&el.scrollIntoView)el.scrollIntoView({block:"nearest"});});}
+    function render(q){
+      q=q.trim().toLowerCase();
+      shown=customers.filter(function(c){return !q||(String(c.name||"")+" "+String(c.shopName||"")+" "+String(c.code||"")).toLowerCase().indexOf(q)>-1;}).slice(0,60);
+      act=shown.length?0:-1;
+      list.innerHTML=shown.length?shown.map(function(c,i){return '<div role="option" data-i="'+i+'">'+esc(String(c.name||c.shopName||c.code||""))+'<small>'+esc(String(c.code||""))+'</small></div>';}).join(""):'<div class="none">No matching customer</div>';
+      paint();
+    }
+    function choose(i){var c=shown[i];if(!c)return;sel.value=String(c.code||"");sync();open(false);sel.dispatchEvent(new Event("change"));}
+    inp.addEventListener("focus",function(){inp.select();render("");open(true);});
+    inp.addEventListener("input",function(){render(inp.value);open(true);});
+    inp.addEventListener("keydown",function(e){
+      if(e.key==="ArrowDown"){e.preventDefault();if(!wrap.classList.contains("open")){render(inp.value);open(true);}else if(shown.length){act=(act+1)%shown.length;paint();}}
+      else if(e.key==="ArrowUp"){e.preventDefault();if(shown.length){act=(act-1+shown.length)%shown.length;paint();}}
+      else if(e.key==="Enter"){if(wrap.classList.contains("open")){e.preventDefault();choose(act);}}
+      else if(e.key==="Escape"&&wrap.classList.contains("open")){e.stopPropagation();open(false);sync();}
+    });
+    list.addEventListener("mousedown",function(e){e.preventDefault();var it=e.target.closest("[data-i]");if(it)choose(Number(it.getAttribute("data-i")));});
+    inp.addEventListener("blur",function(){
+      open(false);
+      if(!inp.value.trim()&&sel.value){sel.value="";sync();sel.dispatchEvent(new Event("change"));}
+      else sync();
+    });
+    sync();
+    pickers.push(sync);
+  }
+  function syncPickers(){pickers.forEach(function(f){f();});}
+  makePicker($("acOpenCustomer"));
+
+  $("acOpenDate").value=new Date().toISOString().slice(0,10);
+  function omsg(t,k){var m=$("acOpenMsg");m.textContent=t;m.className="ac-chip"+(k?" "+k:"");}
+  var DROPTXT="JPG, PNG or WEBP (max 5 MB)";
+  function fileName(){var f=$("acOpenPhoto").files[0];$("acDropName").textContent=f?f.name:DROPTXT;$("acDrop").classList.toggle("has",!!f);}
+  $("acOpenPhoto").addEventListener("change",fileName);
+  $("acOpeningForm").addEventListener("reset",function(){setTimeout(function(){fileName();syncPickers();},0);});
+  ["dragenter","dragover"].forEach(function(ev){$("acDrop").addEventListener(ev,function(){$("acDrop").classList.add("over");});});
+  ["dragleave","drop"].forEach(function(ev){$("acDrop").addEventListener(ev,function(){$("acDrop").classList.remove("over");});});
+  function toast(msg){var t=document.createElement("div");t.className="a-toast";t.innerHTML="<div><b>"+esc(msg)+"</b></div>";document.body.appendChild(t);setTimeout(function(){t.classList.add("out")},2600);setTimeout(function(){t.remove()},3200);}
+  function request(url,opts){return fetch(url,Object.assign({credentials:"same-origin",headers:{"Content-Type":"application/json"}},opts||{})).then(function(r){return r.json().catch(function(){return {};}).then(function(d){if(!r.ok)throw new Error(d.error||"Request failed");return d;});});}
+  function drawStats(){
+    var tiles;
+    if(currentCustomer){
+      var tot=0,paid=0,due=0,open=0;
+      invoices.forEach(function(x){tot+=Number(x.original_amount||0);paid+=Number(x.approvedPaid||0);due+=Number(x.outstanding||0);if(Number(x.outstanding||0)>0)open++;});
+      var pc=function(v){return tot>0?Math.round(v/tot*100)+"% of total credit":"";};
+      tiles=GA.tile("s-p","receipt",money(tot),"Total credit",invoices.length+(invoices.length===1?" invoice":" invoices"))+GA.tile("s-s","check-circle",money(paid),"Paid (approved)",paid>0?pc(paid):"No payments yet")+GA.tile("s-r","hourglass",money(due),"Outstanding",tot>0?pc(due):"Nothing owed")+GA.tile("s-i","clipboard-list",open,"Open invoices",pending.length+(pending.length===1?" collection":" collections")+" waiting for approval");
+    }else{
+      tiles=GA.tile("s-p","users",customers.length.toLocaleString("en-IN"),"Customers in CRM")+GA.tile("s-a","clipboard-list",pending.length,"Collections waiting","Open the approvals tab to review");
+    }
+    $("acStats").innerHTML='<div class="a-stats ac-stats">'+tiles+'</div>';
+  }
+  function loadLedger(){
+    currentCustomer=$("acCustomer").value;drawWho();if(currentCustomer){$("acOpenCustomer").value=currentCustomer;syncPickers();}
+    if(!currentCustomer){invoices=[];drawStats();$("acInvoiceRows").innerHTML='<tr><td colspan="7"><div class="a-empty"><b>Select a customer</b>Their invoices and balance will show here.</div></td></tr>';return Promise.resolve();}
+    $("acInvoiceRows").innerHTML='<tr><td colspan="7"><div class="a-empty">Loading ledger...</div></td></tr>';
+    return request("/api/accounts/customers/"+encodeURIComponent(currentCustomer)+"/invoices").then(function(d){invoices=d.invoices||[];renderInvoices();drawStats();}).catch(function(e){$("acInvoiceRows").innerHTML='<tr><td colspan="7"><div class="a-empty"><b>Could not load</b>'+esc(e.message)+'</div></td></tr>';});
+  }
+  function renderInvoices(){
+    var q=$("acSearch").value.trim().toLowerCase(), rows=invoices.filter(function(x){return String(x.invoice_no||"").toLowerCase().includes(q);});
+    $("acInvoiceRows").innerHTML=rows.length?rows.map(function(x){var owing=Number(x.outstanding||0)>0;return '<tr><td data-label="Invoice"><b>'+esc(x.invoice_no)+'</b>'+(x.evidence_path?' <a class="ac-bill" href="/api/accounts/evidence/'+esc(String(x.evidence_path).split("/").pop().replace(/\.(jpg|png|webp)$/i,""))+'" target="_blank" rel="noopener">Bill</a>':'')+'</td><td data-label="Date">'+esc(x.invoice_date||"—")+'</td><td data-label="Source"><span class="badge '+(x.source_kind==="opening"?"b-info":"b-muted")+'">'+esc(x.source_kind==="opening"?"Opening balance":"CRM invoice")+'</span></td><td data-label="Original" class="ac-r">'+money(x.original_amount)+'</td><td data-label="Paid" class="ac-r">'+money(x.approvedPaid)+'</td><td data-label="Pending" class="ac-r">'+money(x.pendingAmount)+'</td><td data-label="Outstanding" class="ac-r ac-due'+(owing?" owing":"")+'">'+money(x.outstanding)+'</td></tr>';}).join(""):'<tr><td colspan="7"><div class="a-empty"><b>No matching invoices</b></div></td></tr>';
+  }
+  function readDataUrl(file){return new Promise(function(resolve,reject){var r=new FileReader();r.onload=function(){resolve(r.result);};r.onerror=reject;r.readAsDataURL(file);});}
+  function openImport(){if(currentCustomer){$("acOpenCustomer").value=currentCustomer;syncPickers();}omsg("");$("acOpenModal").classList.add("open");setTimeout(function(){$("acOpenCustomer").value?$("acOpenNo").focus():$("acOpenCustomer").parentNode.querySelector("input").focus();},50);}
+  function closeImport(){$("acOpenModal").classList.remove("open");}
+  $("acAddInvoice").onclick=openImport;$("acOpenClose").onclick=closeImport;$("acOpenCancel").onclick=closeImport;
+  $("acOpeningForm").onsubmit=async function(e){
+    e.preventDefault();var btn=$("acOpenSubmit"),file=$("acOpenPhoto").files[0];
+    if(!$("acOpenCustomer").value){omsg("Choose a customer.","err");return;}
+    if(!file)return;
+    if(file.size>5*1024*1024){omsg("Photo must be 5 MB or smaller.","err");return;}
+    btn.disabled=true;omsg("Uploading bill photo...");
+    try{
+      var uploaded=await request("/api/accounts/evidence",{method:"POST",body:JSON.stringify({data:await readDataUrl(file)})});
+      omsg("Saving opening invoice...");
+      await request("/api/accounts/opening-invoices",{method:"POST",body:JSON.stringify({customerCode:$("acOpenCustomer").value,invoiceNo:$("acOpenNo").value,invoiceDate:$("acOpenDate").value,originalAmount:Number($("acOpenOriginal").value),outstandingAmount:Number($("acOpenDue").value),evidencePath:uploaded.evidencePath})});
+      toast("Opening invoice added to customer ledger.");var keep=$("acOpenCustomer").value;this.reset();$("acOpenDate").value=new Date().toISOString().slice(0,10);omsg("");closeImport();if(currentCustomer===keep)loadLedger();
+    }catch(err){omsg(err.message,"err");}finally{btn.disabled=false;}
+  };
+  function loadPending(){
+    $("acPendingRows").innerHTML='<tr><td colspan="7"><div class="a-empty">Loading approvals...</div></td></tr>';
+    return request("/api/accounts/collections/pending").then(function(d){pending=d.collections||[];$("acPendingCount").textContent=pending.length?String(pending.length):"";renderPending();drawStats();}).catch(function(e){$("acPendingRows").innerHTML='<tr><td colspan="7"><div class="a-empty"><b>Could not load</b>'+esc(e.message)+'</div></td></tr>';});
+  }
+  function renderPending(){
+    $("acPendingRows").innerHTML=pending.length?pending.map(function(x){return '<tr><td data-label="Received">'+esc(dt(x.received_at))+'</td><td data-label="Customer"><b>'+esc(x.customer_name_snapshot)+'</b><br><small class="ac-muted">'+esc(x.customer_code)+'</small></td><td data-label="Collector">'+esc(x.collector_name_snapshot)+'</td><td data-label="Method">'+esc(METHOD[x.method]||x.method)+'</td><td data-label="Total" class="ac-r"><b>'+money(x.total_amount)+'</b></td><td data-label="Status"><span class="badge b-accent">Pending approval</span></td><td><button class="btn btn-outline ac-btn" type="button" data-detail="'+esc(x.id)+'">Review</button></td></tr>';}).join(""):'<tr><td colspan="7"><div class="a-empty"><b>No pending collections</b>Nothing is waiting for approval.</div></td></tr>';
+  }
+  function showDetails(id){
+    var x=pending.find(function(a){return a.id===id;});if(!x)return;
+    var allocations=x.allocations||[];
+    $("acDetailBody").innerHTML='<div class="ac-note">Customer: <b>'+esc(x.customer_name_snapshot)+'</b> · '+esc(x.customer_code)+'<br>Collector: '+esc(x.collector_name_snapshot)+'<br>Method: '+esc(METHOD[x.method]||x.method)+'<br>Total: <b>'+money(x.total_amount)+'</b><br>Note: '+esc(x.note||"—")+'</div><div>'+allocations.map(function(a){return '<div class="ac-alloc"><b>'+esc(a.invoice?a.invoice.invoice_no:a.invoice_id)+'</b> · '+money(a.amount)+'<br><small class="ac-muted">'+esc(a.invoice?a.invoice.invoice_date:"")+'</small><br><a href="'+esc(a.evidenceUrl||"")+'" target="_blank" rel="noopener">Open invoice bill photo</a><div><img src="'+esc(a.evidenceUrl||"")+'" alt="Invoice evidence"></div></div>';}).join("")+'</div><label class="ac-chk"><input id="acEvidenceChecked" type="checkbox"><span>I have checked every invoice photo and verified the received amount and payment method.</span></label><button class="btn btn-success ac-btn" id="acApprove" type="button" disabled>Approve collection</button><p class="ac-muted" id="acApproveMsg" style="font-size:13px"></p>';
+    $("acDetailModal").classList.add("open");
+    $("acEvidenceChecked").onchange=function(){$("acApprove").disabled=!this.checked||!allocations.length;};
+    $("acApprove").onclick=function(){if(!this.disabled){this.disabled=true;request("/api/accounts/collections/"+encodeURIComponent(x.id)+"/approve",{method:"POST",body:"{}"}).then(function(){toast("Collection approved and customer ledger updated.");$("acDetailModal").classList.remove("open");loadPending();if(currentCustomer)loadLedger();}).catch(function(e){$("acApproveMsg").textContent=e.message;$("acApprove").disabled=false;});}};
+  }
+  $("acCustomer").addEventListener("change",loadLedger);$("acSearch").addEventListener("input",renderInvoices);
+  $("acRefresh").onclick=function(){loadLedger();loadPending();};
+  $("acPendingRows").addEventListener("click",function(e){var b=e.target.closest("[data-detail]");if(b)showDetails(b.getAttribute("data-detail"));});
+  $("acModalClose").onclick=function(){$("acDetailModal").classList.remove("open");};
+  $("acDetailModal").onclick=function(e){if(e.target===this)this.classList.remove("open");};
+  document.addEventListener("keydown",function(e){if(e.key==="Escape"){$("acDetailModal").classList.remove("open");if(!$("acOpenSubmit").disabled)closeImport();}});
+  document.querySelectorAll("#acTabs button").forEach(function(b){b.onclick=function(){document.querySelectorAll("#acTabs button").forEach(function(x){x.classList.toggle("on",x===b);});$("acLedger").hidden=b.dataset.tab!=="ledger";$("acPending").hidden=b.dataset.tab!=="pending";if(b.dataset.tab==="pending")loadPending();};});
+  function drawWho(){
+    var c=null;if($("acCustomer").value)customers.some(function(x){if(String(x.code)===$("acCustomer").value){c=x;return true;}return false;});
+    $("acWho").innerHTML=c?'<span class="ac-muted">Viewing</span><b>'+esc(String(c.name||c.shopName||c.code))+'</b><span class="ac-muted">· '+esc(String(c.code||""))+'</span><button class="btn btn-outline ac-btn" id="acClear" type="button">Clear</button>':'<span class="ac-muted">Use the search box at the top to find a customer and see their ledger.</span>';
+    var cl=$("acClear");if(cl)cl.onclick=function(){$("acCustomer").value="";$("acSearch").value="";loadLedger();};
+  }
+  // One search box for customers and invoices.
+  (function(){
+    var box=$("acSearch"),wrap=box.parentNode,list=$("acHsList"),items=[],act=-1;
+    function open(b){wrap.classList.toggle("open",b);}
+    function paint(){[].forEach.call(list.querySelectorAll("[data-n]"),function(el){var on=Number(el.getAttribute("data-n"))===act;el.classList.toggle("act",on);if(on&&el.scrollIntoView)el.scrollIntoView({block:"nearest"});});}
+    function render(){
+      var q=box.value.trim().toLowerCase(),html="";items=[];
+      var cs=customers.filter(function(c){return !q||(String(c.name||"")+" "+String(c.shopName||"")+" "+String(c.code||"")).toLowerCase().indexOf(q)>-1;}).slice(0,8);
+      var is=(currentCustomer&&q)?invoices.filter(function(x){return String(x.invoice_no||"").toLowerCase().indexOf(q)>-1;}).slice(0,6):[];
+      if(cs.length){html+='<div class="grp">Customers</div>';cs.forEach(function(c){html+='<div role="option" data-n="'+items.length+'">'+esc(String(c.name||c.shopName||c.code||""))+'<small>'+esc(String(c.code||""))+'</small></div>';items.push({k:"c",v:c});});}
+      if(is.length){html+='<div class="grp">Invoices in this ledger</div>';is.forEach(function(x){html+='<div role="option" data-n="'+items.length+'">#'+esc(String(x.invoice_no))+'<small>'+money(x.outstanding)+' outstanding</small></div>';items.push({k:"i",v:x});});}
+      if(!items.length)html='<div class="none">No matching customer'+(currentCustomer?" or invoice":"")+'</div>';
+      act=items.length?0:-1;list.innerHTML=html;paint();
+    }
+    function choose(n){var it=items[n];if(!it)return;
+      if(it.k==="c"){$("acCustomer").value=String(it.v.code||"");box.value="";open(false);loadLedger();}
+      else{box.value=String(it.v.invoice_no);open(false);renderInvoices();}
+    }
+    box.addEventListener("focus",function(){render();open(true);});
+    box.addEventListener("input",function(){render();open(true);});
+    box.addEventListener("keydown",function(e){
+      var o=wrap.classList.contains("open");
+      if(e.key==="ArrowDown"){e.preventDefault();if(!o){render();open(true);}else if(items.length){act=(act+1)%items.length;paint();}}
+      else if(e.key==="ArrowUp"){e.preventDefault();if(items.length){act=(act-1+items.length)%items.length;paint();}}
+      else if(e.key==="Enter"&&o){e.preventDefault();choose(act);}
+      else if(e.key==="Escape"&&o){e.stopPropagation();open(false);}
+    });
+    list.addEventListener("mousedown",function(e){e.preventDefault();var it=e.target.closest("[data-n]");if(it)choose(Number(it.getAttribute("data-n")));});
+    box.addEventListener("blur",function(){open(false);});
+  })();
+  drawWho();drawStats();loadPending();
+  // The dashboard's "Collection approvals" link can open straight on the approvals tab (#approvals).
+  if(location.hash==="#approvals"){var apTab=document.querySelector('#acTabs button[data-tab="pending"]');if(apTab)apTab.click();}
+  if(/[?&]customer=/.test(location.search)){var pre=new URLSearchParams(location.search).get("customer");if(pre&&customers.some(function(c){return String(c.code)===pre;})){$("acCustomer").value=pre;syncPickers();loadLedger();}}
+})();
+</script>
+</body>
+</html>

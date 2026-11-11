@@ -8,11 +8,11 @@
   var DEFAULT_DATA = {
     worker: {
       id: "GT-W104",
-      name: "Ravi Kumar",
-      phone: "9876543210",
+      name: "",
+      phone: "",
       role: "Delivery Executive",
       onLeaveToday: false,
-      emergencyContact: "98765 99999 (Brother)",
+      emergencyContact: "",
       adminPhone: "8489600833",
       adminName: "Fleet Admin",
     },
@@ -35,763 +35,13 @@
       lng: null,
       radiusMeters: 200,
     },
-    products: [
-      { code: "P101", name: "Refined Oil (1L Pouch)", unitPrice: 130 },
-      { code: "P102", name: "Basmati Rice (5kg Bag)", unitPrice: 420 },
-      { code: "P103", name: "Wheat Flour / Atta (10kg Bag)", unitPrice: 380 },
-      { code: "P104", name: "Premium Tea Powder (500g)", unitPrice: 210 },
-      { code: "P105", name: "Crystal Sugar (1kg Packet)", unitPrice: 44 },
-      { code: "P106", name: "Toor Dal Premium (1kg)", unitPrice: 165 },
-      { code: "P107", name: "Detergent Washing Powder (1kg)", unitPrice: 110 },
-      { code: "P108", name: "Pure Coconut Oil (500ml Bottle)", unitPrice: 140 },
-      {
-        code: "P109",
-        name: "Glucose Biscuits (Box of 24 pkts)",
-        unitPrice: 240,
-      },
-      { code: "P110", name: "Beauty Soap Bar (Box of 12 pcs)", unitPrice: 360 },
-      { code: "P111", name: "Mustard Seeds / Rai (500g)", unitPrice: 65 },
-      { code: "P112", name: "Groundnut Oil Tin (5L)", unitPrice: 890 },
-    ],
-    shops: [
-      {
-        id: "s1",
-        name: "Shree Krishna Stores",
-        owner: "Ramesh Patel",
-        phone: "9876500001",
-        address: "14/B Main Market Road, Near Gandhi Statue",
-        distance: "450m away",
-        boxes: 3,
-        billNo: "INV-2041",
-        lat: 18.5231,
-        lng: 73.8589,
-        billAmount: 4250,
-        status: "pending",
-        priority: true,
-        img: "https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=300&auto=format&fit=crop&q=60",
-      },
-      {
-        id: "s2",
-        name: "City Supermarket",
-        owner: "Sunil Gupta",
-        phone: "9876500002",
-        address: "Plot 8, North Ring Road, Opp. Bus Stand",
-        distance: "850m away",
-        boxes: 5,
-        billNo: "INV-2042",
-        lat: 18.5262,
-        lng: 73.8611,
-        billAmount: 7890,
-        status: "pending",
-        priority: false,
-        img: "https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=300&auto=format&fit=crop&q=60",
-      },
-      {
-        id: "s3",
-        name: "Rajesh Provision Store",
-        owner: "Rajesh Sharma",
-        phone: "9876500003",
-        address: "22 Station Bazaar, Near Platform 1",
-        distance: "1.4 km away",
-        boxes: 2,
-        billNo: "INV-2043",
-        lat: 18.532,
-        lng: 73.865,
-        billAmount: 2310,
-        status: "pending",
-        priority: false,
-        img: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&auto=format&fit=crop&q=60",
-      },
-      {
-        id: "s4",
-        name: "Anand Bakers & Daily Needs",
-        owner: "Anand Kumar",
-        phone: "9876500004",
-        address: "Shop 4, Golden Plaza, Hospital Road",
-        distance: "2.1 km away",
-        boxes: 4,
-        billNo: "INV-2044",
-        lat: 18.538,
-        lng: 73.87,
-        billAmount: 5120,
-        status: "pending",
-        priority: false,
-        img: "https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=300&auto=format&fit=crop&q=60",
-      },
-      {
-        id: "s5",
-        name: "Deluxe General Store",
-        owner: "Mohammad Arif",
-        phone: "9876500005",
-        address: "56 Old Fort Road, Near Jama Masjid",
-        distance: "3.2 km away",
-        boxes: 1,
-        billNo: "INV-2045",
-        lat: 18.545,
-        lng: 73.876,
-        billAmount: 1450,
-        status: "pending",
-        priority: false,
-        img: "https://images.unsplash.com/photo-1588964895597-cfccd6e2dbf9?w=300&auto=format&fit=crop&q=60",
-      },
-    ],
+    products: [],
+    shops: [],
     returns: [],
-    // Month-by-month Advances and Deductions (Realistic past data, NO future entries)
-    monthlyLedger: {
-      "2026-10": [
-        {
-          id: 101,
-          date: "01 Oct 2026",
-          title: "Festival Advance Salary",
-          type: "advance",
-          amount: 3000,
-          note: "Approved by Fleet Admin for upcoming festival",
-        },
-      ],
-      "2026-09": [
-        {
-          id: 201,
-          date: "28 Sep 2026",
-          title: "Damaged item deduction",
-          type: "deduction",
-          amount: 150,
-          note: "1 oil bottle broken during transit at Krishna Stores",
-        },
-        {
-          id: 202,
-          date: "15 Sep 2026",
-          title: "Mid-Month Salary Advance",
-          type: "advance",
-          amount: 1500,
-          note: "Transferred via UPI on worker request",
-        },
-      ],
-      "2026-08": [
-        {
-          id: 301,
-          date: "22 Aug 2026",
-          title: "Family Emergency Advance",
-          type: "advance",
-          amount: 2000,
-          note: "Cash advance signed with Admin",
-        },
-        {
-          id: 302,
-          date: "11 Aug 2026",
-          title: "Crushed box deduction",
-          type: "deduction",
-          amount: 120,
-          note: "Carton damage during unloading at City Supermarket",
-        },
-      ],
-    },
-    // Realistic Attendance: Oct 1-3 are completed/current. Days 4-31 are upcoming with NO fake values!
-    attendanceMonthly: {
-      "2026-10": [
-        {
-          day: 1,
-          weekday: "Thu",
-          status: "present",
-          inTime: "08:15 AM",
-          outTime: "05:30 PM",
-          hours: "9h 15m",
-          km: 48,
-        },
-        {
-          day: 2,
-          weekday: "Fri",
-          status: "late",
-          inTime: "08:52 AM",
-          outTime: "05:45 PM",
-          hours: "8h 53m",
-          km: 54,
-        },
-        {
-          day: 3,
-          weekday: "Sat",
-          status: "present",
-          inTime: "08:10 AM",
-          outTime: "05:15 PM",
-          hours: "9h 05m",
-          km: 42,
-        },
-        // Upcoming days: No fake attendance values!
-        {
-          day: 4,
-          weekday: "Sun",
-          status: "off",
-          inTime: "--",
-          outTime: "--",
-          hours: "0h",
-          km: 0,
-        },
-        {
-          day: 5,
-          weekday: "Mon",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 6,
-          weekday: "Tue",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 7,
-          weekday: "Wed",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 8,
-          weekday: "Thu",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 9,
-          weekday: "Fri",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 10,
-          weekday: "Sat",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 11,
-          weekday: "Sun",
-          status: "off",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 12,
-          weekday: "Mon",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 13,
-          weekday: "Tue",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 14,
-          weekday: "Wed",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 15,
-          weekday: "Thu",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 16,
-          weekday: "Fri",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 17,
-          weekday: "Sat",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 18,
-          weekday: "Sun",
-          status: "off",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 19,
-          weekday: "Mon",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 20,
-          weekday: "Tue",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 21,
-          weekday: "Wed",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 22,
-          weekday: "Thu",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 23,
-          weekday: "Fri",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 24,
-          weekday: "Sat",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 25,
-          weekday: "Sun",
-          status: "off",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 26,
-          weekday: "Mon",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 27,
-          weekday: "Tue",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 28,
-          weekday: "Wed",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 29,
-          weekday: "Thu",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 30,
-          weekday: "Fri",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-        {
-          day: 31,
-          weekday: "Sat",
-          status: "upcoming",
-          inTime: "--",
-          outTime: "--",
-          hours: "--",
-          km: 0,
-        },
-      ],
-      // Full completed past month (September 2026)
-      "2026-09": [
-        {
-          day: 1,
-          weekday: "Tue",
-          status: "present",
-          inTime: "08:12 AM",
-          outTime: "05:30 PM",
-          hours: "9h 18m",
-          km: 50,
-        },
-        {
-          day: 2,
-          weekday: "Wed",
-          status: "present",
-          inTime: "08:15 AM",
-          outTime: "05:40 PM",
-          hours: "9h 25m",
-          km: 52,
-        },
-        {
-          day: 3,
-          weekday: "Thu",
-          status: "present",
-          inTime: "08:20 AM",
-          outTime: "05:35 PM",
-          hours: "9h 15m",
-          km: 48,
-        },
-        {
-          day: 4,
-          weekday: "Fri",
-          status: "late",
-          inTime: "08:50 AM",
-          outTime: "05:45 PM",
-          hours: "8h 55m",
-          km: 54,
-        },
-        {
-          day: 5,
-          weekday: "Sat",
-          status: "present",
-          inTime: "08:10 AM",
-          outTime: "05:15 PM",
-          hours: "9h 05m",
-          km: 42,
-        },
-        {
-          day: 6,
-          weekday: "Sun",
-          status: "off",
-          inTime: "--",
-          outTime: "--",
-          hours: "0h",
-          km: 0,
-        },
-        {
-          day: 7,
-          weekday: "Mon",
-          status: "present",
-          inTime: "08:15 AM",
-          outTime: "05:40 PM",
-          hours: "9h 25m",
-          km: 51,
-        },
-        {
-          day: 8,
-          weekday: "Tue",
-          status: "present",
-          inTime: "08:14 AM",
-          outTime: "05:30 PM",
-          hours: "9h 16m",
-          km: 49,
-        },
-        {
-          day: 9,
-          weekday: "Wed",
-          status: "absent",
-          inTime: "--",
-          outTime: "--",
-          hours: "0h",
-          km: 0,
-        },
-        {
-          day: 10,
-          weekday: "Thu",
-          status: "present",
-          inTime: "08:18 AM",
-          outTime: "05:45 PM",
-          hours: "9h 27m",
-          km: 53,
-        },
-        {
-          day: 11,
-          weekday: "Fri",
-          status: "present",
-          inTime: "08:11 AM",
-          outTime: "05:30 PM",
-          hours: "9h 19m",
-          km: 50,
-        },
-        {
-          day: 12,
-          weekday: "Sat",
-          status: "present",
-          inTime: "08:22 AM",
-          outTime: "05:10 PM",
-          hours: "8h 48m",
-          km: 40,
-        },
-        {
-          day: 13,
-          weekday: "Sun",
-          status: "off",
-          inTime: "--",
-          outTime: "--",
-          hours: "0h",
-          km: 0,
-        },
-        {
-          day: 14,
-          weekday: "Mon",
-          status: "present",
-          inTime: "08:15 AM",
-          outTime: "05:35 PM",
-          hours: "9h 20m",
-          km: 52,
-        },
-        {
-          day: 15,
-          weekday: "Tue",
-          status: "present",
-          inTime: "08:10 AM",
-          outTime: "05:40 PM",
-          hours: "9h 30m",
-          km: 55,
-        },
-        {
-          day: 16,
-          weekday: "Wed",
-          status: "late",
-          inTime: "08:45 AM",
-          outTime: "05:30 PM",
-          hours: "8h 45m",
-          km: 47,
-        },
-        {
-          day: 17,
-          weekday: "Thu",
-          status: "present",
-          inTime: "08:12 AM",
-          outTime: "05:30 PM",
-          hours: "9h 18m",
-          km: 51,
-        },
-        {
-          day: 18,
-          weekday: "Fri",
-          status: "present",
-          inTime: "08:16 AM",
-          outTime: "05:50 PM",
-          hours: "9h 34m",
-          km: 58,
-        },
-        {
-          day: 19,
-          weekday: "Sat",
-          status: "present",
-          inTime: "08:19 AM",
-          outTime: "05:15 PM",
-          hours: "8h 56m",
-          km: 43,
-        },
-        {
-          day: 20,
-          weekday: "Sun",
-          status: "off",
-          inTime: "--",
-          outTime: "--",
-          hours: "0h",
-          km: 0,
-        },
-        {
-          day: 21,
-          weekday: "Mon",
-          status: "present",
-          inTime: "08:15 AM",
-          outTime: "05:40 PM",
-          hours: "9h 25m",
-          km: 52,
-        },
-        {
-          day: 22,
-          weekday: "Tue",
-          status: "present",
-          inTime: "08:10 AM",
-          outTime: "05:35 PM",
-          hours: "9h 25m",
-          km: 50,
-        },
-        {
-          day: 23,
-          weekday: "Wed",
-          status: "present",
-          inTime: "08:14 AM",
-          outTime: "05:45 PM",
-          hours: "9h 31m",
-          km: 56,
-        },
-        {
-          day: 24,
-          weekday: "Thu",
-          status: "present",
-          inTime: "08:18 AM",
-          outTime: "05:30 PM",
-          hours: "9h 12m",
-          km: 49,
-        },
-        {
-          day: 25,
-          weekday: "Fri",
-          status: "present",
-          inTime: "08:12 AM",
-          outTime: "05:40 PM",
-          hours: "9h 28m",
-          km: 53,
-        },
-        {
-          day: 26,
-          weekday: "Sat",
-          status: "present",
-          inTime: "08:20 AM",
-          outTime: "05:10 PM",
-          hours: "8h 50m",
-          km: 41,
-        },
-        {
-          day: 27,
-          weekday: "Sun",
-          status: "off",
-          inTime: "--",
-          outTime: "--",
-          hours: "0h",
-          km: 0,
-        },
-        {
-          day: 28,
-          weekday: "Mon",
-          status: "present",
-          inTime: "08:15 AM",
-          outTime: "05:30 PM",
-          hours: "9h 15m",
-          km: 48,
-        },
-        {
-          day: 29,
-          weekday: "Tue",
-          status: "present",
-          inTime: "08:08 AM",
-          outTime: "05:45 PM",
-          hours: "9h 37m",
-          km: 55,
-        },
-        {
-          day: 30,
-          weekday: "Wed",
-          status: "present",
-          inTime: "08:15 AM",
-          outTime: "05:35 PM",
-          hours: "9h 20m",
-          km: 50,
-        },
-      ],
-    },
+    monthlyLedger: {},
+    attendanceMonthly: {},
   };
 
-  // The built-in sample shops are no longer given to anyone's route. They are kept only to build the demo attendance history below.
-  var DEMO_SHOPS = DEFAULT_DATA.shops;
-  DEFAULT_DATA.shops = [];
-
-  // DEMO HISTORY (past days only): vehicle, odometer, shops and returns for completed shifts.
-  // Delete this block when real data comes from a backend.
-  (function () {
-    var days = [];
-    ["2026-09", "2026-10"].forEach(function (k) {
-      DEFAULT_DATA.attendanceMonthly[k].forEach(function (d) {
-        if (d.status === "present" || d.status === "late")
-          days.push({ key: k, d: d });
-      });
-    });
-    var running = DEFAULT_DATA.shift.lastRecordedKm;
-    var times = ["09:40 AM", "11:15 AM", "01:20 PM", "03:10 PM", "04:45 PM"];
-    for (var i = days.length - 1; i >= 0; i--) {
-      var d = days[i].d,
-        key = days[i].key;
-      d.endKm = running;
-      d.startKm = running - d.km;
-      running = d.startKm;
-      d.vehicle = DEFAULT_DATA.shift.assignedVehicle;
-      d.shops = DEMO_SHOPS.map(function (sh, n) {
-        var retry = key === "2026-10" && d.day === 2 && n === 4;
-        return {
-          name: sh.name,
-          address: sh.address.split(",")[0],
-          boxes: sh.boxes,
-          billNo: sh.billNo,
-          time: times[n],
-          status: retry ? "retry" : "delivered",
-        };
-      });
-      d.returns =
-        key === "2026-09" && d.day === 28
-          ? [
-              {
-                item: "Refined Oil (1L Pouch)",
-                qty: 1,
-                amount: 150,
-                reason: "Bottle broken in transit at Shree Krishna Stores",
-              },
-            ]
-          : [];
-    }
-  })();
 
   function loadStore() {
     try {
@@ -1050,7 +300,7 @@
         every = Array.isArray(raw) ? raw : raw ? [raw] : [];
       // Cancelled plans stay in the admin data as history; the worker only follows active plans.
       var list = every.filter(function (p) {
-        return p && p.status !== "cancelled";
+        return p && p.status !== "cancelled" && !p.done;
       });
       // The plan this person follows: as the driver (workerId) or as a helper riding along (helpers).
       var plan =
@@ -1197,6 +447,15 @@
             plan.vehicleKm != null ? plan.vehicleKm : d.shift.lastRecordedKm,
         });
       } else {
+        // Second plan of the day: reopen the closed day (no new punch-in, finished shops are kept below).
+        if (d.shift && d.shift.punchedOut && plan.again)
+          d.shift = Object.assign(d.shift, {
+            punchedOut: false,
+            punchOutTime: null,
+            endKm: null,
+            drivenKm: null,
+            handoverCompleted: false,
+          });
         var old = d.shops || [],
           used = {};
         old.forEach(function (o) {
@@ -1557,7 +816,7 @@
       var store = loadStore();
       var key = yearMonthKey || "2026-10";
       var month =
-        store.attendanceMonthly[key] || store.attendanceMonthly["2026-10"];
+        store.attendanceMonthly[key] || store.attendanceMonthly["2026-10"] || [];
       var day =
         month.find(function (d) {
           return d.day === dayNum;
@@ -1610,7 +869,7 @@
     getMonthlyAdvances: function (yearMonthKey) {
       var store = loadStore();
       var key = yearMonthKey || "2026-10";
-      var base = (store.monthlyLedger[key] || []).slice(),
+      var base = ((store.monthlyLedger || {})[key] || []).slice(),
         extra = [];
       var mon = [
         "Jan",
@@ -1694,6 +953,9 @@
       String(t.getDate()).padStart(2, "0")
     );
   }
+  window.GMnotify = function (type, title, text) {
+    notify(type, title, text);
+  };
   function notify(type, title, text) {
     try {
       var l = JSON.parse(localStorage.getItem(NK));
@@ -2232,6 +1494,11 @@
       returns: o.returns,
       notes: o.note,
     };
+  };
+  // The employee's monthly salary, set by the admin on the employee profile (0 when not set).
+  GM.getMySalary = function () {
+    var me = ((GM.getData() || {}).worker || {}).id;
+    return Number(((jl("gm_admin_wprofile_v1", {}) || {})[me] || {}).salary) || 0;
   };
   GM.getMonthlyAdvances = function (key) {
     var mon = [

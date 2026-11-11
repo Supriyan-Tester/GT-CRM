@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <script src="../shared/loading.js"></script>
@@ -512,6 +512,10 @@
       }
 
       /* quick access */
+      #assignedOrdersCard[hidden],
+      #assignedOrdersNav[hidden] {
+        display: none !important;
+      }
       .hm-qa {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -773,7 +777,7 @@
             ></span>
             <div><b>Route</b><small id="routeShopsCount">&nbsp;</small></div></a
           >
-          <a href="orders.html" class="hm-q"
+          <a href="orders.html" class="hm-q" id="assignedOrdersCard" hidden
             ><span class="chip c-a"
               ><svg class="icon" data-icon="package"></svg
             ></span>
@@ -818,7 +822,7 @@
           ><svg class="icon" data-icon="home"></svg>Home</a
         >
         <a href="route.html"><svg class="icon" data-icon="map"></svg>Route</a>
-        <a href="orders.html"><svg class="icon" data-icon="package"></svg>Assigned Orders</a>
+        <a href="orders.html" id="assignedOrdersNav" hidden><svg class="icon" data-icon="package"></svg>Assigned Orders</a>
         <a href="advances.html"
           ><svg class="icon" data-icon="coin"></svg>Account</a
         >
@@ -842,6 +846,22 @@
         // If not logged in, redirect to login
         window.location.href = "../login.html";
       }
+
+      // Show "Assigned Orders" only when the office has assigned at least one order
+      function checkAssignedOrders() {
+        fetch("/api/worker/orders", { credentials: "same-origin" })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) {
+            var show = !!(j && j.orders && j.orders.length);
+            ["assignedOrdersCard", "assignedOrdersNav"].forEach(function (id) {
+              var el = document.getElementById(id);
+              if (el) el.hidden = !show;
+            });
+          })
+          .catch(function () {});
+      }
+      checkAssignedOrders();
+      window.addEventListener("focus", checkAssignedOrders);
 
       GM.applyTodayPlan();
       window.addEventListener("gm-sync", function () {

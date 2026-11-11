@@ -105,7 +105,17 @@ window.GMImg = {
   var rev = 0,
     pending = {},
     written = {},
-    localOnly = { gm_logged_in: 1 };
+    // Screen preferences kept only in this browser; the server does not accept them, so never send them.
+    localOnly = {
+      gm_logged_in: 1,
+      gm_pr_cols: 1,
+      gm_pr_view: 1,
+      gm_last_act: 1,
+      gm_vx_fold_v1: 1,
+      gm_side_col: 1,
+      gm_fav: 1,
+      gm_privacy_ok_v1: 1,
+    };
   localOnly[VIEW] = 1;
   // Stale-save protection (admin pages). krev[k] = newest server version of a shared record that this browser knows about.
   // readRev[k] = the version of it the page last READ. A save is sent together with that version, and the server refuses it when
@@ -444,6 +454,8 @@ window.GMImg = {
           if (items[k].v !== null) window.GMSync.has = true;
         } else if (isWorker) {
           if (id !== wid(rawGet.call(ls, BLOB))) continue;
+          // A newly added employee has an empty record on the server. That means "nothing saved yet", not "delete it".
+          if (items[k].v === null) continue;
         } else continue;
         if (applyOne(BLOB, k, items)) changed = true;
       } else if (ok(k)) {

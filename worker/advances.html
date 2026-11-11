@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
   <head>
     <script src="../shared/loading.js"></script>
@@ -410,6 +410,64 @@
         }
       }
     </style>
+    <style>
+      /* ---- My Account (new design) ---- */
+      .ma-top { background: linear-gradient(135deg, #064e3b, #0f766e); color: #fff; border-radius: 24px; padding: 16px 16px 18px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+      .ma-top h1 { font-size: 22px; font-weight: 800; line-height: 1.2; }
+      .ma-top p { font-size: 13px; opacity: 0.85; margin-top: 3px; }
+      .ma-top .icon-btn { background: rgba(255, 255, 255, 0.95); color: #0f766e; }
+      .ma-month { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 8px 10px; margin-bottom: 12px; }
+      .ma-month button { width: 36px; height: 36px; border-radius: 10px; border: 0; background: var(--t-primary); color: var(--primary); display: grid; place-items: center; cursor: pointer; }
+      .ma-month button:disabled { opacity: 0.35; cursor: default; }
+      .ma-month b { font-size: 17px; display: flex; align-items: center; gap: 8px; }
+      .ma-tabs { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 12px; }
+      .ma-tab { border: 1px solid var(--border); background: var(--card); color: var(--text); border-radius: 999px; padding: 9px 20px; font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; white-space: nowrap; }
+      .ma-tab.active { background: var(--primary); color: var(--on-primary, #fff); border-color: var(--primary); }
+      .ma-cut { background: linear-gradient(135deg, #064e3b, #0f766e); color: #fff; border-radius: 20px; padding: 16px; display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+      .ma-cut .em { font-size: 40px; line-height: 1; }
+      .ma-cut small { display: block; font-size: 13px; opacity: 0.9; }
+      .ma-cut strong { display: block; font-size: 30px; font-weight: 800; margin-top: 2px; }
+      .ma-cut button { margin-left: auto; border: 1px solid rgba(255, 255, 255, 0.6); background: transparent; color: #fff; border-radius: 999px; padding: 9px 14px; font: inherit; font-weight: 700; font-size: 13px; cursor: pointer; white-space: nowrap; }
+      .ma-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+      .ma-stat { border-radius: 18px; padding: 14px; display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); }
+      .ma-stat.a { background: rgba(245, 158, 11, 0.1); }
+      .ma-stat.d { background: rgba(239, 68, 68, 0.08); }
+      .ma-stat .ib { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; flex: none; }
+      .ma-stat.a .ib { background: rgba(245, 158, 11, 0.2); }
+      .ma-stat.d .ib { background: rgba(239, 68, 68, 0.15); }
+      .ma-stat small { display: block; font-size: 12px; color: var(--muted); }
+      .ma-stat strong { font-size: 20px; font-weight: 800; }
+      .ma-card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 14px; margin-bottom: 12px; }
+      .ma-est { display: flex; align-items: center; gap: 12px; }
+      .ma-est .ib { width: 52px; height: 52px; border-radius: 14px; background: var(--t-primary); display: grid; place-items: center; font-size: 28px; flex: none; }
+      .ma-est small { display: block; font-size: 13px; color: var(--muted); }
+      .ma-est strong { font-size: 28px; font-weight: 800; display: block; }
+      .ma-est em { font-style: normal; font-size: 12px; color: var(--muted); }
+      .ma-h { font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+      .ma-tbl { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+      .ma-tbl div { display: flex; justify-content: space-between; padding: 11px 12px; font-size: 15px; border-top: 1px solid var(--border); }
+      .ma-tbl div:first-child { border-top: 0; }
+      .ma-tbl .neg b { color: #dc2626; }
+      .ma-tbl .tot { background: var(--t-primary); color: #0f766e; font-weight: 800; }
+      .ma-bk { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; margin-top: 8px; cursor: pointer; background: transparent; width: 100%; color: var(--text); font: inherit; text-align: left; }
+      .ma-bk .ib { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; flex: none; }
+      .ma-bk.a .ib { background: rgba(245, 158, 11, 0.2); }
+      .ma-bk.d .ib { background: rgba(239, 68, 68, 0.15); }
+      .ma-bk span.n { flex: 1; font-size: 15px; }
+      .ma-bk b { font-size: 16px; }
+      .ma-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-top: 1px solid var(--border); }
+      .ma-row:first-child { border-top: 0; }
+      .ma-row .ib { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; flex: none; font-size: 18px; }
+      .ma-row .mid { flex: 1; min-width: 0; }
+      .ma-row .t { font-weight: 700; font-size: 15px; }
+      .ma-row .s { font-size: 12px; color: var(--muted); }
+      .ma-row .amt { font-weight: 800; }
+      .ma-row .amt.neg { color: #dc2626; } .ma-row .amt.pos { color: #16a34a; } .ma-row .amt.adv { color: #d97706; }
+      .ma-link { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+      .ma-link .ib { width: 40px; height: 40px; border-radius: 12px; background: var(--t-primary); display: grid; place-items: center; font-size: 20px; }
+      .ma-link span.n { flex: 1; font-weight: 700; }
+      .ma-empty { text-align: center; color: var(--muted); padding: 18px 0; font-size: 14px; }
+    </style>
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link
       rel="icon"
@@ -421,41 +479,30 @@
   </head>
   <body>
     <main class="app">
-      <header class="ac-head">
+      <header class="ma-top">
         <div>
           <h1>My Account</h1>
           <p>Advance, cuts and money you got</p>
         </div>
-        <button
-          class="icon-btn"
-          id="themeToggle"
-          aria-label="Switch light or dark theme"
-        >
+        <button class="icon-btn" id="themeToggle" aria-label="Switch light or dark theme">
           <svg class="icon" data-icon="sun"></svg>
         </button>
       </header>
 
-      <div class="ac-month">
-        <button type="button" id="prevM" aria-label="Previous month">
-          <svg class="icon" data-icon="chevron-left"></svg>
-        </button>
-        <b id="monthLabel">&nbsp;</b>
-        <button type="button" id="nextM" aria-label="Next month">
-          <svg class="icon" data-icon="chevron-right"></svg>
-        </button>
+      <div class="ma-month">
+        <button type="button" id="prevM" aria-label="Previous month"><svg class="icon" data-icon="chevron-left"></svg></button>
+        <b><svg class="icon" data-icon="calendar"></svg><span id="monthLabel">&nbsp;</span></b>
+        <button type="button" id="nextM" aria-label="Next month"><svg class="icon" data-icon="chevron-right"></svg></button>
       </div>
 
-      <div class="ac-tabs" id="tabs">
-        <button class="ac-tab active" data-t="overview">All</button>
-        <button class="ac-tab" data-t="advance">Advance</button>
-        <button class="ac-tab" data-t="deduction">Cuts</button>
-        <button class="ac-tab" data-t="payment">Paid</button>
+      <div class="ma-tabs" id="tabs">
+        <button class="ma-tab active" data-t="overview">All</button>
+        <button class="ma-tab" data-t="advance">Advance</button>
+        <button class="ma-tab" data-t="deduction">Cuts</button>
+        <button class="ma-tab" data-t="payment">Paid</button>
       </div>
 
       <div id="view"></div>
-      <p class="ac-note">
-        Advance and cuts are cut from your salary on salary day.
-      </p>
     </main>
 
     <!-- Bottom Navigation Bar -->
@@ -497,196 +544,104 @@
       if (!localStorage.getItem("gm_logged_in")) {
         window.location.href = "../login.html";
       }
-      var MONTHS = [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December",
-      ];
-      var RS = "\u20B9",
-        now = new Date();
-      var cur = { y: now.getFullYear(), m: now.getMonth() },
+      var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+      var now = new Date(),
+        cur = { y: now.getFullYear(), m: now.getMonth() },
         tab = "overview",
-        showAll = false;
+        showList = false;
       function esc(t) {
         return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) {
           return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
         });
       }
       function inr(n) {
-        return RS + Math.abs(n).toLocaleString("en-IN");
+        return "\u20B9" + Math.abs(Number(n) || 0).toLocaleString("en-IN");
       }
-      // icon names (drawn in assets/icons.js)
-      var TYPE_ICON = {
-        advance: "credit-card",
-        deduction: "clock",
-        payment: "check",
-      };
-      var CHIP = { advance: "c-a", deduction: "c-d", payment: "c-s" };
+      var EMO = { advance: "\ud83d\udc5b", deduction: "\u2796", payment: "\u2705" },
+        LAB = { advance: "Advance", deduction: "Cut", payment: "Paid" };
 
       function row(it) {
-        var LAB = { advance: "Advance", deduction: "Cut", payment: "Paid" },
-          cls =
-            it.type === "payment"
-              ? "pos"
-              : it.type === "deduction"
-                ? "neg"
-                : "adv";
-        var note =
-          it.note && it.note !== "Added by Fleet Admin"
-            ? " \u00b7 " + it.note
-            : "";
-        return (
-          '<div class="ac-row"><span class="chip ' +
-          (CHIP[it.type] || "c-p") +
-          '">' +
-          GMIcons.svg(TYPE_ICON[it.type] || TYPE_ICON.advance, "icon") +
-          "</span>" +
-          '<div class="mid"><div class="t">' +
-          esc(it.title) +
-          '</div><div class="s">' +
-          (LAB[it.type] || "") +
-          " \u00b7 " +
-          esc(it.date) +
-          esc(note) +
-          "</div></div>" +
-          '<div class="amt ' +
-          cls +
-          '">' +
-          inr(Number(it.amount) || 0) +
-          "</div></div>"
-        );
+        var cls = it.type === "payment" ? "pos" : it.type === "deduction" ? "neg" : "adv",
+          bg = it.type === "payment" ? "rgba(34,197,94,.18)" : it.type === "deduction" ? "rgba(239,68,68,.15)" : "rgba(245,158,11,.2)",
+          note = it.note && it.note !== "Added by Fleet Admin" ? " \u00b7 " + it.note : "";
+        return '<div class="ma-row"><span class="ib" style="background:' + bg + '">' + (EMO[it.type] || "") + '</span><div class="mid"><div class="t">' + esc(it.title) +
+          '</div><div class="s">' + (LAB[it.type] || "") + " \u00b7 " + esc(it.date) + esc(note) + '</div></div><div class="amt ' + cls + '">' + inr(it.amount) + "</div></div>";
       }
 
       function render() {
-        var key = cur.y + "-" + String(cur.m + 1).padStart(2, "0");
-        var isNow = cur.y === now.getFullYear() && cur.m === now.getMonth();
-        document.getElementById("monthLabel").textContent =
-          MONTHS[cur.m] + " " + cur.y;
+        var key = cur.y + "-" + String(cur.m + 1).padStart(2, "0"),
+          isNow = cur.y === now.getFullYear() && cur.m === now.getMonth();
+        document.getElementById("monthLabel").textContent = MONTHS[cur.m] + " " + cur.y;
         document.getElementById("nextM").disabled = isNow;
-
         var L = GM.getMonthlyAdvances(key) || [],
-          adv = 0,
-          ded = 0;
+          adv = 0, ded = 0, nAdv = 0, nDed = 0;
         L.forEach(function (i) {
           var a = Number(i.amount) || 0;
-          if (i.type === "advance") adv += a;
-          else if (i.type === "deduction") ded += a;
+          if (i.type === "advance") { adv += a; nAdv++; }
+          else if (i.type === "deduction") { ded += a; nDed++; }
         });
-        var bal = adv + ded,
-          v = document.getElementById("view"),
+        var cuts = adv + ded,
+          salary = GM.getMySalary ? GM.getMySalary() : 0,
+          payout = salary - cuts,
           html = "";
 
         if (tab === "overview") {
           html +=
-            '<div class="ac-hero"><span class="ico"><svg class="icon" data-icon="briefcase"></svg></span>' +
-            '<div class="txt"><small>' +
-            "Will be cut from your salary" +
-            (isNow ? "" : " \u00b7 " + MONTHS[cur.m]) +
-            "</small><strong>" +
-            inr(bal) +
-            "</strong></div>" +
-            '<button type="button" id="viewDetails">See all</button></div>' +
-            '<div class="ac-stats">' +
-            '<div class="ac-stat a"><span class="chip c-a"><svg class="icon" data-icon="credit-card"></svg></span><div><small>Advance you took</small><strong>' +
-            inr(adv) +
-            "</strong></div></div>" +
-            '<div class="ac-stat d"><span class="chip c-d"><svg class="icon" data-icon="clock"></svg></span><div><small>Other cuts</small><strong>' +
-            inr(ded) +
-            "</strong></div></div></div>";
-          var shown = showAll ? L : L.slice(0, 5);
-          html +=
-            '<div class="ac-sec"><b>This month</b>' +
-            (L.length > 5
-              ? '<a id="viewAll">' +
-                (showAll ? "Show less" : "See all") +
-                "</a>"
-              : "") +
-            "</div>" +
-            '<div class="ac-list">' +
-            (shown.length
-              ? shown.map(row).join("")
-              : '<div class="ac-empty">Nothing in ' +
-                MONTHS[cur.m] +
-                " " +
-                cur.y +
-                ".</div>") +
-            "</div>";
+            '<div class="ma-cut"><span class="em">\ud83d\udcb5</span><div><small>Will be cut from your salary' + (isNow ? "" : " \u00b7 " + MONTHS[cur.m]) + "</small><strong>" + inr(cuts) + '</strong></div><button type="button" id="seeDet">' + (showList ? "Hide details \u2191" : "See details \u2192") + '</button></div>' +
+            '<div class="ma-two"><div class="ma-stat a"><span class="ib">\ud83d\udc5b</span><div><small>Advance you took</small><strong>' + inr(adv) + '</strong></div></div>' +
+            '<div class="ma-stat d"><span class="ib">\u2796</span><div><small>Other cuts</small><strong>' + inr(ded) + "</strong></div></div></div>" +
+            '<div class="ma-card ma-est"><span class="ib">\ud83d\udcb0</span><div style="flex:1"><small>Estimated salary</small>' +
+            (salary > 0 ? "<strong>" + inr(payout) + "</strong><em>Based on current month (after deductions)</em>" : "<strong>Not set</strong><em>Ask the office to set your monthly salary</em>") + "</div></div>" +
+            '<div class="ma-card"><div class="ma-h">\ud83d\udcca This month \u2013 summary</div><div class="ma-tbl">' +
+            "<div><span>Base salary</span><b>" + (salary > 0 ? inr(salary) : "Not set") + "</b></div>" +
+            '<div class="neg"><span>Total cuts</span><b>' + (cuts > 0 ? "- " : "") + inr(cuts) + "</b></div>" +
+            '<div class="tot"><span>Estimated payout</span><b>' + (salary > 0 ? inr(payout) : "-") + "</b></div></div></div>" +
+            '<div class="ma-card"><div class="ma-h">\ud83d\uddc2\ufe0f Cut &amp; advance breakdown</div>' +
+            '<button type="button" class="ma-bk a" data-go="advance"><span class="ib">\ud83d\udc5b</span><span class="n">Advance (' + nAdv + ")</span><b>" + inr(adv) + '</b><span>\u203a</span></button>' +
+            '<button type="button" class="ma-bk d" data-go="deduction"><span class="ib">\u2796</span><span class="n">Other cuts (' + nDed + ")</span><b>" + inr(ded) + '</b><span>\u203a</span></button></div>';
+          if (showList)
+            html += '<div class="ma-card" id="allEnt"><div class="ma-h">All entries</div>' + (L.length ? L.map(row).join("") : '<div class="ma-empty">Nothing in ' + MONTHS[cur.m] + " " + cur.y + ".</div>") + "</div>";
+          html += '<div class="ma-card"><a class="ma-link" href="collections-history.html"><span class="ib">\ud83e\uddfe</span><span class="n">Collections history</span><span>\u203a</span></a></div>';
         } else {
-          var F = L.filter(function (i) {
-              return i.type === tab;
-            }),
-            tot = F.reduce(function (a, i) {
-              return a + (Number(i.amount) || 0);
-            }, 0);
-          var name = { advance: "Advance", deduction: "Cuts", payment: "Paid" }[
-            tab
-          ];
-          html +=
-            '<div class="ac-sec"><b>' +
-            name +
-            '</b><span style="font-size:13px;font-weight:700">' +
-            (F.length ? "Total " + inr(tot) : "") +
-            "</span></div>" +
-            '<div class="ac-list">' +
-            (F.length
-              ? F.map(row).join("")
-              : '<div class="ac-empty">Nothing in ' +
-                MONTHS[cur.m] +
-                " " +
-                cur.y +
-                ".</div>") +
-            "</div>";
+          var F = L.filter(function (i) { return i.type === tab; }),
+            tot = F.reduce(function (a, i) { return a + (Number(i.amount) || 0); }, 0),
+            name = { advance: "Advance", deduction: "Cuts", payment: "Paid" }[tab];
+          html += salary > 0
+            ? '<div class="ma-card"><div class="ma-tbl"><div><span>Base salary</span><b>' + inr(salary) + '</b></div><div class="neg"><span>Total cuts so far</span><b>' + (cuts > 0 ? "- " : "") + inr(cuts) + '</b></div><div class="tot"><span>Estimated payout</span><b>' + inr(payout) + "</b></div></div></div>"
+            : '<div class="ma-card"><div class="ma-empty" style="padding:4px 0">Salary not set. Ask the office to set it.</div></div>';
+          html += '<div class="ma-card"><div class="ma-h" style="justify-content:space-between"><span>' + name + "</span><span>" + (F.length ? "Total " + inr(tot) : "") + "</span></div>" +
+            (F.length ? F.map(row).join("") : '<div class="ma-empty">Nothing in ' + MONTHS[cur.m] + " " + cur.y + ".</div>") + "</div>";
         }
-        v.innerHTML = html;
-        var vd = document.getElementById("viewDetails");
-        if (vd)
-          vd.onclick = function () {
-            showAll = true;
-            render();
-          };
-        var va = document.getElementById("viewAll");
-        if (va)
-          va.onclick = function () {
-            showAll = !showAll;
-            render();
-          };
+        document.getElementById("view").innerHTML = html;
+        var sd = document.getElementById("seeDet");
+        if (sd) sd.onclick = function () {
+          showList = !showList;
+          render();
+          if (showList) {
+            var ae = document.getElementById("allEnt");
+            if (ae) ae.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        };
+        document.querySelectorAll("[data-go]").forEach(function (b) {
+          b.onclick = function () { setTab(b.getAttribute("data-go")); };
+        });
       }
-
-      document.getElementById("prevM").onclick = function () {
-        if (cur.m === 0) {
-          cur.m = 11;
-          cur.y--;
-        } else cur.m--;
-        showAll = false;
+      function setTab(t) {
+        tab = t;
+        document.querySelectorAll(".ma-tab").forEach(function (x) { x.classList.toggle("active", x.getAttribute("data-t") === t); });
         render();
+      }
+      document.getElementById("prevM").onclick = function () {
+        if (cur.m === 0) { cur.m = 11; cur.y--; } else cur.m--;
+        showList = false; render();
       };
       document.getElementById("nextM").onclick = function () {
         if (cur.y === now.getFullYear() && cur.m === now.getMonth()) return;
-        if (cur.m === 11) {
-          cur.m = 0;
-          cur.y++;
-        } else cur.m++;
-        showAll = false;
-        render();
+        if (cur.m === 11) { cur.m = 0; cur.y++; } else cur.m++;
+        showList = false; render();
       };
-      document.querySelectorAll(".ac-tab").forEach(function (b) {
-        b.onclick = function () {
-          document.querySelectorAll(".ac-tab").forEach(function (x) {
-            x.classList.remove("active");
-          });
-          b.classList.add("active");
-          tab = b.getAttribute("data-t");
-          render();
-        };
+      document.querySelectorAll(".ma-tab").forEach(function (b) {
+        b.onclick = function () { setTab(b.getAttribute("data-t")); };
       });
       window.addEventListener("gm-sync", render);
       render();

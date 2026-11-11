@@ -612,6 +612,27 @@
       S.pgn = 1;
       list();
     };
+    // Clicking a tile filters the list (click the same tile again to clear).
+    [].forEach.call(pg.querySelectorAll(".wk-tiles .wk-tile"), function (t, i) {
+      var val = ["", "active", "leave", "inactive", "relieved"][i];
+      if (val === undefined) return;
+      t.style.cursor = "pointer";
+      t.tabIndex = 0;
+      t.setAttribute("role", "button");
+      function pick() {
+        S.st = val && S.st === val ? "" : val;
+        S.pgn = 1;
+        $("fS").value = S.st;
+        list();
+      }
+      t.onclick = pick;
+      t.onkeydown = function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          pick();
+        }
+      };
+    });
     $("fR").onchange = function () {
       S.route = this.value;
       S.pgn = 1;
@@ -758,7 +779,7 @@
       "<h2>Mark " +
         esc(w.name) +
         ' as relieved</h2><p class="wk-sub">They leave the company. Their login stops working and they no longer appear in new daily plans. All past attendance, plans and records stay.</p>' +
-        fgm("Relieving date", "rD", GA.today(), 'type="date"') +
+        fgm("Relieving date <span class=\"fc-star\">*</span>", "rD", GA.today(), 'type="date"') +
         fgm("Reason (optional)", "rR", "") +
         btns("Mark as relieved"),
     );
@@ -846,9 +867,9 @@
           })
           .join("") || '<p class="wk-sub">No leave recorded.</p>') +
         '<div class="wk-row"><div>' +
-        fgm("First day", "lF", GA.today(), 'type="date"') +
+        fgm("First day <span class=\"fc-star\">*</span>", "lF", GA.today(), 'type="date"') +
         "</div><div>" +
-        fgm("Last day", "lT", GA.today(), 'type="date"') +
+        fgm("Last day <span class=\"fc-star\">*</span>", "lT", GA.today(), 'type="date"') +
         "</div></div>" +
         fgm("Reason (optional)", "lR", "") +
         btns("Mark leave"),
@@ -995,6 +1016,7 @@
         : '<span class="wk-av xl" style="background:#0F766E">+</span>') +
       '</div><p class="wk-sub" style="margin:8px 0">JPG, PNG or WEBP, up to 5 MB</p><input type="file" id="fPh" accept="image/jpeg,image/png,image/webp" hidden><button class="btn" id="bPh" type="button">Upload photo</button><button class="btn btn-outline" id="bPhX" type="button">Remove</button></div>' +
       '<div class="wk-card"><h3>Additional details</h3>' +
+      fgm("Monthly salary (\u20b9)", "fSal", p.salary || "", 'inputmode="decimal"') +
       fgm("Emergency contact name", "fEn", p.emName || "") +
       '<label class="wk-lbl" for="fEp">Emergency contact phone</label><div class="wk-pre"><span>+91</span><div class="field"><input id="fEp" inputmode="numeric" maxlength="10" value="' +
       esc(
@@ -1020,9 +1042,9 @@
         $("fErr").textContent = "Choose a JPG, PNG or WEBP picture.";
         return;
       }
-      if (f.size > 25 * 1024 * 1024) {
-        $("fErr").textContent = "That picture is larger than 25 MB.";
-        return;
+      if (f.size > 5 * 1024 * 1024) {
+      $("fErr").textContent = "That picture is larger than 5 MB.";
+      return;
       }
       F.photo = f;
       F.rmPhoto = false;
@@ -1112,6 +1134,7 @@
     p.joinDate = join;
     if (!p.empCode) p.empCode = makeCode(p.role, join, id);
     p.address = $("fAd").value.trim();
+    p.salary = Number($("fSal").value) > 0 ? Math.round(Number($("fSal").value)) : 0;
     p.notes = $("fNt").value.trim();
     p.emName = $("fEn").value.trim();
     p.emPhone = emp;
@@ -1437,15 +1460,17 @@
       },
       all = GA.entries(w.id, "");
     var adv = tot("advance"),
-      ded = tot("deduction");
+      ded = tot("deduction"),
+      sal = Number((prof(w.id) || {}).salary) || 0;
     return (
       '<div class="wk-card"><h3>Advances &amp; deductions <span class="wk-hacts">' +
       monthBar("vM", m) +
-      '<a class="btn btn-outline" style="padding:0 12px;min-height:36px;font-weight:600" href="advances.html">All employees</a><button class="btn" id="bAdv">+ Add entry</button></span></h3>' +
-      '<div class="wk-tiles wk-t3" style="margin:14px 0 0">' +
+      '<button class="btn" id="bAdv">+ Add entry</button></span></h3>' +
+      '<div class="wk-tiles" style="margin:14px 0 0;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">' +
+      tile("t-g", sal > 0 ? GA.ops.rupee(sal) : "Not set", "Base salary", "coin", sal > 0 ? "" : "Set it in Edit employee") +
       tile("t-y", GA.ops.rupee(adv), "Advances given", "coin") +
-      tile("t-r", GA.ops.rupee(ded), "Deductions", "trash") +
-      tile("t-b", list.length, "Entries this month", "clipboard-list") +
+      tile("t-r", GA.ops.rupee(ded), "Deductions", "trash", list.length + (list.length === 1 ? " entry" : " entries") + " this month") +
+      tile("t-b", sal > 0 ? GA.ops.rupee(sal - adv - ded) : "-", "Estimated payout", "clipboard-list", sal > 0 ? "Salary minus advances and deductions" : "") +
       "</div></div>" +
       '<div class="wk-card" style="margin-top:16px"><h3>' +
       mlabel(m) +
@@ -1497,14 +1522,25 @@
           ],
           "advance",
         ) +
-        fgm("Title", "eN", "", 'placeholder="e.g. Festival advance"') +
-        fgm("Amount (₹)", "eA", "", 'inputmode="numeric"') +
-        fgm("Date", "eD", GA.today(), 'type="date"') +
+        fgm("Title <span class=\"fc-star\">*</span>", "eN", "", 'placeholder="e.g. Festival advance"') +
+        fgm("Amount (₹) <span class=\"fc-star\">*</span>", "eA", "", 'inputmode="numeric"') +
+        fgm("Date <span class=\"fc-star\">*</span>", "eD", GA.today(), 'type="date"') +
         fgm("Note (optional)", "eO", "") +
         btns("Save entry"),
     );
     $("mNo").onclick = closeM;
     $("mOk").onclick = function () {
+      if (
+        !FC.check([
+          ["eN", "Enter a title."],
+          ["eA", "Enter the amount.", function (v) { return Number(v) > 0; }],
+          ["eD", "Choose the date."],
+        ])
+      ) {
+        if ($("eA").value.trim() && !(Number($("eA").value) > 0))
+          $("eA").parentNode.nextSibling.textContent = "Amount must be a number above 0.";
+        return;
+      }
       var r = GA.addEntry({
         workerId: w.id,
         type: $("eT").value,
@@ -1576,6 +1612,7 @@
         kv("Date of birth", p.dob ? dshort(p.dob) : "") +
         kv("Current route", c ? c.route : "") +
         kv("Aadhaar / ID", p.idNumber) +
+        kv("Monthly salary", Number(p.salary) > 0 ? GA.ops.rupee(Number(p.salary)) : "Not set") +
         kv("Address", p.address) +
         kv("Notes", p.notes) +
         '</div></div></div><div class="wk-col"><div class="wk-card" style="text-align:center"><h3>Profile photo</h3>' +
@@ -1989,7 +2026,7 @@
           ),
           c ? c.vehicle : "",
         ) +
-        fgm("Effective from", "aD", GA.today(), 'type="date"') +
+        fgm("Effective from <span class=\"fc-star\">*</span>", "aD", GA.today(), 'type="date"') +
         btns("Save assignment"),
     );
     $("mNo").onclick = closeM;

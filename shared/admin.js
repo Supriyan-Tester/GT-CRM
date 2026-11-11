@@ -20,6 +20,14 @@
     "problems.html": ["delivery", "helper"],
     "attendance.html": ["helper"],
     "advances.html": ["billing"],
+    "accounts.html": ["billing"],
+    "accounts-dashboard.html": ["billing"],
+    "collections.html": ["billing"],
+    "statement.html": ["billing"],
+    "accounts-reports.html": ["billing"],
+    "office-cash.html": ["billing"],
+    "upi-settlements.html": ["billing"],
+    "daily-closing.html": ["billing"],
     "products.html": ["inventory", "billing", "sales"],
     "returns.html": ["inventory"],
     "workers.html": "full",
@@ -631,7 +639,9 @@
       });
       if (ch)
         try {
+          window.__gmAuto = 1;
           localStorage.setItem("gm_admin_wprofile_v1", JSON.stringify(P));
+          window.__gmAuto = 0;
         } catch (e) {}
     },
     // "Name (CODE)" for lists and pickers.
@@ -905,6 +915,7 @@
         if (t === "sales_order" || t === "sales_cancel")
           return "orders.html?q=" + encodeURIComponent(oid || shop);
         if (t === "sales_noorder") return "sales.html?date=" + (n.date || "");
+        if (t === "collection" || t === "credit") return "collections.html";
         return "notifications.html";
       },
       // Marks it read, then goes to its page.
@@ -937,6 +948,8 @@
             sales_order: ["store", "s", "New order"],
             sales_cancel: ["close", "d", "Order cancelled"],
             sales_noorder: ["alert-triangle", "a", "No order"],
+            collection: ["coin", "s", "Payment collected"],
+            credit: ["alert-triangle", "a", "Credit (not collected)"],
           }[t] || ["bell", "p", "Update"]
         );
       },
@@ -991,6 +1004,10 @@
       opts = opts || {};
       GA.syncVehicleKm();
       GA.ensureCodes();
+      window.addEventListener("gm-sync-rejected", function (e) {
+        if (e.detail && e.detail.key === "gm_admin_wprofile_v1")
+          setTimeout(GA.ensureCodes, 1500);
+      });
       var s = GA.session() || {},
         nav = [
           ["index.html", "Home", "home"],
@@ -1005,6 +1022,20 @@
           ["returns.html", "Returns", "swap"],
           ["attendance.html", "Attendance", "clock"],
           ["advances.html", "Advances", "coin"],
+          [
+            "#accounts",
+            "Cash & Accounts",
+            "rupee",
+            [
+              ["accounts-dashboard.html", "Dashboard", "chart"],
+              ["collections.html", "Collections", "clipboard-list"],
+              ["accounts.html", "Accounts & Ledger", "receipt"],
+              ["accounts-reports.html", "Accounts reports", "report"],
+              ["office-cash.html", "Office cash", "coin"],
+              ["upi-settlements.html", "UPI & bank", "credit-card"],
+              ["daily-closing.html", "Daily closing", "check-circle"],
+            ],
+          ],
           ["live.html", "Live location", "map"],
           ["activity.html", "Activity log", "check"],
           ["super.html", "User overview", "report"],
@@ -1015,10 +1046,68 @@
           
         ];
       nav = nav.filter(function (n) {
+        if (n[3]) {
+          n[3] = n[3].filter(function (c) {
+            return GA.can(c[0]);
+          });
+          return n[3].length > 0;
+        }
         return GA.can(n[0]);
       });
       var links = nav
         .map(function (n) {
+          if (n[3]) {
+            // A menu group: the title opens the first page, the arrow shows or hides the pages under it.
+            var inGroup = n[3].some(function (c) {
+                return c[0] === page;
+              }),
+              gkey = "gm_nav_open_" + n[0].slice(1),
+              gopen = inGroup;
+            try {
+              if (!inGroup) gopen = localStorage.getItem(gkey) === "1";
+            } catch (e) {}
+            return (
+              '<div class="a-grp' +
+              (gopen ? " open" : "") +
+              '" data-key="' +
+              gkey +
+              '"><a href="' +
+              n[3][0][0] +
+              '" title="' +
+              n[1] +
+              '"' +
+              (inGroup ? ' class="grp-on"' : "") +
+              ">" +
+              GA.icon(n[2]) +
+              "<span>" +
+              n[1] +
+              '</span></a><button type="button" class="a-grp-t" aria-label="Show or hide ' +
+              n[1] +
+              ' pages" aria-expanded="' +
+              (gopen ? "true" : "false") +
+              '">' +
+              GA.icon("chevron-down") +
+              '</button><div class="a-subnav">' +
+              n[3]
+                .map(function (c) {
+                  return (
+                    '<a href="' +
+                    c[0] +
+                    '" title="' +
+                    c[1] +
+                    '"' +
+                    (c[0] === page ? ' aria-current="page"' : "") +
+                    ">" +
+                    GA.icon(c[2]) +
+                    "<span>" +
+                    c[1] +
+                    "</span></a>"
+                  );
+                })
+                .join("") +
+              "</div></div>"
+            );
+          }
           return (
             '<a href="' +
             n[0] +
@@ -1079,6 +1168,17 @@
         esc(s.role) +
         '</small></span><i aria-hidden="true">&#9662;</i></button><div class="a-umenu" id="aUMenu" role="menu"><a role="menuitem" href="profile.html">My profile</a><a role="menuitem" href="profile.html#password">Change password</a><button role="menuitem" type="button" id="aOut2">Sign out</button></div></span></div><div id="aPage"></div></div></div>';
       document.getElementById("aOut").onclick = GA.logout;
+      [].forEach.call(document.querySelectorAll(".a-grp-t"), function (t) {
+        t.onclick = function () {
+          var g = t.parentNode,
+            on = !g.classList.contains("open");
+          g.classList.toggle("open", on);
+          t.setAttribute("aria-expanded", on ? "true" : "false");
+          try {
+            localStorage.setItem(g.getAttribute("data-key"), on ? "1" : "0");
+          } catch (e) {}
+        };
+      });
       (function () {
         var ub = document.getElementById("aUser"),
           um = document.getElementById("aUMenu");
@@ -1113,6 +1213,30 @@
       back.onclick = function () {
         setMenu(false);
       };
+      // Keep the menu where it was scrolled when moving between pages (each menu link loads a new page).
+      (function () {
+        var nav = document.querySelector(".a-nav"),
+          K = "gm_nav_scroll";
+        if (!nav) return;
+        function restore() {
+          try {
+            var y = parseInt(sessionStorage.getItem(K), 10);
+            if (y > 0) nav.scrollTop = y;
+          } catch (e) {}
+        }
+        restore();
+        window.addEventListener("load", restore);
+        nav.addEventListener("click", function () {
+          try {
+            sessionStorage.setItem(K, nav.scrollTop);
+          } catch (e) {}
+        });
+        window.addEventListener("pagehide", function () {
+          try {
+            sessionStorage.setItem(K, nav.scrollTop);
+          } catch (e) {}
+        });
+      })();
       // Inside the menu: collapses it on a computer, closes it on a phone.
       var wrap = document.querySelector(".a-wrap"),
         col = document.getElementById("aCol");
@@ -1179,6 +1303,10 @@
           l = GA.notifs.list().slice(0, 8);
         dot.textContent = u > 99 ? "99+" : u;
         dot.style.display = u ? "grid" : "none";
+        // A new alert arrived: the badge pulses slowly until the bell is opened.
+        if (u > (bellDraw.prev || 0)) dot.classList.add("new");
+        if (!u) dot.classList.remove("new");
+        bellDraw.prev = u;
         var navA = document.querySelector(
           '.a-side a[href="notifications.html"]',
         );
@@ -1189,7 +1317,7 @@
             b.className = "a-nb";
             navA.appendChild(b);
           }
-          b.textContent = u;
+          b.textContent = u > 99 ? "99+" : u;
           b.style.display = u ? "inline-block" : "none";
         }
         pop.innerHTML =
@@ -1293,6 +1421,7 @@
       }
       bellCheck();
       document.getElementById("aBell").onclick = function (e) {
+        dot.classList.remove("new");
         e.stopPropagation();
         pop.classList.toggle("show");
       };
@@ -1824,6 +1953,80 @@ GA.tile = function (cls, icon, n, label, sub) {
     "</div></div>"
   );
 };
+
+/* Clickable tiles: a tile opens the page that holds the detail behind its label.
+   Tiles whose target is the page you are already on stay plain. */
+(function () {
+  var RULES = [
+    [/not delivered|problem|attention/i, "problems.html"],
+    [/return/i, "returns.html"],
+    [/driven|\bkm\b/i, "vehicles.html"],
+    [/on duty|present|absent|late|punch/i, "attendance.html"],
+    [/deliver|pending\b.*(shop|bill)|still pending|bills/i, "delivery.html"],
+    [/employee-held|office cash|deposits? to verify|receipts? confirmed/i, "office-cash.html"],
+    [/upi|bank|disputed|settlement/i, "upi-settlements.html"],
+    [/waiting|approved|rejected|total collections|^collected$/i, "collections.html"],
+    [/receivable|total credit|outstanding|open invoices|paid/i, "accounts.html"],
+    [/customers in (crm|plans)|shops visited/i, "customers.html"],
+    [/visits/i, "delivery.html"],
+    [/cancelled orders|^orders$|order value/i, "orders.html"],
+    [/advances|deductions|entries/i, "advances.html"],
+    [/attended|on leave/i, "attendance.html"],
+    [/fuel|litre/i, "vehicle-fuel.html"],
+    [/service/i, "vehicle-maintenance.html"]
+  ];
+  var SEL = ".a-main :is(.a-stat,.dp-stat,.wk-tile,.vx-tile,.sa-t)";
+  var here = location.pathname.split("/").pop() || "";
+  function target(label) {
+    for (var i = 0; i < RULES.length; i++)
+      if (RULES[i][0].test(label)) return RULES[i][1];
+    return null;
+  }
+  function labelOf(el) {
+    var sp = el.querySelector(".lbl") || el.querySelector("div > span");
+    return sp ? sp.textContent.trim() : "";
+  }
+  var st = document.createElement("style");
+  st.textContent =
+    "[data-go]{cursor:pointer;transition:transform .12s,box-shadow .12s}" +
+    "[data-go]:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.18)}" +
+    "[data-go]:focus-visible{outline:2px solid var(--primary,#0f766e);outline-offset:2px}";
+  document.head.appendChild(st);
+  function tag() {
+    [].forEach.call(document.querySelectorAll(SEL), function (el) {
+      if (el.hasAttribute("data-go") || el.hasAttribute("data-nogo")) return;
+      if (el.onclick) return el.setAttribute("data-nogo", "1"); // page handles this tile itself
+      var t = target(labelOf(el));
+      if (!t || t === here) return el.setAttribute("data-nogo", "1");
+      el.setAttribute("data-go", t);
+      el.setAttribute("role", "link");
+      el.tabIndex = 0;
+      el.title = "Open " + t.replace(".html", "").replace(/-/g, " ");
+    });
+  }
+  var q = false;
+  function later() {
+    if (q) return;
+    q = true;
+    setTimeout(function () {
+      q = false;
+      tag();
+    }, 50);
+  }
+  function go(e) {
+    var el = e.target.closest && e.target.closest(".a-main [data-go]");
+    if (!el) return;
+    if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    location.href = el.getAttribute("data-go");
+  }
+  document.addEventListener("click", go);
+  document.addEventListener("keydown", go);
+  document.addEventListener("DOMContentLoaded", function () {
+    tag();
+    new MutationObserver(later).observe(document.body, { childList: true, subtree: true });
+  });
+})();
 
 /* Keep big numbers (like rupee amounts) inside their card on every page.
    Each number starts at the normal size and shrinks only as much as it needs to fit. */

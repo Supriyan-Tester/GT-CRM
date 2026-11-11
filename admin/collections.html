@@ -1,0 +1,860 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script src="../shared/loading.js"></script>
+    <script src="../assets/icons.js"></script>
+    <script src="../shared/sync.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Collections - General Traders</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="../shared/admin.css" />
+    <script src="../shared/theme.js"></script>
+    <style>
+      .co-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 14px;
+      }
+      .co-bar .grow {
+        flex: 1 1 220px;
+        min-width: 0;
+      }
+      .co-bar input,
+      .co-bar select {
+        height: 40px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-btn);
+        background: var(--card);
+        color: var(--text);
+        padding: 0 12px;
+        font: inherit;
+        max-width: 100%;
+      }
+      .co-bar input[type="search"] {
+        width: 100%;
+      }
+      .co-seg {
+        overflow-x: auto;
+        max-width: 100%;
+      }
+      .co-seg button {
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        flex: none;
+      }
+      .co-f {
+        flex: 0 1 170px;
+        min-width: 140px;
+      }
+      @media (max-width: 560px) {
+        .co-f {
+          flex: 1 1 140px;
+        }
+      }
+      .co-seg .n {
+        margin-left: 6px;
+        font-size: 11px;
+        opacity: 0.85;
+      }
+      .co-id {
+        font-weight: 700;
+      }
+      .co-id small,
+      .co-cust small {
+        display: block;
+        color: var(--muted);
+        font-weight: 400;
+      }
+      .co-cust {
+        font-weight: 600;
+      }
+      .co-thumbs {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .co-thumbs img {
+        width: 38px;
+        height: 38px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        cursor: zoom-in;
+        background: var(--border);
+      }
+      .co-thumbs span {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      td.co-r,
+      th.co-r {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      .co-sel {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+      }
+      .co-inv b {
+        display: block;
+      }
+      .co-inv small {
+        display: block;
+        color: var(--muted);
+      }
+      .co-thumbs .cnt {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--on-primary);
+        background: var(--primary);
+        border-radius: 999px;
+        padding: 1px 7px;
+      }
+      .co-rowacts {
+        display: flex;
+        gap: 6px;
+        flex-wrap: nowrap;
+        align-items: center;
+      }
+      .co-rowacts .btn {
+        width: auto;
+        padding-left: 10px;
+        padding-right: 10px;
+        white-space: nowrap;
+      }
+      @media (max-width: 800px) {
+        .co-rowacts {
+          flex-wrap: wrap;
+        }
+      }
+      .co-bulk {
+        display: none;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin: 0 0 12px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        background: var(--t-primary);
+        font-weight: 600;
+      }
+      .co-bulk.show {
+        display: flex;
+      }
+      .co-bulk .btn {
+        width: auto;
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+      .co-pg {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 14px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .co-pg .btn {
+        width: auto;
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+      .co-pg .btns {
+        display: flex;
+        gap: 8px;
+      }
+      .co-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 120;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        background: rgba(15, 23, 42, 0.55);
+      }
+      .co-modal.open {
+        display: flex;
+      }
+      .co-card {
+        background: var(--card);
+        color: var(--text);
+        border-radius: 16px;
+        width: 100%;
+        max-width: 720px;
+        max-height: calc(100vh - 32px);
+        overflow-y: auto;
+        padding: 20px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+      }
+      .co-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+      .co-head h2 {
+        font-size: 20px;
+        margin: 0 0 4px;
+      }
+      .co-kv {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px 18px;
+        margin-bottom: 16px;
+      }
+      .co-kv div {
+        min-width: 0;
+      }
+      .co-kv small {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .co-kv b {
+        overflow-wrap: anywhere;
+      }
+      .co-sec {
+        font-weight: 700;
+        margin: 16px 0 8px;
+      }
+      .co-photos {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 10px;
+      }
+      .co-photos a {
+        display: block;
+      }
+      .co-photos img {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--border);
+      }
+      .co-photos small {
+        display: block;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+      .co-note {
+        padding: 12px;
+        border-radius: 12px;
+        background: var(--t-accent);
+        font-size: 13px;
+        margin: 14px 0;
+      }
+      .co-note.bad {
+        background: var(--t-danger);
+      }
+      .co-chk {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        margin: 14px 0;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      .co-chk input {
+        margin-top: 3px;
+        width: 18px;
+        height: 18px;
+        flex: none;
+      }
+      .co-acts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 8px;
+      }
+      .co-acts .btn {
+        width: auto;
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+      .co-reject {
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid var(--border);
+      }
+      .co-reject textarea {
+        width: 100%;
+        min-height: 70px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-btn);
+        background: var(--card);
+        color: var(--text);
+        padding: 10px 12px;
+        font: inherit;
+        resize: vertical;
+        margin: 8px 0;
+      }
+      .co-err {
+        color: var(--danger);
+        font-size: 13px;
+        min-height: 18px;
+      }
+      .co-zoom {
+        z-index: 140;
+        cursor: zoom-out;
+      }
+      .co-zoom img {
+        max-width: 100%;
+        max-height: calc(100vh - 32px);
+        border-radius: 12px;
+        background: #fff;
+      }
+      @media (max-width: 560px) {
+        .co-kv {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <script src="../shared/admin.js"></script>
+    <script>
+      (function () {
+        "use strict";
+        GA.guard();
+        var pg = GA.mount("collections.html", "Collections"),
+          esc = GA.esc;
+        var $ = function (id) {
+          return document.getElementById(id);
+        };
+        function money(v) {
+          var n = Math.round((Number(v) || 0) * 100) / 100;
+          return (
+            "₹" +
+            n.toLocaleString("en-IN", {
+              minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+              maximumFractionDigits: 2,
+            })
+          );
+        }
+        function when(iso) {
+          var d = new Date(iso);
+          return isNaN(d)
+            ? ""
+            : d.toLocaleString("en-IN", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+                timeZone: "Asia/Kolkata",
+              });
+        }
+        var METHOD = { cash: "Cash", upi: "UPI", bank_transfer: "Bank transfer" };
+        var STATUS = {
+          approved: ["b-success", "Approved"],
+          pending_approval: ["b-accent", "Pending approval"],
+          rejected: ["b-danger", "Rejected"],
+          correction_requested: ["b-info", "Correction requested"],
+          reversed: ["b-muted", "Reversed"],
+        };
+        var TABS = [
+          ["", "All"],
+          ["pending_approval", "Pending"],
+          ["approved", "Approved"],
+          ["rejected", "Rejected"],
+          ["correction_requested", "Correction"],
+        ];
+        var params = new URLSearchParams(location.search);
+        var st = {
+          status: TABS.some(function (t) {
+            return t[0] === params.get("status");
+          })
+            ? params.get("status")
+            : "",
+          q: "",
+          method: "",
+          from: "",
+          to: "",
+          page: 1,
+        };
+        var data = null,
+          busy = false;
+
+        function toast(msg) {
+          var t = document.createElement("div");
+          t.className = "a-toast";
+          t.innerHTML = "<div><b>" + esc(msg) + "</b></div>";
+          document.body.appendChild(t);
+          setTimeout(function () {
+            t.classList.add("out");
+          }, 2600);
+          setTimeout(function () {
+            t.remove();
+          }, 3200);
+        }
+        function api(url, opts) {
+          return fetch(
+            url,
+            Object.assign({ credentials: "same-origin", headers: { "Content-Type": "application/json" } }, opts || {}),
+          ).then(function (r) {
+            return r
+              .json()
+              .catch(function () {
+                return {};
+              })
+              .then(function (j) {
+                if (!r.ok) throw new Error(j.error || "Something went wrong. Try again.");
+                return j;
+              });
+          });
+        }
+
+        pg.innerHTML =
+          '<div id="coStats"></div>' +
+          '<div class="card">' +
+          '<div class="co-bar"><div class="a-seg co-seg" id="coTabs"></div></div>' +
+          '<div class="co-bar"><div class="grow"><input type="search" id="coQ" placeholder="Search customer name" aria-label="Search customer name"></div>' +
+          '<div class="co-f"><select id="coMethod" aria-label="Payment method"><option value="">All methods</option><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank_transfer">Bank transfer</option></select></div>' +
+          '<div class="co-f"><input type="date" id="coFrom" aria-label="From date"></div><div class="co-f"><input type="date" id="coTo" aria-label="To date"></div>' +
+          '<button class="btn btn-outline" id="coClear" type="button" style="width:auto;padding:0 16px">Clear</button>' +
+          '<button class="btn btn-outline" id="coExport" type="button" style="width:auto;padding:0 16px">' + GA.icon("download") + " Export</button></div>" +
+          '<div class="co-bulk" id="coBulk"><span id="coBulkTxt"></span><button class="btn btn-success" id="coBulkGo" type="button">Approve selected</button></div>' +
+          '<div id="coList"><div class="a-empty">Loading collections…</div></div></div>' +
+          '<div class="co-modal" id="coModal" role="dialog" aria-modal="true"><div class="co-card" id="coCard"></div></div>' +
+          '<div class="co-modal co-zoom" id="coZoom"><img alt="Invoice photo" id="coZoomImg"></div>';
+
+        function drawTabs() {
+          $("coTabs").innerHTML = TABS.map(function (t) {
+            var n = "";
+            if (data && data.stats) {
+              var s = data.stats;
+              if (t[0] === "pending_approval") n = s.pendingCount;
+              else if (t[0] === "approved") n = s.approvedCount;
+              else if (t[0] === "rejected") n = s.rejectedCount;
+              else if (t[0] === "correction_requested") n = s.correctionCount;
+            }
+            return (
+              '<button type="button" data-st="' + t[0] + '" class="' + (st.status === t[0] ? "on" : "") + '">' +
+              t[1] + (n !== "" && n !== undefined ? '<span class="n">' + n + "</span>" : "") + "</button>"
+            );
+          }).join("");
+        }
+        function drawStats() {
+          var s = data.stats;
+          $("coStats").innerHTML =
+            '<div class="a-stats">' +
+            GA.tile("s-a", "clipboard-list", s.pendingCount, "Waiting for approval", money(s.pendingAmount)) +
+            GA.tile("s-s", "check-circle", money(s.approvedMonthAmount), "Approved this month") +
+            GA.tile("s-p", "receipt", s.approvedCount, "Approved in total") +
+            GA.tile("s-i", "x-circle", s.rejectedCount, "Rejected in total") +
+            "</div>";
+        }
+        function drawList() {
+          var rows = data.rows;
+          if (!rows.length) {
+            $("coList").innerHTML =
+              '<div class="a-empty"><b>No collections found</b>' +
+              (st.status === "pending_approval" && !st.q && !st.method && !st.from && !st.to
+                ? "Nothing is waiting for approval."
+                : "Try a different filter.") +
+              "</div>";
+            return;
+          }
+          var from = (data.page - 1) * data.pageSize + 1,
+            to = from + rows.length - 1,
+            pages = Math.max(1, Math.ceil(data.total / data.pageSize));
+          $("coList").innerHTML =
+            '<div class="a-scroll"><table class="a-table"><thead><tr><th><input type="checkbox" class="co-sel" id="coAll" aria-label="Select all pending"></th><th>Collection</th><th>Customer</th><th>Invoice details</th><th>Collected by</th><th>Method</th><th class="co-r">Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody>' +
+            rows
+              .map(function (x, i) {
+                var s = STATUS[x.status] || ["b-muted", esc(x.status)],
+                  thumbs = x.invoices
+                    .slice(0, 2)
+                    .map(function (v) {
+                      return '<img loading="lazy" src="' + esc(v.evidenceUrl) + '" alt="Bill photo" data-zoom="' + esc(v.evidenceUrl) + '">';
+                    })
+                    .join("");
+                var pend = x.status === "pending_approval",
+                  first = x.invoices[0] || {},
+                  more = x.invoices.length > 1 ? " +" + (x.invoices.length - 1) + " more" : "";
+                return (
+                  "<tr>" +
+                  '<td>' + (pend ? '<input type="checkbox" class="co-sel" data-sel="' + i + '" aria-label="Select collection">' : "") + "</td>" +
+                  '<td data-label="Collection" class="co-id">' + esc(String(x.id).slice(0, 8).toUpperCase()) + "<small>" + esc(when(x.received_at)) + "</small></td>" +
+                  '<td data-label="Customer" class="co-cust">' + esc(x.customer_name_snapshot) + "<small>" + esc(x.customer_code) + "</small></td>" +
+                  '<td data-label="Invoice details"><div class="co-thumbs">' + thumbs +
+                  '<div class="co-inv"><b>' + esc(first.invoiceNo || "") + esc(more) + "</b>" +
+                  (first.outstanding !== undefined ? "<small>Outstanding: " + money(first.outstanding) + "</small>" : "") + "</div></div></td>" +
+                  '<td data-label="Collected by">' + esc(x.collector_name_snapshot) + "</td>" +
+                  '<td data-label="Method">' + esc(METHOD[x.method] || x.method) + (x.visit_ref ? ' <span class="badge b-info">Split</span>' : "") + "</td>" +
+                  '<td data-label="Amount" class="co-r"><b>' + money(x.total_amount) + "</b></td>" +
+                  '<td data-label="Status"><span class="badge ' + s[0] + '">' + s[1] + "</span></td>" +
+                  '<td data-label="Actions"><div class="co-rowacts">' +
+                  (pend
+                    ? '<button class="btn btn-success" type="button" data-ok="' + i + '">Approve</button><button class="btn btn-danger" type="button" data-no="' + i + '">Reject</button>'
+                    : "") +
+                  '<button class="btn btn-outline" type="button" data-open="' + i + '">' + (pend ? "Details" : "View") + "</button></div></td></tr>"
+                );
+              })
+              .join("") +
+            "</tbody></table></div>" +
+            '<div class="co-pg"><span>Showing ' + from + "–" + to + " of " + data.total + "</span>" +
+            '<div class="btns"><button class="btn btn-outline" id="coPrev" type="button"' + (data.page <= 1 ? " disabled" : "") + ">Previous</button>" +
+            '<button class="btn btn-outline" id="coNext" type="button"' + (data.page >= pages ? " disabled" : "") + ">Next</button></div></div>";
+          $("coAll").onchange = function () {
+            var on = this.checked;
+            [].forEach.call(document.querySelectorAll("[data-sel]"), function (c) {
+              c.checked = on;
+            });
+            bulkUpdate();
+          };
+          $("coPrev").onclick = function () {
+            st.page--;
+            load();
+          };
+          $("coNext").onclick = function () {
+            st.page++;
+            load();
+          };
+        }
+        function filterQuery(page) {
+          var qs = new URLSearchParams();
+          if (st.status) qs.set("status", st.status);
+          if (st.q) qs.set("q", st.q);
+          if (st.method) qs.set("method", st.method);
+          if (st.from) qs.set("from", st.from);
+          if (st.to) qs.set("to", st.to);
+          qs.set("page", page);
+          return qs.toString();
+        }
+        function load() {
+          var qs = filterQuery(st.page);
+          drawTabs();
+          if (!data) $("coList").innerHTML = '<div class="a-empty">Loading collections…</div>';
+          return api("/api/accounts/collections?" + qs.toString())
+            .then(function (j) {
+              data = j;
+              drawTabs();
+              drawStats();
+              drawList();
+              bulkUpdate();
+            })
+            .catch(function (e) {
+              $("coList").innerHTML =
+                '<div class="a-empty"><b>Could not load collections</b>' + esc(e.message) +
+                '<div style="margin-top:14px"><button class="btn" id="coRetry" type="button" style="width:auto;padding:0 18px">Try again</button></div></div>';
+              $("coRetry").onclick = load;
+            });
+        }
+
+        // ----- Details, approve and reject -----
+        function openDetail(x) {
+          var pending = x.status === "pending_approval",
+            s = STATUS[x.status] || ["b-muted", esc(x.status)],
+            inv = x.invoices
+              .map(function (v) {
+                return (
+                  "<tr><td data-label=\"Invoice\"><b>" + esc(v.invoiceNo) + "</b></td><td data-label=\"Bill date\">" + esc(v.invoiceDate) +
+                  '</td><td data-label="Bill amount" class="co-r">' + money(v.invoiceAmount) + '</td><td data-label="Collected now" class="co-r"><b>' + money(v.amount) + "</b></td></tr>"
+                );
+              })
+              .join(""),
+            photos = x.invoices
+              .map(function (v) {
+                return (
+                  '<a href="' + esc(v.evidenceUrl) + '" target="_blank" rel="noopener"><img loading="lazy" src="' + esc(v.evidenceUrl) + '" alt="Bill photo for ' + esc(v.invoiceNo) + '"><small>' + esc(v.invoiceNo) + "</small></a>"
+                );
+              })
+              .join("");
+          $("coCard").innerHTML =
+            '<div class="co-head"><div><h2>Collection ' + esc(String(x.id).slice(0, 8).toUpperCase()) + '</h2><span class="badge ' + s[0] + '">' + s[1] + "</span></div>" +
+            '<button class="btn btn-outline" id="coClose" type="button" style="width:auto;padding:0 16px">Close</button></div>' +
+            '<div class="co-kv">' +
+            "<div><small>Customer</small><b>" + esc(x.customer_name_snapshot) + " (" + esc(x.customer_code) + ")</b></div>" +
+            "<div><small>Amount</small><b>" + money(x.total_amount) + "</b></div>" +
+            "<div><small>Collected by</small><b>" + esc(x.collector_name_snapshot) + "</b></div>" +
+            "<div><small>Method</small><b>" + esc(METHOD[x.method] || x.method) + "</b></div>" +
+            "<div><small>Received</small><b>" + esc(when(x.received_at)) + "</b></div>" +
+            (x.note ? "<div><small>Note</small><b>" + esc(x.note) + "</b></div>" : "") +
+            (x.status === "approved" ? "<div><small>Approved by</small><b>" + esc(x.approved_by || "") + "</b></div><div><small>Approved on</small><b>" + esc(when(x.approved_at)) + "</b></div>" : "") +
+            "</div>" +
+            (x.status === "rejected"
+              ? '<div class="co-note bad"><b>Rejected' + (x.rejected_by ? " by " + esc(x.rejected_by) : "") + (x.rejected_at ? " on " + esc(when(x.rejected_at)) : "") + ".</b><br>Reason: " + esc(x.rejection_reason || "") +
+                "<br>The money recorded for this collection is still held until it is dealt with separately.</div>"
+              : "") +
+            (x.status === "correction_requested"
+              ? '<div class="co-note"><b>Correction requested' + (x.correction_requested_by ? " by " + esc(x.correction_requested_by) : "") + (x.correction_requested_at ? " on " + esc(when(x.correction_requested_at)) : "") + ".</b><br>Note to employee: " + esc(x.correction_note || "") +
+                "<br>The employee records a new collection. The money recorded for this one is still held until it is dealt with separately.</div>"
+              : "") +
+            (x.visit_ref ? '<div class="co-note" id="coSplitInfo">Split visit: this customer paid in more than one way. Loading the other parts...</div>' : "") +
+            '<div class="co-sec">Invoices paid</div><div class="a-scroll"><table class="a-table"><thead><tr><th>Invoice</th><th>Bill date</th><th class="co-r">Bill amount</th><th class="co-r">Collected now</th></tr></thead><tbody>' + inv + "</tbody></table></div>" +
+            '<div class="co-sec">Bill photos</div><div class="co-photos">' + (photos || '<span class="ad-note">No photos.</span>') + "</div>" +
+            (pending
+              ? '<div class="co-note">Approving reduces the customer’s outstanding and cannot be undone here. Check the bill photos and the cash or bank money first.</div>' +
+                '<label class="co-chk"><input type="checkbox" id="coChecked"><span>I have checked the bill photos and the money received.</span></label>' +
+                '<div class="co-acts"><button class="btn btn-success" id="coApprove" type="button" disabled>Approve collection</button></div>' +
+                '<div class="co-reject"><b>Reject this collection</b><div class="ad-note" style="color:var(--muted);font-size:12px">The customer’s outstanding stays as it is. The employee will see it as rejected.</div>' +
+                '<textarea id="coReason" maxlength="300" placeholder="Reason for rejecting (required)"></textarea>' +
+                '<div class="co-acts"><button class="btn btn-danger" id="coReject" type="button">Reject collection</button></div></div>' +
+                '<div class="co-reject"><b>Ask for a correction</b><div class="ad-note" style="color:var(--muted);font-size:12px">Use this when the details are wrong (invoice, amount or bill photo). The customer’s outstanding stays as it is, and the employee records the collection again.</div>' +
+                '<textarea id="coNote" maxlength="300" placeholder="What should the employee correct? (required)"></textarea>' +
+                '<div class="co-acts"><button class="btn btn-outline" id="coCorrect" type="button">Request correction</button></div></div>' +
+                '<div class="co-err" id="coErr" role="alert"></div>'
+              : "");
+          $("coModal").classList.add("open");
+          $("coClose").onclick = closeDetail;
+          if (x.visit_ref) {
+            api("/api/accounts/collections?visit=" + encodeURIComponent(x.visit_ref)).then(function (d) {
+              var el = $("coSplitInfo");
+              if (!el) return;
+              el.innerHTML = "<b>Split visit.</b> The customer paid this visit in more than one way. Each part is approved on its own:<br>" +
+                d.rows.map(function (r) {
+                  var st2 = STATUS[r.status] || ["b-muted", esc(r.status)];
+                  return esc(METHOD[r.method] || r.method) + " " + money(r.total_amount) + ' <span class="badge ' + st2[0] + '">' + st2[1] + "</span>" + (r.id === x.id ? " (this one)" : "");
+                }).join("<br>");
+            }).catch(function () {
+              var el = $("coSplitInfo");
+              if (el) el.textContent = "Split visit: this customer paid in more than one way. The other parts could not be loaded.";
+            });
+          }
+          if (pending) {
+            $("coChecked").onchange = function () {
+              $("coApprove").disabled = !this.checked || busy;
+            };
+            $("coApprove").onclick = function () {
+              act(x, "approve", {}, "Collection approved.");
+            };
+            $("coReject").onclick = function () {
+              var reason = $("coReason").value.trim();
+              if (reason.length < 3) {
+                $("coErr").textContent = "Enter a reason for rejecting (at least 3 characters).";
+                $("coReason").focus();
+                return;
+              }
+              act(x, "reject", { reason: reason }, "Collection rejected.");
+            };
+            $("coCorrect").onclick = function () {
+              var note = $("coNote").value.trim();
+              if (note.length < 3) {
+                $("coErr").textContent = "Tell the employee what to correct (at least 3 characters).";
+                $("coNote").focus();
+                return;
+              }
+              act(x, "request-correction", { note: note }, "Correction requested.");
+            };
+          }
+        }
+        function selected() {
+          return [].map
+            .call(document.querySelectorAll("[data-sel]:checked"), function (c) {
+              return data.rows[Number(c.getAttribute("data-sel"))];
+            })
+            .filter(Boolean);
+        }
+        function bulkUpdate() {
+          var sel = selected(),
+            sum = sel.reduce(function (n, x) {
+              return n + Number(x.total_amount || 0);
+            }, 0);
+          $("coBulk").classList.toggle("show", sel.length > 0);
+          $("coBulkTxt").textContent = sel.length + " selected \u00B7 " + money(sum);
+        }
+        function approveMany(list) {
+          if (busy || !list.length) return;
+          busy = true;
+          var ok = 0,
+            failed = [];
+          list
+            .reduce(function (p, x) {
+              return p.then(function () {
+                return api("/api/accounts/collections/" + encodeURIComponent(x.id) + "/approve", { method: "POST", body: "{}" }).then(
+                  function () {
+                    ok++;
+                  },
+                  function (e) {
+                    failed.push(x.customer_name_snapshot + ": " + e.message);
+                  },
+                );
+              });
+            }, Promise.resolve())
+            .then(function () {
+              busy = false;
+              toast(ok + (ok === 1 ? " collection approved." : " collections approved.") + (failed.length ? " " + failed.length + " failed." : ""));
+              if (failed.length) alert("Some could not be approved:\n\n" + failed.join("\n"));
+              data = null;
+              load();
+            });
+        }
+        function csvCell(v) {
+          v = String(v == null ? "" : v);
+          if (/^[=+\-@]/.test(v)) v = "'" + v;
+          return '"' + v.replace(/"/g, '""') + '"';
+        }
+        function exportCsv() {
+          var btn = $("coExport");
+          btn.disabled = true;
+          var out = [["Collection", "Date", "Customer", "Customer code", "Invoices", "Collected by", "Method", "Amount", "Status"]],
+            n = 1;
+          function next() {
+            var qs = filterQuery(n);
+            return api("/api/accounts/collections?" + qs).then(function (j) {
+              j.rows.forEach(function (x) {
+                out.push([
+                  String(x.id).slice(0, 8).toUpperCase(),
+                  when(x.received_at),
+                  x.customer_name_snapshot,
+                  x.customer_code,
+                  x.invoices.map(function (v) {
+                    return v.invoiceNo;
+                  }).join(" / "),
+                  x.collector_name_snapshot,
+                  METHOD[x.method] || x.method,
+                  x.total_amount,
+                  (STATUS[x.status] || [0, x.status])[1],
+                ]);
+              });
+              if (n * j.pageSize < j.total && n < 40) {
+                n++;
+                return next();
+              }
+            });
+          }
+          next()
+            .then(function () {
+              var blob = new Blob(["\uFEFF" + out.map(function (r) {
+                return r.map(csvCell).join(",");
+              }).join("\r\n")], { type: "text/csv;charset=utf-8" });
+              var a = document.createElement("a");
+              a.href = URL.createObjectURL(blob);
+              a.download = "collections-" + new Date().toISOString().slice(0, 10) + ".csv";
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              toast("Exported " + (out.length - 1) + " collections.");
+            })
+            .catch(function (e) {
+              toast(e.message);
+            })
+            .then(function () {
+              btn.disabled = false;
+            });
+        }
+        function closeDetail() {
+          $("coModal").classList.remove("open");
+        }
+        function act(x, what, body, done) {
+          if (busy) return;
+          busy = true;
+          var b = $(what === "approve" ? "coApprove" : what === "reject" ? "coReject" : "coCorrect");
+          b.disabled = true;
+          $("coErr").textContent = "";
+          api("/api/accounts/collections/" + encodeURIComponent(x.id) + "/" + what, { method: "POST", body: JSON.stringify(body) })
+            .then(function () {
+              busy = false;
+              closeDetail();
+              toast(done);
+              load();
+            })
+            .catch(function (e) {
+              busy = false;
+              b.disabled = what === "approve" && !$("coChecked").checked;
+              $("coErr").textContent = e.message;
+            });
+        }
+
+        // ----- Events -----
+        $("coTabs").onclick = function (e) {
+          var b = e.target.closest("button[data-st]");
+          if (!b) return;
+          st.status = b.getAttribute("data-st");
+          st.page = 1;
+          load();
+        };
+        var timer;
+        $("coQ").oninput = function () {
+          clearTimeout(timer);
+          var v = this.value;
+          timer = setTimeout(function () {
+            st.q = v.trim();
+            st.page = 1;
+            load();
+          }, 350);
+        };
+        $("coMethod").onchange = function () {
+          st.method = this.value;
+          st.page = 1;
+          load();
+        };
+        $("coFrom").onchange = function () {
+          st.from = this.value;
+          st.page = 1;
+          load();
+        };
+        $("coTo").onchange = function () {
+          st.to = this.value;
+          st.page = 1;
+          load();
+        };
+        $("coClear").onclick = function () {
+          st.q = st.method = st.from = st.to = "";
+          st.page = 1;
+          $("coQ").value = $("coMethod").value = $("coFrom").value = $("coTo").value = "";
+          load();
+        };
+        $("coList").onclick = function (e) {
+          var z = e.target.closest("[data-zoom]");
+          if (z) {
+            $("coZoomImg").src = z.getAttribute("data-zoom");
+            $("coZoom").classList.add("open");
+            return;
+          }
+          var ok = e.target.closest("[data-ok]");
+          if (ok) {
+            var x = data.rows[Number(ok.getAttribute("data-ok"))];
+            if (confirm("Approve " + money(x.total_amount) + " from " + x.customer_name_snapshot + "?\n\nHave you checked the bill photo and the money received? Approving reduces the customer's outstanding.")) approveMany([x]);
+            return;
+          }
+          var no = e.target.closest("[data-no]");
+          if (no) {
+            openDetail(data.rows[Number(no.getAttribute("data-no"))]);
+            if ($("coReason")) $("coReason").focus();
+            return;
+          }
+          var o = e.target.closest("[data-open]");
+          if (o) openDetail(data.rows[Number(o.getAttribute("data-open"))]);
+        };
+        $("coList").onchange = function (e) {
+          if (e.target.matches("[data-sel]")) bulkUpdate();
+        };
+        $("coBulkGo").onclick = function () {
+          var sel = selected();
+          if (!sel.length) return;
+          var sum = sel.reduce(function (n, x) {
+            return n + Number(x.total_amount || 0);
+          }, 0);
+          if (confirm("Approve " + sel.length + " collections totalling " + money(sum) + "?\n\nOnly do this after checking every bill photo and the money received.")) approveMany(sel);
+        };
+        $("coExport").onclick = exportCsv;
+        $("coZoom").onclick = function () {
+          this.classList.remove("open");
+        };
+        $("coModal").onclick = function (e) {
+          if (e.target === this) closeDetail();
+        };
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape") {
+            $("coZoom").classList.remove("open");
+            closeDetail();
+          }
+        });
+        load();
+      })();
+    </script>
+  </body>
+</html>

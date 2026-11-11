@@ -16,6 +16,14 @@
 .wk-head .btn,
 .wk-card .btn,
 .wk-box .btn,
+.wk-form .field input,
+.wk-form .field select,
+.wk-form .field .gtp-btn {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text);
+}
 .wk-form .btn {
   width: auto;
   display: inline-flex;
@@ -24,6 +32,23 @@
   padding-left: 18px;
   padding-right: 18px;
   text-decoration: none;
+}
+.wk-form .field:has(.gtp) {
+  height: 42px;
+  min-height: 42px;
+  padding: 0;
+}
+
+.wk-form .field .gtp {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+}
+
+.wk-form .field .gtp-btn {
+  height: 100%;
+  min-height: 0;
+  padding: 0 12px;
 }
 .wk-sub {
   color: var(--muted);
@@ -307,53 +332,209 @@
 .wk-cards {
   display: none;
 }
+
+/* Employee create/edit form */
 .wk-form {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
+
 .wk-col {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   min-width: 0;
 }
+
 .wk-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0 14px;
 }
-.wk-lbl {
+
+/* Employee form labels */
+.wk-form .wk-lbl {
+  display: block;
   font-size: 12.5px;
   font-weight: 600;
-  margin: 12px 0 5px;
-  display: block;
+  margin: 11px 0 5px;
+  color: var(--text);
 }
-.wk-lbl em {
+
+.wk-form .wk-lbl em {
   color: var(--danger);
   font-style: normal;
 }
-.wk-lbl i {
+
+.wk-form .wk-lbl i {
   font-style: normal;
   color: var(--muted);
   font-weight: 400;
 }
-.wk-pre {
+
+/* Employee form input fields */
+.wk-form .field {
   display: flex;
   align-items: center;
-  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  min-height: 42px;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg);
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.wk-pre span {
-  flex: none;
-  padding: 0 4px;
+
+/* Textarea containers must grow naturally */
+.wk-form .field:has(textarea) {
+  height: auto;
+  min-height: 76px;
+  align-items: stretch;
+}
+
+/* Consistent employee input typography */
+.wk-form .field input,
+.wk-form .field select {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0 12px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+/* Native date input */
+.wk-form .field input[type="date"] {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: normal;
+  color: var(--text);
+  color-scheme: light;
+}
+
+/* Chrome and Edge date text */
+.wk-form .field input[type="date"]::-webkit-datetime-edit,
+.wk-form .field input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.wk-form .field input[type="date"]::-webkit-datetime-edit-text,
+.wk-form .field input[type="date"]::-webkit-datetime-edit-day-field,
+.wk-form .field input[type="date"]::-webkit-datetime-edit-month-field,
+.wk-form .field input[type="date"]::-webkit-datetime-edit-year-field {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+/* Date calendar indicator */
+.wk-form .field input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+/* Employee textareas */
+.wk-form .field textarea {
+  display: block;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 76px;
+  height: auto;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 0;
+  outline: 0;
+  resize: vertical;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.wk-form .field textarea::placeholder {
   color: var(--muted);
+  font-family: inherit;
   font-size: 13px;
 }
-.wk-pre .field {
-  flex: 1;
-  margin: 0;
+
+/* Focus states */
+.wk-form .field:focus-within,
+.wk-form .wk-pre:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--ring);
 }
+
+/* Employee ID */
+.wk-form #fCode {
+  color: var(--primary);
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  background: var(--t-primary);
+  cursor: not-allowed;
+}
+
+/* Phone number prefix */
+.wk-form .wk-pre {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg);
+}
+
+.wk-form .wk-pre span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  flex: none;
+  min-width: 54px;
+  padding: 0 9px;
+  color: var(--primary);
+  background: var(--t-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.wk-form .wk-pre .field {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Password */
+.wk-form #fK {
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+/* Dark theme date control */
+[data-theme="dark"] .wk-form .field input[type="date"] {
+  color-scheme: dark;
+}
+
 .wk-err {
   color: var(--danger);
   font-size: 13px;
@@ -362,10 +543,32 @@
 }
 .wk-act {
   display: flex;
+  align-items: center;
   gap: 10px;
   justify-content: flex-end;
   margin-top: 14px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+}
+.wk-act > .btn {
+  width: 150px;
+  min-width: 150px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0 14px;
+  margin: 0;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+@media (max-width: 480px) {
+  .wk-act > .btn {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+  }
 }
 .wk-tabs {
   display: flex;
@@ -424,12 +627,55 @@
   gap: 16px;
   align-items: start;
 }
+
 .wk-ph {
   text-align: center;
 }
-.wk-ph .btn {
-  margin: 4px;
+
+.wk-ph #phv {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 125px;
+  margin: 8px 0 10px;
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: var(--bg);
 }
+
+.wk-ph .wk-av.xl {
+  width: 88px;
+  height: 88px;
+  margin: 0;
+}
+
+.wk-ph .wk-sub {
+  margin: 8px 0 12px;
+  font-size: 11px;
+}
+
+.wk-ph #bPh,
+.wk-ph #bPhX {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(50% - 5px);
+  height: 40px;
+  min-height: 40px;
+  margin: 0;
+  padding: 0 8px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.wk-ph #bPhX {
+  color: var(--danger);
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+
 .wk-modal {
   position: fixed;
   inset: 0;
@@ -956,7 +1202,7 @@
   color: var(--muted);
   opacity: 0.8;
 }
-.wk-nc .wk-act {
+.wk-nc {
   align-items: center;
 }
 .wk-nst {

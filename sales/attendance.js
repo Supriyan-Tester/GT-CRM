@@ -30,8 +30,12 @@
     }
     function render() {
       var today = data.todayEntry,
-        state = !today ? "Not punched in" : today.outAt ? "Day completed" : "Currently working",
-        cls = !today ? "sa-neutral" : today.outAt ? "sa-done" : "sa-live",
+        pending = data.pendingEntry,
+        active = today || (pending && pending.entry) || null,
+        activeDate = pending && !today ? pending.date : data.today,
+        overnight = !!(pending && !today),
+        state = !active ? "Not punched in" : active.outAt ? "Day completed" : overnight ? "Overnight session · punch out" : "Currently working",
+        cls = !active ? "sa-neutral" : active.outAt ? "sa-done" : "sa-live",
         days = Object.keys(data.days || {}).sort().reverse(),
         present = days.filter(function (d) { return data.days[d].status === "present"; }).length,
         late = days.filter(function (d) { return data.days[d].status === "late"; }).length,
@@ -39,13 +43,13 @@
           var e = data.days[d], m = /^(\d+)h\s*(\d+)m$/.exec(e.hours || "");
           return n + (m ? +m[1] * 60 + +m[2] : 0);
         }, 0),
-        action = !today ? "punch-in" : today.outAt ? "" : "punch-out",
+        action = !today ? (pending ? "punch-out" : "punch-in") : today.outAt ? "" : "punch-out",
         actionText = action === "punch-in" ? "Punch In" : "Punch Out";
       main.innerHTML =
-        '<section class="sa-hero card"><div class="sa-hero-top"><div><span class="sa-eyebrow">TODAY · ' + esc(Sales.dateLabel(data.today)) + '</span><h2>My attendance</h2><p>Use this when you start and finish your workday.</p></div><span class="sa-state ' + cls + '">' + esc(state) + '</span></div>' +
-        '<div class="sa-times"><div><small>Check in</small><b>' + timeLabel(today && today.inTime) + '</b></div><div><small>Check out</small><b>' + timeLabel(today && today.outTime) + '</b></div><div><small>Working hours</small><b>' + esc(today && today.hours && today.hours !== "-" ? today.hours : today && !today.outAt ? "In progress" : "—") + '</b></div></div>' +
+        '<section class="sa-hero card"><div class="sa-hero-top"><div><span class="sa-eyebrow">' + (overnight ? 'OVERNIGHT SESSION · ' + esc(Sales.dateLabel(activeDate)) : 'TODAY · ' + esc(Sales.dateLabel(data.today))) + '</span><h2>My attendance</h2><p>Use this when you start and finish your workday.</p></div><span class="sa-state ' + cls + '">' + esc(state) + '</span></div>' +
+        '<div class="sa-times"><div><small>Check in</small><b>' + timeLabel(active && active.inTime) + '</b></div><div><small>Check out</small><b>' + timeLabel(active && active.outTime) + '</b></div><div><small>Working hours</small><b>' + esc(active && active.hours && active.hours !== "-" ? active.hours : active && !active.outAt ? "In progress" : "—") + '</b></div></div>' +
         (action ? '<button class="sa-action ' + (action === "punch-out" ? "out" : "") + '" id="saPunch" type="button">' + (action === "punch-in" ? Sales.ic("login") : Sales.ic("logout")) + '<span>' + actionText + '</span></button>' : '<div class="sa-finished">' + Sales.ic("check-circle") + '<span>Your attendance for today is complete.</span></div>') +
-        '<p class="sa-hint">Attendance time is recorded by the server. You can punch in or out only once per day.</p></section>' +
+        '<p class="sa-hint">' + (overnight ? 'Your previous-day attendance is still open. Punch out to complete that work session.' : 'Attendance time is recorded by the server. You can punch in or out only once per day.') + '</p></section>' +
         '<section class="sa-stats"><div class="card"><small>Present</small><b>' + present + '</b></div><div class="card"><small>Late</small><b>' + late + '</b></div><div class="card"><small>Total hours</small><b>' + (totalMins ? Math.floor(totalMins / 60) + 'h ' + String(totalMins % 60).padStart(2, '0') + 'm' : '—') + '</b></div></section>' +
         '<section class="card sa-history"><div class="sa-history-head"><div><h2>Attendance history</h2><p>Monthly attendance records</p></div><div class="sa-month"><button type="button" id="saPrev" aria-label="Previous month">' + Sales.ic("chevron-left") + '</button><b>' + esc(monthName(month)) + '</b><button type="button" id="saNext" aria-label="Next month" ' + (month >= data.today.slice(0, 7) ? 'disabled' : '') + '>' + Sales.ic("chevron-right") + '</button></div></div>' +
         (days.length ? '<div class="sa-list">' + days.map(function (d) {

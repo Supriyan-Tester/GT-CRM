@@ -3110,10 +3110,23 @@
           }, 80);
         }
       })();
-      autoRoutes();
-      mergeWorkerPins();
       areaOptions();
       render();
+      /* These two steps can save the shop list. They wait until the server copy has loaded, so a save is never based on an old browser copy. */
+      (window.GMSync && GMSync.ready ? GMSync.ready : Promise.resolve()).then(function (loaded) {
+        if (loaded === false) return;
+        var fresh = O.get();
+        Object.keys(S).forEach(function (k) {
+          delete S[k];
+        });
+        Object.keys(fresh).forEach(function (k) {
+          S[k] = fresh[k];
+        });
+        autoRoutes();
+        mergeWorkerPins();
+        areaOptions();
+        render();
+      });
       /* Notification link: customers.html?q=SHOP NAME searches for that shop */
       (function () {
         try {
@@ -3137,6 +3150,47 @@
           render();
           if (qp.get("edit") === "1") form(dc);
         } catch (e) {}
+      })();
+    </script>
+    <script>
+      // Clicking a customer tile filters the list below.
+      (function () {
+        var MAP = {
+          "Total customers": ["all", ""],
+          Active: ["active", ""],
+          Inactive: ["inactive", ""],
+          "With location": ["all", "yes"],
+          "Without location": ["all", "no"],
+        };
+        var box = document.getElementById("stats");
+        if (!box) return;
+        function pick(e) {
+          var t = e.target.closest && e.target.closest(".gtc-stat");
+          if (!t || !box.contains(t)) return;
+          if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
+          var sp = t.querySelector("span:not(.gtc-stat-icon)"),
+            m = sp && MAP[sp.textContent.trim()];
+          if (!m) return;
+          e.preventDefault();
+          var st = document.getElementById("cSt"),
+            pn = document.getElementById("cPin");
+          st.value = m[0];
+          pn.value = m[1];
+          if (st.onchange) st.onchange();
+          if (pn.onchange) pn.onchange();
+          else pn.dispatchEvent(new Event("change", { bubbles: true }));
+          var list = document.getElementById("cList") || document.querySelector(".gtc-filter");
+          if (list && list.scrollIntoView) list.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+        box.addEventListener("click", pick);
+        box.addEventListener("keydown", pick);
+        new MutationObserver(function () {
+          [].forEach.call(box.querySelectorAll(".gtc-stat"), function (t) {
+            t.style.cursor = "pointer";
+            t.tabIndex = 0;
+            t.setAttribute("role", "button");
+          });
+        }).observe(box, { childList: true });
       })();
     </script>
     <script src="../shared/customers-plus.js?v=7"></script>

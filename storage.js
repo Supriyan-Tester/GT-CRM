@@ -63,7 +63,7 @@ module.exports = function (cfg) {
   };
 
   // ---- files: paths look like v/<id>__<kind>.<ext>, p/<product>__<slot>.<ext>, c/<code>.jpg, backups/db-<date>.json ----
-  const DIRS = { v: "vehicle-files", p: "product-files", c: "photos" };
+  const DIRS = { v: "vehicle-files", p: "product-files", c: "photos", accounts: "accounts" };
   const idx = {}; // path -> { at, size }
   const cache = new Map();
   let cacheBytes = 0;
@@ -126,7 +126,7 @@ module.exports = function (cfg) {
     cloud,
     async init() {
       if (cloud) {
-        for (const pre of ["v", "p", "c", "backups"]) await cloudList(pre);
+        for (const pre of ["v", "p", "c", "accounts", "accounts/evidence", "backups"]) await cloudList(pre);
         return;
       }
       for (const pre of Object.keys(DIRS)) {
@@ -142,6 +142,16 @@ module.exports = function (cfg) {
           } catch (e) {}
         });
       }
+      // Accounts bill photos live one folder deeper: accounts/evidence
+      try {
+        fs.readdirSync(path.join(DATA, DIRS.accounts, "evidence")).forEach((n) => {
+          try {
+            const st = fs.statSync(path.join(DATA, DIRS.accounts, "evidence", n));
+            if (st.isFile())
+              idx["accounts/evidence/" + n] = { at: Math.floor(st.mtimeMs), size: st.size };
+          } catch (e) {}
+        });
+      } catch (e) {}
     },
     has: (p) => !!idx[p],
     meta: (p) => idx[p] || null,
@@ -169,6 +179,7 @@ module.exports = function (cfg) {
     },
     async put(p, buf, mime) {
       if (!cloud) {
+        await fs.promises.mkdir(path.dirname(localPath(p)), { recursive: true });
         await fs.promises.writeFile(localPath(p), buf);
       } else {
         const r = await fetch(URL + "/storage/v1/object/" + BUCKET + "/" + p, {

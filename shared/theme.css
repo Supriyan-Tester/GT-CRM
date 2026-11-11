@@ -2923,7 +2923,9 @@ html[data-theme="dark"] .gt-switch {
   border-radius: inherit;
 }
 .field .gtp-btn {
-  font-size: 16px;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.2;
 }
 .gtp-label {
   overflow: hidden;

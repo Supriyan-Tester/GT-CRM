@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script src="../shared/loading.js"></script>
+    <script src="../assets/icons.js"></script>
+    <script src="../shared/sync.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>UPI &amp; Bank - General Traders</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="../shared/admin.css" />
+    <script src="../shared/theme.js"></script>
+    <style>
+      .up-card {
+        margin-bottom: 16px;
+      }
+      .up-note {
+        color: var(--muted);
+        font-size: 13px;
+        margin: 4px 0 12px;
+      }
+      .up-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 6px;
+      }
+      .up-head .card-title {
+        margin: 0;
+      }
+      .up-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+      @media (max-width: 900px) {
+        .up-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      @media (max-width: 560px) {
+        .up-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .up-f label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      .up-f input {
+        width: 100%;
+        height: 42px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-btn);
+        background: var(--card);
+        color: var(--text);
+        padding: 0 12px;
+        font: inherit;
+      }
+      .up-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+      }
+      .up-btn {
+        width: auto;
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+      .up-msg {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .up-rowacts {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .up-rowacts .btn {
+        width: auto;
+        padding-left: 12px;
+        padding-right: 12px;
+        white-space: nowrap;
+      }
+      td.up-r,
+      th.up-r {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="../shared/form-check.js"></script>
+    <script src="../shared/admin.js"></script>
+    <script>
+      (function () {
+        "use strict";
+        GA.guard();
+        var pg = GA.mount("upi-settlements.html", "UPI & Bank"),
+          $ = function (id) {
+            return document.getElementById(id);
+          },
+          money = function (n) {
+            return "₹" + Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          },
+          esc = GA.esc;
+        function when(iso) {
+          var d = new Date(iso);
+          return isNaN(d)
+            ? ""
+            : d.toLocaleString("en-IN", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+                timeZone: "Asia/Kolkata",
+              });
+        }
+        var STATUS = { pending: ["b-accent", "Pending"], confirmed: ["b-success", "Reconciled"], disputed: ["b-danger", "Disputed"] };
+        function toast(msg) {
+          var t = document.createElement("div");
+          t.className = "a-toast";
+          t.innerHTML = "<div><b>" + esc(msg) + "</b></div>";
+          document.body.appendChild(t);
+          setTimeout(function () {
+            t.classList.add("out");
+          }, 2600);
+          setTimeout(function () {
+            t.remove();
+          }, 3200);
+        }
+        pg.innerHTML =
+          '<div id="upStats"></div>' +
+          '<div class="card up-card"><div class="card-title">Record bank credit for verification</div>' +
+          '<div class="up-note">UPI collections stay in UPI Clearing until you check the matching credit in the bank statement. Confirm only against the bank statement.</div>' +
+          '<form id="form" novalidate><div class="up-grid">' +
+          '<div class="up-f"><label for="amount">Settlement amount (₹) <span class="fc-star">*</span></label><input id="amount" type="number" min="0.01" step="0.01" required></div>' +
+          '<div class="up-f"><label for="reference">Bank UTR / reference <span class="fc-star">*</span></label><input id="reference" maxlength="80" required></div>' +
+          '<div class="up-f"><label for="date">Bank credit date <span class="fc-star">*</span></label><input id="date" type="date" required></div>' +
+          '<div class="up-f"><label for="note">Note (optional)</label><input id="note" maxlength="300"></div></div>' +
+          '<div class="up-note" style="margin:0">This only creates a pending record. It does not change any balance until you verify it below.</div>' +
+          '<div class="up-actions"><button class="btn up-btn" id="submit" type="submit">Record pending settlement</button><span id="message" class="up-msg"></span></div></form></div>' +
+          '<div class="card up-card"><div class="up-head"><div class="card-title">Pending / disputed settlements</div><button class="btn btn-outline up-btn" id="refresh" type="button">Refresh</button></div>' +
+          '<div class="a-scroll"><table class="a-table"><thead><tr><th>Recorded</th><th>Bank reference</th><th>Credit date</th><th class="up-r">Amount</th><th>Status</th><th>Action</th></tr></thead><tbody id="rows"><tr><td colspan="6"><div class="a-empty">Loading…</div></td></tr></tbody></table></div></div>' +
+          '<div class="card up-card"><div class="card-title">Recent approved UPI collections</div>' +
+          '<div class="a-scroll"><table class="a-table"><thead><tr><th>Received</th><th>Customer</th><th>Collector</th><th class="up-r">Amount</th></tr></thead><tbody id="collections"></tbody></table></div></div>';
+        function req(url, opts) {
+          return fetch(url, Object.assign({ credentials: "same-origin", headers: { "Content-Type": "application/json" } }, opts || {})).then(
+            async function (r) {
+              var d = await r.json().catch(function () {
+                return {};
+              });
+              if (!r.ok) throw Error(d.error || "Request failed");
+              return d;
+            },
+          );
+        }
+        function load() {
+          return req("/api/accounts/upi-settlements")
+            .then(function (d) {
+              var rows = d.settlements || [],
+                pend = rows.filter(function (x) {
+                  return x.status === "pending";
+                }),
+                bad = rows.filter(function (x) {
+                  return x.status === "disputed";
+                }),
+                pendSum = pend.reduce(function (n, x) {
+                  return n + Number(x.amount || 0);
+                }, 0);
+              $("upStats").innerHTML =
+                '<div class="a-stats">' +
+                GA.tile("s-i", "credit-card", money(d.upiClearingBalance), "UPI Clearing balance", "Waiting for the bank credit") +
+                GA.tile("s-a", "clipboard-list", pend.length, "Pending settlements", money(pendSum)) +
+                GA.tile("s-p", "alert-triangle", bad.length, "Disputed") +
+                "</div>";
+              $("rows").innerHTML = rows.length
+                ? rows
+                    .map(function (x) {
+                      var s = STATUS[x.status] || ["b-muted", esc(x.status)];
+                      return (
+                        '<tr><td data-label="Recorded">' + esc(when(x.recorded_at)) + "</td>" +
+                        '<td data-label="Bank reference">' + esc(x.bank_reference) + "</td>" +
+                        '<td data-label="Credit date">' + esc(x.bank_credit_date) + "</td>" +
+                        '<td data-label="Amount" class="up-r"><b>' + money(x.amount) + "</b></td>" +
+                        '<td data-label="Status"><span class="badge ' + s[0] + '">' + s[1] + "</span></td>" +
+                        '<td data-label="Action">' +
+                        (x.status === "pending"
+                          ? '<div class="up-rowacts"><button class="btn btn-success" type="button" data-confirm="' + esc(x.id) + '">Verify bank credit</button><button class="btn btn-outline" type="button" data-dispute="' + esc(x.id) + '">Dispute</button></div>'
+                          : "—") +
+                        "</td></tr>"
+                      );
+                    })
+                    .join("")
+                : '<tr><td colspan="6"><div class="a-empty"><b>No settlement records</b>Record a bank credit above to start.</div></td></tr>';
+              $("collections").innerHTML =
+                (d.collections || [])
+                  .map(function (x) {
+                    return (
+                      '<tr><td data-label="Received">' + esc(when(x.received_at)) + "</td>" +
+                      '<td data-label="Customer">' + esc(x.customer_name_snapshot) + "</td>" +
+                      '<td data-label="Collector">' + esc(x.collector_name_snapshot) + "</td>" +
+                      '<td data-label="Amount" class="up-r">' + money(x.total_amount) + "</td></tr>"
+                    );
+                  })
+                  .join("") || '<tr><td colspan="4"><div class="a-empty">No approved UPI collections.</div></td></tr>';
+              document.querySelectorAll("[data-confirm]").forEach(function (b) {
+                b.onclick = function () {
+                  if (!confirm("Verify that this exact UTR and amount appear as a credit in the bank statement?")) return;
+                  b.disabled = true;
+                  req("/api/accounts/upi-settlements/" + b.dataset.confirm + "/confirm", { method: "POST", body: "{}" })
+                    .then(function () {
+                      toast("Settlement verified.");
+                      return load();
+                    })
+                    .catch(function (e) {
+                      toast(e.message);
+                      b.disabled = false;
+                    });
+                };
+              });
+              document.querySelectorAll("[data-dispute]").forEach(function (b) {
+                b.onclick = function () {
+                  var reason = prompt("Reason for disputing this bank credit:");
+                  if (!reason) return;
+                  req("/api/accounts/upi-settlements/" + b.dataset.dispute + "/dispute", { method: "POST", body: JSON.stringify({ reason: reason }) })
+                    .then(function () {
+                      toast("Settlement marked as disputed.");
+                      return load();
+                    })
+                    .catch(function (e) {
+                      toast(e.message);
+                    });
+                };
+              });
+            })
+            .catch(function (e) {
+              $("rows").innerHTML = '<tr><td colspan="6"><div class="a-empty"><b>Could not load</b>' + esc(e.message) + "</div></td></tr>";
+            });
+        }
+        $("date").value = new Date().toISOString().slice(0, 10);
+        $("refresh").onclick = load;
+        $("form").onsubmit = function (e) {
+          e.preventDefault();
+          if (
+            !FC.check([
+              ["amount", "Enter the settlement amount.", function (v) { return Number(v) > 0; }],
+              ["reference", "Enter the bank UTR / reference."],
+              ["date", "Choose the bank credit date."],
+            ])
+          ) {
+            if ($("amount").value.trim() && !(Number($("amount").value) > 0))
+              $("amount").nextSibling.textContent = "Amount must be above 0.";
+            return;
+          }
+          $("submit").disabled = true;
+          $("message").textContent = "Saving…";
+          req("/api/accounts/upi-settlements", {
+            method: "POST",
+            body: JSON.stringify({
+              amount: Number($("amount").value),
+              bankReference: $("reference").value.trim(),
+              bankCreditDate: $("date").value,
+              note: $("note").value,
+              requestKey:'upi-settle:'+crypto.randomUUID(),
+            }),
+          })
+            .then(function () {
+              $("form").reset();
+              $("date").value = new Date().toISOString().slice(0, 10);
+              $("message").textContent = "";
+              toast("Pending settlement recorded.");
+              return load();
+            })
+            .catch(function (e) {
+              $("message").textContent = e.message;
+            })
+            .finally(function () {
+              $("submit").disabled = false;
+            });
+        };
+        load();
+      })();
+    </script>
+  </body>
+</html>

@@ -34,6 +34,7 @@ let child = null;
   try {
     fs.mkdirSync(app, { recursive: true });
     for (const f of ["server.js", "storage.js", "activity.js", "backup-integrity.js"]) fs.copyFileSync(path.join(sourceRoot, f), path.join(app, f));
+    fs.cpSync(path.join(sourceRoot, "backend"), path.join(app, "backend"), { recursive: true });
     fs.cpSync(path.join(sourceRoot, "shared"), path.join(app, "shared"), { recursive: true });
     const items = {
       gm_admin_account_v1: accounts,

@@ -1,0 +1,23 @@
+#!/usr/bin/env node
+"use strict";
+const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
+const root = path.join(__dirname, "..");
+const routes = fs.readFileSync(path.join(root, "backend/modules/accounts/accounts.routes.js"), "utf8");
+const server = fs.readFileSync(path.join(root, "server.js"), "utf8");
+const storage = fs.readFileSync(path.join(root, "storage.js"), "utf8");
+const sales = fs.readFileSync(path.join(root, "sales/collections.html"), "utf8");
+const worker = fs.readFileSync(path.join(root, "worker/collections.html"), "utf8");
+const admin = fs.readFileSync(path.join(root, "admin/accounts.html"), "utf8");
+for (const token of ["image/jpeg", "image/png", "image/webp", "MAX_EVIDENCE", "files.put", "files.get", "X-Content-Type-Options"]) assert(routes.includes(token), "Missing upload validation/storage control: "+token);
+assert(routes.includes("files.has(valid.evidencePath)"), "Opening invoice must reference an uploaded evidence file");
+assert(routes.includes("files.has(allocation.evidencePath)"), "Collection allocation must reference an uploaded evidence file");
+assert(routes.includes("canAccessCustomer(session, customerCode)"), "Customer ledger must enforce assigned-customer access");
+assert(server.includes("deliveryAssignment.workerId === session.id"), "Delivery collection customer scope must use assigned orders");
+assert(storage.includes('accounts: "accounts"'), "Local accounts evidence storage directory missing");
+assert(storage.includes('await cloudList(pre)'), "Supabase evidence folder must be indexed on startup");
+for (const token of ["data-photo", "availableToCollect", "requestKey"]) assert(sales.includes(token), "Sales collection UI missing "+token);
+for (const token of ["data-photo", "availableToCollect", "requestKey"]) assert(worker.includes(token), "Delivery collection UI missing "+token);
+for (const token of ["acEvidenceChecked", "acApprove", "evidenceUrl"]) assert(admin.includes(token), "Admin approval evidence control missing "+token);
+console.log("Accounts evidence regression: 16 assertions passed.");

@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <script src="../shared/loading.js"></script>
@@ -39,6 +39,7 @@
         ["punch", "Punch in/out"],
         ["pin", "Shop locations"],
         ["sales", "Sales"],
+        ["payment", "Payments"],
       ];
       pg.innerHTML =
         '<div class="a-filters" id="fl"></div><div class="btn-group no-print" style="margin-bottom:14px;flex-wrap:wrap"><button class="btn btn-secondary a-btn" id="mr" data-act>' +
@@ -53,6 +54,7 @@
             filter === "all" ||
             n.type === filter ||
             (filter === "sales" && /^sales_/.test(n.type)) ||
+            (filter === "payment" && /^(collection|credit)$/.test(n.type)) ||
             (filter === "punch" &&
               (n.type === "punchin" || n.type === "punchout"))
           );

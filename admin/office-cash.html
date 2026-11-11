@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script src="../shared/loading.js"></script>
+    <script src="../assets/icons.js"></script>
+    <script src="../shared/sync.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Office Cash - General Traders</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="../shared/admin.css" />
+    <script src="../shared/theme.js"></script>
+    <style>
+      .oc-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 6px;
+      }
+      .oc-head .card-title {
+        margin: 0;
+      }
+      .oc-head .btn {
+        width: auto;
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+      .oc-note {
+        color: var(--muted);
+        font-size: 13px;
+        margin: 4px 0 12px;
+      }
+      .oc-card {
+        margin-bottom: 16px;
+      }
+      td.oc-r,
+      th.oc-r {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      .oc-btn {
+        width: auto;
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="../shared/admin.js"></script>
+    <script>
+      (function () {
+        "use strict";
+        GA.guard();
+        var pg = GA.mount("office-cash.html", "Office Cash"),
+          esc = GA.esc,
+          $ = function (id) {
+            return document.getElementById(id);
+          };
+        function money(n) {
+          return (
+            "₹" +
+            Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+          );
+        }
+        function when(iso) {
+          var d = new Date(iso);
+          return isNaN(d)
+            ? ""
+            : d.toLocaleString("en-IN", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+                timeZone: "Asia/Kolkata",
+              });
+        }
+        function toast(msg) {
+          var t = document.createElement("div");
+          t.className = "a-toast";
+          t.innerHTML = "<div><b>" + esc(msg) + "</b></div>";
+          document.body.appendChild(t);
+          setTimeout(function () {
+            t.classList.add("out");
+          }, 2600);
+          setTimeout(function () {
+            t.remove();
+          }, 3200);
+        }
+        function req(url, opts) {
+          return fetch(url, Object.assign({ credentials: "same-origin", headers: { "Content-Type": "application/json" } }, opts || {})).then(
+            function (r) {
+              return r
+                .json()
+                .catch(function () {
+                  return {};
+                })
+                .then(function (d) {
+                  if (!r.ok) throw new Error(d.error || "Request failed");
+                  return d;
+                });
+            },
+          );
+        }
+
+        pg.innerHTML =
+          '<div id="ocStats"></div>' +
+          '<div class="card oc-card"><div class="oc-head"><div class="card-title">Pending employee deposits</div>' +
+          '<button class="btn btn-outline" id="refresh" type="button">Refresh</button></div>' +
+          '<div class="oc-note">Cash an employee says they handed in. It counts as office cash only after you count it and tick it off here.</div>' +
+          '<div class="a-scroll"><table class="a-table"><thead><tr><th>Submitted</th><th>Employee ID</th><th class="oc-r">Amount</th><th>Note</th><th>Action</th></tr></thead><tbody id="pending"><tr><td colspan="5"><div class="a-empty">Loading…</div></td></tr></tbody></table></div></div>' +
+          '<div class="card oc-card"><div class="card-title">Recent office receipts</div>' +
+          '<div class="a-scroll"><table class="a-table"><thead><tr><th>Date</th><th>Employee ID</th><th class="oc-r">Amount</th><th>Status</th><th>Confirmed by</th></tr></thead><tbody id="history"></tbody></table></div></div>';
+
+        function drawStats(balance, pending, done) {
+          var pendingSum = pending.reduce(function (n, x) {
+            return n + Number(x.amount || 0);
+          }, 0);
+          $("ocStats").innerHTML =
+            '<div class="a-stats">' +
+            GA.tile("s-s", "coin", money(balance), "Office cash", "Confirmed cash in the office") +
+            GA.tile("s-a", "clipboard-list", pending.length, "Deposits to verify", money(pendingSum)) +
+            GA.tile("s-p", "check-circle", done.length, "Recent receipts confirmed") +
+            "</div>";
+        }
+        function load() {
+          return req("/api/accounts/office-cash")
+            .then(function (d) {
+              var rows = d.movements || [],
+                pending = rows.filter(function (x) {
+                  return x.status === "recorded";
+                }),
+                done = rows.filter(function (x) {
+                  return x.status === "confirmed";
+                });
+              drawStats(d.officeBalance, pending, done);
+              $("pending").innerHTML = pending.length
+                ? pending
+                    .map(function (x) {
+                      return (
+                        "<tr><td data-label=\"Submitted\">" + esc(when(x.recorded_at)) + "</td>" +
+                        '<td data-label="Employee ID">' + esc(String(x.from_employee_id || "")) + "</td>" +
+                        '<td data-label="Amount" class="oc-r"><b>' + money(x.amount) + "</b></td>" +
+                        '<td data-label="Note">' + esc(String(x.note || "—")) + "</td>" +
+                        '<td data-label="Action"><button class="btn btn-success oc-btn" type="button" data-confirm="' + esc(x.id) + '">Verify &amp; receive</button></td></tr>'
+                      );
+                    })
+                    .join("")
+                : '<tr><td colspan="5"><div class="a-empty"><b>No pending deposits</b>Nothing is waiting to be counted.</div></td></tr>';
+              $("history").innerHTML =
+                done
+                  .map(function (x) {
+                    return (
+                      "<tr><td data-label=\"Date\">" + esc(when(x.confirmed_at || x.recorded_at)) + "</td>" +
+                      '<td data-label="Employee ID">' + esc(String(x.from_employee_id || "")) + "</td>" +
+                      '<td data-label="Amount" class="oc-r">' + money(x.amount) + "</td>" +
+                      '<td data-label="Status"><span class="badge b-success">Confirmed</span></td>' +
+                      '<td data-label="Confirmed by">' + esc(String(x.confirmed_by || "")) + "</td></tr>"
+                    );
+                  })
+                  .join("") || '<tr><td colspan="5"><div class="a-empty">No confirmed receipts yet.</div></td></tr>';
+              document.querySelectorAll("[data-confirm]").forEach(function (b) {
+                b.onclick = function () {
+                  if (!confirm("Confirm physical cash count and transfer custody into office cash?")) return;
+                  b.disabled = true;
+                  req("/api/accounts/office-deposits/" + b.dataset.confirm + "/confirm", { method: "POST", body: "{}" })
+                    .then(function () {
+                      toast("Deposit received into office cash.");
+                      return load();
+                    })
+                    .catch(function (e) {
+                      toast(e.message);
+                      b.disabled = false;
+                    });
+                };
+              });
+            })
+            .catch(function (e) {
+              $("pending").innerHTML = '<tr><td colspan="5"><div class="a-empty"><b>Could not load</b>' + esc(e.message) + "</div></td></tr>";
+            });
+        }
+        $("refresh").onclick = load;
+        load();
+      })();
+    </script>
+  </body>
+</html>

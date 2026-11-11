@@ -27,6 +27,38 @@
       e.textContent = m || "";
     }
   }
+  // Red box + message under a picker (Route / Employee / Vehicle).
+  function flag(api, id, m) {
+    var c = api.q(id);
+    var old = api.q("[data-pickerr]");
+    if (old) old.remove();
+    var prev = api.q(".dp-flagged");
+    if (prev) {
+      prev.classList.remove("dp-flagged");
+      prev.style.outline = "";
+    }
+    if (c) {
+      c.classList.add("dp-flagged");
+      c.style.outline = "2px solid #dc2626";
+      c.style.outlineOffset = "2px";
+      c.style.borderRadius = "10px";
+      var d = document.createElement("div");
+      d.setAttribute("data-pickerr", "1");
+      d.style.cssText = "color:#dc2626;font-size:12.5px;margin-top:6px";
+      d.textContent = m;
+      c.parentNode.insertBefore(d, c.nextSibling);
+    }
+    errMsg(api, "");
+  }
+  function unflag(api) {
+    var o = api.q("[data-pickerr]");
+    if (o) o.remove();
+    var f = api.q(".dp-flagged");
+    if (f) {
+      f.classList.remove("dp-flagged");
+      f.style.outline = "";
+    }
+  }
   // Result of a save, in plain words. The change itself is never reported unless it was written.
   function afterSave(res, okText, workerName) {
     if (res.server === "failed" || res.server === "pending") {
@@ -215,6 +247,7 @@
     }
     function reviewStops() {
       S = DP.fresh();
+      unflag(api);
       var r = routeOf(),
         out = [],
         left = 0;
@@ -310,21 +343,19 @@
     }
     function step0() {
       S = DP.fresh();
+      unflag(api);
       if (!routeOf()) {
-        errMsg(
-          api,
-          "Choose a route. Add one on the Routes page if the list is empty.",
-        );
+        flag(api, "#apRoute", "Choose a route. Add one on the Routes page if the list is empty.");
         rp.focus();
         return false;
       }
       if (!wp.get()) {
-        errMsg(api, "Choose an employee.");
+        flag(api, "#apWork", "Choose an employee.");
         wp.focus();
         return false;
       }
       if (!vp.get()) {
-        errMsg(api, "Choose a vehicle.");
+        flag(api, "#apVeh", "Choose a vehicle.");
         vp.focus();
         return false;
       }
@@ -934,7 +965,8 @@
     }
     // returns { good: [row...], bad: n } and paints inline messages
     function validateRows() {
-      var seen = {},
+      var own,
+        seen = {},
         taken = DP.invTaken(DP.fresh(), date),
         rt = routeOf(),
         good = [],
@@ -960,6 +992,10 @@
           fld.inv = 1;
         } else if (taken[inv]) {
           msg = "Invoice " + inv + " is already in a plan for this date.";
+          fld.inv = 1;
+        } else if ((own = DP.invOwner(DP.fresh(), inv, r.code))) {
+          msg =
+            "Invoice " + inv + " already belongs to " + (own.name || own.code) + ".";
           fld.inv = 1;
         } else if (amt === "" || !isFinite(Number(amt)) || Number(amt) < 0) {
           msg = "Enter a valid amount (0 or more).";
@@ -1247,20 +1283,17 @@
         wid = wp.get(),
         vid = vp.get();
       if (!r) {
-        errMsg(
-          api,
-          "Choose a route. Add one on the Routes page if the list is empty.",
-        );
+        flag(api, "#apRoute", "Choose a route. Add one on the Routes page if the list is empty.");
         rp.focus();
         return;
       }
       if (!wid) {
-        errMsg(api, "Choose an employee.");
+        flag(api, "#apWork", "Choose an employee.");
         wp.focus();
         return;
       }
       if (!vid) {
-        errMsg(api, "Choose a vehicle.");
+        flag(api, "#apVeh", "Choose a vehicle.");
         vp.focus();
         return;
       }
@@ -1507,7 +1540,32 @@
             plan.stops.length +
             " deliveries).",
         );
+        for (var oi = 0; oi < plan.stops.length; oi++) {
+          var own3 = DP.invOwner(S2, plan.stops[oi].inv, plan.stops[oi].code);
+          if (own3)
+            return {
+              ok: false,
+              error:
+                "Invoice " + plan.stops[oi].inv + " already belongs to " + (own3.name || own3.code) + ".",
+            };
+        }
         L = L.slice();
+        // Second plan for the same employee/vehicle after the first one was finished: the earlier plan is marked done.
+        var crewNew = DP.crew(plan);
+        L.forEach(function (q) {
+          if (
+            q.status !== "cancelled" &&
+            !q.done &&
+            DP.closed(q, date) &&
+            (q.vehicleId === plan.vehicleId ||
+              DP.crew(q).some(function (id) {
+                return crewNew.indexOf(id) > -1;
+              }))
+          ) {
+            q.done = true;
+            plan.again = true;
+          }
+        });
         L.push(plan);
         S2.plans[date] = L;
         out.plan = plan;
@@ -1999,6 +2057,13 @@
                 ok: false,
                 error:
                   "Invoice " + inv + " is already in a plan for this date.",
+              };
+            var own2 = DP.invOwner(S2, inv, code);
+            if (own2)
+              return {
+                ok: false,
+                error:
+                  "Invoice " + inv + " already belongs to " + (own2.name || own2.code) + ".",
               };
             p.stops.push({
               code: code,

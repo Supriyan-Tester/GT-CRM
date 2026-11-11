@@ -23,6 +23,7 @@
   </head>
   <body>
     <script src="../shared/mock-data.js"></script>
+    <script src="../shared/form-check.js"></script>
     <script src="../shared/admin.js"></script>
     <script src="../shared/plan-core.js"></script>
     <script src="../shared/vehicles.js"></script>
@@ -511,7 +512,7 @@
             '>Service</option><option value="repair"' +
             (kind === "repair" ? " selected" : "") +
             ">Repair</option></select></div></div>" +
-            '<div class="a-fg"><label for="sf_type">Service type *</label><div class="field a-f"><select id="sf_type">' +
+            '<div class="a-fg"><label for="sf_type">Service type <span class="fc-star">*</span></label><div class="field a-f"><select id="sf_type">' +
             VX.SERVICE_TYPES.map(function (x) {
               return (
                 "<option" +
@@ -522,7 +523,7 @@
               );
             }).join("") +
             "</select></div></div>" +
-            f("date", "Scheduled date", rec.scheduledDate, "date") +
+            f("date", "Scheduled date (or due km)", rec.scheduledDate, "date") +
             f(
               "km",
               "Due at km",
@@ -563,16 +564,16 @@
                 c = q("#sf_cost").value,
                 ws = q("#sf_ws").checked;
               if (!d && !km && !ws) {
-                q("#sf_err").textContent =
-                  "Enter a scheduled date, a due km, or mark the vehicle as in the workshop.";
+                FC.clear();
+                FC.fail("sf_date", "Enter a scheduled date or a due km, or tick the workshop box.");
                 return;
               }
               if (km !== "" && !(Number(km) > 0)) {
-                q("#sf_err").textContent = "Due km must be above 0.";
+                FC.fail("sf_km", "Due km must be above 0.");
                 return;
               }
               if (c !== "" && !(Number(c) >= 0)) {
-                q("#sf_err").textContent = "Enter a valid cost.";
+                FC.fail("sf_cost", "Enter a valid cost.");
                 return;
               }
               var r = VX.saveService(
@@ -621,7 +622,7 @@
           html:
             '<p style="font-size:14px;margin-bottom:10px">' +
             esc(s.type) +
-            '</p><div class="vx-form" style="grid-template-columns:1fr 1fr"><div class="a-fg"><label for="md_d">Done on *</label><div class="field a-f"><input type="date" id="md_d" value="' +
+            '</p><div class="vx-form" style="grid-template-columns:1fr 1fr"><div class="a-fg"><label for="md_d">Done on <span class="fc-star">*</span></label><div class="field a-f"><input type="date" id="md_d" value="' +
             T +
             '" max="' +
             T +
@@ -646,16 +647,15 @@
                 k = q("#md_k").value,
                 c = q("#md_c").value;
               if (!d || d > T) {
-                q("#md_err").textContent =
-                  "Choose a done date that is not in the future.";
+                FC.fail("md_d", "Choose a done date that is not in the future.");
                 return;
               }
               if (k !== "" && !(Number(k) >= 0)) {
-                q("#md_err").textContent = "Enter a valid odometer reading.";
+                FC.fail("md_k", "Enter a valid odometer reading.");
                 return;
               }
               if (c !== "" && !(Number(c) >= 0)) {
-                q("#md_err").textContent = "Enter a valid cost.";
+                FC.fail("md_c", "Enter a valid cost.");
                 return;
               }
               if (

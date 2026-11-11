@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script src="../shared/loading.js"></script>
+    <script src="../assets/icons.js"></script>
+    <script src="../shared/sync.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Accounts Dashboard - General Traders</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="../shared/admin.css" />
+    <script src="../shared/theme.js"></script>
+    <style>
+      .ad-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+      .ad-grid > .card,
+      .ad-wide {
+        margin: 0;
+        min-width: 0;
+      }
+      .ad-wide {
+        margin-bottom: 16px;
+      }
+      @media (max-width: 900px) {
+        .ad-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .ad-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 11px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .ad-row:last-child {
+        border-bottom: 0;
+      }
+      .ad-row .grow {
+        flex: 1;
+        min-width: 0;
+      }
+      .ad-row b {
+        font-variant-numeric: tabular-nums;
+      }
+      .ad-total {
+        margin-top: 6px;
+        padding: 12px;
+        border-radius: 12px;
+        background: var(--t-primary);
+        font-weight: 700;
+      }
+      .ad-total b {
+        color: var(--primary);
+        font-size: 18px;
+      }
+      a.ad-act {
+        color: inherit;
+        text-decoration: none;
+      }
+      a.ad-act:hover .grow {
+        color: var(--primary);
+      }
+      .ad-act .chip {
+        flex: none;
+      }
+      .ad-act svg.icon {
+        width: 18px;
+        height: 18px;
+      }
+      .ad-go {
+        color: var(--muted);
+      }
+      .ad-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+      }
+      .ad-head .card-title {
+        margin: 0;
+      }
+      .ad-legend {
+        display: flex;
+        gap: 14px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .ad-legend i {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        margin-right: 6px;
+      }
+      .ad-chart {
+        width: 100%;
+        min-width: 560px;
+        height: auto;
+        display: block;
+      }
+      .ad-top {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 14px;
+      }
+      .ad-top .a-seg {
+        overflow-x: auto;
+        max-width: 100%;
+      }
+      .ad-top .a-seg button {
+        white-space: nowrap;
+        flex: none;
+        padding: 8px 16px;
+      }
+      .ad-mi {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .ad-mi svg.icon {
+        width: 16px;
+        height: 16px;
+        color: var(--muted);
+      }
+      .ad-btn {
+        width: auto;
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+      .ad-chart text {
+        fill: var(--muted);
+        font-size: 11px;
+        font-family: inherit;
+      }
+      .ad-chart .gl {
+        stroke: var(--border);
+        stroke-width: 1;
+      }
+      .ad-note {
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 6px;
+      }
+      .ad-sk {
+        color: var(--muted);
+        padding: 30px 12px;
+        text-align: center;
+      }
+      .ad-name {
+        font-weight: 600;
+      }
+      .ad-name small {
+        display: block;
+        color: var(--muted);
+        font-weight: 400;
+      }
+      td.ad-r,
+      th.ad-r {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="../shared/admin.js"></script>
+    <script>
+      (function () {
+        "use strict";
+        GA.guard();
+        var pg = GA.mount("accounts-dashboard.html", "Accounts Dashboard"),
+          esc = GA.esc;
+        function money(v) {
+          var n = Math.round((Number(v) || 0) * 100) / 100;
+          return (
+            "₹" +
+            n.toLocaleString("en-IN", {
+              minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+              maximumFractionDigits: 2,
+            })
+          );
+        }
+        var METHOD = { cash: "Cash", upi: "UPI", bank_transfer: "Bank transfer" };
+        var STATUS = {
+          approved: ["b-success", "Approved"],
+          pending_approval: ["b-accent", "Pending approval"],
+          rejected: ["b-danger", "Rejected"],
+          reversed: ["b-muted", "Reversed"],
+        };
+        function when(iso) {
+          var d = new Date(iso);
+          return isNaN(d)
+            ? ""
+            : d.toLocaleString("en-IN", {
+                day: "numeric",
+                month: "short",
+                hour: "numeric",
+                minute: "2-digit",
+                timeZone: "Asia/Kolkata",
+              });
+        }
+
+        // Collections for the last 14 days: approved (solid) and still waiting for approval (amber).
+        function chart(days) {
+          var W = 720,
+            H = 230,
+            L = 52,
+            R = 10,
+            T = 12,
+            B = 30,
+            max = 0;
+          days.forEach(function (d) {
+            max = Math.max(max, d.approved + d.pending);
+          });
+          if (max <= 0)
+            return '<div class="a-empty"><b>No collections in the last 14 days</b>Approved and pending collections will show here.</div>';
+          var step = Math.pow(10, Math.floor(Math.log10(max))),
+            top = Math.ceil(max / step) * step;
+          if (top / step < 2) top = step * 2;
+          var ih = H - T - B,
+            iw = W - L - R,
+            slot = iw / days.length,
+            bw = Math.min(30, slot * 0.62),
+            out = "";
+          for (var g = 0; g <= 4; g++) {
+            var gy = T + ih - (ih * g) / 4;
+            var tick = (top * g) / 4,
+              tickText =
+                tick >= 100000
+                  ? "\u20B9" + (tick / 100000).toFixed(1).replace(/\.0$/, "") + "L"
+                  : "\u20B9" + tick.toLocaleString("en-IN");
+            out +=
+              '<line class="gl" x1="' + L + '" x2="' + (W - R) + '" y1="' + gy + '" y2="' + gy + '"/>' +
+              '<text x="' + (L - 8) + '" y="' + (gy + 4) + '" text-anchor="end">' + tickText + "</text>";
+          }
+          days.forEach(function (d, i) {
+            var x = L + slot * i + (slot - bw) / 2,
+              ha = (ih * d.approved) / top,
+              hp = (ih * d.pending) / top,
+              label = new Date(d.date + "T00:00:00Z").toLocaleDateString("en-IN", {
+                day: "numeric",
+                month: "short",
+                timeZone: "UTC",
+              });
+            out +=
+              "<g><title>" + label + ": approved " + money(d.approved) + ", pending " + money(d.pending) + "</title>" +
+              (ha > 0 ? '<rect x="' + x + '" y="' + (T + ih - ha) + '" width="' + bw + '" height="' + ha + '" rx="3" fill="var(--primary)"/>' : "") +
+              (hp > 0 ? '<rect x="' + x + '" y="' + (T + ih - ha - hp) + '" width="' + bw + '" height="' + hp + '" rx="3" fill="var(--accent)"/>' : "") +
+              "</g>";
+            if (i % 2 === (days.length - 1) % 2)
+              out += '<text x="' + (x + bw / 2) + '" y="' + (H - 9) + '" text-anchor="middle">' + label + "</text>";
+          });
+          return (
+            '<svg class="ad-chart" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Collections for the last 14 days">' + out + "</svg>"
+          );
+        }
+
+        function act(icon, tone, text, sub, count, href) {
+          return (
+            '<a class="ad-row ad-act" href="' + href + '"><span class="chip ' + tone + '">' + GA.icon(icon) + '</span>' +
+            '<div class="grow">' + text + (sub ? '<div class="ad-note" style="margin:0">' + sub + "</div>" : "") + "</div>" +
+            '<span class="badge ' + (count > 0 ? "b-danger" : "b-muted") + '">' + count + "</span>" +
+            '<span class="ad-go">' + GA.icon("chevron-right") + "</span></a>"
+          );
+        }
+
+        var RANGES = [["today", "Today"], ["week", "This week"], ["month", "This month"], ["year", "This year"]],
+          RLABEL = { today: "Today", week: "This week", month: "This month", year: "This year" },
+          MICON = { cash: "coin", upi: "credit-card", bank_transfer: "swap" },
+          range = "today";
+        try {
+          var saved = localStorage.getItem("gm_acc_range");
+          if (RLABEL[saved]) range = saved;
+        } catch (e) {}
+        function mi(m) {
+          return '<span class="ad-mi">' + GA.icon(MICON[m] || "coin") + esc(METHOD[m] || m) + "</span>";
+        }
+        function draw(d) {
+          var b = d.balances,
+            t = d.rangeCollections || d.todayCollections,
+            p = d.pending,
+            recent = d.recent || [];
+          var rows = recent.length
+            ? recent
+                .map(function (x) {
+                  var st = STATUS[x.status] || ["b-muted", esc(x.status)];
+                  return (
+                    "<tr><td class=\"ad-name\" data-label=\"Customer\">" + esc(x.customer_name_snapshot) + "<small>" + esc(when(x.received_at)) + "</small></td>" +
+                    '<td data-label="Invoice">' + esc((x.invoiceNos || []).slice(0, 2).join(", ") + ((x.invoiceNos || []).length > 2 ? " +" + ((x.invoiceNos || []).length - 2) : "")) + "</td>" +
+                    '<td data-label="Collected by">' + esc(x.collector_name_snapshot) + "</td>" +
+                    '<td data-label="Method">' + mi(x.method) + "</td>" +
+                    '<td class="ad-r" data-label="Amount"><b>' + money(x.total_amount) + "</b></td>" +
+                    '<td data-label="Status"><span class="badge ' + st[0] + '">' + st[1] + "</span></td></tr>"
+                  );
+                })
+                .join("")
+            : '<tr><td colspan="6"><div class="a-empty"><b>No collections yet</b>Collections your team records will appear here.</div></td></tr>';
+          pg.innerHTML =
+            '<div class="ad-top"><div class="a-seg" id="adRange">' +
+            RANGES.map(function (r) {
+              return '<button type="button" data-r="' + r[0] + '" class="' + (r[0] === range ? "on" : "") + '">' + r[1] + "</button>";
+            }).join("") +
+            "</div></div>" +
+            '<div class="a-stats">' +
+            GA.tile("s-a", "users", money(b.receivables), "Customer receivables", "Total outstanding (credit)") +
+            GA.tile("s-s", "coin", money(b.officeCash), "Office cash", "Verified cash in office") +
+            GA.tile("s-p", "team", money(b.employeeCash), "Employee-held cash", "Collected, not yet handed over") +
+            GA.tile("s-i", "credit-card", money(b.bank), "Bank balance", "UPI waiting to settle " + money(b.upiClearing)) +
+            "</div>" +
+            '<div class="ad-grid">' +
+            '<div class="card"><div class="card-title">Collections, ' + RLABEL[range].toLowerCase() + '</div>' +
+            '<div class="ad-row"><span class="grow">' + mi("cash") + "</span><b>" + money(t.cash) + "</b></div>" +
+            '<div class="ad-row"><span class="grow">' + mi("upi") + "</span><b>" + money(t.upi) + "</b></div>" +
+            '<div class="ad-row"><span class="grow">' + mi("bank_transfer") + "</span><b>" + money(t.bankTransfer) + "</b></div>" +
+            '<div class="ad-row ad-total"><span class="grow">Total collections</span><b>' + money(t.total) + "</b></div>" +
+            '<div class="ad-note">' + t.count + (t.count === 1 ? " collection" : " collections") + " recorded " + (range === "today" ? "today" : RLABEL[range].toLowerCase()) + ", approved or waiting for approval.</div></div>" +
+            '<div class="card"><div class="card-title">Pending actions</div>' +
+            act("clipboard-list", "c-a", "Collection approvals", p.collections ? money(p.collectionsAmount) + " waiting" : "", p.collections, "collections.html?status=pending_approval") +
+            act("coin", "c-p", "Office deposits and handovers", "", p.cashMovements, "office-cash.html") +
+            act("credit-card", "c-i", "UPI settlements to confirm", "", p.upiSettlements, "upi-settlements.html") +
+            act("check-circle", "c-s", "Daily closing to approve", "", p.dailyClosings, "daily-closing.html") +
+            act("alert-triangle", "c-d", "Cash discrepancies", "Disputed handovers, UPI or closings", p.discrepancies || 0, "office-cash.html") +
+            "</div></div>" +
+            '<div class="card ad-wide"><div class="ad-head"><div class="card-title">Collections, last 14 days</div>' +
+            '<div class="ad-legend"><span><i style="background:var(--primary)"></i>Approved</span><span><i style="background:var(--accent)"></i>Waiting for approval</span></div></div>' +
+            '<div class="a-scroll">' + chart(d.daily || []) + "</div>" +
+            "</div>" +
+            '<div class="card"><div class="ad-head"><div class="card-title">Recent collections</div><a class="btn btn-outline ad-btn" href="collections.html">View all</a></div>' +
+            '<div class="a-scroll"><table class="a-table"><thead><tr><th>Customer</th><th>Invoice</th><th>Collected by</th><th>Method</th><th class="ad-r">Amount</th><th>Status</th></tr></thead><tbody>' +
+            rows +
+            "</tbody></table></div></div>";
+          document.getElementById("adRange").onclick = function (e) {
+            var bt = e.target.closest("button[data-r]");
+            if (!bt || bt.getAttribute("data-r") === range) return;
+            range = bt.getAttribute("data-r");
+            try {
+              localStorage.setItem("gm_acc_range", range);
+            } catch (er) {}
+            load();
+          };
+        }
+
+        function load() {
+          pg.innerHTML = '<div class="card ad-sk">Loading the Accounts dashboard…</div>';
+          fetch("/api/accounts/summary?range=" + encodeURIComponent(range), { credentials: "same-origin" })
+            .then(function (r) {
+              return r
+                .json()
+                .catch(function () {
+                  return {};
+                })
+                .then(function (j) {
+                  if (!r.ok) throw new Error(j.error || "Could not load the dashboard.");
+                  return j;
+                });
+            })
+            .then(draw)
+            .catch(function (e) {
+              pg.innerHTML =
+                '<div class="card"><div class="a-empty"><b>Could not load the dashboard</b>' + esc(e.message || "Try again.") +
+                '<div style="margin-top:14px"><button class="btn" id="adRetry" type="button">Try again</button></div></div></div>';
+              document.getElementById("adRetry").onclick = load;
+            });
+        }
+        load();
+      })();
+    </script>
+  </body>
+</html>

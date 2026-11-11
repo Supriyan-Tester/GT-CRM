@@ -59,7 +59,7 @@
         GA.icon("plus") +
         " Create Admin</button>" +
         '</div><div id="uBody"><div class="us-empty">Loading users...</div></div></section>' +
-        '<section class="us-panel" style="margin-top:18px"><div class="us-head" style="padding:16px 18px 0"><h2 style="margin:0 0 4px;font-size:17px">Employee access</h2>' +
+        '<section class="us-panel us-panel-gap"><div class="us-head us-head-in"><h2>Employee access</h2>' +
         "<p>Choose which options each employee can open. An employee always gets the options of their own role (shown ticked). Delivery and Helper staff use the delivery app and are not listed.</p></div>" +
         '<div id="aBody"><div class="us-empty">Loading...</div></div></section>';
 
@@ -135,13 +135,13 @@
                 "</b><small>" +
                 esc(u.email || "No email") +
                 "</small></div></div></td>" +
-                "<td>" +
+                '<td data-l="Phone">' +
                 esc(US.phone(u.phone)) +
-                "</td><td>" +
+                '</td><td data-l="Role">' +
                 US.role(u.role) +
-                "</td><td>" +
+                '</td><td data-l="Status">' +
                 US.status(u.status) +
-                "</td><td>" +
+                '</td><td data-l="Last login">' +
                 US.when(u.last) +
                 "</td>" +
                 '<td class="acts"><button type="button" class="us-ib" data-edit="' +
@@ -252,7 +252,7 @@
             return;
           }
           $("aBody").innerHTML =
-            '<div class="us-scroll"><table class="us-table"><thead><tr><th>Employee</th><th>Role</th><th>Can open</th><th style="text-align:right">Save</th></tr></thead><tbody>' +
+            '<div class="us-scroll"><table class="us-table us-table-acc"><thead><tr><th>Employee</th><th>Role</th><th>Can open</th><th style="text-align:right">Save</th></tr></thead><tbody>' +
             P.map(function (p) {
               var cells;
               if (p.full) cells = '<span class="mu">Everything (Admin)</span>';
@@ -283,9 +283,9 @@
                 "</b><br><small>" +
                 esc(p.code || p.phone) +
                 (p.active ? "" : " - inactive") +
-                "</small></td><td>" +
+                "</small></td><td data-l=\"Role\">" +
                 esc(p.role) +
-                "</td><td>" +
+                "</td><td data-l=\"Can open\">" +
                 cells +
                 '</td><td class="acts">' +
                 (p.full || p.panel === "sales"
