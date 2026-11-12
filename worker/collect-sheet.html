@@ -16,7 +16,7 @@ h3{font-size:14px;display:flex;align-items:center;gap:8px;margin:0}
 .shop b{font-size:16px;display:block}
 .meta{display:flex;justify-content:space-between;gap:10px;font-size:14px}.meta b{font-weight:700}
 .bill{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 14px;border-radius:12px;background:var(--t-primary);color:#10231b}
-.bill small{display:block;color:var(--muted);font-size:12px}.bill b{font-size:clamp(24px,8vw,30px);white-space:nowrap}
+.bill small{display:block;color:#4b5f55;font-size:12px}.bill b{font-size:clamp(24px,8vw,30px);white-space:nowrap}
 .stat{white-space:nowrap;padding:5px 12px;border-radius:10px;font-size:12px;font-weight:700;background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.4)}
 .ch{display:flex;align-items:center;gap:10px;cursor:pointer;justify-content:space-between}
 .ch:after{content:"\25BE";color:var(--muted);transition:transform .15s}.coll.open>.ch:after,.coll.open>.ch:after{transform:rotate(180deg)}
@@ -42,7 +42,7 @@ input[type=number],textarea{width:100%;min-height:44px;border:1px solid var(--bo
 .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .tile{border:1px solid var(--border);border-radius:12px;padding:10px 6px;min-height:72px;text-align:center;background:var(--card);color:var(--text);font:inherit;font-size:13px;font-weight:700;cursor:pointer;position:relative}
 .tile span{display:block;font-size:22px}
-.tile.on{border:2px solid var(--primary);background:var(--t-primary)}
+.tile.on{border:2px solid var(--primary);background:var(--t-primary);color:#10231b}.tile.on *{color:inherit}
 .tile.on:after{content:"\2713";position:absolute;top:4px;right:8px;color:var(--primary);font-weight:900}
 .tile.credit{grid-column:1/-1;display:flex;gap:10px;align-items:center;justify-content:center;min-height:52px}.tile.credit span{display:inline;font-size:20px}
 .seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--border);border-radius:999px;padding:3px;background:var(--bg)}
@@ -56,8 +56,8 @@ input[type=number],textarea{width:100%;min-height:44px;border:1px solid var(--bo
 .ph .x{position:absolute;top:-6px;right:-6px;width:24px;height:24px;border-radius:50%;background:#111;color:#fff;border:0;z-index:2;font-size:14px;padding:0;cursor:pointer}
 #curPrev{grid-column:1/-1;min-height:120px}
 textarea#note{min-height:100px;resize:vertical}
-.tot{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:14px;border-radius:12px;background:var(--t-primary)}
-.tot small{display:block;color:var(--muted);font-size:13px}.tot b{font-size:28px}
+.tot{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:14px;border-radius:12px;background:var(--t-primary);color:#10231b}
+.tot small{display:block;color:#4b5f55;font-size:13px}.tot b{font-size:28px}
 .tot{flex-wrap:wrap}.tot>div{min-width:0}.tot .badge{max-width:100%;white-space:normal;text-align:center;line-height:1.3;margin-left:auto}
 .badge{padding:7px 12px;border-radius:12px;font-size:12px;font-weight:800;background:rgba(34,197,94,.18);color:#16a34a}
 .badge.warn{background:rgba(245,158,11,.18);color:var(--amber)}
