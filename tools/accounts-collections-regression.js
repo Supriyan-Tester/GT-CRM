@@ -83,7 +83,7 @@ const admin = { role: "admin", billing: true, id: "A1" };
   assert(page.includes("coChecked") && page.includes("id=\"coApprove\" type=\"button\" disabled"), "Approve stays disabled until evidence is confirmed");
   assert(a.includes('"collections.html": ["billing"]') && s.includes('"collections.html": ["billing"]') && a.includes('["collections.html", "Collections"'), "menu and permissions wired");
   assert(/status<>'pending_approval'/.test(sql) && /service_role/.test(sql) && !/journal_entries/.test(sql), "reject SQL: only from pending, service role only, no ledger posting");
-  assert(page.includes("data-ok") && page.includes("data-no") && page.includes("coBulkGo") && page.includes("exportCsv") && page.includes("Invoice details"), "row Approve/Reject, bulk approve, export and invoice details are on the Collections page");
+  assert(page.includes("data-ok") && page.includes("data-no") && page.includes("coBulkGo") && page.includes("exportCsv") && page.includes("Invoices paid"), "row Approve/Reject, bulk approve, export and invoice details are on the Collections page");
   assert(page.includes("csvCell") && page.includes("[=+"), "export guards against spreadsheet formulas");
   console.log("accounts collections regression passed");
 })().catch((e) => { console.error(e); process.exit(1); });

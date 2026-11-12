@@ -7,7 +7,7 @@ const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "admin/accounts.html"), "utf8");
 const admin = fs.readFileSync(path.join(root, "shared/admin.js"), "utf8");
 const server = fs.readFileSync(path.join(root, "server.js"), "utf8");
-for (const token of ["Customer Ledger", "Collection Approvals", "/api/accounts/customers/", "/api/accounts/collections/pending", "source_kind", "approvedPaid", "acEvidenceChecked", "acApprove", "Open invoice bill photo", "Import legacy opening invoice"]) assert(html.includes(token), "Missing Accounts UI contract: " + token);
+for (const token of ["Customer Ledger", "Collection Approvals", "/api/accounts/customers/", "/api/accounts/collections/pending", "source_kind", "approvedPaid", "acEvidenceChecked", "acApprove", "Open bill photo", "Import legacy opening invoice"]) assert(html.includes(token), "Missing Accounts UI contract: " + token);
 assert(admin.includes('"accounts.html": ["billing"]'), "Accounts page must be Billing permission gated in navigation");
 assert(admin.includes('"Cash & Accounts"') && admin.includes('["accounts.html", "Accounts & Ledger", "receipt"]') && admin.includes('["accounts-dashboard.html", "Dashboard", "chart"]'), "Cash & Accounts menu group missing");
 assert(server.includes('"accounts.html": ["billing"]'), "Accounts page must be Billing permission gated by server");
