@@ -4739,7 +4739,7 @@ function api(req, res, url) {
         } catch (e) {
           console.error("Activity diff skipped:", e && e.message);
         }
-        send(res, 200, { ok: true, rev: db.rev });
+        send(res, 200, { ok: true, rev: (db.items[key] && db.items[key].rev) || db.rev });
       });
     if (req.method === "DELETE") {
       const remove = (b) => {
@@ -4756,7 +4756,7 @@ function api(req, res, url) {
             });
         }
         setItem(key, null);
-        return send(res, 200, { ok: true, rev: db.rev });
+        return send(res, 200, { ok: true, rev: (db.items[key] && db.items[key].rev) || db.rev });
       };
       if (PROTECTED.has(key))
         return body(req, (err, b) => remove(err ? null : b), 4096);

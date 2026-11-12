@@ -2036,16 +2036,51 @@ GA.tile = function (cls, icon, n, label, sub) {
   var MIN = 11,
     queued = false,
     busy = false;
+  /* Too big even at a readable size: show the rupee amount short (Rs 1,000 Cr, Rs 12.5 L). The full amount is in the tooltip. */
+  function short(t) {
+    var m = /^(-?)\s*\u20b9\s*([\d,]+(?:\.\d+)?)$/.exec(t);
+    if (!m) return null;
+    var n = Number(m[2].replace(/,/g, ""));
+    if (!(n >= 1e5)) return null;
+    var f = function (v) {
+      return v.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+    };
+    return m[1] + "\u20b9" + (n >= 1e7 ? f(n / 1e7) + " Cr" : f(n / 1e5) + " L");
+  }
   function fit(b) {
+    var txt = b.textContent;
+    if (b.__out != null && b.__out === txt) {
+      txt = b.__full;
+      b.textContent = txt;
+    }
+    b.__full = txt;
+    b.__out = null;
     b.style.fontSize = "";
     if (!b.clientWidth) return;
-    var size = parseFloat(getComputedStyle(b).fontSize) || 22;
+    var base = parseFloat(getComputedStyle(b).fontSize) || 22;
+    var size = base;
     var guard = 0;
-    while (b.scrollWidth > b.clientWidth + 0.5 && size > MIN && guard++ < 24) {
-      size -= 1;
-      b.style.fontSize = size + "px";
+    function over() {
+      return b.scrollWidth > b.clientWidth + 0.5;
     }
-    b.title = b.scrollWidth > b.clientWidth + 0.5 ? b.textContent : "";
+    function shrink(min) {
+      while (over() && size > min && guard++ < 40) {
+        size -= 1;
+        b.style.fontSize = size + "px";
+      }
+    }
+    shrink(Math.max(16, base * 0.7));
+    if (over()) {
+      var sh = short(txt.trim());
+      if (sh) {
+        b.textContent = sh;
+        b.__out = sh;
+        size = base;
+        b.style.fontSize = "";
+      }
+      shrink(MIN);
+    }
+    b.title = b.__out != null || over() ? txt : "";
   }
   function run() {
     queued = false;

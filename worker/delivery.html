@@ -702,28 +702,30 @@
       }
 
       /* Bill items as a bordered table */
-      .bl-scroll { overflow-x: auto; }
-      .bl-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-      .bl-table th, .bl-table td { border: 1px solid var(--border); padding: 8px 7px; vertical-align: top; }
+      .bl-scroll { overflow-x: hidden; }
+      .bl-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 11.5px; }
+      .bl-table th, .bl-table td { border: 1px solid var(--border); padding: 7px 3px; vertical-align: top; }
       .bl-table th:first-child, .bl-table td:first-child { border-left: 0; }
       .bl-table th:last-child, .bl-table td:last-child { border-right: 0; }
-      .bl-table thead th { background: var(--t-primary); font: 700 10.5px Inter, sans-serif; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); text-align: left; white-space: nowrap; border-top: 0; }
-      .bl-table .nm { font-weight: 700; line-height: 1.25; color: var(--text); overflow-wrap: anywhere; min-width: 96px; }
+      .bl-table thead th { background: var(--t-primary); font: 700 9.5px Inter, sans-serif; text-transform: uppercase; letter-spacing: 0; color: var(--muted); text-align: left; white-space: nowrap; border-top: 0; }
+      .bl-table .nm { font-weight: 700; line-height: 1.25; color: var(--text); overflow-wrap: anywhere; min-width: 0; }
       .bl-table .nm em { font-style: normal; color: var(--muted); font-weight: 600; }
       .bl-table .nm small { display: block; font-weight: 500; color: var(--muted); font-size: 11px; margin-top: 2px; }
-      .bl-table .r { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+      .bl-table .r { text-align: right; white-space: nowrap; font-size: 11px; font-variant-numeric: tabular-nums; }
       .bl-table th.r { text-align: right; }
       .bl-table .mt { color: var(--muted); }
       .bl-table .q { text-align: center; white-space: nowrap; }
-      .bl-table .q span { display: inline-block; min-width: 26px; text-align: center; padding: 2px 6px; border-radius: 7px; background: var(--t-accent); color: var(--accent); font: 800 12.5px Inter, sans-serif; }
+      .bl-table .q span { display: inline-block; min-width: 0; text-align: center; padding: 2px 4px; border-radius: 7px; background: var(--t-accent); color: var(--accent); font: 800 11.5px Inter, sans-serif; }
       .bl-table .a { font-weight: 700; color: var(--primary); }
       .bl-table tr.ret td { background: var(--t-danger); }
       .bl-table tr.ret .nm { color: var(--danger); }
-      .bl-table tfoot td { background: var(--total-bg); color: var(--total-text); font-weight: 700; font-size: 13px; border: 0; padding: 12px 8px; }
+      .bl-table tfoot td { background: var(--total-bg); color: var(--total-text); font-weight: 700; font-size: 13px; border: 0; padding: 12px 3px; }
       .bl-table tfoot td.nm { color: var(--total-text); text-transform: uppercase; letter-spacing: 0.04em; font-size: 13px; }
-      .bl-table tfoot td.a { color: var(--total-text); font-size: 14px; }
+      .bl-table tfoot td.a { color: var(--total-text); font-size: 12.5px; }
       .bl-table tfoot .q span { background: var(--t-accent); color: var(--accent); }
       .bl-table td.bl-empty { text-align: center; color: var(--muted); padding: 22px 14px; }
+      .bl-table th:first-child, .bl-table td:first-child { width: 34%; padding-left: 8px; }
+      .bl-table th:last-child, .bl-table td:last-child { padding-right: 8px; }
 
       /* Sheets */
       .modal-overlay {

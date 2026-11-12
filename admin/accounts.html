@@ -39,8 +39,25 @@
     .ac-modal-head h3{margin:0}
     .ac-alloc{border:1px solid var(--border);border-radius:12px;padding:12px;margin:10px 0}
     .ac-alloc img{max-width:100%;max-height:220px;border-radius:10px;border:1px solid var(--border);margin-top:8px}
+    .ac-alloc a.ac-openbtn{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:8px 14px;border:1px solid var(--primary);border-radius:10px;color:var(--primary);font-size:13px;font-weight:700;text-decoration:none;background:transparent}
+    .ac-alloc a.ac-openbtn:hover{background:var(--t-primary)}
+    .ac-sum{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px;padding:14px;border-radius:12px;background:var(--t-info);border:1px solid var(--border);margin-bottom:14px}
+    .ac-sum small{display:block;font-size:12px;color:var(--muted);margin-bottom:2px}
+    .ac-sum b{font-size:14px;overflow-wrap:anywhere}
+    .ac-sum .wide{grid-column:1/-1}
+    .ac-sum .big{font-size:20px}
+    .ac-ah{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+    .ac-alloc a{display:inline-block;margin-top:4px;font-size:13px}
+    @media(max-width:480px){.ac-sum{grid-template-columns:1fr}}
     .ac-chk{display:flex;gap:10px;align-items:flex-start;margin:14px 0;font-size:14px;cursor:pointer}
     .ac-chk input{margin-top:3px;width:18px;height:18px;flex:none}
+    .ac-acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+    .ac-acts[hidden],.ac-rej[hidden]{display:none}
+    .ac-rej{margin-top:10px}
+    .ac-rej label{display:block;margin-bottom:6px;font-size:14px}
+    .ac-rej textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);font:inherit;font-size:14px;resize:vertical}
+    .ac-rej textarea.bad{border-color:#dc2626}
+    .ac-rejerr{color:#dc2626;font-size:12.5px;min-height:18px;margin:4px 0 8px}
     .ac-more{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
     @media(max-width:700px){.ac-grid2{grid-template-columns:1fr}}
 
@@ -238,16 +255,30 @@
     $("acPendingRows").innerHTML='<tr><td colspan="7"><div class="a-empty">Loading approvals...</div></td></tr>';
     return request("/api/accounts/collections/pending").then(function(d){pending=d.collections||[];$("acPendingCount").textContent=pending.length?String(pending.length):"";renderPending();drawStats();}).catch(function(e){$("acPendingRows").innerHTML='<tr><td colspan="7"><div class="a-empty"><b>Could not load</b>'+esc(e.message)+'</div></td></tr>';});
   }
+  // Quiet refresh: no "Loading..." flash, the list stays on screen while it updates.
+  function quietPending(){
+    return request("/api/accounts/collections/pending").then(function(d){pending=d.collections||[];$("acPendingCount").textContent=pending.length?String(pending.length):"";renderPending();drawStats();}).catch(function(){});
+  }
   function renderPending(){
     $("acPendingRows").innerHTML=pending.length?pending.map(function(x){return '<tr><td data-label="Received">'+esc(dt(x.received_at))+'</td><td data-label="Customer"><b>'+esc(x.customer_name_snapshot)+'</b><br><small class="ac-muted">'+esc(x.customer_code)+'</small></td><td data-label="Collector">'+esc(x.collector_name_snapshot)+'</td><td data-label="Method">'+esc(METHOD[x.method]||x.method)+'</td><td data-label="Total" class="ac-r"><b>'+money(x.total_amount)+'</b></td><td data-label="Status"><span class="badge b-accent">Pending approval</span></td><td><button class="btn btn-outline ac-btn" type="button" data-detail="'+esc(x.id)+'">Review</button></td></tr>';}).join(""):'<tr><td colspan="7"><div class="a-empty"><b>No pending collections</b>Nothing is waiting for approval.</div></td></tr>';
   }
   function showDetails(id){
     var x=pending.find(function(a){return a.id===id;});if(!x)return;
     var allocations=x.allocations||[];
-    $("acDetailBody").innerHTML='<div class="ac-note">Customer: <b>'+esc(x.customer_name_snapshot)+'</b> · '+esc(x.customer_code)+'<br>Collector: '+esc(x.collector_name_snapshot)+'<br>Method: '+esc(METHOD[x.method]||x.method)+'<br>Total: <b>'+money(x.total_amount)+'</b><br>Note: '+esc(x.note||"—")+'</div><div>'+allocations.map(function(a){return '<div class="ac-alloc"><b>'+esc(a.invoice?a.invoice.invoice_no:a.invoice_id)+'</b> · '+money(a.amount)+'<br><small class="ac-muted">'+esc(a.invoice?a.invoice.invoice_date:"")+'</small><br><a href="'+esc(a.evidenceUrl||"")+'" target="_blank" rel="noopener">Open invoice bill photo</a><div><img src="'+esc(a.evidenceUrl||"")+'" alt="Invoice evidence"></div></div>';}).join("")+'</div><label class="ac-chk"><input id="acEvidenceChecked" type="checkbox"><span>I have checked every invoice photo and verified the received amount and payment method.</span></label><button class="btn btn-success ac-btn" id="acApprove" type="button" disabled>Approve collection</button><p class="ac-muted" id="acApproveMsg" style="font-size:13px"></p>';
+    $("acDetailBody").innerHTML='<div class="ac-sum"><div class="wide"><small>Customer</small><b>'+esc(x.customer_name_snapshot)+'</b> <span class="ac-muted">· '+esc(x.customer_code)+'</span></div><div><small>Total collected</small><b class="big">'+money(x.total_amount)+'</b></div><div><small>Method</small><b>'+esc(METHOD[x.method]||x.method)+'</b></div><div><small>Collected by</small><b>'+esc(x.collector_name_snapshot)+'</b></div><div><small>Note</small><b>'+esc(x.note||"—")+'</b></div></div><div>'+allocations.map(function(a){return '<div class="ac-alloc"><div class="ac-ah"><b>Invoice '+esc(a.invoice?a.invoice.invoice_no:a.invoice_id)+'</b><b>'+money(a.amount)+'</b></div><small class="ac-muted">'+esc(a.invoice?a.invoice.invoice_date:"")+'</small><br><a class="ac-openbtn" href="'+esc(a.evidenceUrl||"")+'" target="_blank" rel="noopener">Open bill photo \u2197</a><div><img src="'+esc(a.evidenceUrl||"")+'" alt="Invoice evidence"></div></div>';}).join("")+'</div><label class="ac-chk"><input id="acEvidenceChecked" type="checkbox"><span>I have checked every invoice photo and verified the received amount and payment method.</span></label><div class="ac-acts" id="acActs"><button class="btn btn-success ac-btn" id="acApprove" type="button" disabled>Approve collection</button><button class="btn btn-danger ac-btn" id="acReject" type="button">Reject</button><button class="btn btn-outline ac-btn" id="acCancel" type="button">Cancel</button></div><div class="ac-rej" id="acRejBox" hidden><label for="acRejReason"><b>Why are you rejecting this collection? <span style="color:#dc2626">*</span></b></label><textarea id="acRejReason" rows="3" maxlength="300" placeholder="Write the reason. The employee will see it."></textarea><div class="ac-rejerr" id="acRejErr"></div><div class="ac-acts"><button class="btn btn-danger ac-btn" id="acRejGo" type="button">Confirm reject</button><button class="btn btn-outline ac-btn" id="acRejBack" type="button">Back</button></div></div><p class="ac-muted" id="acApproveMsg" style="font-size:13px"></p>';
     $("acDetailModal").classList.add("open");
     $("acEvidenceChecked").onchange=function(){$("acApprove").disabled=!this.checked||!allocations.length;};
-    $("acApprove").onclick=function(){if(!this.disabled){this.disabled=true;request("/api/accounts/collections/"+encodeURIComponent(x.id)+"/approve",{method:"POST",body:"{}"}).then(function(){toast("Collection approved and customer ledger updated.");$("acDetailModal").classList.remove("open");loadPending();if(currentCustomer)loadLedger();}).catch(function(e){$("acApproveMsg").textContent=e.message;$("acApprove").disabled=false;});}};
+    $("acCancel").onclick=function(){$("acDetailModal").classList.remove("open");};
+    $("acReject").onclick=function(){$("acActs").hidden=true;$("acRejBox").hidden=false;$("acApproveMsg").textContent="";$("acRejReason").focus();};
+    $("acRejBack").onclick=function(){$("acRejBox").hidden=true;$("acActs").hidden=false;$("acRejErr").textContent="";$("acRejReason").classList.remove("bad");};
+    $("acRejReason").oninput=function(){this.classList.remove("bad");$("acRejErr").textContent="";};
+    $("acRejGo").onclick=function(){
+      var why=$("acRejReason").value.trim();
+      if(why.length<3){$("acRejReason").classList.add("bad");$("acRejErr").textContent="Enter the reason for rejecting (at least 3 characters).";$("acRejReason").focus();return;}
+      var go=this;go.disabled=true;
+      request("/api/accounts/collections/"+encodeURIComponent(x.id)+"/reject",{method:"POST",body:JSON.stringify({reason:why})}).then(function(){toast("Collection rejected.");$("acDetailModal").classList.remove("open");pending=pending.filter(function(a){return a.id!==x.id;});$("acPendingCount").textContent=pending.length?String(pending.length):"";renderPending();drawStats();quietPending();}).catch(function(e){$("acRejErr").textContent=e.message;go.disabled=false;});
+    };
+    $("acApprove").onclick=function(){if(!this.disabled){this.disabled=true;request("/api/accounts/collections/"+encodeURIComponent(x.id)+"/approve",{method:"POST",body:"{}"}).then(function(){toast("Collection approved and customer ledger updated.");$("acDetailModal").classList.remove("open");pending=pending.filter(function(a){return a.id!==x.id;});$("acPendingCount").textContent=pending.length?String(pending.length):"";renderPending();drawStats();quietPending();if(currentCustomer)loadLedger();}).catch(function(e){$("acApproveMsg").textContent=e.message;$("acApprove").disabled=false;});}};
   }
   $("acCustomer").addEventListener("change",loadLedger);$("acSearch").addEventListener("input",renderInvoices);
   $("acRefresh").onclick=function(){loadLedger();loadPending();};

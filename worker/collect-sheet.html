@@ -15,7 +15,7 @@ h3{font-size:14px;display:flex;align-items:center;gap:8px;margin:0}
 .shop .ic{width:48px;height:48px;border-radius:12px;background:var(--t-primary);display:grid;place-items:center;font-size:24px}
 .shop b{font-size:16px;display:block}
 .meta{display:flex;justify-content:space-between;gap:10px;font-size:14px}.meta b{font-weight:700}
-.bill{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 14px;border-radius:12px;background:var(--t-primary)}
+.bill{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 14px;border-radius:12px;background:var(--t-primary);color:#10231b}
 .bill small{display:block;color:var(--muted);font-size:12px}.bill b{font-size:clamp(24px,8vw,30px);white-space:nowrap}
 .stat{white-space:nowrap;padding:5px 12px;border-radius:10px;font-size:12px;font-weight:700;background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.4)}
 .ch{display:flex;align-items:center;gap:10px;cursor:pointer;justify-content:space-between}
@@ -23,7 +23,7 @@ h3{font-size:14px;display:flex;align-items:center;gap:8px;margin:0}
 .coll>.cb,.cr>.cb{display:none}.coll.open>.cb,.cr.open>.cb{display:grid;gap:10px}
 #creditCard{padding:0;border:0;background:none}
 .cr{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;display:grid;gap:10px}
-.cr.has{border-color:#f59e0b;background:#fff8ec}
+.cr.has{border-color:#f59e0b;background:#fff8ec;color:#3b2a0a}
 .cr .ch>div:nth-child(2){flex:1}.cr .ico{font-size:22px}.cr small{display:block;color:var(--muted);font-size:12px}.cr .tot2{color:var(--amber);font-size:16px}
 .cr.open>.ch:after{transform:rotate(180deg)}
 .row{display:grid;grid-template-columns:56px 1fr auto;gap:10px;align-items:center;border-top:1px solid var(--border);padding-top:10px}
@@ -95,7 +95,7 @@ textarea#note{min-height:100px;resize:vertical}
    <div class="meta"><span>Invoice <b id="sInv"></b></span><span>&#128197; <b id="sDate"></b></span></div>
    <div class="bill"><div><small>Bill amount</small><b id="sAmt"></b></div><span class="stat" id="sChip">Pending</span></div>
   </section>
-  <section class="card" id="creditCard"><div id="credit"></div></section>
+  <section class="card" id="creditCard"><div id="credit"><div class="muted" style="padding:6px 2px">Checking old credit…</div></div></section>
   <section class="card" id="curCard">
    <h3 id="curH">&#8377; Amount received</h3>
    <div id="curMsg" class="muted"></div>

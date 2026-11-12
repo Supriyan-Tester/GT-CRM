@@ -286,21 +286,17 @@ function createAccountsRoutes(config) {
           const ids = invoices.map((x) => x.id);
           let allocations = [];
           if (ids.length) allocations = await rest("gm_accounts_collection_allocations?select=invoice_id,amount,collection_id&invoice_id=in.(" + ids.join(",") + ")");
+          // One query for both statuses (was two more round trips to the database in a row).
           const collectionIds = Array.from(new Set(allocations.map((x) => x.collection_id)));
-          let approvedCollections = [];
-          if (collectionIds.length) approvedCollections = await rest("gm_accounts_collections?select=id,status&id=in.(" + collectionIds.join(",") + ")&status=eq.approved");
-          const statusById = new Map(approvedCollections.map((x) => [x.id, x.status]));
+          let statusRows = [];
+          if (collectionIds.length) statusRows = await rest("gm_accounts_collections?select=id,status&id=in.(" + collectionIds.join(",") + ")&status=in.(approved,pending_approval)");
+          const statusById = new Map(statusRows.map((x) => [x.id, x.status]));
           const approved = {}, pending = {};
           for (const row of allocations) {
             const status = statusById.get(row.collection_id);
             if (status === "approved") approved[row.invoice_id] = (approved[row.invoice_id] || 0) + Number(row.amount || 0);
+            else if (status === "pending_approval") pending[row.invoice_id] = (pending[row.invoice_id] || 0) + Number(row.amount || 0);
           }
-          const allCollectionIds = Array.from(new Set(allocations.map((x) => x.collection_id)));
-          let pendingCollections = [];
-          if (allCollectionIds.length) pendingCollections = await rest("gm_accounts_collections?select=id,status&id=in.(" + allCollectionIds.join(",") + ")&status=eq.pending_approval");
-          const pendingIds = new Set(pendingCollections.map((x) => x.id));
-          for (const row of allocations) if (pendingIds.has(row.collection_id))
-            pending[row.invoice_id] = (pending[row.invoice_id] || 0) + Number(row.amount || 0);
           const result = invoices.map((inv) => ({ ...inv, approvedPaid: Number((approved[inv.id] || 0).toFixed(2)), pendingAmount: Number((pending[inv.id] || 0).toFixed(2)), outstanding: Number((Number(inv.initial_outstanding) - (approved[inv.id] || 0)).toFixed(2)), availableToCollect: Number((Number(inv.initial_outstanding) - (approved[inv.id] || 0) - (pending[inv.id] || 0)).toFixed(2)) }));
           send(res, 200, { ok: true, customerCode, invoices: result });
         }).catch((e) => { console.error("Accounts invoice read:", e.message); send(res, 502, { error: "Unable to load customer ledger." }); });
@@ -411,23 +407,29 @@ function createAccountsRoutes(config) {
       const IST = 5.5 * 3600e3, today = new Date(Date.now() + IST).toISOString().slice(0, 10);
       const monthStart = new Date(today.slice(0, 7) + "-01T00:00:00+05:30").toISOString();
       const cols = "id,customer_code,customer_name_snapshot,collected_by,collector_name_snapshot,method,total_amount,note,status,received_at,approved_by,approved_at,rejection_reason,rejected_by,rejected_at,correction_note,correction_requested_by,correction_requested_at,visit_ref";
-      Promise.all([
-        restPage("gm_accounts_collections?select=" + cols + filter + "&order=received_at.desc,id", (page - 1) * size, size),
+      const nameOf = (id) => { if (!id) return ""; const n = config.employeeName(String(id)); return n && n !== "Employee" ? n : String(id); };
+      // The tile totals and the list are read at the same time (not one after the other), so the page loads faster.
+      const noStats = url.searchParams.get("nostats") === "1";
+      const statsP = noStats ? Promise.resolve(null) : Promise.all([
         restAll("gm_accounts_collections?select=total_amount&status=eq.pending_approval&order=id"),
         restPage("gm_accounts_collections?select=id&status=eq.approved&order=id", 0, 1),
         restPage("gm_accounts_collections?select=id&status=eq.rejected&order=id", 0, 1),
         restPage("gm_accounts_collections?select=id&status=eq.correction_requested&order=id", 0, 1),
         restAll("gm_accounts_collections?select=total_amount&status=eq.approved&approved_at=gte." + encodeURIComponent(monthStart) + "&order=id"),
-      ]).then(async ([list, pendingRows, approvedCount, rejectedCount, correctionCount, approvedMonth]) => {
+      ]);
+      statsP.catch(() => {});
+      restPage("gm_accounts_collections?select=" + cols + filter + "&order=received_at.desc,id", (page - 1) * size, size).then(async (list) => {
         const ids = list.rows.map((x) => x.id);
         const allocations = ids.length ? await rest("gm_accounts_collection_allocations?select=collection_id,invoice_id,amount,evidence_path&collection_id=in.(" + ids.join(",") + ")") : [];
         const invoiceIds = Array.from(new Set(allocations.map((x) => x.invoice_id)));
+        const everyP = invoiceIds.length ? restAll("gm_accounts_collection_allocations?select=invoice_id,amount,collection_id&invoice_id=in.(" + invoiceIds.join(",") + ")&order=id") : Promise.resolve([]);
+        everyP.catch(() => {});
         const invoiceRows = invoiceIds.length ? await rest("gm_accounts_invoices?select=id,invoice_no,invoice_date,original_amount,initial_outstanding&id=in.(" + invoiceIds.join(",") + ")") : [];
         const invoiceMap = Object.fromEntries(invoiceRows.map((x) => [x.id, x]));
         // Outstanding now = amount owed when the invoice was entered, minus every APPROVED payment against it.
         const approvedPaid = {};
         if (invoiceIds.length) {
-          const every = await restAll("gm_accounts_collection_allocations?select=invoice_id,amount,collection_id&invoice_id=in.(" + invoiceIds.join(",") + ")&order=id");
+          const every = await everyP;
           const cids = Array.from(new Set(every.map((x) => x.collection_id)));
           const okRows = cids.length ? await rest("gm_accounts_collections?select=id&status=eq.approved&id=in.(" + cids.join(",") + ")") : [];
           const okIds = new Set(okRows.map((x) => x.id));
@@ -442,15 +444,21 @@ function createAccountsRoutes(config) {
             evidenceUrl: "/api/accounts/evidence/" + (String(row.evidence_path).split("/").pop() || "").replace(/\.(jpg|png|webp)$/i, ""),
           });
         }
+        const sp = await statsP;
+        const [pendingRows, approvedCount, rejectedCount, correctionCount, approvedMonth] = sp || [[], { total: 0 }, { total: 0 }, { total: 0 }, []];
         const money = (n) => Number(Number(n || 0).toFixed(2));
         send(res, 200, {
           ok: true, page, pageSize: size, total: list.total,
-          stats: {
+          stats: !sp ? null : {
             pendingCount: pendingRows.length, pendingAmount: money(pendingRows.reduce((n, x) => n + Number(x.total_amount || 0), 0)),
             approvedCount: approvedCount.total, rejectedCount: rejectedCount.total, correctionCount: correctionCount.total,
             approvedMonthAmount: money(approvedMonth.reduce((n, x) => n + Number(x.total_amount || 0), 0)),
           },
-          rows: list.rows.map((x) => ({ ...x, total_amount: Number(x.total_amount || 0), invoices: grouped[x.id] || [] })),
+          rows: list.rows.map((x) => ({
+            ...x, total_amount: Number(x.total_amount || 0), invoices: grouped[x.id] || [],
+            // Show the person's name, not just their login id (A1).
+            approved_by_name: nameOf(x.approved_by), rejected_by_name: nameOf(x.rejected_by), correction_requested_by_name: nameOf(x.correction_requested_by),
+          })),
         });
       }).catch((e) => { console.error("Accounts collections read:", e.message); send(res, 502, { error: "Unable to load collections." }); });
       return true;

@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="../shared/theme.css" />
     <link rel="stylesheet" href="../shared/admin.css" />
     <script src="../shared/theme.js"></script>
-    <style>
+    <style>.co-loading{opacity:.45;pointer-events:none;transition:opacity .15s}
       .co-bar {
         display: flex;
         flex-wrap: wrap;
@@ -203,13 +203,24 @@
       }
       .co-head h2 {
         font-size: 20px;
-        margin: 0 0 4px;
+        margin: 0 10px 0 0;
+        display: inline-block;
       }
       .co-kv {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 10px 18px;
+        gap: 12px 18px;
         margin-bottom: 16px;
+        padding: 14px;
+        border-radius: 12px;
+        background: var(--t-info);
+        border: 1px solid var(--border);
+      }
+      .co-kv > div:first-child {
+        grid-column: 1 / -1;
+      }
+      .co-kv > div:nth-child(2) b {
+        font-size: 20px;
       }
       .co-kv div {
         min-width: 0;
@@ -231,8 +242,45 @@
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
         gap: 10px;
       }
-      .co-photos a {
+      .co-ph {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 8px;
+        background: var(--card);
+      }
+      .co-ph > a {
         display: block;
+      }
+      .co-ph .co-pf {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .co-ph .co-pf b {
+        font-size: 13px;
+      }
+      .co-openbtn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 10px;
+        border: 1px solid var(--primary);
+        border-radius: 10px;
+        color: var(--primary);
+        font-size: 12.5px;
+        font-weight: 700;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      .co-openbtn:hover {
+        background: var(--t-primary);
+      }
+      button.co-openbtn {
+        background: transparent;
+        cursor: pointer;
+        font-family: inherit;
       }
       .co-photos img {
         width: 100%;
@@ -256,6 +304,41 @@
       }
       .co-note.bad {
         background: var(--t-danger);
+      }
+      .co-nh {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .co-nh span {
+        font-size: 12.5px;
+        color: var(--muted);
+      }
+      .co-why,
+      .co-next {
+        margin-top: 10px;
+      }
+      .co-why small,
+      .co-next small {
+        display: block;
+        font-size: 11.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: var(--muted);
+        margin-bottom: 3px;
+      }
+      .co-next {
+        padding-top: 10px;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+      }
+      .co-next ul {
+        margin: 4px 0 0;
+        padding-left: 18px;
+      }
+      .co-next li {
+        margin: 4px 0;
       }
       .co-chk {
         display: flex;
@@ -313,6 +396,155 @@
         max-height: calc(100vh - 32px);
         border-radius: 12px;
         background: #fff;
+      }
+      .co-split {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+      }
+      .co-selall {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12.5px;
+        color: var(--muted);
+        margin: 0 0 8px 10px;
+        cursor: pointer;
+      }
+      .co-lst {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        max-height: calc(100vh - 300px);
+        min-height: 260px;
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+      .co-li {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        border-radius: 12px;
+        border: 1px solid transparent;
+        cursor: pointer;
+      }
+      .co-li:hover {
+        background: var(--t-primary);
+      }
+      .co-li.sel {
+        background: var(--t-primary);
+        border-color: var(--primary);
+      }
+      .co-nosel {
+        width: 18px;
+        flex: none;
+      }
+      .co-li .th {
+        width: 42px;
+        height: 42px;
+        border-radius: 9px;
+        object-fit: cover;
+        background: var(--border);
+        flex: none;
+      }
+      .co-li .mid {
+        flex: 1;
+        min-width: 0;
+      }
+      .co-li .mid b {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .co-li .mid small {
+        display: block;
+        color: var(--muted);
+        font-size: 12.5px;
+      }
+      .co-li .rt {
+        text-align: right;
+        flex: none;
+      }
+      .co-pane {
+        position: sticky;
+        top: 12px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--card);
+        padding: 16px;
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
+      }
+      .co-pane .co-card {
+        background: none;
+        box-shadow: none;
+        padding: 0;
+        max-height: none;
+        max-width: none;
+        border-radius: 0;
+        overflow: visible;
+      }
+      .co-empty-pane {
+        color: var(--muted);
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        min-height: calc(100vh - 380px);
+      }
+      #coTabs.co-seg {
+        background: none;
+        border: 0;
+        padding: 0;
+        gap: 6px;
+        flex-wrap: wrap;
+        overflow: visible;
+      }
+      #coTabs.co-seg button {
+        background: rgba(100, 116, 139, 0.1);
+        color: var(--muted);
+        padding: 8px 16px;
+        border-radius: 999px;
+        font-weight: 700;
+      }
+      #coTabs.co-seg button:not(.on):hover {
+        background: rgba(100, 116, 139, 0.18);
+      }
+      #coTabs.co-seg button.on {
+        background: var(--primary);
+        color: var(--on-primary);
+      }
+      #coTabs.co-seg .n {
+        margin-left: 8px;
+        padding: 1px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        opacity: 1;
+        background: rgba(0, 0, 0, 0.08);
+      }
+      #coTabs.co-seg button.on .n {
+        background: rgba(255, 255, 255, 0.25);
+      }
+      @media (max-width: 900px) {
+        .co-split {
+          grid-template-columns: 1fr;
+        }
+        .co-pane {
+          display: none;
+        }
+        .co-pane.open {
+          display: block;
+          position: fixed;
+          inset: 12px;
+          z-index: 120;
+          max-height: none;
+          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+        }
       }
       @media (max-width: 560px) {
         .co-kv {
@@ -384,6 +616,7 @@
           page: 1,
         };
         var data = null,
+          selId = null,
           busy = false;
 
         function toast(msg) {
@@ -425,8 +658,8 @@
           '<button class="btn btn-outline" id="coClear" type="button" style="width:auto;padding:0 16px">Clear</button>' +
           '<button class="btn btn-outline" id="coExport" type="button" style="width:auto;padding:0 16px">' + GA.icon("download") + " Export</button></div>" +
           '<div class="co-bulk" id="coBulk"><span id="coBulkTxt"></span><button class="btn btn-success" id="coBulkGo" type="button">Approve selected</button></div>' +
-          '<div id="coList"><div class="a-empty">Loading collections…</div></div></div>' +
-          '<div class="co-modal" id="coModal" role="dialog" aria-modal="true"><div class="co-card" id="coCard"></div></div>' +
+          '<div class="co-split"><div id="coList"><div class="a-empty">Loading collections…</div></div>' +
+          '<aside class="co-pane" id="coModal" aria-live="polite"><div class="co-card" id="coCard"><div class="co-empty-pane"><b>Pick a collection</b><br>Click one on the left to see its details here.</div></div></aside></div></div>' +
           '<div class="co-modal co-zoom" id="coZoom"><img alt="Invoice photo" id="coZoomImg"></div>';
 
         function drawTabs() {
@@ -470,40 +703,25 @@
             to = from + rows.length - 1,
             pages = Math.max(1, Math.ceil(data.total / data.pageSize));
           $("coList").innerHTML =
-            '<div class="a-scroll"><table class="a-table"><thead><tr><th><input type="checkbox" class="co-sel" id="coAll" aria-label="Select all pending"></th><th>Collection</th><th>Customer</th><th>Invoice details</th><th>Collected by</th><th>Method</th><th class="co-r">Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody>' +
+            '<label class="co-selall"><input type="checkbox" class="co-sel" id="coAll" aria-label="Select all pending"> Select all pending</label>' +
+            '<div class="co-lst">' +
             rows
               .map(function (x, i) {
                 var s = STATUS[x.status] || ["b-muted", esc(x.status)],
-                  thumbs = x.invoices
-                    .slice(0, 2)
-                    .map(function (v) {
-                      return '<img loading="lazy" src="' + esc(v.evidenceUrl) + '" alt="Bill photo" data-zoom="' + esc(v.evidenceUrl) + '">';
-                    })
-                    .join("");
-                var pend = x.status === "pending_approval",
+                  pend = x.status === "pending_approval",
                   first = x.invoices[0] || {},
                   more = x.invoices.length > 1 ? " +" + (x.invoices.length - 1) + " more" : "";
                 return (
-                  "<tr>" +
-                  '<td>' + (pend ? '<input type="checkbox" class="co-sel" data-sel="' + i + '" aria-label="Select collection">' : "") + "</td>" +
-                  '<td data-label="Collection" class="co-id">' + esc(String(x.id).slice(0, 8).toUpperCase()) + "<small>" + esc(when(x.received_at)) + "</small></td>" +
-                  '<td data-label="Customer" class="co-cust">' + esc(x.customer_name_snapshot) + "<small>" + esc(x.customer_code) + "</small></td>" +
-                  '<td data-label="Invoice details"><div class="co-thumbs">' + thumbs +
-                  '<div class="co-inv"><b>' + esc(first.invoiceNo || "") + esc(more) + "</b>" +
-                  (first.outstanding !== undefined ? "<small>Outstanding: " + money(first.outstanding) + "</small>" : "") + "</div></div></td>" +
-                  '<td data-label="Collected by">' + esc(x.collector_name_snapshot) + "</td>" +
-                  '<td data-label="Method">' + esc(METHOD[x.method] || x.method) + (x.visit_ref ? ' <span class="badge b-info">Split</span>' : "") + "</td>" +
-                  '<td data-label="Amount" class="co-r"><b>' + money(x.total_amount) + "</b></td>" +
-                  '<td data-label="Status"><span class="badge ' + s[0] + '">' + s[1] + "</span></td>" +
-                  '<td data-label="Actions"><div class="co-rowacts">' +
-                  (pend
-                    ? '<button class="btn btn-success" type="button" data-ok="' + i + '">Approve</button><button class="btn btn-danger" type="button" data-no="' + i + '">Reject</button>'
-                    : "") +
-                  '<button class="btn btn-outline" type="button" data-open="' + i + '">' + (pend ? "Details" : "View") + "</button></div></td></tr>"
+                  '<div class="co-li' + (x.id === selId ? " sel" : "") + '" data-open="' + i + '" tabindex="0">' +
+                  (pend ? '<input type="checkbox" class="co-sel" data-sel="' + i + '" aria-label="Select collection">' : '<span class="co-nosel"></span>') +
+                  (first.evidenceUrl ? '<img class="th" loading="lazy" src="' + esc(first.evidenceUrl) + '" alt="">' : '<span class="th"></span>') +
+                  '<div class="mid"><b>' + esc(x.customer_name_snapshot) + "</b><small>" + esc(when(x.received_at)) + " · " + esc(METHOD[x.method] || x.method) + (x.visit_ref ? " · Split" : "") + "</small>" +
+                  "<small>Invoice " + esc(first.invoiceNo || "") + esc(more) + "</small></div>" +
+                  '<div class="rt"><b>' + money(x.total_amount) + '</b><br><span class="badge ' + s[0] + '">' + s[1] + "</span></div></div>"
                 );
               })
               .join("") +
-            "</tbody></table></div>" +
+            "</div>" +
             '<div class="co-pg"><span>Showing ' + from + "–" + to + " of " + data.total + "</span>" +
             '<div class="btns"><button class="btn btn-outline" id="coPrev" type="button"' + (data.page <= 1 ? " disabled" : "") + ">Previous</button>" +
             '<button class="btn btn-outline" id="coNext" type="button"' + (data.page >= pages ? " disabled" : "") + ">Next</button></div></div>";
@@ -533,23 +751,37 @@
           qs.set("page", page);
           return qs.toString();
         }
-        function load() {
-          var qs = filterQuery(st.page);
+        var cache = {}, reqN = 0;
+        function load(fresh) {
+          var key = filterQuery(st.page), n = ++reqN, hit = !fresh && cache[key];
           drawTabs();
-          if (!data) $("coList").innerHTML = '<div class="a-empty">Loading collections…</div>';
-          return api("/api/accounts/collections?" + qs.toString())
+          if (hit) {
+            data = hit;
+            drawStats(); drawList(); bulkUpdate();
+          } else if (!data) $("coList").innerHTML = '<div class="a-empty">Loading collections…</div>';
+          else $("coList").classList.add("co-loading");
+          var skip = data && data.stats && !fresh ? "&nostats=1" : "";
+          return api("/api/accounts/collections?" + key + skip)
             .then(function (j) {
+              if (n !== reqN) return;
+              if (!j.stats && data) j.stats = data.stats;
+              cache[key] = j;
               data = j;
+              $("coList").classList.remove("co-loading");
               drawTabs();
               drawStats();
               drawList();
               bulkUpdate();
+              if (selId && !data.rows.some(function (r) { return r.id === selId; })) closeDetail();
+              if (!selId && st.status === "pending_approval" && data.rows.length) openDetail(data.rows[0]);
             })
             .catch(function (e) {
+              if (n !== reqN) return;
+              $("coList").classList.remove("co-loading");
               $("coList").innerHTML =
                 '<div class="a-empty"><b>Could not load collections</b>' + esc(e.message) +
                 '<div style="margin-top:14px"><button class="btn" id="coRetry" type="button" style="width:auto;padding:0 18px">Try again</button></div></div>';
-              $("coRetry").onclick = load;
+              $("coRetry").onclick = function () { load(true); };
             });
         }
 
@@ -568,7 +800,7 @@
             photos = x.invoices
               .map(function (v) {
                 return (
-                  '<a href="' + esc(v.evidenceUrl) + '" target="_blank" rel="noopener"><img loading="lazy" src="' + esc(v.evidenceUrl) + '" alt="Bill photo for ' + esc(v.invoiceNo) + '"><small>' + esc(v.invoiceNo) + "</small></a>"
+                  '<div class="co-ph"><img loading="lazy" src="' + esc(v.evidenceUrl) + '" alt="Bill photo for ' + esc(v.invoiceNo) + '" data-zoom="' + esc(v.evidenceUrl) + '" style="cursor:zoom-in" title="Click to enlarge"><div class="co-pf"><b>Invoice ' + esc(v.invoiceNo) + '</b><a class="co-openbtn" href="' + esc(v.evidenceUrl) + '" target="_blank" rel="noopener">View</a></div></div>'
                 );
               })
               .join("");
@@ -582,15 +814,21 @@
             "<div><small>Method</small><b>" + esc(METHOD[x.method] || x.method) + "</b></div>" +
             "<div><small>Received</small><b>" + esc(when(x.received_at)) + "</b></div>" +
             (x.note ? "<div><small>Note</small><b>" + esc(x.note) + "</b></div>" : "") +
-            (x.status === "approved" ? "<div><small>Approved by</small><b>" + esc(x.approved_by || "") + "</b></div><div><small>Approved on</small><b>" + esc(when(x.approved_at)) + "</b></div>" : "") +
+            (x.status === "approved" ? "<div><small>Approved by</small><b>" + esc(x.approved_by_name || x.approved_by || "") + "</b></div><div><small>Approved on</small><b>" + esc(when(x.approved_at)) + "</b></div>" : "") +
             "</div>" +
             (x.status === "rejected"
-              ? '<div class="co-note bad"><b>Rejected' + (x.rejected_by ? " by " + esc(x.rejected_by) : "") + (x.rejected_at ? " on " + esc(when(x.rejected_at)) : "") + ".</b><br>Reason: " + esc(x.rejection_reason || "") +
-                "<br>The money recorded for this collection is still held until it is dealt with separately.</div>"
+              ? '<div class="co-note bad"><div class="co-nh"><b>Rejected' + (x.rejected_by ? " by " + esc(x.rejected_by_name || x.rejected_by) : "") + "</b><span>" + (x.rejected_at ? esc(when(x.rejected_at)) : "") + "</span></div>" +
+                '<div class="co-why"><small>Reason</small><div>' + esc(x.rejection_reason || "") + "</div></div>" +
+                '<div class="co-next"><small>Next</small><ul>' +
+                "<li>Customer balance is <b>not</b> reduced.</li>" +
+                "<li>" + esc(x.collector_name_snapshot) + " still holds the " + money(x.total_amount) + ". Settle it with them.</li></ul></div></div>"
               : "") +
             (x.status === "correction_requested"
-              ? '<div class="co-note"><b>Correction requested' + (x.correction_requested_by ? " by " + esc(x.correction_requested_by) : "") + (x.correction_requested_at ? " on " + esc(when(x.correction_requested_at)) : "") + ".</b><br>Note to employee: " + esc(x.correction_note || "") +
-                "<br>The employee records a new collection. The money recorded for this one is still held until it is dealt with separately.</div>"
+              ? '<div class="co-note"><div class="co-nh"><b>Correction requested' + (x.correction_requested_by ? " by " + esc(x.correction_requested_by_name || x.correction_requested_by) : "") + "</b><span>" + (x.correction_requested_at ? esc(when(x.correction_requested_at)) : "") + "</span></div>" +
+                '<div class="co-why"><small>Note to employee</small><div>' + esc(x.correction_note || "") + "</div></div>" +
+                '<div class="co-next"><small>Next</small><ul>' +
+                "<li>" + esc(x.collector_name_snapshot) + " records a new collection with the fix.</li>" +
+                "<li>This one stays on record.</li></ul></div></div>"
               : "") +
             (x.visit_ref ? '<div class="co-note" id="coSplitInfo">Split visit: this customer paid in more than one way. Loading the other parts...</div>' : "") +
             '<div class="co-sec">Invoices paid</div><div class="a-scroll"><table class="a-table"><thead><tr><th>Invoice</th><th>Bill date</th><th class="co-r">Bill amount</th><th class="co-r">Collected now</th></tr></thead><tbody>' + inv + "</tbody></table></div>" +
@@ -608,6 +846,8 @@
                 '<div class="co-err" id="coErr" role="alert"></div>'
               : "");
           $("coModal").classList.add("open");
+          selId = x.id;
+          markSel();
           $("coClose").onclick = closeDetail;
           if (x.visit_ref) {
             api("/api/accounts/collections?visit=" + encodeURIComponent(x.visit_ref)).then(function (d) {
@@ -665,30 +905,57 @@
           $("coBulk").classList.toggle("show", sel.length > 0);
           $("coBulkTxt").textContent = sel.length + " selected \u00B7 " + money(sum);
         }
+        // Show an approval on screen straight away (row and tiles), then confirm with the server in the background.
+        function localApprove(x) {
+          if (!data) return;
+          var s = data.stats || (data.stats = {});
+          var amt = Number(x.total_amount || 0);
+          s.pendingCount = Math.max(0, Number(s.pendingCount || 0) - 1);
+          s.pendingAmount = Math.max(0, Number(s.pendingAmount || 0) - amt);
+          s.approvedCount = Number(s.approvedCount || 0) + 1;
+          s.approvedMonthAmount = Number(s.approvedMonthAmount || 0) + amt;
+          if (st.status === "pending_approval") {
+            data.rows = data.rows.filter(function (r) {
+              return r.id !== x.id;
+            });
+            data.total = Math.max(0, Number(data.total || 0) - 1);
+          } else {
+            data.rows.forEach(function (r) {
+              if (r.id === x.id) r.status = "approved";
+            });
+          }
+        }
         function approveMany(list) {
           if (busy || !list.length) return;
           busy = true;
           var ok = 0,
-            failed = [];
-          list
-            .reduce(function (p, x) {
-              return p.then(function () {
-                return api("/api/accounts/collections/" + encodeURIComponent(x.id) + "/approve", { method: "POST", body: "{}" }).then(
-                  function () {
-                    ok++;
-                  },
-                  function (e) {
-                    failed.push(x.customer_name_snapshot + ": " + e.message);
-                  },
-                );
-              });
-            }, Promise.resolve())
+            failed = [],
+            next = 0;
+          function worker() {
+            if (next >= list.length) return Promise.resolve();
+            var x = list[next++];
+            return api("/api/accounts/collections/" + encodeURIComponent(x.id) + "/approve", { method: "POST", body: "{}" })
+              .then(
+                function () {
+                  ok++;
+                  localApprove(x);
+                },
+                function (e) {
+                  failed.push(x.customer_name_snapshot + ": " + e.message);
+                },
+              )
+              .then(worker);
+          }
+          Promise.all([worker(), worker(), worker()])
             .then(function () {
               busy = false;
+              drawTabs();
+              drawStats();
+              drawList();
+              bulkUpdate();
               toast(ok + (ok === 1 ? " collection approved." : " collections approved.") + (failed.length ? " " + failed.length + " failed." : ""));
               if (failed.length) alert("Some could not be approved:\n\n" + failed.join("\n"));
-              data = null;
-              load();
+              load(true);
             });
         }
         function csvCell(v) {
@@ -745,8 +1012,30 @@
               btn.disabled = false;
             });
         }
+        function markSel() {
+          [].forEach.call(document.querySelectorAll(".co-li"), function (el) {
+            var r = data && data.rows[Number(el.getAttribute("data-open"))];
+            el.classList.toggle("sel", !!r && r.id === selId);
+          });
+        }
         function closeDetail() {
           $("coModal").classList.remove("open");
+          selId = null;
+          $("coCard").innerHTML = '<div class="co-empty-pane"><b>Pick a collection</b><br>Click one on the left to see its details here.</div>';
+          markSel();
+        }
+        // After approving or rejecting, open the next one waiting, so you can keep going.
+        function pickNext(at) {
+          if (!data || (st.status !== "pending_approval" && st.status !== "")) return;
+          var rows = data.rows,
+            start = Math.max(0, at);
+          for (var k = 0; k < rows.length; k++) {
+            var r = rows[(start + k) % rows.length];
+            if (r.status === "pending_approval") {
+              openDetail(r);
+              return;
+            }
+          }
         }
         function act(x, what, body, done) {
           if (busy) return;
@@ -757,9 +1046,24 @@
           api("/api/accounts/collections/" + encodeURIComponent(x.id) + "/" + what, { method: "POST", body: JSON.stringify(body) })
             .then(function () {
               busy = false;
+              var at = data
+                ? data.rows.findIndex(function (r) {
+                    return r.id === x.id;
+                  })
+                : -1;
               closeDetail();
               toast(done);
-              load();
+              if (what === "approve") {
+                localApprove(x);
+                drawTabs();
+                drawStats();
+                drawList();
+                bulkUpdate();
+                pickNext(at);
+              }
+              load(true).then(function () {
+                if (what !== "approve") pickNext(at);
+              });
             })
             .catch(function (e) {
               busy = false;
@@ -807,7 +1111,14 @@
           $("coQ").value = $("coMethod").value = $("coFrom").value = $("coTo").value = "";
           load();
         };
+        $("coList").addEventListener("keydown", function (e) {
+          if ((e.key === "Enter" || e.key === " ") && e.target.classList && e.target.classList.contains("co-li")) {
+            e.preventDefault();
+            openDetail(data.rows[Number(e.target.getAttribute("data-open"))]);
+          }
+        });
         $("coList").onclick = function (e) {
+          if (e.target.closest("[data-sel]") || e.target.closest(".co-selall")) return;
           var z = e.target.closest("[data-zoom]");
           if (z) {
             $("coZoomImg").src = z.getAttribute("data-zoom");
@@ -841,11 +1152,16 @@
           if (confirm("Approve " + sel.length + " collections totalling " + money(sum) + "?\n\nOnly do this after checking every bill photo and the money received.")) approveMany(sel);
         };
         $("coExport").onclick = exportCsv;
+        // Tap a bill photo in the details pop-up: it opens bigger in a pop-up here, not in a new tab.
+        $("coCard").addEventListener("click", function (e) {
+          var z = e.target.closest("[data-zoom]");
+          if (!z) return;
+          e.preventDefault();
+          $("coZoomImg").src = z.getAttribute("data-zoom");
+          $("coZoom").classList.add("open");
+        });
         $("coZoom").onclick = function () {
           this.classList.remove("open");
-        };
-        $("coModal").onclick = function (e) {
-          if (e.target === this) closeDetail();
         };
         document.addEventListener("keydown", function (e) {
           if (e.key === "Escape") {
