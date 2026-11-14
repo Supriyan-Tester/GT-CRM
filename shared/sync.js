@@ -90,7 +90,8 @@ window.GMImg = {
   var BLOB = "gm_crm_data_v5",
     NS = BLOB + "__",
     VIEW = "gm_view_worker";
-  var isAdmin = /\/admin\//.test(location.pathname),
+  var isLogin = /\/login(\.html)?\/?$/.test(location.pathname), // sign-in page: no session yet, so no server polling there
+    isAdmin = /\/admin\//.test(location.pathname),
     isWorker = /\/worker\//.test(location.pathname);
   // Signed out or session expired (server answered 401): go back to the sign-in page. The sign-in page itself is public.
   function signedOut() {
@@ -583,7 +584,7 @@ window.GMImg = {
 
   // The local cache remains available immediately so existing page scripts can render.
   // The server refresh runs without blocking the browser's main thread.
-  window.GMSync.ready = fetch(API + "/state?since=0", {
+  window.GMSync.ready = isLogin ? Promise.resolve(false) : fetch(API + "/state?since=0", {
     cache: "no-store",
     credentials: "same-origin"
   })
@@ -604,6 +605,7 @@ window.GMImg = {
 
   // 2) Keep in step: pick up other devices' changes and retry anything unsent
   function poll() {
+    if (isLogin) return;
     for (var k in pending) send(k);
     if (document.hidden) return; // a background tab does not need live updates; it catches up when it is shown again
     var t0 = Date.now() - 50;
