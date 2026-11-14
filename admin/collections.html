@@ -678,6 +678,22 @@
             );
           }).join("");
         }
+        // Make the list and the details panel use all the free height under the filters
+
+        function coFit() {
+
+          var sp = document.querySelector(".co-split");
+
+          if (!sp) return;
+
+          if (window.innerWidth <= 900) { sp.style.height = ""; return; }
+
+          sp.style.height = Math.max(380, window.innerHeight - sp.getBoundingClientRect().top - 66) + "px";
+
+        }
+
+        window.addEventListener("resize", coFit);
+
         function drawStats() {
           var s = data.stats;
           $("coStats").innerHTML =
@@ -694,8 +710,8 @@
             $("coList").innerHTML =
               '<div class="a-empty"><b>No collections found</b>' +
               (st.status === "pending_approval" && !st.q && !st.method && !st.from && !st.to
-                ? "Nothing is waiting for approval."
-                : "Try a different filter.") +
+                ? "Once a user submits a collection, it will appear here for you to review."
+                : "Try a different name or filter.") +
               "</div>";
             return;
           }
@@ -703,7 +719,7 @@
             to = from + rows.length - 1,
             pages = Math.max(1, Math.ceil(data.total / data.pageSize));
           $("coList").innerHTML =
-            '<label class="co-selall"><input type="checkbox" class="co-sel" id="coAll" aria-label="Select all pending"> Select all pending</label>' +
+            '<div class="co-selall"><label title="Select all pending"><input type="checkbox" class="co-sel" id="coAll" aria-label="Select all pending"><span class="co-hl">Select all</span></label><span class="co-hi">ID</span><span class="co-hc">Customer</span><span class="co-hp">Invoice photo</span><span class="co-ha">Amount / Status</span></div>' +
             '<div class="co-lst">' +
             rows
               .map(function (x, i) {
@@ -715,7 +731,7 @@
                   '<div class="co-li' + (x.id === selId ? " sel" : "") + '" data-open="' + i + '" tabindex="0">' +
                   (pend ? '<input type="checkbox" class="co-sel" data-sel="' + i + '" aria-label="Select collection">' : '<span class="co-nosel"></span>') +
                   (first.evidenceUrl ? '<img class="th" loading="lazy" src="' + esc(first.evidenceUrl) + '" alt="">' : '<span class="th"></span>') +
-                  '<div class="mid"><b>' + esc(x.customer_name_snapshot) + "</b><small>" + esc(when(x.received_at)) + " · " + esc(METHOD[x.method] || x.method) + (x.visit_ref ? " · Split" : "") + "</small>" +
+                  '<span class="co-id">' + esc(x.customer_code || "") + '</span><div class="mid"><b>' + esc(x.customer_name_snapshot) + "</b><small>" + esc(when(x.received_at)) + " · " + esc(METHOD[x.method] || x.method) + (x.visit_ref ? " · Split" : "") + "</small>" +
                   "<small>Invoice " + esc(first.invoiceNo || "") + esc(more) + "</small></div>" +
                   '<div class="rt"><b>' + money(x.total_amount) + '</b><br><span class="badge ' + s[0] + '">' + s[1] + "</span></div></div>"
                 );
@@ -725,6 +741,7 @@
             '<div class="co-pg"><span>Showing ' + from + "–" + to + " of " + data.total + "</span>" +
             '<div class="btns"><button class="btn btn-outline" id="coPrev" type="button"' + (data.page <= 1 ? " disabled" : "") + ">Previous</button>" +
             '<button class="btn btn-outline" id="coNext" type="button"' + (data.page >= pages ? " disabled" : "") + ">Next</button></div></div>";
+          coFit();
           $("coAll").onchange = function () {
             var on = this.checked;
             [].forEach.call(document.querySelectorAll("[data-sel]"), function (c) {
@@ -773,6 +790,15 @@
               drawList();
               bulkUpdate();
               if (selId && !data.rows.some(function (r) { return r.id === selId; })) closeDetail();
+              if (!selId && params.get("open")) {
+                var want = params.get("open");
+                params.delete("open");
+                var hit2 = data.rows.filter(function (r) { return r.id === want; })[0];
+                if (hit2) {
+                  openDetail(hit2);
+                  return;
+                }
+              }
               if (!selId && st.status === "pending_approval" && data.rows.length) openDetail(data.rows[0]);
             })
             .catch(function (e) {

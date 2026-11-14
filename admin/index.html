@@ -1171,7 +1171,7 @@
       draw();
       load(draw);
       setInterval(function () {
-        load(draw);
+        if (!document.hidden) load(draw);
       }, 5000);
       window.addEventListener("gm-sync", draw);
     </script>

@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script src="../shared/loading.js"></script>
+    <script src="../assets/icons.js"></script>
+    <script src="../shared/sync.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cash Closing - General Traders</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="../shared/admin.css" />
+    <script src="../shared/theme.js"></script>
+    <style>
+.cc-card{margin-bottom:16px}
+.cc-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.cc-head .card-title{margin:0}.cc-head .btn{width:auto;padding:0 16px}
+.cc-note{color:var(--muted);font-size:13px;margin:4px 0 12px}
+.cc-list{display:grid;gap:10px}
+.cc-row{display:grid;grid-template-columns:40px minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:14px;border:1px solid var(--border);border-radius:14px}
+.cc-av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;background:var(--t-primary);color:var(--primary)}
+.cc-who b{display:block;font-size:15px}.cc-who span{font-size:12.5px;color:var(--muted)}
+.cc-amt{font-weight:800;font-size:18px;font-variant-numeric:tabular-nums;text-align:right}
+.cc-btn{width:auto;padding:0 16px;white-space:nowrap}
+.cc-row.done{padding:10px 14px}.cc-row.done .cc-amt{font-size:15px}
+.cc-empty{padding:28px 12px;text-align:center;color:var(--muted)}.cc-empty b{display:block;color:var(--text);margin-bottom:2px}
+.cc-diff{font-size:12.5px;font-weight:700;color:#b45309}
+.cc-ov{position:fixed;inset:0;z-index:300;background:rgba(10,30,28,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+.cc-md{width:min(820px,100%);max-height:94vh;overflow:auto;background:var(--card);border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.35)}
+.cc-mh{display:flex;align-items:center;gap:14px;padding:20px 24px;border-bottom:1px solid var(--border)}
+.cc-mh .cc-av{width:46px;height:46px;font-size:18px}
+.cc-mh h2{margin:0;font-size:19px}.cc-mh span{font-size:13px;color:var(--muted)}
+.cc-mh .cc-x{margin-left:auto;width:34px;height:34px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:18px;cursor:pointer}
+.cc-mb{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:0}
+.cc-left{padding:18px 24px;border-right:1px solid var(--border)}
+.cc-right{padding:18px 24px;background:var(--t-primary);display:flex;flex-direction:column;gap:12px}
+.cc-sec{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}.cc-sec:not(:first-child){margin-top:16px}
+.cc-dr{display:grid;grid-template-columns:62px 30px 64px 30px minmax(0,1fr);gap:8px;align-items:center;margin-bottom:8px}
+.cc-chip{font-weight:800;font-size:15px;background:var(--t-primary);color:var(--primary);border-radius:9px;padding:7px 0;text-align:center}
+.cc-dr button{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:17px;line-height:1;cursor:pointer}
+.cc-dr input{width:100%;min-width:0;box-sizing:border-box;border:1px solid var(--border);border-radius:8px;padding:7px 4px;text-align:center;font-size:15px;font-weight:700;background:var(--card);color:var(--text)}
+.cc-dr em{font-style:normal;text-align:right;font-size:14px;font-variant-numeric:tabular-nums;color:var(--muted)}.cc-dr.on em{color:var(--text);font-weight:700}
+.cc-big{background:var(--card);border-radius:14px;padding:14px 16px}.cc-big span{display:block;font-size:12.5px;color:var(--muted)}.cc-big b{font-size:26px;font-variant-numeric:tabular-nums}
+.cc-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.cc-two .cc-big b{font-size:20px}
+.cc-big.ok b{color:#0f766e}.cc-big.bad b{color:#b45309}
+.cc-opt{display:grid;gap:8px}
+.cc-opt label{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:14px;cursor:pointer;background:var(--card)}
+.cc-opt label small{display:block;color:var(--muted)}
+.cc-right textarea{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:10px;padding:9px 11px;font:inherit;background:var(--card);color:var(--text)}
+.cc-right label.cc-note{margin:0}
+.cc-ft{display:flex;gap:10px;margin-top:auto}.cc-ft .btn{width:auto;padding:0 18px;flex:1}
+.cc-err{color:#b91c1c;font-size:13px;margin:0}
+@media(max-width:760px){.cc-row{grid-template-columns:40px minmax(0,1fr) auto}.cc-row .cc-btn{grid-column:2/4}.cc-mb{grid-template-columns:1fr}.cc-left{border-right:0;border-bottom:1px solid var(--border)}}
+</style>
+  </head>
+  <body>
+    <script src="../shared/admin.js"></script>
+    <script>
+      (function () {
+        "use strict";
+        GA.guard();
+        var pg = GA.mount("cash-closing.html", "Cash Closing"),
+          esc = GA.esc,
+          $ = function (id) { return document.getElementById(id); },
+          DENOMS = [500, 200, 100, 50, 20, 10, 5, 2, 1],
+          DATA = null;
+        function money(n) { return "₹" + Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+        function toast(msg) {
+          var t = document.createElement("div");
+          t.className = "a-toast";
+          t.innerHTML = "<div><b>" + esc(msg) + "</b></div>";
+          document.body.appendChild(t);
+          setTimeout(function () { t.classList.add("out"); }, 2600);
+          setTimeout(function () { t.remove(); }, 3200);
+        }
+        function req(url, opts) {
+          return fetch(url, Object.assign({ credentials: "same-origin", headers: { "Content-Type": "application/json" } }, opts || {})).then(function (r) {
+            return r.json().catch(function () { return {}; }).then(function (d) {
+              if (!r.ok) throw new Error(d.error || "Request failed");
+              return d;
+            });
+          });
+        }
+        function newKey() {
+          var a = new Uint8Array(12);
+          crypto.getRandomValues(a);
+          return "cc-" + Array.prototype.map.call(a, function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+        }
+        function dateLabel(iso) {
+          var d = new Date(iso + "T00:00:00");
+          return isNaN(d) ? iso : d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+        }
+
+        pg.innerHTML =
+          '<div id="ccStats"></div>' +
+          '<div class="card cc-card"><div class="cc-head"><div class="card-title">Waiting to be received</div><button class="btn btn-outline" id="refresh" type="button">Refresh</button></div>' +
+          '<div class="cc-note">Count the cash in your hand, then press Receive and enter the notes and coins.</div><div class="cc-list" id="pending"><div class="cc-empty">Loading…</div></div></div>' +
+          '<div class="card cc-card"><div class="card-title">Received today</div><div class="cc-list" id="done" style="margin-top:10px"></div></div>';
+
+        function load() {
+          return req("/api/accounts/cash-closing").then(function (d) {
+            DATA = d;
+            $("ccStats").innerHTML = '<div class="a-stats">' +
+              GA.tile("s-s", "coin", money(d.totalExpected), "Still to receive", dateLabel(d.date)) +
+              GA.tile("s-a", "users", d.employees.length, "Employees waiting") +
+              GA.tile("s-p", "check-circle", money(d.totalReceived), "Received today", d.received.length + " receipts") + "</div>";
+            $("pending").innerHTML = d.employees.length
+              ? d.employees.map(function (x, i) {
+                  return '<div class="cc-row"><div class="cc-av">' + esc(x.name.charAt(0).toUpperCase()) + '</div><div class="cc-who"><b>' + esc(x.name) + '</b><span>Employee ID ' + esc(code(x.employeeId)) + '</span></div><div class="cc-amt">' + money(x.expected) + '</div><button class="btn cc-btn" type="button" data-i="' + i + '">Receive</button></div>';
+                }).join("")
+              : '<div class="cc-empty"><b>Nothing to receive</b>Every employee has handed in their cash.</div>';
+            $("done").innerHTML = d.received.length
+              ? d.received.map(function (x) {
+                  var df = x.difference ? '<span class="cc-diff">' + (x.difference.type === "shortage" ? "Short " : "Excess ") + money(x.difference.amount) + "</span>" : '<span class="badge">Matched</span>';
+                  return '<div class="cc-row done"><div class="cc-av">' + esc(x.name.charAt(0).toUpperCase()) + '</div><div class="cc-who"><b>' + esc(x.name) + '</b><span>' + esc(code(x.employeeId)) + '</span></div><div class="cc-amt">' + money(x.counted) + "</div>" + df + "</div>";
+                }).join("")
+              : '<div class="cc-empty">No cash received yet today.</div>';
+            document.querySelectorAll("[data-i]").forEach(function (b) { b.onclick = function () { openModal(DATA.employees[Number(b.dataset.i)]); }; });
+          }).catch(function (e) { $("pending").innerHTML = '<div class="cc-empty">' + esc(e.message) + "</div>"; });
+        }
+
+        function code(id) { return GA.empCode ? GA.empCode(id) : id; }
+        function isDiff(emp, t) { return t > 0 && Number((emp.expected - t).toFixed(2)) !== 0 && t !== Math.round(emp.expected); }
+        // Second popup: only shown when the count differs. Asks how to treat the difference, and why.
+        function askDifference(emp, t, done) {
+          var diff = Number((emp.expected - t).toFixed(2)), o = document.createElement("div");
+          o.className = "cc-ov";
+          o.innerHTML = '<div class="cc-md" style="width:min(460px,100%)" role="dialog" aria-modal="true"><div class="cc-mh"><div><h2>The count is different</h2><span>' + (diff > 0 ? "Short " : "Excess ") + money(Math.abs(diff)) + ' · expected ' + money(emp.expected) + ', counted ₹' + t.toLocaleString("en-IN") + '</span></div></div>' +
+            '<div style="padding:18px 24px;display:grid;gap:12px"><div class="cc-opt"><label><input type="radio" name="act2" value="record"><span><b>Record only</b><small>Clear the employee\'s balance. The difference is recorded with your reason.</small></span></label>' +
+            '<label><input type="radio" name="act2" value="employee"><span><b>Add to employee\'s balance</b><small>The difference stays on the employee\'s balance until it is settled.</small></span></label></div>' +
+            '<label for="ccReason" class="cc-note" style="margin:0">Reason (required)</label><textarea id="ccReason" rows="2" maxlength="300" placeholder="Why is the count different?" style="width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:10px;padding:9px 11px;font:inherit;background:var(--card);color:var(--text)"></textarea>' +
+            '<div class="cc-ft"><button class="btn btn-outline" id="dBack" type="button">Back</button><button class="btn" id="dOk" type="button" disabled>Confirm received</button></div></div></div>';
+          document.body.appendChild(o);
+          var go = o.querySelector("#dOk");
+          function chk() { go.disabled = !o.querySelector("#ccReason").value.trim() || !o.querySelector("[name=act2]:checked"); }
+          o.addEventListener("input", chk); o.addEventListener("change", chk);
+          o.querySelector("#dBack").onclick = function () { o.remove(); };
+          go.onclick = function () { var r = o.querySelector("#ccReason").value.trim(), a = o.querySelector("[name=act2]:checked").value; o.remove(); done(r, a); };
+          o.querySelector("#ccReason").focus();
+        }
+        function openModal(emp) {
+          var key = newKey(), busy = false, ov = document.createElement("div"), rounded = Math.round(emp.expected), paise = Number((emp.expected - rounded).toFixed(2));
+          function drow(d) { return '<div class="cc-dr" id="r' + d + '"><div class="cc-chip">₹' + d + '</div><button type="button" data-s="-1" data-for="' + d + '" aria-label="Less ₹' + d + '">−</button><input type="number" inputmode="numeric" min="0" step="1" placeholder="0" data-d="' + d + '" aria-label="Number of ₹' + d + '"><button type="button" data-s="1" data-for="' + d + '" aria-label="More ₹' + d + '">+</button><em id="sub' + d + '">₹0</em></div>'; }
+          ov.className = "cc-ov";
+          ov.innerHTML = '<div class="cc-md" role="dialog" aria-modal="true">' +
+            '<div class="cc-mh"><div class="cc-av">' + esc(emp.name.charAt(0).toUpperCase()) + '</div><div><h2>Receive cash from ' + esc(emp.name) + '</h2><span>Employee ID ' + esc(code(emp.employeeId)) + '</span></div><button class="cc-x" id="ccX" type="button" aria-label="Close">×</button></div>' +
+            '<div class="cc-mb"><div class="cc-left"><p class="cc-sec">Notes</p>' + [500, 200, 100, 50, 20, 10].map(drow).join("") + '<p class="cc-sec">Coins</p>' + [5, 2, 1].map(drow).join("") + '</div>' +
+            '<div class="cc-right"><div class="cc-big"><span>Should hand in (bills are rounded off)</span><b>₹' + rounded.toLocaleString("en-IN") + '</b>' + (paise ? '<span>Books show ' + money(emp.expected) + ' · round-off ' + money(Math.abs(paise)) + '</span>' : "") + '</div>' +
+            '<div class="cc-two"><div class="cc-big"><span>You counted</span><b id="ccTotal">₹0</b></div><div class="cc-big" id="ccDiffRow"><span>Difference</span><b id="ccDiff">—</b></div></div>' +
+            '<p class="cc-err" id="ccErr" hidden></p><div class="cc-ft"><button class="btn btn-outline" id="ccCancel" type="button">Cancel</button><button class="btn" id="ccOk" type="button" disabled>Confirm received</button></div></div></div></div>';
+          document.body.appendChild(ov);
+          var inputs = ov.querySelectorAll("[data-d]"), ok = ov.querySelector("#ccOk");
+          function counts() { return Array.prototype.map.call(inputs, function (i) { return { denomination: Number(i.dataset.d), pieceCount: Math.max(0, Math.floor(Number(i.value) || 0)) }; }); }
+          function total() { return counts().reduce(function (n, r) { return n + r.denomination * r.pieceCount; }, 0); }
+          function refresh() {
+            var t = total(), different = isDiff(emp, t), diff = Number((rounded - t).toFixed(2));
+            counts().forEach(function (r) { ov.querySelector("#sub" + r.denomination).textContent = "₹" + (r.denomination * r.pieceCount).toLocaleString("en-IN"); ov.querySelector("#r" + r.denomination).className = "cc-dr" + (r.pieceCount ? " on" : ""); });
+            ov.querySelector("#ccTotal").textContent = "₹" + t.toLocaleString("en-IN");
+            ov.querySelector("#ccDiffRow").className = "cc-big" + (t === 0 ? "" : different ? " bad" : " ok");
+            ov.querySelector("#ccDiff").textContent = t === 0 ? "—" : !different ? "Matches ✓" : (diff > 0 ? "Short ₹" : "Excess ₹") + Math.abs(diff).toLocaleString("en-IN");
+            ok.disabled = busy || t === 0;
+          }
+          ov.addEventListener("input", refresh);
+          ov.addEventListener("click", function (e) {
+            var b = e.target.closest && e.target.closest("[data-s]");
+            if (!b) return;
+            var i = ov.querySelector('[data-d="' + b.dataset.for + '"]');
+            i.value = Math.max(0, (Math.floor(Number(i.value) || 0)) + Number(b.dataset.s)) || "";
+            refresh();
+          });
+          function close() { if (!busy) ov.remove(); }
+          ov.querySelector("#ccCancel").onclick = close; ov.querySelector("#ccX").onclick = close;
+          ov.addEventListener("mousedown", function (e) { if (e.target === ov) close(); });
+          function send(reason, action) {
+            var err = ov.querySelector("#ccErr");
+            busy = true; ok.disabled = true; err.hidden = true;
+            req("/api/accounts/cash-closing/receive", { method: "POST", body: JSON.stringify({ requestKey: key, employeeId: emp.employeeId, expected: emp.expected, denominations: counts(), reason: reason, differenceAction: action }) })
+              .then(function () { busy = false; ov.remove(); toast("Cash received from " + emp.name + "."); return load(); })
+              .catch(function (e) { busy = false; err.textContent = e.message; err.hidden = false; refresh(); });
+          }
+          ok.onclick = function () {
+            var t = total();
+            if (isDiff(emp, t)) askDifference(emp, t, send); else send("", "");
+          };
+          inputs[0].focus();
+        }
+        $("refresh").onclick = load;
+        load();
+      })();
+    </script>
+  </body>
+</html>

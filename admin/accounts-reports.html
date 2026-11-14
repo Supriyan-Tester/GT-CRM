@@ -32,11 +32,27 @@ body:has(.a-main) .a-acts .rp-range .gtp-btn{height:32px;min-height:32px;min-wid
 @media(max-width:1000px){.rp-sum{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.rp-paper{padding:14px}}
 @media print{.a-acts{display:none!important}body,.a-main{background:#fff!important}.rp-lead,.rp-tabs{display:none!important}.rp-paper{border:0;border-radius:0;padding:0;background:#fff!important;color:#000!important}.rp-paper *{color:#000!important;background:transparent!important;border-color:#999!important}.rp-sum .a-stat,.rp-t th,.rp-t tr.rp-sub td{background:#f2f2f2!important}.rp-sum .chip{display:none!important}.rp-t th,.rp-t td{font-size:11px;padding:5px 6px}.rp-tw{overflow:visible;border:0}.rp-t tr{page-break-inside:avoid}.rp-t thead{display:table-header-group}}
+.ec-list{display:grid;gap:10px;margin-top:4px}
+.ec-row{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:6px 14px;align-items:center;padding:14px;border:1px solid var(--border);border-radius:14px;background:var(--card)}
+.ec-av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;background:var(--t-primary);color:var(--primary)}
+.ec-n{font-weight:700;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ec-n small{font-weight:500;color:var(--muted);margin-left:6px}
+.ec-tot{text-align:right;font-weight:800;font-size:18px;font-variant-numeric:tabular-nums}.ec-tot small{display:block;font-weight:500;font-size:11.5px;color:var(--muted)}
+.ec-bar{grid-column:2/4;display:flex;height:8px;border-radius:99px;overflow:hidden;background:var(--t-primary)}
+.ec-bar i{display:block;height:100%}.ec-c{background:#0f766e}.ec-u{background:#2563eb}.ec-b{background:#f59e0b}
+.ec-leg{grid-column:2/4;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted)}
+.ec-leg b{color:var(--text);font-variant-numeric:tabular-nums}.ec-leg span:before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:currentColor}
+.ec-leg .ld-c:before{background:#0f766e}.ec-leg .ld-u:before{background:#2563eb}.ec-leg .ld-b:before{background:#f59e0b}
+@media(max-width:700px){.ec-row{grid-template-columns:36px minmax(0,1fr)}.ec-tot{grid-column:2;text-align:left}.ec-bar,.ec-leg{grid-column:1/3}}
+@media print{.ec-row{break-inside:avoid;border:1px solid #999!important}.ec-bar{background:#ddd!important}.ec-bar .ec-c{background:#333!important}.ec-bar .ec-u{background:#777!important}.ec-bar .ec-b{background:#aaa!important}}
+.hv-pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap;background:var(--t-primary);color:var(--primary)}
+.hv-pill.w{background:var(--t-warn,#fef3c7);color:#b45309}.hv-pill.d{background:var(--t-danger);color:#b91c1c}.hv-pill.g{background:#e5e7eb;color:#4b5563}
+.hv-ty{font-weight:600}.hv-empty{padding:40px 16px;text-align:center;color:var(--muted);border:1px dashed var(--border);border-radius:14px}.hv-empty b{display:block;color:var(--text);font-size:15px;margin-bottom:4px}
+@media print{.hv-pill{border:1px solid #999;background:none!important}}
 </style></head><body><script src="../shared/admin.js"></script><script>
 (function(){"use strict";GA.guard();var pg=GA.mount("accounts-reports.html","Accounts Reports"),$=function(id){return document.getElementById(id)},esc=GA.esc;
 function money(v){return "₹"+Number(v||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}
 function dmy(d){var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(d||""));return m?m[3]+"-"+m[2]+"-"+m[1]:"—"}
-var ist=new Date(Date.now()+5.5*3600e3).toISOString().slice(0,10),tab="collections",cache={},TICON={collections:"receipt",outstanding:"hourglass",employees:"users",handovers:"coin"},TABS={collections:"Collection report",outstanding:"Outstanding report",employees:"Employee collections",handovers:"Cash handover"};
+var ist=new Date(Date.now()+5.5*3600e3).toISOString().slice(0,10),tab="collections",cache={},TICON={collections:"receipt",outstanding:"hourglass",ageing:"clock",employees:"users",handovers:"coin"},TABS={collections:"Collection report",outstanding:"Outstanding report",ageing:"Ageing report",employees:"Employee collections",handovers:"Cash handover"};
 pg.innerHTML='<p class="rp-lead">Collections, outstanding balances, employee totals and cash handovers.</p><div class="rp-range" data-act><span>From</span><div class="field vx-datebox"><span aria-hidden="true">'+GA.icon("calendar")+'</span><input type="date" id="rpFrom" aria-label="From date"></div><span>To</span><div class="field vx-datebox"><span aria-hidden="true">'+GA.icon("calendar")+'</span><input type="date" id="rpTo" aria-label="To date"></div></div><button type="button" class="btn a-btn" id="rpLoad" data-act>'+GA.icon("eye")+' Show</button><button type="button" class="btn btn-secondary a-btn" id="rpCsv" data-act disabled title="Download CSV" aria-label="Download CSV">'+GA.icon("download")+'<span class="rp-bt"> Download CSV</span></button><button type="button" class="btn btn-secondary a-btn" id="rpPrint" data-act disabled title="Print / Save as PDF" aria-label="Print / Save as PDF">'+GA.icon("print")+'<span class="rp-bt"> Print / Save as PDF</span></button><div class="rp-tabs no-print" id="rpTabs">'+Object.keys(TABS).map(function(k){return '<button data-tab="'+k+'"'+(k===tab?' class="on"':'')+'>'+GA.icon(TICON[k])+TABS[k]+'</button>'}).join("")+'</div><div class="rp-paper" id="rpPaper"><div class="rp-empty">Loading...</div></div>';
 $("rpFrom").value=ist.slice(0,8)+"01";$("rpTo").value=ist;
 function api(url){return fetch(url,{credentials:"same-origin"}).then(function(r){return r.json().catch(function(){return {}}).then(function(d){if(!r.ok)throw new Error(d.error||"Request failed");return d})})}
@@ -54,17 +70,28 @@ var VIEWS={
    '<p class="rp-foot">Only approved collections are counted, by the day they were approved. Pending and rejected collections are left out.</p>'},
   csv:function(d){return [["Date","Customer","Customer code","Collected by","Method","Amount"]].concat(d.rows.map(function(x){return [dmy(x.date),x.customer,x.customerCode,x.collector,x.method,x.amount.toFixed(2)]}))}},
  employees:{url:function(){return VIEWS.collections.url()},
-  html:function(d){var p=dmy(d.from)+" to "+dmy(d.to);
-   return top("Employee Collection Report","Approved collections by employee · "+p,d)+sums([["Total collected",money(d.total),"rupee","s-p"],["Collections",String(d.count),"receipt","s-i"],["Employees",String(d.byEmployee.length),"users","s-s"],["Cash",money(d.byMethod.cash),"coin","s-a"]])+
-   table([{t:"Employee"},{t:"Collections",n:1},{t:"Cash",n:1},{t:"UPI",n:1},{t:"Bank transfer",n:1},{t:"Total",n:1}],d.byEmployee.map(function(e){return '<tr><td>'+esc(e.name)+'</td><td class="num">'+e.count+'</td><td class="num">'+money(e.cash)+'</td><td class="num">'+money(e.upi)+'</td><td class="num">'+money(e.bankTransfer)+'</td><td class="num"><b>'+money(e.total)+'</b></td></tr>'}),'<tr class="rp-sub"><td>Total</td><td class="num">'+d.count+'</td><td class="num">'+money(d.byMethod.cash)+'</td><td class="num">'+money(d.byMethod.upi)+'</td><td class="num">'+money(d.byMethod.bankTransfer)+'</td><td class="num">'+money(d.total)+'</td></tr>')+
-   '<p class="rp-foot">Only approved collections are counted, by the day they were approved.</p>'},
+  html:function(d){var p=dmy(d.from)+" to "+dmy(d.to),list=d.byEmployee.slice().sort(function(a,b){return b.total-a.total}),top1=list[0];
+   function seg(c,v,t){return v>0?'<i class="'+c+'" style="width:'+(v/t*100).toFixed(2)+'%"></i>':''}
+   var cards=list.map(function(e){var t=e.total||1,avg=e.count?e.total/e.count:0,share=d.total?Math.round(e.total/d.total*100):0;
+    return '<div class="ec-row"><div class="ec-av">'+esc((e.name||"?").trim().charAt(0).toUpperCase())+'</div><div class="ec-n">'+esc(e.name)+'<small>'+e.count+' collection'+(e.count===1?'':'s')+' \u00b7 avg '+money(avg)+'</small></div><div class="ec-tot">'+money(e.total)+'<small>'+share+'% of total</small></div>'+
+     '<div class="ec-bar">'+seg("ec-c",e.cash,t)+seg("ec-u",e.upi,t)+seg("ec-b",e.bankTransfer,t)+'</div>'+
+     '<div class="ec-leg"><span class="ld-c">Cash <b>'+money(e.cash)+'</b></span><span class="ld-u">UPI <b>'+money(e.upi)+'</b></span><span class="ld-b">Bank <b>'+money(e.bankTransfer)+'</b></span></div></div>'}).join("");
+   return top("Employee Collection Report","Approved collections by employee \u00b7 "+p,d)+sums([["Total collected",money(d.total),"rupee","s-p"],["Collections",String(d.count),"receipt","s-i"],["Employees",String(list.length),"users","s-s"],["Top collector",top1?esc(top1.name):"\u2014","check-circle","s-a"]])+
+   (list.length?'<div class="ec-list">'+cards+'</div>':'<div class="rp-empty">Nothing to show for this selection.</div>')+
+   '<p class="rp-foot">Only approved collections are counted, by the day they were approved. The bar shows each employee\u2019s cash / UPI / bank split.</p>'},
   csv:function(d){return [["Employee","Collections","Cash","UPI","Bank transfer","Total"]].concat(d.byEmployee.map(function(e){return [e.name,e.count,e.cash.toFixed(2),e.upi.toFixed(2),e.bankTransfer.toFixed(2),e.total.toFixed(2)]}))}},
  handovers:{url:function(){return "/api/accounts/reports/handovers?from="+$("rpFrom").value+"&to="+$("rpTo").value},
   html:function(d){var p=dmy(d.from)+" to "+dmy(d.to);
    return top("Cash Handover Report","Employee handovers and office deposits \u00b7 "+p,d)+sums([["Total handed over",money(d.total),"rupee","s-p"],["Confirmed",money(d.confirmed.amount),"check-circle","s-s"],["Awaiting confirmation",money(d.awaiting.amount),"clock","s-a"],["Disputed",money(d.disputed.amount),"alert-triangle","s-r"]])+
-   table([{t:"Date"},{t:"Type"},{t:"From"},{t:"To"},{t:"Status"},{t:"Amount",n:1}],d.rows.map(function(x){return '<tr><td>'+dmy(x.date)+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.from)+'</td><td>'+esc(x.to)+'</td><td>'+esc(x.status)+'</td><td class="num">'+money(x.amount)+'</td></tr>'}),'<tr class="rp-sub"><td colspan="5">Total ('+d.count+' entries)</td><td class="num">'+money(d.total)+'</td></tr>')+
+   (!d.rows.length?'<div class="hv-empty"><b>No cash handovers in this period</b>Cash collected by employees shows here once it is handed over or deposited at the office.</div>':table([{t:"Date"},{t:"Type"},{t:"From"},{t:"To"},{t:"Status"},{t:"Amount",n:1}],d.rows.map(function(x){return '<tr><td>'+dmy(x.date)+'</td><td class="hv-ty">'+esc(x.type)+'</td><td>'+esc(x.from)+'</td><td>'+esc(x.to)+'</td><td><span class="hv-pill '+({"Awaiting confirmation":"w","Disputed":"d","Reversed":"g"}[x.status]||"")+'">'+esc(x.status)+'</span></td><td class="num">'+money(x.amount)+'</td></tr>'}),'<tr class="rp-sub"><td colspan="5">Total ('+d.count+' entries)</td><td class="num">'+money(d.total)+'</td></tr>'))+
    '<p class="rp-foot">Dated by the day each handover or deposit was recorded. "Awaiting confirmation" means the receiver has not confirmed it yet.</p>'},
   csv:function(d){return [["Date","Type","From","To","Status","Confirmed by","Amount"]].concat(d.rows.map(function(x){return [dmy(x.date),x.type,x.from,x.to,x.status,x.confirmedBy,x.amount.toFixed(2)]}))}},
+ ageing:{url:function(){return "/api/accounts/reports/ageing"},
+  html:function(d){var t=d.totals;
+   return top("Ageing Report","Unpaid balance by invoice age · as of "+dmy(d.asOf),d)+sums([["0-30 days",money(t.d30),"clock","s-s"],["31-60 days",money(t.d60),"clock","s-i"],["61-90 days",money(t.d90),"clock","s-a"],["Over 90 days",money(t.over90),"alert-triangle","s-r"]])+
+   table([{t:"Customer"},{t:"0-30",n:1},{t:"31-60",n:1},{t:"61-90",n:1},{t:"90+",n:1},{t:"Total",n:1}],d.rows.map(function(r){return '<tr><td>'+esc(r.name)+' <span style="color:var(--muted)">\u00b7 '+esc(r.code)+'</span></td><td class="num">'+money(r.d30)+'</td><td class="num">'+money(r.d60)+'</td><td class="num">'+money(r.d90)+'</td><td class="num">'+money(r.over90)+'</td><td class="num"><b>'+money(r.total)+'</b></td></tr>'}),'<tr class="rp-sub"><td>Total ('+d.customers+' customers)</td><td class="num">'+money(t.d30)+'</td><td class="num">'+money(t.d60)+'</td><td class="num">'+money(t.d90)+'</td><td class="num">'+money(t.over90)+'</td><td class="num">'+money(t.total)+'</td></tr>')+
+   '<p class="rp-foot">Age is counted from the invoice date. Payments waiting for approval are not deducted. The date range above does not apply to this report.</p>'},
+  csv:function(d){return [["Customer","Customer code","0-30 days","31-60 days","61-90 days","Over 90 days","Total"]].concat(d.rows.map(function(r){return [r.name,r.code,r.d30.toFixed(2),r.d60.toFixed(2),r.d90.toFixed(2),r.over90.toFixed(2),r.total.toFixed(2)]}))}},
  outstanding:{url:function(){return "/api/accounts/reports/outstanding"},
   html:function(d){
    return top("Outstanding Report","Customers with unpaid invoices · as of "+dmy(d.asOf),d)+sums([["Total outstanding",money(d.total),"hourglass","s-r"],["Customers",String(d.customers),"users","s-p"],["Open invoices",String(d.invoices),"clipboard-list","s-i"],["Oldest invoice",d.rows.length?Math.max.apply(null,d.rows.map(function(r){return r.oldestDays}))+" days":"—","clock","s-a"]])+
@@ -72,9 +99,9 @@ var VIEWS={
    '<p class="rp-foot">Outstanding is what each invoice still owes after approved payments. Payments waiting for approval are not deducted. The date range above does not apply to this report.</p>'},
   csv:function(d){return [["Customer","Customer code","Open invoices","Oldest invoice","Days since oldest","Outstanding"]].concat(d.rows.map(function(r){return [r.name,r.code,r.invoices,dmy(r.oldestInvoiceDate),r.oldestDays,r.outstanding.toFixed(2)]}))}}
 };
-var token=0;function syncRange(){var r=document.querySelector(".rp-range");if(r)r.classList.toggle("rp-off",tab==="outstanding")}
+var token=0;function syncRange(){var r=document.querySelector(".rp-range");if(r)r.classList.toggle("rp-off",tab==="outstanding"||tab==="ageing")}
 function show(){var v=VIEWS[tab];if(!cache[tab]){$("rpPaper").innerHTML='<div class="rp-empty">Press Show to load this report.</div>';setBusy(false);return}$("rpPaper").innerHTML=v.html(cache[tab]);setBusy(false)}
-function load(){var v=VIEWS[tab],my=++token;if(tab!=="outstanding"&&$("rpFrom").value>$("rpTo").value){$("rpPaper").innerHTML='<div class="rp-empty">The From date must not be after the To date.</div>';return}
+function load(){var v=VIEWS[tab],my=++token;if(tab!=="outstanding"&&tab!=="ageing"&&$("rpFrom").value>$("rpTo").value){$("rpPaper").innerHTML='<div class="rp-empty">The From date must not be after the To date.</div>';return}
   $("rpPaper").innerHTML='<div class="rp-empty">Loading...</div>';setBusy(true);
   api(v.url()).then(function(d){if(my!==token)return;cache[tab]=d;show()}).catch(function(e){if(my!==token)return;cache[tab]=null;$("rpPaper").innerHTML='<div class="rp-empty">'+esc(e.message)+'</div>';setBusy(false)})}
 $("rpLoad").onclick=function(){cache={};load()};

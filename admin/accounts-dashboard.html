@@ -208,8 +208,8 @@
 
         // Collections for the last 14 days: approved (solid) and still waiting for approval (amber).
         function chart(days) {
-          var W = 720,
-            H = 230,
+          var W = Math.max(560, Math.min(1600, ((document.querySelector(".a-main") || document.body).clientWidth || 720) - 90)),
+            H = 250,
             L = 52,
             R = 10,
             T = 12,
@@ -291,7 +291,7 @@
                 .map(function (x) {
                   var st = STATUS[x.status] || ["b-muted", esc(x.status)];
                   return (
-                    "<tr><td class=\"ad-name\" data-label=\"Customer\">" + esc(x.customer_name_snapshot) + "<small>" + esc(when(x.received_at)) + "</small></td>" +
+                    "<tr class=\"ad-click\" tabindex=\"0\" data-id=\"" + esc(x.id) + "\" data-st=\"" + esc(x.status) + "\"><td class=\"ad-name\" data-label=\"Customer\">" + esc(x.customer_name_snapshot) + "<small>" + esc(when(x.received_at)) + "</small></td>" +
                     '<td data-label="Invoice">' + esc((x.invoiceNos || []).slice(0, 2).join(", ") + ((x.invoiceNos || []).length > 2 ? " +" + ((x.invoiceNos || []).length - 2) : "")) + "</td>" +
                     '<td data-label="Collected by">' + esc(x.collector_name_snapshot) + "</td>" +
                     '<td data-label="Method">' + mi(x.method) + "</td>" +
@@ -322,10 +322,10 @@
             '<div class="ad-note">' + t.count + (t.count === 1 ? " collection" : " collections") + " recorded " + (range === "today" ? "today" : RLABEL[range].toLowerCase()) + ", approved or waiting for approval.</div></div>" +
             '<div class="card"><div class="card-title">Pending actions</div>' +
             act("clipboard-list", "c-a", "Collection approvals", p.collections ? money(p.collectionsAmount) + " waiting" : "", p.collections, "collections.html?status=pending_approval") +
-            act("coin", "c-p", "Office deposits and handovers", "", p.cashMovements, "office-cash.html") +
-            act("credit-card", "c-i", "UPI settlements to confirm", "", p.upiSettlements, "upi-settlements.html") +
-            act("check-circle", "c-s", "Daily closing to approve", "", p.dailyClosings, "daily-closing.html") +
-            act("alert-triangle", "c-d", "Cash discrepancies", "Disputed handovers, UPI or closings", p.discrepancies || 0, "office-cash.html") +
+            act("coin", "c-p", "Office deposits and handovers", "", p.cashMovements, "cash-closing.html") +
+            
+            
+            act("alert-triangle", "c-d", "Cash discrepancies", "Disputed handovers, UPI or closings", p.discrepancies || 0, "cash-closing.html") +
             "</div></div>" +
             '<div class="card ad-wide"><div class="ad-head"><div class="card-title">Collections, last 14 days</div>' +
             '<div class="ad-legend"><span><i style="background:var(--primary)"></i>Approved</span><span><i style="background:var(--accent)"></i>Waiting for approval</span></div></div>' +
@@ -335,6 +335,17 @@
             '<div class="a-scroll"><table class="a-table"><thead><tr><th>Customer</th><th>Invoice</th><th>Collected by</th><th>Method</th><th class="ad-r">Amount</th><th>Status</th></tr></thead><tbody>' +
             rows +
             "</tbody></table></div></div>";
+          // Clicking a recent collection opens it in the Collections page
+          var adGo = function (e) {
+            var tr = e.target.closest && e.target.closest("tr.ad-click");
+            if (!tr) return;
+            if (e.type === "keydown" && e.key !== "Enter") return;
+            location.href = "collections.html?status=" + encodeURIComponent(tr.getAttribute("data-st")) + "&open=" + encodeURIComponent(tr.getAttribute("data-id"));
+          };
+          [].forEach.call(pg.querySelectorAll("tr.ad-click"), function (tr) {
+            tr.addEventListener("click", adGo);
+            tr.addEventListener("keydown", adGo);
+          });
           document.getElementById("adRange").onclick = function (e) {
             var bt = e.target.closest("button[data-r]");
             if (!bt || bt.getAttribute("data-r") === range) return;

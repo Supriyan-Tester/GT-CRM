@@ -15,3 +15,29 @@ jobs:
           node-version: 20
       - name: Run regression suite
         run: npm test
+
+  e2e:
+    # Browser tests run against the STAGING site only. Skipped until the secrets below are added in GitHub (Settings > Secrets).
+    needs: regression
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    env:
+      GMCRM_STAGING_URL: ${{ secrets.GMCRM_STAGING_URL }}
+      GMCRM_E2E_PHONE: ${{ secrets.GMCRM_E2E_PHONE }}
+      GMCRM_E2E_PASSWORD: ${{ secrets.GMCRM_E2E_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        if: env.GMCRM_STAGING_URL != ''
+        run: npm ci
+      - name: Install browser
+        if: env.GMCRM_STAGING_URL != ''
+        run: npx playwright install --with-deps chromium
+      - name: Run browser tests
+        if: env.GMCRM_STAGING_URL != ''
+        run: npm run test:e2e

@@ -11,41 +11,25 @@
     <link rel="stylesheet" href="../shared/admin.css" />
     <script src="../shared/theme.js"></script>
     <style>
-      .oc-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin-bottom: 6px;
-      }
-      .oc-head .card-title {
-        margin: 0;
-      }
-      .oc-head .btn {
-        width: auto;
-        padding-left: 16px;
-        padding-right: 16px;
-      }
-      .oc-note {
-        color: var(--muted);
-        font-size: 13px;
-        margin: 4px 0 12px;
-      }
-      .oc-card {
-        margin-bottom: 16px;
-      }
-      td.oc-r,
-      th.oc-r {
-        text-align: right;
-        font-variant-numeric: tabular-nums;
-      }
-      .oc-btn {
-        width: auto;
-        padding-left: 14px;
-        padding-right: 14px;
-      }
-    </style>
+.oc-flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 16px}
+.oc-step{display:flex;gap:12px;align-items:flex-start;padding:14px;border:1px solid var(--border);border-radius:14px;background:var(--card)}
+.oc-step i{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:700;font-size:13px;background:var(--t-primary);color:var(--primary)}
+.oc-step.you{border-color:var(--primary)}.oc-step.you i{background:var(--primary);color:#fff}
+.oc-step b{display:block;font-size:14px}.oc-step span{font-size:12.5px;color:var(--muted)}
+.oc-card{margin-bottom:16px}
+.oc-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.oc-head .card-title{margin:0}.oc-head .btn{width:auto;padding:0 16px}
+.oc-note{color:var(--muted);font-size:13px;margin:4px 0 12px}
+.oc-list{display:grid;gap:10px}
+.oc-row{display:grid;grid-template-columns:40px minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:14px;border:1px solid var(--border);border-radius:14px}
+.oc-av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;background:var(--t-primary);color:var(--primary)}
+.oc-who{min-width:0}.oc-who b{display:block;font-size:15px}.oc-who span{font-size:12.5px;color:var(--muted)}
+.oc-amt{font-weight:800;font-size:18px;font-variant-numeric:tabular-nums;text-align:right}
+.oc-btn{width:auto;padding:0 16px;white-space:nowrap}
+.oc-row.done{padding:10px 14px}.oc-row.done .oc-amt{font-size:15px}
+.oc-empty{padding:28px 12px;text-align:center;color:var(--muted)}.oc-empty b{display:block;color:var(--text);margin-bottom:2px}
+@media(max-width:800px){.oc-flow{grid-template-columns:1fr}.oc-row{grid-template-columns:40px minmax(0,1fr) auto}.oc-row .oc-btn,.oc-row .badge{grid-column:2/4}}
+</style>
   </head>
   <body>
     <script src="../shared/admin.js"></script>
@@ -106,13 +90,15 @@
         }
 
         pg.innerHTML =
+          '<div class="oc-flow"><div class="oc-step"><i>1</i><div><b>Employee collects</b><span>Cash taken from customers on the route</span></div></div>' +
+          '<div class="oc-step"><i>2</i><div><b>Employee hands in</b><span>They submit the deposit in the Sales panel</span></div></div>' +
+          '<div class="oc-step you"><i>3</i><div><b>You count and receive</b><span>Tick it below once the cash is in your hand</span></div></div></div>' +
           '<div id="ocStats"></div>' +
-          '<div class="card oc-card"><div class="oc-head"><div class="card-title">Pending employee deposits</div>' +
-          '<button class="btn btn-outline" id="refresh" type="button">Refresh</button></div>' +
-          '<div class="oc-note">Cash an employee says they handed in. It counts as office cash only after you count it and tick it off here.</div>' +
-          '<div class="a-scroll"><table class="a-table"><thead><tr><th>Submitted</th><th>Employee ID</th><th class="oc-r">Amount</th><th>Note</th><th>Action</th></tr></thead><tbody id="pending"><tr><td colspan="5"><div class="a-empty">Loading…</div></td></tr></tbody></table></div></div>' +
-          '<div class="card oc-card"><div class="card-title">Recent office receipts</div>' +
-          '<div class="a-scroll"><table class="a-table"><thead><tr><th>Date</th><th>Employee ID</th><th class="oc-r">Amount</th><th>Status</th><th>Confirmed by</th></tr></thead><tbody id="history"></tbody></table></div></div>';
+          '<div class="card oc-card"><div class="oc-head"><div class="card-title">Waiting for you to count</div><button class="btn btn-outline" id="refresh" type="button">Refresh</button></div>' +
+          '<div class="oc-note">Count the cash first, then press Receive. Only then does it become office cash.</div><div class="oc-list" id="pending"><div class="oc-empty">Loading…</div></div></div>' +
+          '<div class="card oc-card"><div class="card-title">Recently received</div><div class="oc-list" id="history" style="margin-top:10px"></div></div>';
+        var NAMES = {};
+        function nm(id) { return NAMES[String(id)] || String(id || "Unknown"); }
 
         function drawStats(balance, pending, done) {
           var pendingSum = pending.reduce(function (n, x) {
@@ -120,9 +106,9 @@
           }, 0);
           $("ocStats").innerHTML =
             '<div class="a-stats">' +
-            GA.tile("s-s", "coin", money(balance), "Office cash", "Confirmed cash in the office") +
-            GA.tile("s-a", "clipboard-list", pending.length, "Deposits to verify", money(pendingSum)) +
-            GA.tile("s-p", "check-circle", done.length, "Recent receipts confirmed") +
+            GA.tile("s-s", "coin", money(balance), "Office cash", "Counted cash in the office") +
+            GA.tile("s-a", "clipboard-list", pending.length, "Waiting to count", money(pendingSum)) +
+            GA.tile("s-p", "check-circle", done.length, "Received recently") +
             "</div>";
         }
         function load() {
@@ -136,38 +122,24 @@
                   return x.status === "confirmed";
                 });
               drawStats(d.officeBalance, pending, done);
+              NAMES = d.names || {};
               $("pending").innerHTML = pending.length
-                ? pending
-                    .map(function (x) {
-                      return (
-                        "<tr><td data-label=\"Submitted\">" + esc(when(x.recorded_at)) + "</td>" +
-                        '<td data-label="Employee ID">' + esc(String(x.from_employee_id || "")) + "</td>" +
-                        '<td data-label="Amount" class="oc-r"><b>' + money(x.amount) + "</b></td>" +
-                        '<td data-label="Note">' + esc(String(x.note || "—")) + "</td>" +
-                        '<td data-label="Action"><button class="btn btn-success oc-btn" type="button" data-confirm="' + esc(x.id) + '">Verify &amp; receive</button></td></tr>'
-                      );
-                    })
-                    .join("")
-                : '<tr><td colspan="5"><div class="a-empty"><b>No pending deposits</b>Nothing is waiting to be counted.</div></td></tr>';
-              $("history").innerHTML =
-                done
-                  .map(function (x) {
-                    return (
-                      "<tr><td data-label=\"Date\">" + esc(when(x.confirmed_at || x.recorded_at)) + "</td>" +
-                      '<td data-label="Employee ID">' + esc(String(x.from_employee_id || "")) + "</td>" +
-                      '<td data-label="Amount" class="oc-r">' + money(x.amount) + "</td>" +
-                      '<td data-label="Status"><span class="badge b-success">Confirmed</span></td>' +
-                      '<td data-label="Confirmed by">' + esc(String(x.confirmed_by || "")) + "</td></tr>"
-                    );
-                  })
-                  .join("") || '<tr><td colspan="5"><div class="a-empty">No confirmed receipts yet.</div></td></tr>';
+                ? pending.map(function (x) {
+                    return '<div class="oc-row"><div class="oc-av">' + esc(nm(x.from_employee_id).charAt(0).toUpperCase()) + '</div><div class="oc-who"><b>' + esc(nm(x.from_employee_id)) + '</b><span>Submitted ' + esc(when(x.recorded_at)) + (x.note ? " · " + esc(String(x.note)) : "") + '</span></div><div class="oc-amt">' + money(x.amount) + '</div><button class="btn btn-success oc-btn" type="button" data-confirm="' + esc(x.id) + '">Count &amp; receive</button></div>';
+                  }).join("")
+                : '<div class="oc-empty"><b>Nothing to count</b>When an employee submits a cash deposit, it will show here.</div>';
+              $("history").innerHTML = done.length
+                ? done.slice(0, 15).map(function (x) {
+                    return '<div class="oc-row done"><div class="oc-av">' + esc(nm(x.from_employee_id).charAt(0).toUpperCase()) + '</div><div class="oc-who"><b>' + esc(nm(x.from_employee_id)) + '</b><span>Received ' + esc(when(x.confirmed_at || x.recorded_at)) + ' · by ' + esc(nm(x.confirmed_by)) + '</span></div><div class="oc-amt">' + money(x.amount) + '</div><span class="badge b-success">Received</span></div>';
+                  }).join("")
+                : '<div class="oc-empty">No cash received yet.</div>';
               document.querySelectorAll("[data-confirm]").forEach(function (b) {
                 b.onclick = function () {
-                  if (!confirm("Confirm physical cash count and transfer custody into office cash?")) return;
+                  if (!confirm("Have you counted this cash and is it in your hand?")) return;
                   b.disabled = true;
                   req("/api/accounts/office-deposits/" + b.dataset.confirm + "/confirm", { method: "POST", body: "{}" })
                     .then(function () {
-                      toast("Deposit received into office cash.");
+                      toast("Cash received into office.");
                       return load();
                     })
                     .catch(function (e) {
@@ -178,7 +150,7 @@
               });
             })
             .catch(function (e) {
-              $("pending").innerHTML = '<tr><td colspan="5"><div class="a-empty"><b>Could not load</b>' + esc(e.message) + "</div></td></tr>";
+              $("pending").innerHTML = '<div class="oc-empty"><b>Could not load</b>' + esc(e.message) + "</div>";
             });
         }
         $("refresh").onclick = load;

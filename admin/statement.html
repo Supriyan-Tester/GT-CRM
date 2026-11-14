@@ -6,12 +6,12 @@
 @media(max-width:700px){.st-sum{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media print{body,.a-main{background:#fff!important}.st-paper{border:0;border-radius:0;padding:0;background:#fff!important;color:#000!important}.st-paper *{color:#000!important;background:transparent!important;border-color:#999!important}.st-sum div,.st-t tr.st-sub td{background:#f2f2f2!important}.st-t th,.st-t td{font-size:11px;padding:5px 6px}.st-tw{overflow:visible}.st-t tr{page-break-inside:avoid}.st-t thead{display:table-header-group}}
 </style></head><body><script src="../shared/admin.js"></script><script>
-(function(){"use strict";GA.guard();var pg=GA.mount("statement.html","Customer Statement"),S=GA.ops.get(),$=function(id){return document.getElementById(id)},esc=GA.esc;
+(function(){"use strict";GA.guard();var pg=GA.mount("statement.html","Customer Statement",{back:["accounts.html","Ledger"]}),S=GA.ops.get(),$=function(id){return document.getElementById(id)},esc=GA.esc;
 function money(v){return "₹"+Number(v||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}
 function dmy(d){var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(d||""));return m?m[3]+"-"+m[2]+"-"+m[1]:"—"}
 var customers=(S.customers||[]).filter(function(c){return c&&!c.inactive});
 var opts='<option value="">Select customer</option>'+customers.map(function(c){return '<option value="'+esc(String(c.code||""))+'">'+esc(String(c.name||c.shopName||c.code||""))+' · '+esc(String(c.code||""))+'</option>'}).join("");
-pg.innerHTML='<div class="st-wrap"><div class="st-bar no-print"><label>Customer<select id="stCustomer">'+opts+'</select></label><label>From<input id="stFrom" type="date"></label><label>To<input id="stTo" type="date"></label><button class="primary" id="stLoad">Show</button><button id="stPrint" disabled>Print / Save as PDF</button><a href="accounts.html" style="margin-left:auto;font-size:13px">Back to ledger</a></div><div class="st-paper" id="stPaper"><div class="st-empty">Choose a customer to see their statement.</div></div></div>';
+pg.innerHTML='<div class="st-wrap"><div class="st-bar no-print"><label>Customer<select id="stCustomer">'+opts+'</select></label><label>From<input id="stFrom" type="date"></label><label>To<input id="stTo" type="date"></label><button type="button" class="btn a-btn" id="stLoad">Show</button><button type="button" class="btn btn-secondary a-btn" id="stPrint" data-act disabled>Print / Save as PDF</button></div><div class="st-paper" id="stPaper"><div class="st-empty">Choose a customer to see their statement.</div></div></div>';
 var data=null;
 function load(){
   var code=$("stCustomer").value;if(!code){$("stPaper").innerHTML='<div class="st-empty">Choose a customer to see their statement.</div>';$("stPrint").disabled=true;return}

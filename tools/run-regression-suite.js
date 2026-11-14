@@ -29,6 +29,7 @@ const tests = [
   "accounts-office-cash-regression.js",
   "accounts-upi-settlement-regression.js",
   "accounts-daily-closing-regression.js",
+  "accounts-cash-closing-regression.js",
   "accounts-integrity-hardening-regression.js",
   "accounts-staging-preflight-regression.js",
   "accounts-dashboard-regression.js",

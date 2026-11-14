@@ -28,6 +28,7 @@
     "office-cash.html": ["billing"],
     "upi-settlements.html": ["billing"],
     "daily-closing.html": ["billing"],
+    "cash-closing.html": ["billing"],
     "products.html": ["inventory", "billing", "sales"],
     "returns.html": ["inventory"],
     "workers.html": "full",
@@ -1031,9 +1032,12 @@
               ["collections.html", "Collections", "clipboard-list"],
               ["accounts.html", "Accounts & Ledger", "receipt"],
               ["accounts-reports.html", "Accounts reports", "report"],
-              ["office-cash.html", "Office cash", "coin"],
-              ["upi-settlements.html", "UPI & bank", "credit-card"],
-              ["daily-closing.html", "Daily closing", "check-circle"],
+              // Hidden for now (feature not in use). Pages, routes and DB stay intact; uncomment to bring back.
+              // ["office-cash.html", "Office cash", "coin"],
+              // ["upi-settlements.html", "UPI & bank", "credit-card"],
+              ["cash-closing.html", "Cash closing", "coin"],
+              // Old Daily closing page is replaced by Cash closing (page kept, hidden from menu).
+              // ["daily-closing.html", "Daily closing", "check-circle"],
             ],
           ],
           ["live.html", "Live location", "map"],
@@ -1963,8 +1967,8 @@ GA.tile = function (cls, icon, n, label, sub) {
     [/driven|\bkm\b/i, "vehicles.html"],
     [/on duty|present|absent|late|punch/i, "attendance.html"],
     [/deliver|pending\b.*(shop|bill)|still pending|bills/i, "delivery.html"],
-    [/employee-held|office cash|deposits? to verify|receipts? confirmed/i, "office-cash.html"],
-    [/upi|bank|disputed|settlement/i, "upi-settlements.html"],
+    [/employee-held|office cash|deposits? to verify|receipts? confirmed/i, "cash-closing.html"],
+    
     [/waiting|approved|rejected|total collections|^collected$/i, "collections.html"],
     [/receivable|total credit|outstanding|open invoices|paid/i, "accounts.html"],
     [/customers in (crm|plans)|shops visited/i, "customers.html"],
@@ -2309,3 +2313,4 @@ GA.tile = function (cls, icon, n, label, sub) {
     document.addEventListener("DOMContentLoaded", go);
   else go();
 })();
+

@@ -585,7 +585,7 @@
       draw();
       refresh();
       setInterval(function () {
-        if (date === GA.today()) refresh();
+        if (!document.hidden && date === GA.today()) refresh();
       }, 5000);
     </script>
   </body>

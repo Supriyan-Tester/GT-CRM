@@ -537,8 +537,16 @@
               })
               .join("") +
             '<th>Status</th><th class="act"><span class="sr-only" style="position:absolute;left:-9999px">Actions</span></th></tr></thead><tbody>' +
-            part.map(rowH).join("") +
+         part.map(rowH).join("") +
             "</tbody></table></div>";
+        /* label each cell with its column name (used by the phone card layout) */
+        var prHs = $("pBody").querySelectorAll("thead th");
+        [].forEach.call($("pBody").querySelectorAll("tbody tr"), function (tr) {
+          [].forEach.call(tr.children, function (td, i) {
+            var t = prHs[i] && prHs[i].textContent.trim();
+            if (t) td.setAttribute("data-l", t);
+          });
+        });
         $("pFoot").innerHTML = list.length
           ? "<span>Showing " +
             (from + 1) +

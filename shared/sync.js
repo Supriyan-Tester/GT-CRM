@@ -605,6 +605,7 @@ window.GMImg = {
   // 2) Keep in step: pick up other devices' changes and retry anything unsent
   function poll() {
     for (var k in pending) send(k);
+    if (document.hidden) return; // a background tab does not need live updates; it catches up when it is shown again
     var t0 = Date.now() - 50;
     fetch(API + "/state?since=" + rev, { cache: "no-store" })
       .then(function (r) {

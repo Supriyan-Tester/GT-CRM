@@ -1,7 +1,7 @@
 "use strict";
 
 const crypto = require("crypto");
-const { validateOpeningInvoice, validateCollection, buildStatement, buildCollectionReport, buildOutstandingReport, buildHandoverReport, validateSplitCollection } = require("./accounts.domain");
+const { validateOpeningInvoice, validateCollection, buildStatement, buildCollectionReport, buildOutstandingReport, buildAgeingReport, buildHandoverReport, validateSplitCollection } = require("./accounts.domain");
 
 function createAccountsRoutes(config) {
   const URL = String(config.url || "").replace(/\/+$/, "");
@@ -51,12 +51,29 @@ function createAccountsRoutes(config) {
     res.end(bytes);
   }
 
+  // Short-lived read cache: the same read asked again within a few seconds (several people opening dashboards, or one page
+  // asking twice) is answered from memory and shares one database call. Every write goes through rpc(), which empties the
+  // cache before and after, so a balance never shows an old value after an approval, handover or closing.
+  const READ_CACHE_MS = 10000, readCache = new Map();
   async function rest(path) {
-    const response = await fetchImpl(URL + "/rest/v1/" + path, {
-      headers: { apikey: KEY, Authorization: "Bearer " + KEY },
-    });
-    if (!response.ok) throw new Error("Accounts database read failed (" + response.status + ").");
-    return response.json();
+    const hit = readCache.get(path);
+    let data;
+    if (hit && hit.exp > Date.now()) data = await hit.p;
+    else {
+      const p = (async () => {
+        const response = await fetchImpl(URL + "/rest/v1/" + path, {
+          headers: { apikey: KEY, Authorization: "Bearer " + KEY },
+        });
+        if (!response.ok) throw new Error("Accounts database read failed (" + response.status + ").");
+        return response.json();
+      })();
+      const entry = { p, exp: Date.now() + READ_CACHE_MS };
+      readCache.set(path, entry);
+      p.catch(() => { if (readCache.get(path) === entry) readCache.delete(path); });
+      if (readCache.size > 300) for (const k of readCache.keys()) { readCache.delete(k); if (readCache.size <= 200) break; }
+      data = await p;
+    }
+    return structuredClone(data); // a fresh copy each time, so one caller can never change another caller's data
   }
   // Reads every row of a query. The database returns at most 1000 rows per request, so a balance added up from a single
   // request would be wrong once there are more than 1000 entries. The query must include an "order=" so the pages line up.
@@ -239,14 +256,14 @@ function createAccountsRoutes(config) {
       return true;
     }
 
-    if (req.method === "GET" && p === "/api/accounts/reports/outstanding") {
+    if (req.method === "GET" && (p === "/api/accounts/reports/outstanding" || p === "/api/accounts/reports/ageing")) {
       if (!canBill(session)) { send(res, 403, { error: "Billing permission required." }); return true; }
       Promise.all([
         restAll("gm_accounts_invoices?select=id,customer_code,customer_name_snapshot,invoice_date,initial_outstanding&order=id"),
         restAll("gm_accounts_collection_allocations?select=invoice_id,amount,collection_id&order=id"),
         restAll("gm_accounts_collections?select=id&status=eq.approved&order=id"),
       ]).then(([invoices, allocations, approved]) =>
-        send(res, 200, { ok: true, generatedAt: new Date().toISOString(), ...buildOutstandingReport({ invoices, allocations, approvedCollectionIds: approved.map((x) => x.id) }) }))
+        send(res, 200, { ok: true, generatedAt: new Date().toISOString(), ...(p.endsWith("/ageing") ? buildAgeingReport : buildOutstandingReport)({ invoices, allocations, approvedCollectionIds: approved.map((x) => x.id) }) }))
         .catch((e) => { console.error("Accounts outstanding report:", e.message); send(res, 502, { error: "Unable to load the outstanding report." }); });
       return true;
     }
@@ -281,22 +298,19 @@ function createAccountsRoutes(config) {
       let customerCode;
       try { customerCode = decodeURIComponent(invoiceMatch[1]); } catch (_) { send(res, 400, { error: "Invalid customer code." }); return true; }
       if (!customerCode || customerCode.length > 80 || !customerLookup(customerCode) || !canAccessCustomer(session, customerCode)) { send(res, 404, { error: "Customer not found." }); return true; }
-      rest("gm_accounts_invoices?select=id,customer_code,customer_name_snapshot,invoice_no,invoice_date,source_kind,original_amount,initial_outstanding,evidence_path,created_at&customer_code=eq." + encodeURIComponent(customerCode) + "&order=invoice_date.desc,created_at.desc")
-        .then(async (invoices) => {
-          const ids = invoices.map((x) => x.id);
-          let allocations = [];
-          if (ids.length) allocations = await rest("gm_accounts_collection_allocations?select=invoice_id,amount,collection_id&invoice_id=in.(" + ids.join(",") + ")");
-          // One query for both statuses (was two more round trips to the database in a row).
-          const collectionIds = Array.from(new Set(allocations.map((x) => x.collection_id)));
-          let statusRows = [];
-          if (collectionIds.length) statusRows = await rest("gm_accounts_collections?select=id,status&id=in.(" + collectionIds.join(",") + ")&status=in.(approved,pending_approval)");
-          const statusById = new Map(statusRows.map((x) => [x.id, x.status]));
+      rest("gm_accounts_invoices?select=id,customer_code,customer_name_snapshot,invoice_no,invoice_date,source_kind,original_amount,initial_outstanding,evidence_path,created_at,gm_accounts_collection_allocations(invoice_id,amount,collection_id,gm_accounts_collections(status))&customer_code=eq." + encodeURIComponent(customerCode) + "&order=invoice_date.desc,created_at.desc")
+        .then(async (rows) => {
+          // One database call: invoices with their payment allocations and each payment's status.
           const approved = {}, pending = {};
-          for (const row of allocations) {
-            const status = statusById.get(row.collection_id);
-            if (status === "approved") approved[row.invoice_id] = (approved[row.invoice_id] || 0) + Number(row.amount || 0);
-            else if (status === "pending_approval") pending[row.invoice_id] = (pending[row.invoice_id] || 0) + Number(row.amount || 0);
-          }
+          const invoices = rows.map((r) => {
+            const { gm_accounts_collection_allocations: al, ...inv } = r;
+            for (const a of al || []) {
+              const st = a.gm_accounts_collections && a.gm_accounts_collections.status;
+              if (st === "approved") approved[inv.id] = (approved[inv.id] || 0) + Number(a.amount || 0);
+              else if (st === "pending_approval") pending[inv.id] = (pending[inv.id] || 0) + Number(a.amount || 0);
+            }
+            return inv;
+          });
           const result = invoices.map((inv) => ({ ...inv, approvedPaid: Number((approved[inv.id] || 0).toFixed(2)), pendingAmount: Number((pending[inv.id] || 0).toFixed(2)), outstanding: Number((Number(inv.initial_outstanding) - (approved[inv.id] || 0)).toFixed(2)), availableToCollect: Number((Number(inv.initial_outstanding) - (approved[inv.id] || 0) - (pending[inv.id] || 0)).toFixed(2)) }));
           send(res, 200, { ok: true, customerCode, invoices: result });
         }).catch((e) => { console.error("Accounts invoice read:", e.message); send(res, 502, { error: "Unable to load customer ledger." }); });
@@ -738,6 +752,63 @@ function createAccountsRoutes(config) {
       return true;
     }
 
+    // Cash Closing: the office counts cash at the desk and receives it from each employee in one step.
+    if (req.method === "GET" && p === "/api/accounts/cash-closing") {
+      if (!canBill(session)) { send(res, 403, { error: "Billing permission required." }); return true; }
+      Promise.all([
+        restAll("gm_accounts_journal_lines?select=employee_id,debit,credit&account_code=eq.EMPLOYEE_CASH_CUSTODY&order=id"),
+        rest("gm_accounts_cash_movements?select=id,movement_type,from_employee_id,amount,reference,note,recorded_by,confirmed_at&or=(reference.like.cash-closing:*,reference.like.cash-closing-diff:*)&order=confirmed_at.desc&limit=300")
+      ]).then(([lines, moves]) => {
+        const balances = new Map();
+        for (const l of lines) if (l.employee_id) balances.set(l.employee_id, (balances.get(l.employee_id) || 0) + Number(l.debit || 0) - Number(l.credit || 0));
+        const list = config.employeeList ? config.employeeList() : [];
+        const names = new Map(list.map(x => [String(x.id), String(x.name || "Employee")]));
+        const employees = Array.from(balances.entries()).filter(([, b]) => b > 0.0001).map(([id, b]) => ({ employeeId: id, name: names.get(id) || "Employee", expected: Number(b.toFixed(2)) })).sort((a, b) => a.name.localeCompare(b.name));
+        const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+        const diffs = new Map();
+        for (const m of moves) if ((m.movement_type === "shortage" || m.movement_type === "excess") && String(m.reference).startsWith("cash-closing-diff:")) diffs.set(String(m.reference).slice(18), { type: m.movement_type, amount: Number(m.amount), note: m.note });
+        const received = moves.filter(m => m.movement_type === "office_receipt" && m.confirmed_at && new Date(m.confirmed_at).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }) === today)
+          .map(m => ({ id: m.id, employeeId: m.from_employee_id, name: names.get(m.from_employee_id) || "Employee", counted: Number(m.amount), at: m.confirmed_at, difference: diffs.get(m.id) || null }));
+        const totalExpected = Number(employees.reduce((n, x) => n + x.expected, 0).toFixed(2));
+        const totalReceived = Number(received.reduce((n, x) => n + x.counted, 0).toFixed(2));
+        send(res, 200, { ok: true, date: today, employees, received, totalExpected, totalReceived });
+      }).catch(e => { console.error("Cash closing read:", e.message); send(res, 502, { error: "Unable to load cash closing." }); });
+      return true;
+    }
+
+    if (req.method === "POST" && p === "/api/accounts/cash-closing/receive") {
+      if (!canBill(session)) { send(res, 403, { error: "Billing permission required." }); return true; }
+      body(req, (err, input) => {
+        if (err) return send(res, 400, { error: "Invalid cash receipt request." });
+        try {
+          const employeeId = String(input && input.employeeId || "").trim();
+          const expected = Number(input && input.expected);
+          const rows = input && input.denominations, allowed = [500, 200, 100, 50, 20, 10, 5, 2, 1];
+          if (!employeeId || employeeId.length > 80) throw new Error("Choose an employee.");
+          if (employeeId === String(session.id)) throw new Error("You cannot receive cash from yourself.");
+          if (!Number.isFinite(expected) || expected <= 0) throw new Error("Enter a valid expected amount.");
+          if (!Array.isArray(rows) || rows.length !== 9) throw new Error("Enter all nine denomination counts.");
+          const seen = new Set(); let total = 0;
+          for (const row of rows) {
+            const d = Number(row && row.denomination), n = Number(row && row.pieceCount);
+            if (!allowed.includes(d) || seen.has(d) || !Number.isSafeInteger(n) || n < 0 || n > 100000) throw new Error("Enter valid denomination counts.");
+            seen.add(d); total += d * n;
+          }
+          if (total <= 0) throw new Error("Enter the cash you counted.");
+          const reason = String(input.reason || "").trim().slice(0, 300);
+          const action = String(input.differenceAction || "");
+          const different = Number(total.toFixed(2)) !== Number(expected.toFixed(2)) && total !== Math.round(expected); // a count equal to the rounded-off amount is a match
+          if (different && !reason) throw new Error("Enter a reason for the difference.");
+          if (different && action !== "record" && action !== "employee") throw new Error("Choose how to handle the difference.");
+          const key = String(input.requestKey || "").trim();
+          if (!/^[a-zA-Z0-9:_-]{12,100}$/.test(key)) throw new Error("Invalid receipt reference.");
+          return rpc("gm_accounts_receive_cash", { p_request_key: key, p_employee_id: employeeId, p_expected: expected, p_denominations: rows, p_reason: reason, p_difference_action: different ? action : "", p_received_by: String(session.id) })
+            .then(result => send(res, 201, result)).catch(e => fail(res, e));
+        } catch (e) { send(res, 400, { error: e.message }); }
+      }, 16384);
+      return true;
+    }
+
     if (req.method === "GET" && p === "/api/accounts/office-cash") {
       if (!canBill(session)) { send(res, 403, { error: "Billing permission required." }); return true; }
       Promise.all([
@@ -745,7 +816,8 @@ function createAccountsRoutes(config) {
         rest("gm_accounts_cash_movements?select=id,movement_type,from_employee_id,to_employee_id,amount,status,reference,note,recorded_by,recorded_at,confirmed_by,confirmed_at&movement_type=eq.office_receipt&order=recorded_at.desc&limit=200")
       ]).then(([lines,movements])=>{
         const balance=Number(lines.reduce((n,x)=>n+Number(x.debit||0)-Number(x.credit||0),0).toFixed(2));
-        send(res,200,{ok:true,officeBalance:balance,movements});
+        const names={};for(const e of (config.employeeList?config.employeeList():[])) if(e&&e.id) names[String(e.id)]=String(e.name||e.id).slice(0,120);
+        send(res,200,{ok:true,officeBalance:balance,movements,names});
       }).catch(e=>{console.error("Office cash read:",e.message);send(res,502,{error:"Unable to load office cash register."});});
       return true;
     }

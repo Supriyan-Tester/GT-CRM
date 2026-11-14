@@ -946,6 +946,7 @@ const PAGE_RULES = {
   "office-cash.html": ["billing"],
   "upi-settlements.html": ["billing"],
   "daily-closing.html": ["billing"],
+  "cash-closing.html": ["billing"],
   "products.html": ["inventory", "billing", "sales"],
   "sales.html": ["sales", "billing"],
   "orders.html": ["sales", "billing"],
@@ -2544,7 +2545,7 @@ async function refreshLedgerOwners() {
   } catch (e) {}
 }
 refreshLedgerOwners();
-setInterval(refreshLedgerOwners, 60000).unref();
+setInterval(refreshLedgerOwners, 5 * 60000).unref(); // downloads every invoice number, so not every minute
 function planConflicts(raw) {
   const out = new Set();
   let S;
@@ -5064,11 +5065,17 @@ function serveStatic(req, res, url) {
       return res.end("Forbidden");
     }
     const ext = path.extname(file).toLowerCase();
+    const topDir = path.relative(ROOT, file).split(path.sep)[0].toLowerCase();
     if (
       !MIME[ext] ||
-      ["server.js", "storage.js", "activity.js"].includes(
-        path.basename(file).toLowerCase(),
-      )
+      ["backend", "tools", "tests", "sql", "docs"].includes(topDir) ||
+      [
+        "server.js",
+        "storage.js",
+        "activity.js",
+        "backup-integrity.js",
+        "playwright.config.js",
+      ].includes(path.basename(file).toLowerCase())
     ) {
       // server code is never sent to a browser
       res.writeHead(404);

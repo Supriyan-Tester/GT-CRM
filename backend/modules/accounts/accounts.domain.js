@@ -193,6 +193,27 @@ function buildOutstandingReport(input) {
   return { asOf: today, customers: rows.length, invoices: rows.reduce((n, r) => n + r.invoices, 0), total: Array.from(byCustomer.values()).reduce((n, c) => n + c.outstanding, 0) / 100, rows };
 }
 
+// Ageing report: unpaid balance per customer split by how old each invoice is (0-30, 31-60, 61-90, 90+ days).
+function buildAgeingReport(input) {
+  const invoices = (input && input.invoices) || [], allocations = (input && input.allocations) || [];
+  const approvedIds = new Set(((input && input.approvedCollectionIds) || []).map(String));
+  const today = (input && input.today) || istDay(Date.now());
+  const paid = new Map();
+  for (const a of allocations) if (approvedIds.has(String(a.collection_id))) paid.set(a.invoice_id, (paid.get(a.invoice_id) || 0) + toPaise(a.amount));
+  const days = (d) => Math.max(0, Math.round((Date.parse(today + "T00:00:00Z") - Date.parse(String(d).slice(0, 10) + "T00:00:00Z")) / 86400000));
+  const bucket = (n) => (n <= 30 ? 0 : n <= 60 ? 1 : n <= 90 ? 2 : 3);
+  const by = new Map(), totals = [0, 0, 0, 0];
+  for (const inv of invoices) {
+    const due = toPaise(inv.initial_outstanding) - (paid.get(inv.id) || 0);
+    if (due <= 0) continue;
+    const b = bucket(days(inv.invoice_date));
+    const c = by.get(inv.customer_code) || { code: inv.customer_code, name: inv.customer_name_snapshot, b: [0, 0, 0, 0] };
+    c.b[b] += due; totals[b] += due; by.set(inv.customer_code, c);
+  }
+  const rows = Array.from(by.values()).map((c) => ({ code: c.code, name: c.name, d30: c.b[0] / 100, d60: c.b[1] / 100, d90: c.b[2] / 100, over90: c.b[3] / 100, total: c.b.reduce((x, y) => x + y, 0) / 100 })).sort((a, b) => b.total - a.total);
+  return { asOf: today, customers: rows.length, totals: { d30: totals[0] / 100, d60: totals[1] / 100, d90: totals[2] / 100, over90: totals[3] / 100, total: totals.reduce((x, y) => x + y, 0) / 100 }, rows };
+}
+
 // Cash handover report: employee-to-employee handovers and office deposits, by the day they were recorded (IST).
 // "recorded" means the receiver has not confirmed yet.
 const MOVE_STATUS = { recorded: "Awaiting confirmation", confirmed: "Confirmed", disputed: "Disputed", reversed: "Reversed" };
@@ -261,4 +282,4 @@ function validateSplitCollection(input, invoiceBalances) {
   return { customerCode: base.customerCode, requestKey, note: base.note, total: base.total, parts };
 }
 
-module.exports = { validateSplitCollection, buildHandoverReport, buildCollectionReport, buildOutstandingReport, buildStatement, toPaise, fromPaise, validateOpeningInvoice, validateCollection, buildCollectionJournal, assertBalanced };
+module.exports = { validateSplitCollection, buildHandoverReport, buildCollectionReport, buildOutstandingReport, buildAgeingReport, buildStatement, toPaise, fromPaise, validateOpeningInvoice, validateCollection, buildCollectionJournal, assertBalanced };
