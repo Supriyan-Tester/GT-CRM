@@ -8,7 +8,7 @@
   "use strict";
   if (window.GMLoading) return;
   // Admin pages: no loading bar or spinner. Keep a no-op API so nothing breaks.
-  if (/^\/admin(\/|$)/.test(location.pathname)) {
+  if (/^\/admin(\/|$)/.test(location.pathname) || /^\/login(\.html)?\/?$/.test(location.pathname)) {
     window.GMLoading = { begin: function () { return function () {}; }, end: function () {}, reset: function () {} };
     return;
   }
