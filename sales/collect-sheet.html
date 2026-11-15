@@ -13,11 +13,12 @@
     .cs-hero span{font-size:14px;opacity:.9}.cs-hero b{font-size:34px;line-height:1.15;font-weight:800}.cs-hero small{font-size:14px;opacity:.9}
     .cs-bill{border:1px solid var(--border);border-left:5px solid #dc2626;border-radius:14px;padding:13px 14px;background:var(--card);display:grid;gap:10px}
     .cs-bill.late{border-left-color:#d97706}
-    .cs-bill .top{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center}
+    .cs-bill .top{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 10px;align-items:center}
     .cs-bill .amt{font-size:20px;font-weight:800;color:#dc2626;text-align:right}.cs-bill.late .amt{color:#d97706}
-    .cs-bill .tags{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+    .cs-bill .tags{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+    .cs-bill .hist{grid-column:1/-1;background:var(--bg);border-radius:10px;padding:10px 12px;display:grid;gap:10px;margin-top:4px}
     .cs-tag{font-size:12px;font-weight:700;border-radius:999px;padding:4px 10px;background:rgba(217,119,6,.14);color:#d97706}.cs-tag.red{background:rgba(220,38,38,.12);color:#dc2626}
-    .cs-bill .act{justify-self:end}.cs-bill .cs-pick{background:#0d9488;color:#fff;border-color:#0d9488;padding:11px 20px;font-size:15px;border-radius:12px}.cs-bill .cs-pick.on{background:#0f766e;border-color:#0f766e}
+    .cs-bill .act{grid-column:1/-1;justify-self:end}.cs-bill .cs-pick{background:#0d9488;color:#fff;border-color:#0d9488;padding:11px 20px;font-size:15px;border-radius:12px}.cs-bill .cs-pick.on{background:#0f766e;border-color:#0f766e}
     .cs-order{background:rgba(34,197,94,.14);color:#15803d;border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600}
     .cs-bill .top b{font-size:14px}.cs-bill small{display:block;color:var(--muted);font-size:12px}
     .cs-more{display:none;gap:9px}.cs-more.open{display:grid}
@@ -54,6 +55,7 @@ Sales.start("payments",function(me,hello,main){
   function $(s){return document.querySelector(s)}
   function money(v){return "₹"+Number(v||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}
   function dmy(d){var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(d||"");return m?m[3]+"/"+m[2]+"/"+m[1]:esc(d)}
+  function hist(x){var M={cash:"Cash",upi:"UPI",bank_transfer:"Bank"};if(!x.payments)return "";if(!x.payments.length)return '<small class="muted" style="display:block">No payments yet</small>';return (x.payments).map(function(p){var d=p.at?new Date(p.at).toLocaleDateString("en-IN",{day:"numeric",month:"short",timeZone:"Asia/Kolkata"}):"",ap=p.status==="approved";return '<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px 12px;font-size:12px;color:var(--muted);line-height:1.35"><span><b style="color:var(--text)">'+money(p.amount).replace(/\.00$/,"")+"</b>"+(d?" \u00b7 "+d:"")+(p.by?" \u00b7 "+esc(p.by):"")+(M[p.method]?" \u00b7 "+M[p.method]:"")+'</span><span style="font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;white-space:nowrap;background:'+(ap?"rgba(22,163,74,.14)":"rgba(217,119,6,.14)")+";color:"+(ap?"#16a34a":"#d97706")+'">'+(ap?"Approved":"Waiting for approval")+"</span></div>"}).join("")}
   function pz(v){return Math.round(Number(v)*100)}
   function fe(msg,sel){var e=new Error(msg);e.sel=sel;return e}
   function rawUrl(f){return new Promise(function(ok,no){var r=new FileReader();r.onload=function(){ok(r.result)};r.onerror=no;r.readAsDataURL(f)})}
@@ -102,8 +104,8 @@ Sales.start("payments",function(me,hello,main){
         var av=Number(x.availableToCollect),id=esc(x.id),pa=Number(x.pendingAmount)>0,
             m=/^(\d{4})-(\d{2})-(\d{2})/.exec(x.invoice_date||""),age=m?Math.floor((now-new Date(+m[1],+m[2]-1,+m[3]))/864e5):0,late=age>30;
         return '<div class="cs-bill'+(late?" late":"")+'"><div class="top"><div><b>Invoice '+esc(x.invoice_no)+'</b><small>'+dmy(x.invoice_date)+'</small></div><div class="amt">'+money(x.outstanding)+'</div>'+
-          '<div class="tags">'+(pa?'<span class="cs-tag">'+money(x.pendingAmount)+' waiting approval</span>':"")+(late?'<span class="cs-tag red">'+age+' days overdue</span>':"")+'</div>'+
-          '<div class="act">'+(av>0?'<button type="button" class="cs-pick" data-t="'+id+'">Collect</button>':'<span class="cs-hint">Waiting for approval</span>')+'</div></div>'+
+          (late?'<div class="tags"><span class="cs-tag red">'+age+' days overdue</span></div>':"")+(x.payments?'<div class="hist">'+hist(x)+'</div>':"")+
+          '<div class="act">'+(av>0?'<button type="button" class="cs-pick" data-t="'+id+'">Collect</button>':'<span class="cs-hint">Collected</span>')+'</div></div>'+
           (av>0?'<div class="cs-more" id="more_'+id+'"><div class="cs-amt"><input data-a="'+id+'" type="number" min="0.01" max="'+av.toFixed(2)+'" step="0.01" inputmode="decimal" placeholder="Amount (max '+av.toFixed(2)+')"><button type="button" class="cs-pick" data-full="'+id+'">Full amount</button></div>'+
             '<div class="cs-photo"><div class="cs-thumb" data-th="'+id+'">No photo</div><div><button type="button" class="cs-pick" data-add="'+id+'">Take bill photo</button><input type="file" data-f="'+id+'" accept="image/jpeg,image/png,image/webp" capture="environment" style="display:none"></div></div></div>':"")+'</div>';
       }).join("");

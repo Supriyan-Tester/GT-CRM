@@ -308,7 +308,7 @@
             return;
           }
           $("aBody").innerHTML =
-            '<div class="us-scroll"><table class="us-table us-table-acc"><thead><tr><th>Employee</th><th>Role</th><th>Can open</th><th style="text-align:right">Options</th></tr></thead><tbody>' +
+            '<div class="us-scroll"><table class="us-table us-table-acc"><thead><tr><th>Employee</th><th>Role</th><th>Can open</th><th style="text-align:right">Edit</th></tr></thead><tbody>' +
             P.map(function (p) {
               var cells;
               if (p.full) cells = '<span class="mu">Everything (Admin)</span>';
@@ -322,8 +322,7 @@
                   '<span class="mu">Shows: Home' +
                   (shown.length ? ", " + esc(shown.join(", ")) : "") +
                   "</span>";
-              }
-              else
+              } else
                 cells = r.data.modules
                   .map(function (m) {
                     var base = p.base === m;
@@ -347,9 +346,9 @@
                 "</b><br><small>" +
                 esc(p.code || p.phone) +
                 (p.active ? "" : " - inactive") +
-                "</small></td><td data-l=\"Role\">" +
+                '</small></td><td data-l="Role">' +
                 esc(p.role) +
-                "</td><td data-l=\"Can open\">" +
+                '</td><td data-l="Can open">' +
                 cells +
                 '</td><td class="acts">' +
                 (p.full

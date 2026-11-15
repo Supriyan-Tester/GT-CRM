@@ -298,20 +298,25 @@ function createAccountsRoutes(config) {
       let customerCode;
       try { customerCode = decodeURIComponent(invoiceMatch[1]); } catch (_) { send(res, 400, { error: "Invalid customer code." }); return true; }
       if (!customerCode || customerCode.length > 80 || !customerLookup(customerCode) || !canAccessCustomer(session, customerCode)) { send(res, 404, { error: "Customer not found." }); return true; }
-      rest("gm_accounts_invoices?select=id,customer_code,customer_name_snapshot,invoice_no,invoice_date,source_kind,original_amount,initial_outstanding,evidence_path,created_at,gm_accounts_collection_allocations(invoice_id,amount,collection_id,gm_accounts_collections(status))&customer_code=eq." + encodeURIComponent(customerCode) + "&order=invoice_date.desc,created_at.desc")
+      rest("gm_accounts_invoices?select=id,customer_code,customer_name_snapshot,invoice_no,invoice_date,source_kind,original_amount,initial_outstanding,evidence_path,created_at,gm_accounts_collection_allocations(invoice_id,amount,collection_id,gm_accounts_collections(status,method,received_at,collector_name_snapshot))&customer_code=eq." + encodeURIComponent(customerCode) + "&order=invoice_date.desc,created_at.desc")
         .then(async (rows) => {
           // One database call: invoices with their payment allocations and each payment's status.
           const approved = {}, pending = {};
+          const paymentsBy = {};
           const invoices = rows.map((r) => {
             const { gm_accounts_collection_allocations: al, ...inv } = r;
             for (const a of al || []) {
               const st = a.gm_accounts_collections && a.gm_accounts_collections.status;
               if (st === "approved") approved[inv.id] = (approved[inv.id] || 0) + Number(a.amount || 0);
               else if (st === "pending_approval") pending[inv.id] = (pending[inv.id] || 0) + Number(a.amount || 0);
+              if (st === "approved" || st === "pending_approval") {
+                const c = a.gm_accounts_collections || {};
+                (paymentsBy[inv.id] = paymentsBy[inv.id] || []).push({ amount: Number(Number(a.amount || 0).toFixed(2)), at: c.received_at || null, by: String(c.collector_name_snapshot || "").slice(0, 80), method: c.method || "", status: st });
+              }
             }
             return inv;
           });
-          const result = invoices.map((inv) => ({ ...inv, approvedPaid: Number((approved[inv.id] || 0).toFixed(2)), pendingAmount: Number((pending[inv.id] || 0).toFixed(2)), outstanding: Number((Number(inv.initial_outstanding) - (approved[inv.id] || 0)).toFixed(2)), availableToCollect: Number((Number(inv.initial_outstanding) - (approved[inv.id] || 0) - (pending[inv.id] || 0)).toFixed(2)) }));
+          const result = invoices.map((inv) => ({ ...inv, payments: (paymentsBy[inv.id] || []).sort((x, y) => String(x.at).localeCompare(String(y.at))), approvedPaid: Number((approved[inv.id] || 0).toFixed(2)), pendingAmount: Number((pending[inv.id] || 0).toFixed(2)), outstanding: Number((Number(inv.initial_outstanding) - (approved[inv.id] || 0)).toFixed(2)), availableToCollect: Number((Number(inv.initial_outstanding) - (approved[inv.id] || 0) - (pending[inv.id] || 0)).toFixed(2)) }));
           send(res, 200, { ok: true, customerCode, invoices: result });
         }).catch((e) => { console.error("Accounts invoice read:", e.message); send(res, 502, { error: "Unable to load customer ledger." }); });
       return true;

@@ -156,6 +156,7 @@ html[data-theme="dark"] .tile.on,html[data-theme="dark"] .tot,html[data-theme="d
   function esc(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function money(v) { return "\u20b9" + Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   function dmy(d) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ""); return m ? m[3] + "/" + m[2] + "/" + m[1] : esc(d); }
+  function hist(x){var M={cash:"Cash",upi:"UPI",bank_transfer:"Bank"};if(!x.payments)return "";if(!x.payments.length)return '<small class="muted" style="display:block">No payments yet</small>';return (x.payments).map(function(p){var d=p.at?new Date(p.at).toLocaleDateString("en-IN",{day:"numeric",month:"short",timeZone:"Asia/Kolkata"}):"",ap=p.status==="approved";return '<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px 12px;font-size:12px;color:var(--muted);line-height:1.35"><span><b style="color:var(--text)">'+money(p.amount).replace(/\.00$/,"")+"</b>"+(d?" \u00b7 "+d:"")+(p.by?" \u00b7 "+esc(p.by):"")+(M[p.method]?" \u00b7 "+M[p.method]:"")+'</span><span style="font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;white-space:nowrap;background:'+(ap?"rgba(22,163,74,.14)":"rgba(217,119,6,.14)")+";color:"+(ap?"#16a34a":"#d97706")+'">'+(ap?"Approved":"Waiting for approval")+"</span></div>"}).join("")}
   function pz(v) { return Math.round(Number(v) * 100); }
   function evUrl(p) { var t = String(p || "").split("/").pop().replace(/\.(jpg|png|webp)$/i, ""); return t ? "/api/accounts/evidence/" + t : ""; }
   function rawDataUrl(f) { return new Promise(function (ok, no) { var r = new FileReader(); r.onload = function () { ok(r.result); }; r.onerror = no; r.readAsDataURL(f); }); }
@@ -234,7 +235,7 @@ html[data-theme="dark"] .tile.on,html[data-theme="dark"] .tot,html[data-theme="d
       if (mine) {
         var av = Number(mine.availableToCollect);
         S.cur = av > 0 ? { id: mine.id, max: av } : null;
-        $("#curMsg").textContent = av > 0 ? "" : (Number(mine.outstanding) > 0 ? "A payment for this bill is already waiting for office approval." : "This bill is already fully paid.");
+        $("#curMsg").innerHTML = (av > 0 ? "" : (Number(mine.outstanding) > 0 ? "This bill is already collected. " : "This bill is already fully paid.")) + hist(mine);
       } else if (INV && AMT > 0) { S.cur = { id: "NEW", max: AMT }; $("#curMsg").textContent = ""; }
       else { S.cur = null; $("#curMsg").textContent = "This bill is not on your plan."; }
       $("#curBox").style.display = S.cur ? "grid" : "none";
@@ -270,7 +271,7 @@ html[data-theme="dark"] .tile.on,html[data-theme="dark"] .tot,html[data-theme="d
         return '<div class="row"><div class="th" data-v="' + esc(u) + '">' + (u ? '<img src="' + esc(u) + '" alt="Bill" onerror="this.parentNode.textContent=\'No photo\'">' : "No photo") + "</div>" +
           "<div><b>Invoice No. " + esc(x.invoice_no) + "</b><small class=\"muted\" style=\"display:block\">\ud83d\udcc5 " + dmy(x.invoice_date) + "</small><span class=\"due small\">Due: " + money(x.outstanding) + "</span>" +
           (Number(x.pendingAmount) > 0 ? "<small class=\"muted\" style=\"display:block\">" + money(x.pendingAmount) + " waiting for approval</small>" : "") + "</div>" +
-          (av > 0 ? '<button type="button" class="btn" data-t="' + id + '">Collect</button>' : '<span class="muted">Pending</span>') +
+          (av > 0 ? '<button type="button" class="btn" data-t="' + id + '">Collect</button>' : '<span class="muted">Collected</span>') +
           '<div class="more" id="more_' + id + '"><input data-oa="' + id + '" type="number" min="0" max="' + av.toFixed(2) + '" step="0.01" placeholder="Enter amount (max ' + av.toFixed(2) + ')">' +
           '<div class="photos" style="grid-template-columns:120px"><div class="ph" data-op="' + id + '" style="display:none"></div><button type="button" class="ph" data-oadd="' + id + '"><span>\ud83d\udcf7</span>Add photo</button></div>' +
           '<input type="file" data-of="' + id + '" accept="image/jpeg,image/png,image/webp" capture="environment" style="display:none"></div></div>';
