@@ -36,7 +36,7 @@
     ov.id = "gml-ov";
     ov.setAttribute("role", "status");
     ov.setAttribute("aria-live", "polite");
-    ov.innerHTML = '<div id="gml-box"><div id="gml-sp"></div><span>Working…</span></div>';
+    ov.innerHTML = '<div id="gml-box"><div id="gml-sp"></div><span>Loading..Please wait</span></div>';
     (document.body || document.documentElement).appendChild(bar);
     (document.body || document.documentElement).appendChild(ov);
   }
@@ -109,6 +109,23 @@
     }, true);
   });
 
+  // A page can ask "Leave this page?" (an unsaved order, for example). The browser shows that prompt while handling the click,
+  // BEFORE the delayed begin() below runs, and it never tells the page whether the user chose Cancel. Starting the spinner
+  // afterwards left it hanging until the 25 s safety timer. So: note whether the page asked for the prompt, and if it did,
+  // do not start the spinner (when the user chooses Leave, the next page shows its own progress bar).
+  var leavePrompted = false;
+  function noteLeave(e) {
+    if (e.defaultPrevented || e.returnValue) leavePrompted = true;
+  }
+  // Re-added on every click so it runs after the page's own beforeunload handler and can see what that handler asked for.
+  function watchLeave() {
+    leavePrompted = false;
+    window.removeEventListener("beforeunload", noteLeave);
+    window.addEventListener("beforeunload", noteLeave);
+  }
+  document.addEventListener("click", watchLeave, true);
+  document.addEventListener("submit", watchLeave, true);
+
   // Same-origin navigation: progress bar now, spinner only if it takes longer.
   document.addEventListener("click", function (e) {
     var a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
@@ -124,13 +141,13 @@
     if (u.pathname === location.pathname && u.search === location.search && u.hash) return;
 
     setTimeout(function () {
-      if (!e.defaultPrevented) begin();
+      if (!e.defaultPrevented && !leavePrompted) begin();
     }, 0);
   }, false);
 
   document.addEventListener("submit", function (e) {
     setTimeout(function () {
-      if (!e.defaultPrevented) begin();
+      if (!e.defaultPrevented && !leavePrompted) begin();
     }, 0);
   }, false);
 

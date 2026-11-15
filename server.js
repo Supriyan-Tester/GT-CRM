@@ -869,6 +869,28 @@ function accessData() {
   const a = stored("gm_admin_access_v1");
   return a && typeof a === "object" && !Array.isArray(a) ? a : {};
 }
+// Menu pages a Sales employee can be given or denied (Home is always shown). Stored in gm_admin_access_v1 as "pg:<page>" with a "pg:set" marker.
+const SALES_PAGES = [
+  "customers",
+  "orders",
+  "products",
+  "payments",
+  "payhist",
+  "cash",
+  "route",
+  "attendance",
+];
+const SALES_COLLECT_PAGES = ["payments", "payhist", "cash"];
+// Pages shown in a Sales employee's menu. Before an admin edits it: the usual pages, plus the collection pages if they already hold the collections permission.
+function salesMenuOf(id) {
+  const a = accessData()[id];
+  if (Array.isArray(a) && a.indexOf("pg:set") > -1)
+    return SALES_PAGES.filter((x) => a.indexOf("pg:" + x) > -1);
+  const base = ["customers", "orders", "products", "route", "attendance"];
+  return Array.isArray(a) && a.indexOf("sales") > -1
+    ? base.concat(SALES_COLLECT_PAGES)
+    : base;
+}
 // The account an admin-side or Sales employee signs in as (null for delivery-app staff or an unknown id).
 function empAccount(id) {
   const w = (workerData().workers || []).filter((x) => x && x.id === id)[0];
@@ -888,9 +910,9 @@ function empAccount(id) {
         : MODULES.filter(
             (m) =>
               m === EMP_ROLE_MODULE[role] ||
-              (role !== "Sales" &&
-                Array.isArray(extra) &&
-                extra.indexOf(m) > -1),
+              (Array.isArray(extra) &&
+                extra.indexOf(m) > -1 &&
+                (role !== "Sales" || m === "sales")),
           ),
     status: w.active === false ? "inactive" : "active",
     emp: true,
@@ -3574,6 +3596,12 @@ function api(req, res, url) {
       perms: ac ? modsOf(ac) : undefined,
       full: ac ? isFull(ac) : undefined,
       super: ac ? isSuper(ac) : undefined,
+      menu:
+        s.role === "sales"
+          ? s.emp
+            ? salesMenuOf(s.id)
+            : SALES_PAGES.slice()
+          : undefined,
     });
   }
   if (p === "/api/change-password" && req.method === "POST")
@@ -3794,6 +3822,7 @@ function api(req, res, url) {
       return send(res, 200, {
         ok: true,
         modules: MODULES,
+        salesPages: SALES_PAGES,
         people: (workerData().workers || [])
           .filter((w) => w && empPanel(empRoleOf(w.id)) !== "worker")
           .map((w) => {
@@ -3808,10 +3837,13 @@ function api(req, res, url) {
               full: role === "Admin",
               panel: empPanel(role),
               base: EMP_ROLE_MODULE[role] || "",
+              pages: empPanel(role) === "sales" ? salesMenuOf(w.id) : undefined,
               perms: MODULES.filter(
                 (m) =>
                   m === EMP_ROLE_MODULE[role] ||
-                  (Array.isArray(acc[w.id]) && acc[w.id].indexOf(m) > -1),
+                  (Array.isArray(acc[w.id]) &&
+                    acc[w.id].indexOf(m) > -1 &&
+                    (role !== "Sales" || m === "sales")),
               ),
             };
           }),
@@ -3829,17 +3861,32 @@ function api(req, res, url) {
           if (
             !(workerData().workers || []).some((w) => w && w.id === id) ||
             role === "Admin" ||
-            role === "Sales" ||
             empPanel(role) === "worker"
           )
             return send(res, 400, {
               error:
-                "Access can only be set for Billing and Inventory employees.",
+                "Access can only be set for Sales, Billing and Inventory employees.",
             });
           const acc = Object.assign({}, accessData()),
             list = MODULES.filter(
-              (m) => b.perms.indexOf(m) > -1 && m !== EMP_ROLE_MODULE[role],
+              (m) =>
+                b.perms.indexOf(m) > -1 &&
+                m !== EMP_ROLE_MODULE[role] &&
+                (role !== "Sales" || m === "sales"),
             );
+          if (role === "Sales") {
+            const pages = SALES_PAGES.filter(
+              (x) => Array.isArray(b.pages) && b.pages.indexOf(x) > -1,
+            );
+            // Any collection page ticked means the collections permission; none ticked takes it away.
+            const sl = pages.some((x) => SALES_COLLECT_PAGES.indexOf(x) > -1)
+              ? ["sales"]
+              : [];
+            list.length = 0;
+            sl
+              .concat(["pg:set"], pages.map((x) => "pg:" + x))
+              .forEach((x) => list.push(x));
+          }
           if (list.length) acc[id] = list;
           else delete acc[id];
           setItem("gm_admin_access_v1", JSON.stringify(acc));

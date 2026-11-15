@@ -2748,7 +2748,9 @@ body:not(:has(.a-main))
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  body:not(:has(.a-main)) * {
+  /* Decorative motion stops; loading spinners keep turning so people can see work is in progress */
+  body:not(:has(.a-main))
+    *:not([class*="spin" i]):not(#gml-sp):not(.i-ld) {
     animation: none !important;
     transition: none !important;
   }

@@ -264,14 +264,17 @@
           });
           if (i < 0 || LIST.length < 2) return;
           var t = LIST[(i + d + LIST.length) % LIST.length];
-          if (
-            Object.keys(cart).length &&
-            !confirm("Leave this order? Items not saved as a draft will be lost.")
-          )
-            return;
-          placed = true;
-          location.href =
-            "order.html?c=" + encodeURIComponent(t.code) + Sales.fromQ();
+          function go() {
+            placed = true;
+            location.href =
+              "order.html?c=" + encodeURIComponent(t.code) + Sales.fromQ();
+          }
+          if (Object.keys(cart).length)
+            Sales.confirm(
+              { title: "Leave this order?", text: "This order is not saved yet. If you leave now, the items you added will be lost.", yes: "Leave", no: "Back to order" },
+              go,
+            );
+          else go();
         }
         function notifyOut(p, id) {
           Sales.watch(id, true)
@@ -286,10 +289,10 @@
         // Scan a barcode with the camera; matches the product barcode or code
         function scan() {
           if (!("BarcodeDetector" in window) || !navigator.mediaDevices) {
-            var t = prompt(
-              "Camera scan is not supported here. Type the barcode or product code:",
+            Sales.confirm(
+              { title: "Find a product", text: "Camera scan is not supported here. Type the barcode or product code.", input: "Barcode or product code", yes: "Search", no: "Cancel" },
+              found,
             );
-            if (t) found(t);
             return;
           }
           var ov = document.createElement("div");
@@ -616,10 +619,13 @@
           };
           var cl = document.getElementById("clear");
           cl.onclick = function () {
-            if (confirm("Remove all items from this order?")) {
-              cart = {};
-              refresh();
-            }
+            Sales.confirm(
+              { title: "Remove all items?", text: "Every item you added to this order will be removed.", yes: "Remove all", no: "Keep items" },
+              function () {
+                cart = {};
+                refresh();
+              },
+            );
           };
           var a = document.getElementById("adsc");
           if (a)
@@ -761,11 +767,62 @@
             '<div class="grid2"><a class="btn wide" href="orders.html?o=' +
             encodeURIComponent(o.id) +
             '">View Order Details</a>' +
+            '<a class="btn teal wide" href="collect-sheet.html?c=' +
+            encodeURIComponent(CODE) +
+            "&o=" +
+            encodeURIComponent(o.id) +
+            '">Collect Payment</a>' +
             '<a class="btn line wide" href="route.html">Back to My Route</a><a class="btn line wide" href="home.html">Back to Home</a></div></div>';
           window.scrollTo(0, 0);
         }
+        // Leaving with items in the cart: show our own popup instead of Chrome's "Leave site?" box.
+        var leaving = false;
+        function unsaved() {
+          return !placed && !leaving && Object.keys(cart).length > 0;
+        }
+        function askLeave(onLeave) {
+          Sales.confirm(
+            { title: "Leave this order?", text: "This order is not saved yet. If you leave now, the items you added will be lost.", yes: "Leave", no: "Back to order" },
+            function () {
+              leaving = true;
+              onLeave();
+            },
+          );
+        }
+        // In-app links (back arrow, Home, Customers…)
+        document.addEventListener(
+          "click",
+          function (e) {
+            var a = e.target.closest && e.target.closest("a[href]");
+            if (!a || !unsaved() || a.target === "_blank" || /^(#|javascript:)/i.test(a.getAttribute("href"))) return;
+            e.preventDefault();
+            e.stopPropagation();
+            askLeave(function () {
+              location.href = a.href;
+            });
+          },
+          true
+        );
+        // Phone / browser Back button: keep one extra history entry so Back can be caught and asked about.
+        try {
+          history.pushState({ orderGuard: 1 }, "");
+        } catch (x) {}
+        window.addEventListener("popstate", function () {
+          if (unsaved()) {
+            try {
+              history.pushState({ orderGuard: 1 }, "");
+            } catch (x) {}
+            askLeave(function () {
+              history.go(-2);
+            });
+          } else if (!leaving) {
+            leaving = true;
+            history.back();
+          }
+        });
+        // Closing the tab or refreshing: Chrome only allows its own box here.
         window.addEventListener("beforeunload", function (e) {
-          if (!placed && Object.keys(cart).length) {
+          if (unsaved()) {
             e.preventDefault();
             e.returnValue = "";
           }

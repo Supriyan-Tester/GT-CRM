@@ -56,7 +56,7 @@ assert(attendanceRouteSource.includes("pendingEntry"), "Attendance GET response 
 assert(attendanceRouteSource.includes("previous attendance session before punching in again"), "API prevents a new punch-in while an overnight session remains open");
 assert(attendanceRouteSource.includes('actorOf(s).name + " punched in", "Punched in at "') && attendanceRouteSource.includes('actorOf(s).name + " punched out", "Punched out"'), "Admin punch notifications put the person's name in the heading and the time in the message");
 assert.strictEqual(handleSalesAttendanceRoute({ p: "/api/sales/orders" }), null, "attendance module does not intercept unrelated Sales routes");
-assert(cssSource.includes("@media (max-width:640px)") && cssSource.includes(".sa-row"), "Attendance UI includes mobile responsive styling");
+assert(/@media \(max-width:\s*640px\)/.test(cssSource) && cssSource.includes(".sa-row"), "Attendance UI includes mobile responsive styling");
 (async () => {
   try {
     fs.mkdirSync(app, { recursive: true });

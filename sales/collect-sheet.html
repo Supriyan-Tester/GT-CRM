@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script src="../shared/loading.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Collect payment - General Traders Sales</title><link rel="stylesheet" href="sales.css"><link rel="stylesheet" href="../shared/dropdown.css">
+  <style>
+    .cs-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:15px;margin-bottom:13px;display:grid;gap:10px}
+    .cs-card h3{font-size:15px;margin:0}
+    .cs-hint{font-size:12px;color:var(--muted);line-height:1.5}
+    .cs-shop b{font-size:17px}.cs-shop small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+    #csBills{background:none;border:0;padding:0}
+    .cs-hero{background:linear-gradient(135deg,#0d9488,#0f766e);color:#fff;border-radius:18px;padding:18px 20px;display:grid;gap:4px}
+    .cs-hero span{font-size:14px;opacity:.9}.cs-hero b{font-size:34px;line-height:1.15;font-weight:800}.cs-hero small{font-size:14px;opacity:.9}
+    .cs-bill{border:1px solid var(--border);border-left:5px solid #dc2626;border-radius:14px;padding:13px 14px;background:var(--card);display:grid;gap:10px}
+    .cs-bill.late{border-left-color:#d97706}
+    .cs-bill .top{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center}
+    .cs-bill .amt{font-size:20px;font-weight:800;color:#dc2626;text-align:right}.cs-bill.late .amt{color:#d97706}
+    .cs-bill .tags{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+    .cs-tag{font-size:12px;font-weight:700;border-radius:999px;padding:4px 10px;background:rgba(217,119,6,.14);color:#d97706}.cs-tag.red{background:rgba(220,38,38,.12);color:#dc2626}
+    .cs-bill .act{justify-self:end}.cs-bill .cs-pick{background:#0d9488;color:#fff;border-color:#0d9488;padding:11px 20px;font-size:15px;border-radius:12px}.cs-bill .cs-pick.on{background:#0f766e;border-color:#0f766e}
+    .cs-order{background:rgba(34,197,94,.14);color:#15803d;border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600}
+    .cs-bill .top b{font-size:14px}.cs-bill small{display:block;color:var(--muted);font-size:12px}
+    .cs-more{display:none;gap:9px}.cs-more.open{display:grid}
+    .cs-more input[type=number],.cs-sp input,.cs-note{width:100%;min-height:44px;border:1px solid var(--border);border-radius:10px;padding:9px 11px;background:var(--bg);color:var(--text);font:inherit;min-width:0}
+    .cs-note{min-height:72px;resize:vertical}
+    .cs-amt{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px}
+    .cs-pick{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:9px 14px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+    .cs-pick.on{background:var(--pri,var(--primary));color:#fff;border-color:var(--pri,var(--primary))}
+    .cs-photo{display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:center}
+    .cs-thumb{width:72px;height:72px;border:1.5px dashed var(--border);border-radius:12px;display:grid;place-items:center;font-size:11px;color:var(--muted);overflow:hidden;text-align:center;background:var(--bg)}
+    .cs-thumb img{width:100%;height:100%;object-fit:cover}
+    .cs-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .cs-tile{border:1px solid var(--border);border-radius:12px;padding:12px 6px;text-align:center;background:var(--card);color:var(--text);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+    .cs-tile.on{border:2px solid var(--pri,var(--primary));background:var(--t-info)}
+    .cs-seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--border);border-radius:999px;padding:3px;background:var(--bg)}
+    .cs-seg button{border:0;border-radius:999px;padding:9px;font:inherit;font-size:14px;font-weight:700;background:none;color:var(--text);cursor:pointer}
+    .cs-seg button.on{background:var(--pri,var(--primary));color:#fff}
+    .cs-sp{display:none;gap:8px}.cs-sp.open{display:grid}.cs-sp label{font-size:12px;color:var(--muted);font-weight:700;display:grid;gap:4px}
+    .cs-total{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:20px;padding-top:6px}
+    .cs-err{color:var(--danger,#dc2626);font-size:13px;min-height:16px}
+    .cs-bad{border-color:var(--danger,#dc2626)!important;box-shadow:0 0 0 3px rgba(220,38,38,.16)}
+    .cs-done{text-align:center;display:grid;gap:12px;justify-items:center}
+    .cs-tick{width:62px;height:62px;border-radius:50%;background:#16a34a;color:#fff;font-size:32px;display:grid;place-items:center}
+    .cs-sum{width:100%;border:1px solid var(--border);border-radius:12px;padding:2px 12px;text-align:left}.cs-sum div{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--border);font-size:14px}.cs-sum div:first-child{border-top:0}
+  </style>
+</head><body><div id="app"></div><script src="../assets/icons.js"></script><script src="sales.js"></script><script src="../shared/dropdown.js"></script>
+<script>
+Sales.start("payments",function(me,hello,main){
+  var Q=new URLSearchParams(location.search),CODE=Q.get("c")||"",ORDER=Q.get("o")||"";
+  if(!CODE)return location.replace("customers.html");
+  hello.innerHTML="<h1>Collect payment</h1><p>Record money received from this shop</p>";
+  var esc=Sales.esc,SPN={cash:"Cash",upi:"UPI",bank_transfer:"Bank transfer"};
+  var S={method:"cash",split:false,bills:[],sel:{},files:{},busy:false,total:0,shop:null};
+  function $(s){return document.querySelector(s)}
+  function money(v){return "₹"+Number(v||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}
+  function dmy(d){var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(d||"");return m?m[3]+"/"+m[2]+"/"+m[1]:esc(d)}
+  function pz(v){return Math.round(Number(v)*100)}
+  function fe(msg,sel){var e=new Error(msg);e.sel=sel;return e}
+  function rawUrl(f){return new Promise(function(ok,no){var r=new FileReader();r.onload=function(){ok(r.result)};r.onerror=no;r.readAsDataURL(f)})}
+  // Phone photos are shrunk to at most 1600 px (JPEG) before upload so they stay well under the 5 MB limit.
+  function dataUrl(f){return new Promise(function(ok){var url=URL.createObjectURL(f),img=new Image();
+    img.onload=function(){try{var k=Math.min(1,1600/Math.max(img.naturalWidth,img.naturalHeight)),c=document.createElement("canvas");c.width=Math.round(img.naturalWidth*k);c.height=Math.round(img.naturalHeight*k);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);ok(c.toDataURL("image/jpeg",0.72))}catch(e){URL.revokeObjectURL(url);rawUrl(f).then(ok)}};
+    img.onerror=function(){URL.revokeObjectURL(url);rawUrl(f).then(ok)};img.src=url})}
+
+  main.innerHTML=
+    (ORDER?'<div class="cs-order">Order #'+esc(ORDER)+' placed. You can collect any unpaid bills from this shop below.</div>':"")+
+    '<div class="cs-card cs-shop" id="csShop"><b>Loading shop...</b></div>'+
+    '<div class="cs-card" id="csBills"><h3>Unpaid bills</h3><div class="cs-hint">Loading bills...</div></div>'+
+    '<div id="csRest" style="display:none">'+
+      '<div class="cs-card"><h3>Payment method</h3><div class="cs-tiles" id="csTiles"><button type="button" class="cs-tile on" data-m="cash">Cash</button><button type="button" class="cs-tile" data-m="upi">UPI</button><button type="button" class="cs-tile" data-m="bank_transfer">Bank</button></div>'+
+      '<div class="cs-seg"><button type="button" class="on" id="csOne">Single</button><button type="button" id="csSplit">Split</button></div>'+
+      '<div class="cs-sp" id="csSpBox"><label>Cash amount<input id="sp_cash" type="number" min="0" step="0.01" placeholder="0.00"></label><label>UPI amount<input id="sp_upi" type="number" min="0" step="0.01" placeholder="0.00"></label><label>Bank transfer amount<input id="sp_bank_transfer" type="number" min="0" step="0.01" placeholder="0.00"></label><div class="cs-hint" id="csSpMsg"></div></div></div>'+
+      '<div class="cs-card"><h3>Note <span class="cs-hint">(optional)</span></h3><textarea class="cs-note" id="csNote" maxlength="250" placeholder="Reference or remarks"></textarea></div>'+
+      '<div class="cs-card"><div class="cs-total"><span>Total collected</span><b id="csTotal">₹0.00</b></div><div class="cs-err" id="csErr" role="status"></div>'+
+      '<button class="btn" id="csGo" type="button" disabled style="width:100%">Save collection</button><p class="cs-hint">Every bill you collect needs its own bill photo. The collection waits for Billing/Admin approval; the shop\'s balance changes only after approval.</p></div>'+
+    '</div><div id="csDone"></div>';
+
+  function splitPayments(){var o=[];["cash","upi","bank_transfer"].forEach(function(m){var v=Number($("#sp_"+m).value);if(v>0)o.push({method:m,amount:v})});return o}
+  function splitSum(){return splitPayments().reduce(function(n,p){return n+pz(p.amount)},0)}
+  function amtOf(id){var i=$('[data-a="'+id+'"]');return i?Number(i.value)||0:0}
+  function recalc(){
+    var n=0;Object.keys(S.sel).forEach(function(id){if(S.sel[id])n+=amtOf(id)});
+    S.total=Math.round(n*100)/100;$("#csTotal").textContent=money(S.total);
+    var ok=S.total>0;
+    $("#csOne").classList.toggle("on",!S.split);$("#csSplit").classList.toggle("on",S.split);
+    $("#csSpBox").classList.toggle("open",S.split);$("#csTiles").style.display=S.split?"none":"grid";
+    if(S.split){
+      var p=splitPayments(),m=$("#csSpMsg"),rem=(pz(S.total)-splitSum())/100;
+      if(!(S.total>0)){m.textContent="Select a bill and enter its amount first.";ok=false}
+      else if(rem!==0){m.textContent="Total "+money(S.total)+" · "+(rem>0?"Remaining "+money(rem):"Over by "+money(-rem));ok=false}
+      else if(p.length<2){m.textContent="Use at least two payment methods.";ok=false}
+      else m.textContent="✓ Matches total: "+p.map(function(q){return SPN[q.method]+" "+money(q.amount)}).join(" + ");
+    }
+    $("#csGo").disabled=!ok||S.busy;
+  }
+  function drawBills(){
+    var due=S.bills.reduce(function(a,x){return a+Number(x.outstanding||0)},0);
+    if(!S.bills.length){$("#csBills").innerHTML='<h3>Unpaid bills</h3><div class="cs-hint">✓ This shop has no unpaid bill to collect.</div>';return}
+    var n=S.bills.length,now=new Date();
+    $("#csBills").innerHTML='<div class="cs-hero"><span>Total outstanding</span><b>'+money(due)+'</b><small>'+n+' unpaid bill'+(n===1?"":"s")+'</small></div>'+
+      S.bills.map(function(x){
+        var av=Number(x.availableToCollect),id=esc(x.id),pa=Number(x.pendingAmount)>0,
+            m=/^(\d{4})-(\d{2})-(\d{2})/.exec(x.invoice_date||""),age=m?Math.floor((now-new Date(+m[1],+m[2]-1,+m[3]))/864e5):0,late=age>30;
+        return '<div class="cs-bill'+(late?" late":"")+'"><div class="top"><div><b>Invoice '+esc(x.invoice_no)+'</b><small>'+dmy(x.invoice_date)+'</small></div><div class="amt">'+money(x.outstanding)+'</div>'+
+          '<div class="tags">'+(pa?'<span class="cs-tag">'+money(x.pendingAmount)+' waiting approval</span>':"")+(late?'<span class="cs-tag red">'+age+' days overdue</span>':"")+'</div>'+
+          '<div class="act">'+(av>0?'<button type="button" class="cs-pick" data-t="'+id+'">Collect</button>':'<span class="cs-hint">Waiting for approval</span>')+'</div></div>'+
+          (av>0?'<div class="cs-more" id="more_'+id+'"><div class="cs-amt"><input data-a="'+id+'" type="number" min="0.01" max="'+av.toFixed(2)+'" step="0.01" inputmode="decimal" placeholder="Amount (max '+av.toFixed(2)+')"><button type="button" class="cs-pick" data-full="'+id+'">Full amount</button></div>'+
+            '<div class="cs-photo"><div class="cs-thumb" data-th="'+id+'">No photo</div><div><button type="button" class="cs-pick" data-add="'+id+'">Take bill photo</button><input type="file" data-f="'+id+'" accept="image/jpeg,image/png,image/webp" capture="environment" style="display:none"></div></div></div>':"")+'</div>';
+      }).join("");
+    document.querySelectorAll("[data-t]").forEach(function(b){b.onclick=function(){
+      var id=b.getAttribute("data-t"),on=!S.sel[id];S.sel[id]=on;b.className="cs-pick"+(on?" on":"");b.textContent=on?"Selected":"Collect";
+      $("#more_"+id).className="cs-more"+(on?" open":"");recalc()}});
+    document.querySelectorAll("[data-full]").forEach(function(b){b.onclick=function(){var id=b.getAttribute("data-full"),i=$('[data-a="'+id+'"]');i.value=Number(i.max).toFixed(2);recalc()}});
+    document.querySelectorAll("[data-a]").forEach(function(i){i.oninput=function(){
+      var m=/^(-?\d*\.\d{2})\d+$/.exec(i.value);if(m)i.value=m[1];if(Number(i.value)>Number(i.max))i.value=Number(i.max).toFixed(2);recalc()}});
+    document.querySelectorAll("[data-add]").forEach(function(b){var id=b.getAttribute("data-add"),f=$('[data-f="'+id+'"]');
+      b.onclick=function(){f.click()};
+      f.onchange=function(){var file=f.files[0];if(!file)return;S.files[id]=file;var t=$('[data-th="'+id+'"]');t.innerHTML='<img src="'+URL.createObjectURL(file)+'" alt="Bill photo">';b.textContent="Change photo"}});
+  }
+  function load(){
+    Sales.data().then(function(d){
+      var c=(d.customers||[]).filter(function(x){return String(x.code)===CODE})[0]||{code:CODE,name:CODE};S.shop=c;
+      $("#csShop").innerHTML='<b>'+esc(c.name||c.shopName||CODE)+'</b><small>'+esc([c.code,c.area].filter(Boolean).join(" · "))+'</small>'+(c.phone?'<small>☎ '+esc(c.phone)+'</small>':"");
+    }).catch(function(){$("#csShop").innerHTML="<b>"+esc(CODE)+"</b>"});
+    Sales.api("/api/accounts/customers/"+encodeURIComponent(CODE)+"/invoices").then(function(d){
+      S.bills=(d.invoices||[]).filter(function(x){return Number(x.outstanding)>0});
+      drawBills();
+      if(S.bills.some(function(x){return Number(x.availableToCollect)>0}))$("#csRest").style.display="";
+      recalc();
+    }).catch(function(e){$("#csBills").innerHTML='<h3>Unpaid bills</h3><div class="cs-hint">'+esc(/not found/i.test(e.message)?"This shop has no bills in Accounts yet, or it is not assigned to you.":e.message)+"</div>"});
+  }
+  $("#csTiles").onclick=function(e){var t=e.target.closest("[data-m]");if(!t)return;S.method=t.getAttribute("data-m");document.querySelectorAll(".cs-tile").forEach(function(x){x.classList.toggle("on",x===t)})};
+  $("#csOne").onclick=function(){S.split=false;recalc()};$("#csSplit").onclick=function(){S.split=true;recalc()};
+  ["cash","upi","bank_transfer"].forEach(function(m){$("#sp_"+m).oninput=recalc});
+
+  function showErr(e){
+    $("#csErr").textContent=e.message||"Something went wrong";
+    document.querySelectorAll(".cs-bad").forEach(function(x){x.classList.remove("cs-bad")});
+    var el=e.sel&&$(e.sel);if(el){el.classList.add("cs-bad");try{el.scrollIntoView({block:"center",behavior:"smooth"})}catch(x){}}
+  }
+  $("#csGo").onclick=async function(){
+    if(S.busy)return;var btn=this;$("#csErr").textContent="";
+    document.querySelectorAll(".cs-bad").forEach(function(x){x.classList.remove("cs-bad")});
+    S.busy=true;btn.disabled=true;btn.textContent="Saving...";
+    try{
+      var allocations=[];
+      for(var id of Object.keys(S.sel)){
+        if(!S.sel[id])continue;var a=amtOf(id),f=S.files[id];
+        if(!(a>0))throw fe("Enter an amount for every bill you selected.",'[data-a="'+id+'"]');
+        if(!f)throw fe("Add a bill photo for every bill you collect.",'[data-add="'+id+'"]');
+        if(f.size>12*1024*1024)throw fe("That photo is too large. Take it again.",'[data-add="'+id+'"]');
+        var u=await Sales.api("/api/accounts/evidence",{data:await dataUrl(f)});
+        allocations.push({invoiceId:id,amount:a,evidencePath:u.evidencePath});
+      }
+      if(!allocations.length)throw fe("Select a bill and enter the amount received.");
+      var key=window.crypto&&crypto.randomUUID?crypto.randomUUID():"COL-"+Date.now()+"-"+Math.random().toString(36).slice(2),label,note=$("#csNote").value;
+      if(S.split){
+        if(splitSum()!==pz(S.total)||splitPayments().length<2)throw fe("The payment amounts must add up to the total.");
+        var sp=await Sales.api("/api/accounts/collections/split",{customerCode:CODE,payments:splitPayments(),allocations:allocations,requestKey:key,note:note});
+        label=(sp.parts||splitPayments()).map(function(q){return SPN[q.method]}).join(" + ");
+      }else{
+        await Sales.api("/api/accounts/collections",{customerCode:CODE,method:S.method,allocations:allocations,requestKey:key,note:note});
+        label=SPN[S.method];
+      }
+      var when=new Date().toLocaleString("en-IN",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",timeZone:"Asia/Kolkata"});
+      $("#csRest").style.display="none";$("#csBills").style.display="none";
+      $("#csDone").innerHTML='<div class="cs-card cs-done"><div class="cs-tick">✓</div><h2 style="margin:0">Payment collected!</h2><b style="font-size:24px">'+money(S.total)+'</b>'+
+        '<div class="cs-sum"><div><span>Shop</span><b>'+esc((S.shop&&S.shop.name)||CODE)+'</b></div><div><span>Method</span><b>'+esc(label)+'</b></div><div><span>Bill photos</span><b>'+allocations.length+' attached</b></div><div><span>Collected on</span><b>'+when+'</b></div><div><span>Status</span><b>Waiting for office approval</b></div></div>'+
+        '<a class="btn wide" style="width:100%" href="shop.html?c='+encodeURIComponent(CODE)+'">Back to shop</a><a class="btn line wide" style="width:100%" href="collections-history.html">Collection history</a><a class="btn line wide" style="width:100%" href="customers.html">Next shop</a></div>';
+      window.scrollTo(0,0);
+    }catch(e){S.busy=false;btn.textContent="Save collection";showErr(e);recalc();return}
+    S.busy=false;
+  };
+  load();
+});
+</script></body></html>

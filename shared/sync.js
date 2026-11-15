@@ -124,7 +124,77 @@ window.GMImg = {
   var PROT =
       /^(gm_admin_v1|gm_admin_workers_v1|gm_admin_wprofile_v1|gm_pintasks_v1|gm_depot_v1|gm_admin_account_v1|gm_admin_products_v1|gm_admin_vehicles_v1|gm_admin_vfuel_v1|gm_admin_vehsync_v1|gm_admin_vservice_v1|gm_admin_ledger_v1|gm_admin_business_v1|gm_admin_settings_v1|gm_admin_attedit_v1)$/,
     krev = {},
-    readRev = {};
+    readRev = {},
+    baseVal = {}, // the value of a shared record as last confirmed by the server; used to merge a late save instead of failing
+    hydrated = false, // true once the first server read has finished (until then the page does not know any revision numbers)
+    tries = {};
+  // A revision number may only move forward. A slow, older server answer must never pull it back (that caused false 'stale' errors).
+  function setRev(k, r) {
+    if (typeof r !== "number") return;
+    if (typeof krev[k] !== "number" || r > krev[k]) krev[k] = r;
+  }
+  // The version to send with a save: what the page last read, or else the newest the browser knows.
+  function baseFor(k) {
+    if (typeof readRev[k] === "number") return readRev[k];
+    if (typeof krev[k] === "number") return krev[k];
+    return null;
+  }
+  // Employee records are many small independent entries, so a late save can be merged field by field with the server's copy.
+  var MERGE = /^(gm_admin_wprofile_v1|gm_admin_workers_v1)$/;
+  function same(a, b) {
+    return JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b);
+  }
+  function isObj(x) {
+    return x && typeof x === "object" && !Array.isArray(x);
+  }
+  // Keep every field this page changed (compared with what it started from); take everything else from the server.
+  function mergeFields(base, local, server) {
+    base = isObj(base) ? base : {};
+    local = isObj(local) ? local : {};
+    var out = isObj(server) ? JSON.parse(JSON.stringify(server)) : {};
+    Object.keys(local).forEach(function (f) {
+      if (!same(local[f], base[f])) out[f] = local[f];
+    });
+    return out;
+  }
+  // Returns the merged JSON text, or null when the two copies really clash (then the user is asked, as before).
+  function mergeShared(k, baseS, localS, serverS) {
+    try {
+      var b = JSON.parse(baseS), l = JSON.parse(localS), sv = JSON.parse(serverS);
+      if (k === "gm_admin_wprofile_v1") {
+        if (!isObj(b) || !isObj(l) || !isObj(sv)) return null;
+        var out = JSON.parse(JSON.stringify(sv));
+        Object.keys(l).forEach(function (id) {
+          if (same(l[id], b[id])) return; // this page did not touch this employee
+          out[id] = mergeFields(b[id], l[id], sv[id]);
+        });
+        return JSON.stringify(out);
+      }
+      if (k === "gm_admin_workers_v1") {
+        if (!isObj(b) || !isObj(l) || !isObj(sv)) return null;
+        var res = mergeFields(b, l, sv), clash = false;
+        var bw = Array.isArray(b.workers) ? b.workers : [], lw = Array.isArray(l.workers) ? l.workers : [], sw = Array.isArray(sv.workers) ? sv.workers : [];
+        var byId = function (a) { var m = {}; a.forEach(function (w) { if (w && w.id) m[w.id] = w; }); return m; };
+        var bm = byId(bw), sm = byId(sw), list = sw.map(function (w) { return JSON.parse(JSON.stringify(w)); });
+        lw.forEach(function (w) {
+          if (!w || !w.id) return;
+          if (same(w, bm[w.id])) return;
+          if (!bm[w.id]) {
+            // a new employee added on this page: fine unless another device already used the same id for someone else
+            if (sm[w.id]) clash = true;
+            else list.push(w);
+            return;
+          }
+          for (var i = 0; i < list.length; i++)
+            if (list[i].id === w.id) list[i] = mergeFields(bm[w.id], w, list[i]);
+        });
+        if (clash) return null;
+        res.workers = list;
+        return JSON.stringify(res);
+      }
+    } catch (e) {}
+    return null;
+  }
   function staleBanner() {
     try {
       if (document.getElementById("gmStale") || !document.body) return;
@@ -236,9 +306,7 @@ window.GMImg = {
     } else {
       m[k] = {
         at: Date.now(),
-        base: PROT.test(k) && typeof readRev[k] === "number"
-          ? readRev[k]
-          : null
+        base: PROT.test(k) ? baseFor(k) : null
       };
     }
     dirtySave(m);
@@ -303,12 +371,15 @@ window.GMImg = {
   var inflight = {};
   function send(k, force) {
     if (!(k in pending) || isConflict(k) || (inflight[k] && !force)) return;
+    // Right after the page opens, the revision numbers are not known yet. Sending now would be refused as 'revision is missing',
+    // so wait for the first server read to finish, then send with the right number.
+    if (isAdmin && PROT.test(k) && !hydrated && baseFor(k) === null) {
+      window.GMSync.ready.then(function () { send(k); });
+      return;
+    }
     var v = pending[k],
-      body = JSON.stringify(
-        isAdmin && PROT.test(k) && typeof readRev[k] === "number"
-          ? { v: v, base: readRev[k] }
-          : { v: v },
-      ),
+      b0 = isAdmin && PROT.test(k) ? baseFor(k) : null,
+      body = JSON.stringify(b0 !== null ? { v: v, base: b0 } : { v: v }),
       opt = {
         method: v === null ? "DELETE" : "PUT",
         headers: { "Content-Type": "application/json" },
@@ -327,8 +398,10 @@ window.GMImg = {
               })
               .then(function (j) {
                 if (j && typeof j.rev === "number" && PROT.test(k)) {
-                  krev[k] = j.rev;
+                  setRev(k, j.rev);
                   readRev[k] = j.rev;
+                  baseVal[k] = v;
+                  delete tries[k];
                 } // the page's copy now equals the server's
                 if (pending[k] === v) {
                   delete pending[k];
@@ -348,32 +421,59 @@ window.GMImg = {
             gmEmit("gm-sync-failed", k);
           } // this account may not save this item; retrying cannot help
           else if (r.status === 409) {
-            // The server refused this save because it breaks a rule (for example the same worker on two plans).
-            // Retrying the same data can never succeed, so drop it, take the server's copy back and tell the page why.
             r.json()
               .catch(function () {
                 return {};
               })
               .then(function (j) {
-                if (pending[k] === v) {
-                  delete pending[k];
-                  delete written[k];
-                  markConflict(k, readRev[k], j && j.rev);
+                // The server refused this save. Either someone saved a newer copy first ("stale"), or the data breaks a rule
+                // (for example the same worker on two plans). Retrying identical data can never succeed.
+                var giveUp = function () {
+                  if (pending[k] === v) {
+                    delete pending[k];
+                    delete written[k];
+                    markConflict(k, readRev[k], j && j.rev);
+                  }
+                  try {
+                    window.dispatchEvent(
+                      new CustomEvent("gm-sync-rejected", {
+                        detail: {
+                          key: k,
+                          error:
+                            (j && j.error) || "The server rejected this change.",
+                        },
+                      }),
+                    );
+                  } catch (e) {}
+                  if (j && j.code === "stale") staleBanner();
+                  rev = 0;
+                  poll();
+                };
+                // Employee records: merge this page's changes into the server's newer copy and save again, with no warning needed.
+                if (
+                  j && j.code === "stale" && MERGE.test(k) && pending[k] === v &&
+                  typeof baseVal[k] === "string" && typeof j.rev === "number" && (tries[k] || 0) < 3
+                ) {
+                  tries[k] = (tries[k] || 0) + 1;
+                  fetch(API + "/state?since=" + (j.rev - 1), { cache: "no-store", credentials: "same-origin" })
+                    .then(function (rr) { return rr.ok ? rr.json() : null; })
+                    .then(function (st) {
+                      var it = st && st.items && st.items[k];
+                      var merged = it && typeof it.v === "string" && pending[k] === v ? mergeShared(k, baseVal[k], v, it.v) : null;
+                      if (merged === null) return giveUp();
+                      setRev(k, it.rev);
+                      readRev[k] = it.rev;
+                      baseVal[k] = it.v;
+                      rawSet.call(ls, k, merged);
+                      pending[k] = merged;
+                      written[k] = Date.now();
+                      send(k);
+                      try { window.dispatchEvent(new Event("gm-sync")); } catch (e) {}
+                    })
+                    .catch(giveUp);
+                  return;
                 }
-                try {
-                  window.dispatchEvent(
-                    new CustomEvent("gm-sync-rejected", {
-                      detail: {
-                        key: k,
-                        error:
-                          (j && j.error) || "The server rejected this change.",
-                      },
-                    }),
-                  );
-                } catch (e) {}
-                if (j && j.code === "stale") staleBanner();
-                rev = 0;
-                poll();
+                giveUp();
               });
           } else gmEmit("gm-sync-failed", k);
         })
@@ -418,10 +518,10 @@ window.GMImg = {
   };
 
   function applyOne(lk, sk, items) {
-    if (PROT.test(lk) && typeof items[sk].rev === "number")
-      krev[lk] = items[sk].rev;
+    if (PROT.test(lk)) setRev(lk, items[sk].rev);
     var v = items[sk].v,
       cur = rawGet.call(ls, lk);
+    if (PROT.test(lk) && typeof v === "string") baseVal[lk] = v; // what the server holds now; used as the starting point for a later merge
     if (v === null) {
       if (cur !== null) {
         rawRem.call(ls, lk);
@@ -444,8 +544,7 @@ window.GMImg = {
         k in savedDirty ||
         (startedAt && (written[k] || 0) >= startedAt)
       ) {
-        if (PROT.test(k) && typeof items[k].rev === "number")
-          krev[k] = items[k].rev;
+        if (PROT.test(k)) setRev(k, items[k].rev);
         continue;
       }
       if (k.indexOf(NS) === 0) {
@@ -599,9 +698,10 @@ window.GMImg = {
     .then(function (r) {
       rev = r.rev || 0;
       hydrate(r.items || {}, true);
+      hydrated = true;
       return true;
     })
-    .catch(function () { return false; });
+    .catch(function () { hydrated = true; return false; });
 
   // 2) Keep in step: pick up other devices' changes and retry anything unsent
   function poll() {

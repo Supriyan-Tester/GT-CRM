@@ -11,7 +11,7 @@ for (const token of ["acInvoiceRows", "acPendingRows", "/api/accounts/customers/
 assert(admin.includes('"accounts.html": ["billing"]'), "Accounts page must be Billing permission gated in navigation");
 assert(admin.includes('"Cash & Accounts"') && admin.includes('["accounts.html", "Accounts & Ledger", "receipt"]') && admin.includes('["accounts-dashboard.html", "Dashboard", "chart"]'), "Cash & Accounts menu group missing");
 assert(server.includes('"accounts.html": ["billing"]'), "Accounts page must be Billing permission gated by server");
-const sales = fs.readFileSync(path.join(root, "sales/collections.html"), "utf8");
+const sales = fs.readFileSync(path.join(root, "sales/collect-sheet.html"), "utf8");
 const worker = fs.readFileSync(path.join(root, "worker/collections.html"), "utf8");
 const routes = fs.readFileSync(path.join(root, "backend/modules/accounts/accounts.routes.js"), "utf8");
 const storage = fs.readFileSync(path.join(root, "storage.js"), "utf8");

@@ -943,10 +943,16 @@
       });
 
       function post(url, obj, cb) {
+        // Give up after 20 s so the sign-in spinner can never spin forever.
+        var ctrl = new AbortController();
+        var timer = setTimeout(function () {
+          ctrl.abort();
+        }, 20000);
         fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(obj),
+          signal: ctrl.signal,
         })
           .then(function (r) {
             return r
@@ -955,10 +961,12 @@
                 return {};
               })
               .then(function (j) {
+                clearTimeout(timer);
                 cb(r, j);
               });
           })
           .catch(function () {
+            clearTimeout(timer);
             cb(
               { ok: false, status: 0 },
               {
@@ -987,9 +995,7 @@
           }
           msg.className = "msg";
           msg.textContent = "";
-          setTimeout(function () {
-            window.location.href = "sales/home.html";
-          }, 300);
+          window.location.href = "sales/home.html";
           return;
         }
         if (j.role === "admin") {

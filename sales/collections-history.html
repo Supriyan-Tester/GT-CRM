@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script src="../shared/loading.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Collection history - General Traders Sales</title><link rel="stylesheet" href="sales.css"><link rel="stylesheet" href="../shared/dropdown.css">
+  <style>
+    .ch-seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:5px;margin-bottom:12px}
+    .ch-seg button{border:0;background:transparent;color:var(--text);border-radius:10px;padding:11px;font:inherit;font-weight:700;cursor:pointer}
+    .ch-seg button.on{background:var(--pri,var(--primary));color:#fff}
+    .ch-total{background:linear-gradient(135deg,#064e3b,#0f766e);color:#fff;border-radius:18px;padding:16px;display:flex;align-items:center;gap:14px;margin-bottom:12px}
+    .ch-total small{display:block;font-size:13px;opacity:.9}.ch-total strong{display:block;font-size:30px;font-weight:800}
+    .ch-total .pill{margin-left:auto;border:1px solid rgba(255,255,255,.55);border-radius:999px;padding:7px 12px;font-weight:700;font-size:13px;white-space:nowrap}
+    .ch-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+    .ch-tile{border-radius:14px;padding:12px;border:1px solid var(--border);background:var(--card)}
+    .ch-tile small{display:block;font-size:12px;color:var(--muted)}.ch-tile strong{font-size:18px;font-weight:800}
+    .ch-sec{display:flex;align-items:center;justify-content:space-between;margin:6px 0 10px}.ch-sec h2{font-size:16px;font-weight:800}
+    .ch-sec select,.ch-day-sel{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:8px 10px;font:inherit;font-size:13px}
+    .ch-day{font-size:13px;font-weight:700;color:var(--muted);margin:14px 2px 6px}
+    .ch-item{background:var(--card);border:1px solid var(--border);border-radius:14px;margin-bottom:8px;overflow:hidden}
+    .ch-row{display:flex;align-items:center;gap:12px;padding:12px;width:100%;border:0;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer}
+    .ch-mid{flex:1;min-width:0}.ch-mid b{display:block;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ch-mid small{color:var(--muted);font-size:12px}
+    .ch-end{text-align:right;flex:none}.ch-end b{display:block;font-size:16px}
+    .ch-m{display:inline-block;margin-top:4px;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;background:rgba(34,197,94,.18);color:#15803d}
+    .ch-m.upi{background:rgba(124,58,237,.16);color:#6d28d9}.ch-m.bank_transfer{background:rgba(59,130,246,.16);color:#1d4ed8}
+    .ch-more{display:none;padding:0 12px 12px;border-top:1px solid var(--border);font-size:13px}.ch-item.open .ch-more{display:block}
+    .ch-more .ln{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--border)}.ch-more .ln:first-child{border-top:0}
+    .ch-more img{width:52px;height:52px;border-radius:8px;object-fit:cover;border:1px solid var(--border);cursor:pointer}
+    .ch-st{font-weight:700}.ch-st.bad{color:var(--danger,#dc2626)}
+    .ch-empty{text-align:center;color:var(--muted);padding:28px 0}
+    #chView{position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;padding:12px}#chView img{max-width:100%;max-height:100%;border-radius:10px}
+  </style>
+</head><body><div id="app"></div><div id="chView"><img id="chImg" alt="Bill photo"></div><script src="../assets/icons.js"></script><script src="sales.js"></script><script src="../shared/dropdown.js"></script>
+<script>
+Sales.start("payhist",function(me,hello,main){
+  hello.innerHTML="<h1>Collection history</h1><p>Your collection records and payments</p>";
+  var esc=Sales.esc;
+  function ymd(d){return new Date(new Date(d).getTime()+5.5*3600e3).toISOString().slice(0,10)}
+  var todayStr=ymd(Date.now()),day=todayStr,mode="today",rows=[],method="all";
+  var MN={cash:"Cash",upi:"UPI",bank_transfer:"Bank"},
+      ST={pending_approval:"Waiting for approval",approved:"Approved",rejected:"Rejected",reversed:"Reversed",correction_requested:"Correction needed"};
+  function money(v){return "₹"+Number(v||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}
+  function tm(d){return new Date(d).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",timeZone:"Asia/Kolkata"})}
+  function dl(d){return new Date(d).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric",timeZone:"Asia/Kolkata"})}
+  // Unlike the delivery screen, rejected and correction-needed collections stay visible here: the salesperson has to act on them.
+  // One visit paid by several methods is stored as several rows: show it as one line.
+  function visits(list){
+    var map={},out=[];
+    list.forEach(function(r){
+      if(r.status==="reversed")return;
+      var k=r.visitRef||r.id,v=map[k];
+      if(!v){v=map[k]={id:k,name:r.customerName,at:r.receivedAt,total:0,counted:0,methods:{},invoices:[],status:r.status,note:r.note};out.push(v)}
+      v.total+=r.total;
+      if(r.status!=="rejected"&&r.status!=="correction_requested")v.counted+=r.total;
+      v.methods[r.method]=(v.methods[r.method]||0)+r.total;
+      r.invoices.forEach(function(i){v.invoices.push({no:i.invoiceNo,amount:i.amount,url:i.evidenceUrl})});
+      if(r.status==="pending_approval"&&v.status==="approved")v.status="pending_approval";
+      if(r.status==="rejected"||r.status==="correction_requested")v.status=r.status;
+    });
+    return out;
+  }
+  function chip(v){var ms=Object.keys(v.methods);return '<span class="ch-m '+(ms.length===1?ms[0]:"")+'">'+ms.map(function(m){return MN[m]}).join(" + ")+"</span>"}
+  function item(v){
+    var nos=v.invoices.map(function(i){return i.no}).filter(function(x,i,a){return x&&a.indexOf(x)===i});
+    var bad=v.status==="rejected"||v.status==="correction_requested";
+    return '<div class="ch-item"><button type="button" class="ch-row" data-open><span class="ch-mid"><b>'+esc(v.name)+'</b><small>Inv '+(nos.length?"#"+esc(nos.join(", #")):"-")+" • "+tm(v.at)+'</small></span><span class="ch-end"><b>'+money(v.total)+"</b>"+chip(v)+'</span></button>'+
+      '<div class="ch-more"><div class="ln"><span>Status</span><span class="ch-st'+(bad?" bad":"")+'">'+esc(ST[v.status]||v.status)+"</span></div>"+
+      Object.keys(v.methods).map(function(m){return '<div class="ln"><span>'+MN[m]+"</span><b>"+money(v.methods[m])+"</b></div>"}).join("")+
+      v.invoices.filter(function(x,i,a){return a.findIndex(function(y){return y.url===x.url})===i}).map(function(i){return '<div class="ln"><span>Invoice #'+esc(i.no)+'</span><span><img data-v="'+esc(i.url)+'" src="'+esc(i.url)+'" alt="Bill photo" onerror="this.style.display=\'none\'"></span></div>'}).join("")+
+      (v.note?'<div class="ln"><span>Note</span><span>'+esc(v.note)+"</span></div>":"")+
+      (bad?'<div class="ln"><span>Next step</span><span>Record this collection again</span></div>':"")+"</div></div>";
+  }
+  function draw(){
+    var vs=visits(rows);
+    if(mode==="today")vs=vs.filter(function(v){return ymd(v.at)===day});
+    var f=vs.filter(function(v){return method==="all"||v.methods[method]});
+    var tot={cash:0,upi:0,bank_transfer:0},shops={};
+    vs.forEach(function(v){
+      if(v.status==="rejected"||v.status==="correction_requested")return; // not counted until recorded again
+      Object.keys(v.methods).forEach(function(m){tot[m]+=v.methods[m]});shops[v.name]=1;
+    });
+    var sum=tot.cash+tot.upi+tot.bank_transfer,n=Object.keys(shops).length,html="";
+    html+='<div class="ch-total"><div><small>'+(mode==="today"?(day===todayStr?"Today's collection":"Collection on "+dl(day+"T12:00:00+05:30")):"All collections")+"</small><strong>"+money(sum)+'</strong></div><span class="pill">'+n+(n===1?" shop":" shops")+"</span></div>"+
+      '<div class="ch-tiles"><div class="ch-tile"><small>Cash</small><strong>'+money(tot.cash)+'</strong></div><div class="ch-tile"><small>UPI</small><strong>'+money(tot.upi)+'</strong></div><div class="ch-tile"><small>Bank</small><strong>'+money(tot.bank_transfer)+"</strong></div></div>"+
+      '<div class="ch-sec"><h2>'+(mode==="today"?(day===todayStr?"Today":"Day detail"):"All collections")+'</h2><select id="mSel"><option value="all">All</option><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank_transfer">Bank</option></select></div>';
+    if(!f.length)html+='<div class="ch-empty">No collections '+(mode==="today"?"on this day":"yet")+".</div>";
+    else if(mode==="today")html+=f.map(item).join("");
+    else{var last="";f.forEach(function(v){var d=ymd(v.at);if(d!==last){last=d;html+='<div class="ch-day">'+dl(v.at)+"</div>"}html+=item(v)})}
+    $("clBody").innerHTML=html;
+    var ms=$("mSel");ms.value=method;ms.onchange=function(){method=ms.value;draw()};
+    document.querySelectorAll("[data-open]").forEach(function(b){b.onclick=function(){b.parentNode.classList.toggle("open")}});
+    document.querySelectorAll("[data-v]").forEach(function(im){im.onclick=function(){$("chImg").src=im.getAttribute("data-v");$("chView").style.display="flex"}});
+  }
+  function $(id){return document.getElementById(id)}
+  main.innerHTML='<div class="ch-seg"><button type="button" id="tToday" class="on">Day</button><button type="button" id="tAll">All collections</button></div><div id="dayRow" style="margin-bottom:12px"><select id="daySel" class="ch-day-sel" style="width:100%;padding:12px;font-size:15px"></select></div><div id="clBody"><div class="ch-empty">Loading...</div></div><p style="margin-top:14px"><a class="btn line wide" href="collections.html">Record a collection</a></p>';
+  function load(){
+    var q=mode==="today"?"?from="+day+"&to="+day:"";
+    Sales.api("/api/accounts/collections/mine"+q).then(function(j){rows=j.rows||[];draw()}).catch(function(e){$("clBody").innerHTML='<div class="ch-empty">'+esc(e.message||"Could not load")+"</div>"});
+  }
+  function setMode(m){mode=m;$("tToday").className=m==="today"?"on":"";$("tAll").className=m==="all"?"on":"";$("dayRow").style.display=m==="today"?"block":"none";load()}
+  $("tToday").onclick=function(){setMode("today")};$("tAll").onclick=function(){setMode("all")};
+  $("chView").onclick=function(){this.style.display="none"};
+  var ds=$("daySel"),opts="";
+  for(var k=0;k<60;k++){var dd=ymd(Date.now()-k*86400000);opts+='<option value="'+dd+'">'+(k===0?"Today":k===1?"Yesterday":dl(dd+"T12:00:00+05:30"))+"</option>"}
+  ds.innerHTML=opts;ds.onchange=function(){day=ds.value;load()};
+  load();
+});
+</script></body></html>

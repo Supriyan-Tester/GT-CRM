@@ -737,30 +737,44 @@
         )
       )
         return;
-      fetch("/api/delete-employee", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: id }),
-      })
-        .then(function (r) {
-          return r.json().then(function (j) {
-            return { ok: r.ok, j: j };
+      var sendDelete = function (force) {
+        fetch("/api/delete-employee", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(force ? { id: id, force: true } : { id: id }),
+        })
+          .then(function (r) {
+            return r.json().then(function (j) {
+              return { ok: r.ok, status: r.status, j: j };
+            });
+          })
+          .then(function (r) {
+            if (!r.ok) {
+              // The employee has history: let an admin delete anyway, after a clear second warning.
+              if (r.status === 409 && r.j.code === "history" && !force) {
+                if (
+                  confirm(
+                    (r.j.error || "This employee has history.") +
+                      "\n\nDelete anyway? Their login, attendance, delivery data and profile will be erased permanently and cannot be recovered.\nPress OK to delete anyway, or Cancel to keep them.",
+                  )
+                )
+                  sendDelete(true);
+                return;
+              }
+              alert(r.j.error || "Could not delete.");
+              return;
+            }
+            toast(w.name + " deleted");
+            setTimeout(function () {
+              location.reload();
+            }, 700);
+          })
+          .catch(function () {
+            alert("Could not reach the server. Nothing was deleted.");
           });
-        })
-        .then(function (r) {
-          if (!r.ok) {
-            alert(r.j.error || "Could not delete.");
-            return;
-          }
-          toast(w.name + " deleted");
-          setTimeout(function () {
-            location.reload();
-          }, 700);
-        })
-        .catch(function () {
-          alert("Could not reach the server. Nothing was deleted.");
-        });
+      };
+      sendDelete(false);
       return;
     }
     if (a === "t") {
@@ -1560,7 +1574,12 @@
     var w = find(id);
     if (!w) {
       pg.innerHTML =
-        '<div class="wk-card"><div class="wk-empty"><b>Employee not found</b><a href="#">Back to employees</a></div></div>';
+        '<div class="wk-card wk-nf">' +
+        '<div class="wk-nf-ic">' + GA.icon("users") + "</div>" +
+        "<h2>Employee not found</h2>" +
+        "<p>This employee may have been deleted, or the link is out of date. Their record is no longer in the employee list.</p>" +
+        '<a class="btn wk-nf-btn" href="#">' + GA.icon("chevron-left") + "<span>Back to employees</span></a>" +
+        "</div>";
       return;
     }
     if (S.cur !== id) {

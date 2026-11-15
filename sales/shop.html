@@ -171,7 +171,12 @@
             ">" +
             Sales.ic("check") +
             (visited ? "Visited" : "Mark visited") +
-            "</button></div>";
+            "</button></div>" +
+            '<a class="btn line wide" style="margin-top:10px;width:100%" href="collect-sheet.html?c=' +
+            encodeURIComponent(S.code) +
+            '">' +
+            Sales.ic("credit-card") +
+            "Collect Payment</a>";
           var pb = document.getElementById("pinBtn");
           if (pb)
             pb.onclick = function () {
