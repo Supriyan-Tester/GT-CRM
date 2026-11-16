@@ -34,7 +34,29 @@ h3{font-size:14px;display:flex;align-items:center;gap:8px;margin:0}
 .btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:8px 14px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
 .row .btn{border-color:#f59e0b;color:var(--amber)}
 .btn.on{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
-.more{grid-column:1/-1;display:none;gap:8px}.more.open{display:grid}
+/* old credit bill: selected card */
+.more{grid-column:1/-1;display:none;gap:12px}.more.open{display:grid}
+.amt2{display:grid;grid-template-columns:minmax(0,1fr) 52px;gap:8px;align-items:center}
+.amt2 .in{display:flex;align-items:center;gap:8px;height:52px;padding:0 12px;border:1px solid var(--border);border-radius:12px;background:#fff;color:#1f2937;font-size:20px;font-weight:700}
+.amt2 .in span{color:#6b7280}
+.amt2 .in input{flex:1;min-width:0;width:100%;min-height:0;height:100%;border:0;padding:0;background:transparent;color:inherit;font:inherit;outline:0}
+.cam{position:relative;width:52px;height:52px;border-radius:12px;border:1.5px dashed var(--border);background:#fff;font-size:22px;cursor:pointer;padding:0;display:grid;place-items:center;overflow:hidden}
+.cam img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cam.done{border:1px solid var(--primary)}
+.cam.done:after{content:"\2713";position:absolute;top:0;right:0;width:18px;height:18px;border-radius:0 0 0 8px;background:var(--primary);color:#fff;font-size:11px;font-weight:900;display:grid;place-items:center}
+.pbar{height:8px;border-radius:99px;background:rgba(0,0,0,.08);overflow:hidden}
+.pbar i{display:block;height:100%;width:0;background:var(--primary);transition:width .15s}
+.rc{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:#6b5a3a}
+.hint{margin:0;font-size:13px;font-weight:700;color:#b45309}
+.okrow{display:flex;justify-content:flex-end;gap:8px}
+.okrow .btn{height:34px;padding:0 18px;font-size:14px}
+.okrow .okb{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.okrow .okb:disabled{opacity:.4;cursor:not-allowed}
+.sm{grid-column:1/-1;display:none;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;background:var(--t-primary);border:1px solid #10b981;border-radius:14px;padding:10px 12px;color:#10231b}
+.sm.open{display:grid}
+.sm .t{width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:15px;font-weight:900}
+.sm p{margin:0;font-size:14px;font-weight:700}.sm small{font-size:12px;color:#4b5f55}
+.sm .ed{border:0;background:none;color:#2563eb;font:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:4px}
 input[type=number],textarea{width:100%;min-height:44px;border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--bg);color:var(--text);font:inherit;min-width:0}
 .amt{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}
 .amt input{min-height:52px;font-size:20px}.amt .btn{min-height:52px;white-space:nowrap}
@@ -144,7 +166,7 @@ html[data-theme="dark"] .tile.on,html[data-theme="dark"] .tot,html[data-theme="d
     Q = new URLSearchParams(location.search),
     CODE = Q.get("code") || "", INV = (Q.get("inv") || "").trim(), AMT = Number(Q.get("amt")) || 0;
   var SPN = { cash: "Cash", upi: "UPI", bank_transfer: "Bank transfer" };
-  var S = { method: "cash", cur: null, curFile: null, curPrev: "", old: [], oldSel: {} };
+  var S = { method: "cash", cur: null, curFile: null, curPrev: "", old: [], oldSel: {}, oldOk: {} };
   if (window.parent !== window) { var tp = document.querySelector('.top'); if (tp) tp.style.display = 'none'; }
   var WIDE = window.matchMedia("(min-width:900px)").matches;
   if (WIDE) $("#noteCard").classList.add("open");
@@ -263,6 +285,26 @@ html[data-theme="dark"] .tile.on,html[data-theme="dark"] .tot,html[data-theme="d
     });
   }
 
+  function oldX(id) { return S.old.filter(function (x) { return String(x.id) === String(id); })[0]; }
+  var CAM = "\ud83d\udcf7";
+
+  // Refresh one selected old-credit card: progress bar, received / stays on credit, hint, OK button.
+  function oldUpdate(id) {
+    var x = oldX(id); if (!x) return;
+    var inp = $('[data-oa="' + id + '"]'), av = Number(x.availableToCollect), out = Number(x.outstanding);
+    var v = Number(inp.value) || 0;
+    if (v > av) { inp.value = av.toFixed(2); v = av; }
+    var has = !!S["of_" + id];
+    $("#bar_" + id).style.width = (out > 0 ? Math.min(100, v / out * 100) : 0) + "%";
+    $("#rcv_" + id).textContent = "Received " + money(v);
+    $("#stay_" + id).textContent = "Stays on credit " + money(Math.max(0, out - v));
+    var h = $("#hint_" + id);
+    h.textContent = !has ? "No bill photo yet. Tap the camera." : (v > 0 ? "" : "Enter the amount received.");
+    h.style.display = h.textContent ? "" : "none";
+    $('[data-ook="' + id + '"]').disabled = !(v > 0 && has);
+    recalc();
+  }
+
   function renderOld() {
     var sum = S.old.reduce(function (a, x) { return a + Number(x.outstanding || 0); }, 0);
     if (!S.old.length) { $("#credit").innerHTML = '<div class="cr"><div class="ch" style="cursor:default"><b>\u2713 No old credit</b></div></div>'; $(".cr .ch").classList.add("nochev"); return; }
@@ -273,26 +315,64 @@ html[data-theme="dark"] .tile.on,html[data-theme="dark"] .tot,html[data-theme="d
           "<div><b>Invoice No. " + esc(x.invoice_no) + "</b><small class=\"muted\" style=\"display:block\">\ud83d\udcc5 " + dmy(x.invoice_date) + "</small><span class=\"due small\">Due: " + money(x.outstanding) + "</span>" +
           (Number(x.pendingAmount) > 0 ? "<small class=\"muted\" style=\"display:block\">" + money(x.pendingAmount) + " waiting for approval</small>" : "") + "</div>" +
           (av > 0 ? '<button type="button" class="btn" data-t="' + id + '">Collect</button>' : '<span class="muted">Collected</span>') +
-          '<div class="more" id="more_' + id + '"><input data-oa="' + id + '" type="number" min="0" max="' + av.toFixed(2) + '" step="0.01" placeholder="Enter amount (max ' + av.toFixed(2) + ')">' +
-          '<div class="photos" style="grid-template-columns:120px"><div class="ph" data-op="' + id + '" style="display:none"></div><button type="button" class="ph" data-oadd="' + id + '"><span>\ud83d\udcf7</span>Add photo</button></div>' +
-          '<input type="file" data-of="' + id + '" accept="image/jpeg,image/png,image/webp" capture="environment" style="display:none"></div></div>';
+          '<div class="more" id="more_' + id + '">' +
+            '<div class="amt2"><div class="in"><span>\u20b9</span><input data-oa="' + id + '" type="number" min="0" max="' + av.toFixed(2) + '" step="0.01" inputmode="decimal" placeholder="0.00" aria-label="Amount received"></div>' +
+            '<button type="button" class="cam" data-oadd="' + id + '" aria-label="Add bill photo">' + CAM + '</button></div>' +
+            '<div class="pbar"><i id="bar_' + id + '"></i></div>' +
+            '<div class="rc"><span id="rcv_' + id + '">Received ' + money(0) + '</span><span id="stay_' + id + '">Stays on credit ' + money(x.outstanding) + '</span></div>' +
+            '<p class="hint" id="hint_' + id + '">No bill photo yet. Tap the camera.</p>' +
+            '<div class="okrow"><button type="button" class="btn" data-ocancel="' + id + '">Cancel</button><button type="button" class="btn okb" data-ook="' + id + '" disabled>OK</button></div>' +
+            '<input type="file" data-of="' + id + '" accept="image/jpeg,image/png,image/webp" capture="environment" style="display:none"></div>' +
+          '<div class="sm" id="sm_' + id + '"><div class="t">\u2713</div><div><p id="smT_' + id + '"></p><small id="smS_' + id + '"></small></div><button type="button" class="ed" data-oedit="' + id + '">Edit</button></div></div>';
       }).join("") + "</div></div>";
     document.querySelectorAll("[data-v]").forEach(function (t) { t.onclick = function () { var s = t.getAttribute("data-v"); if (s) view(s); }; });
+
+    function showMore(id, open) { $("#more_" + id).className = "more" + (open ? " open" : ""); }
+    function showSummary(id, open) { $("#sm_" + id).className = "sm" + (open ? " open" : ""); }
+
     document.querySelectorAll("[data-t]").forEach(function (b) {
       b.onclick = function () {
         var id = b.getAttribute("data-t"), on = !S.oldSel[id];
-        S.oldSel[id] = on; b.className = "btn" + (on ? " on" : ""); b.textContent = on ? "Selected" : "Collect";
-        $("#more_" + id).className = "more" + (on ? " open" : ""); recalc();
+        S.oldSel[id] = on; S.oldOk[id] = false;
+        b.className = "btn" + (on ? " on" : ""); b.textContent = on ? "Selected" : "Collect";
+        showMore(id, on); showSummary(id, false);
+        if (on) oldUpdate(id); else recalc();
       };
     });
-    document.querySelectorAll("[data-oa]").forEach(function (i) { i.oninput = recalc; });
+    document.querySelectorAll("[data-oa]").forEach(function (i) { i.oninput = function () { oldUpdate(i.getAttribute("data-oa")); }; });
     document.querySelectorAll("[data-oadd]").forEach(function (b) {
       var id = b.getAttribute("data-oadd"), f = $('[data-of="' + id + '"]');
       b.onclick = function () { f.click(); };
       f.onchange = function () {
         var file = f.files[0]; if (!file) return; S["of_" + id] = file;
-        var p = $('[data-op="' + id + '"]'), url = URL.createObjectURL(file);
-        p.style.display = ""; p.innerHTML = '<img src="' + url + '" alt="">'; b.textContent = "Change photo";
+        b.className = "cam done"; b.innerHTML = '<img src="' + URL.createObjectURL(file) + '" alt="Bill photo">';
+        oldUpdate(id);
+      };
+    });
+    document.querySelectorAll("[data-ocancel]").forEach(function (b) {
+      b.onclick = function () {
+        var id = b.getAttribute("data-ocancel"), t = $('[data-t="' + id + '"]'), cam = $('[data-oadd="' + id + '"]');
+        S.oldSel[id] = false; S.oldOk[id] = false; delete S["of_" + id];
+        $('[data-oa="' + id + '"]').value = ""; $('[data-of="' + id + '"]').value = "";
+        cam.className = "cam"; cam.innerHTML = CAM;
+        t.className = "btn"; t.textContent = "Collect";
+        showMore(id, false); showSummary(id, false); recalc();
+      };
+    });
+    document.querySelectorAll("[data-ook]").forEach(function (b) {
+      b.onclick = function () {
+        var id = b.getAttribute("data-ook"), x = oldX(id), v = oldAmount(id), out = Number(x.outstanding);
+        if (!(v > 0) || !S["of_" + id]) return;
+        S.oldOk[id] = true;
+        $("#smT_" + id).textContent = "Invoice " + x.invoice_no + " \u00b7 " + money(v) + " received";
+        $("#smS_" + id).textContent = money(Math.max(0, out - v)) + " stays on credit \u00b7 1 photo";
+        showMore(id, false); showSummary(id, true);
+      };
+    });
+    document.querySelectorAll("[data-oedit]").forEach(function (b) {
+      b.onclick = function () {
+        var id = b.getAttribute("data-oedit");
+        S.oldOk[id] = false; showSummary(id, false); showMore(id, true);
       };
     });
   }
