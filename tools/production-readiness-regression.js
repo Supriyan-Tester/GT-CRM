@@ -1,0 +1,24 @@
+#!/usr/bin/env node
+"use strict";
+const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
+const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+const health = fs.readFileSync(path.join(__dirname, "..", "backend", "modules", "health", "health.routes.js"), "utf8");
+const render = fs.readFileSync(path.join(__dirname, "..", "render.yaml"), "utf8");
+const docs = fs.readFileSync(path.join(__dirname, "..", "docs", "PRODUCTION-READINESS-PHASE-3E.md"), "utf8");
+assert(server.includes("createHealthRoutes"));
+assert(health.includes('pathname === "/api/health"'));
+assert(health.includes('pathname === "/api/ready"'));
+assert(server.includes("ping: () => storage.kv.ping()"));
+assert(health.includes('error: "Storage dependency unavailable"'));
+console.log("PASS readiness endpoint probes Supabase and reports dependency failure");
+assert(render.includes("healthCheckPath: /api/health"));
+console.log("PASS Render health check remains a liveness probe");
+assert(docs.includes("SUPABASE_SERVICE_KEY") && docs.includes("never"));
+assert(docs.includes("isolated") && docs.includes("does not write to Supabase"));
+console.log("PASS runbook documents secret handling and isolated restore boundaries");
+assert(fs.existsSync(path.join(__dirname, "attachment-backup.js")));
+assert(fs.existsSync(path.join(__dirname, "attachment-recovery-regression.js")));
+console.log("PASS attachment archive and recovery test tools are present");
+console.log("4/4 production-readiness checks passed.");

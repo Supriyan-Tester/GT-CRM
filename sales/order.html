@@ -52,7 +52,9 @@
             "k" +
             Date.now().toString(36) +
             Math.random().toString(36).slice(2, 8),
-          placed = false;
+          placed = false,
+          AH = false, // punched out today: orders are "after hours" and need a reason
+          reason = "";
         var byId = {},
           LIST = [];
         function norm(s) {
@@ -262,14 +264,17 @@
           });
           if (i < 0 || LIST.length < 2) return;
           var t = LIST[(i + d + LIST.length) % LIST.length];
-          if (
-            Object.keys(cart).length &&
-            !confirm("Leave this order? Items not saved as a draft will be lost.")
-          )
-            return;
-          placed = true;
-          location.href =
-            "order.html?c=" + encodeURIComponent(t.code) + Sales.fromQ();
+          function go() {
+            placed = true;
+            location.href =
+              "order.html?c=" + encodeURIComponent(t.code) + Sales.fromQ();
+          }
+          if (Object.keys(cart).length)
+            Sales.confirm(
+              { title: "Leave this order?", text: "This order is not saved yet. If you leave now, the items you added will be lost.", yes: "Leave", no: "Back to order" },
+              go,
+            );
+          else go();
         }
         function notifyOut(p, id) {
           Sales.watch(id, true)
@@ -284,10 +289,10 @@
         // Scan a barcode with the camera; matches the product barcode or code
         function scan() {
           if (!("BarcodeDetector" in window) || !navigator.mediaDevices) {
-            var t = prompt(
-              "Camera scan is not supported here. Type the barcode or product code:",
+            Sales.confirm(
+              { title: "Find a product", text: "Camera scan is not supported here. Type the barcode or product code.", input: "Barcode or product code", yes: "Search", no: "Cancel" },
+              found,
             );
-            if (t) found(t);
             return;
           }
           var ov = document.createElement("div");
@@ -551,13 +556,18 @@
             '<div class="tot"><span>Total Amount</span><span>' +
             Sales.money(T.total) +
             "</span></div></div>" +
+            (AH
+              ? '<div style="background:var(--amber-soft);border-radius:12px;padding:12px"><label for="ahr" style="color:var(--amber);font-weight:700">After-hours order</label><p style="font-size:12px;color:var(--muted);margin:2px 0 8px">You have punched out for today. Tell the office why you are taking this order.</p><textarea class="notes" id="ahr" maxlength="200" placeholder="Reason (e.g. Phone order from customer)">' +
+                Sales.esc(reason) +
+                "</textarea></div>"
+              : "") +
             '<div><label for="nt">Notes (optional)</label><textarea class="notes" id="nt" maxlength="500" placeholder="Add order notes…">' +
             Sales.esc(notes) +
             "</textarea></div>" +
             '<div class="cbtns"><button class="btn line" id="draft" type="button"' +
             (T.lines ? "" : " disabled") +
             '>Save as Draft</button><button class="btn teal" id="place" type="button"' +
-            (T.lines ? "" : " disabled") +
+            (T.lines && (!AH || reason.trim().length >= 3) ? "" : " disabled") +
             ">" +
             Sales.ic("check") +
             "Place Order</button></div>";
@@ -609,10 +619,13 @@
           };
           var cl = document.getElementById("clear");
           cl.onclick = function () {
-            if (confirm("Remove all items from this order?")) {
-              cart = {};
-              refresh();
-            }
+            Sales.confirm(
+              { title: "Remove all items?", text: "Every item you added to this order will be removed.", yes: "Remove all", no: "Keep items" },
+              function () {
+                cart = {};
+                refresh();
+              },
+            );
           };
           var a = document.getElementById("adsc");
           if (a)
@@ -630,6 +643,14 @@
           document.getElementById("nt").oninput = function () {
             notes = this.value;
           };
+          var ahr = document.getElementById("ahr");
+          if (ahr)
+            ahr.oninput = function () {
+              reason = this.value;
+              document.getElementById("place").disabled = !(
+                T.lines && reason.trim().length >= 3
+              );
+            };
           document.getElementById("draft").onclick = function () {
             send(true);
           };
@@ -668,6 +689,7 @@
             discount: totals().disc,
             notes: notes,
             draft: draft,
+            afterHours: !draft && AH ? reason.trim() : undefined,
             id: draftId || undefined,
             k: key,
             replaces: REPL || undefined,
@@ -678,15 +700,25 @@
           busy = true;
           var b = document.getElementById(draft ? "draft" : "place");
           if (b) b.disabled = true;
-          // the phone's position is only recorded for the admin; it never blocks the order
-          (draft ? Promise.resolve({}) : Sales.locateSoft())
-            .then(function (loc) {
-              var pl = payload(draft);
-              pl.lat = loc.lat;
-              pl.lng = loc.lng;
-              pl.acc = loc.acc;
-              pl.lerr = loc.err;
-              return Sales.api("/api/sales/order", pl);
+          // the phone's position is only recorded for the admin; it never delays the order.
+          // The order is sent at once and the position is attached to it when the GPS has it.
+          var locP = draft ? null : Sales.locateSoft();
+          Promise.resolve()
+            .then(function () {
+              return Sales.api("/api/sales/order", payload(draft));
+            })
+            .then(function (j) {
+              if (locP)
+                locP.then(function (loc) {
+                  return Sales.api("/api/sales/order-location", {
+                    id: j.order.id,
+                    lat: loc.lat,
+                    lng: loc.lng,
+                    acc: loc.acc,
+                    lerr: loc.err,
+                  });
+                }).catch(function () {});
+              return j;
             })
             .then(function (j) {
               busy = false;
@@ -735,15 +767,76 @@
             '<div class="grid2"><a class="btn wide" href="orders.html?o=' +
             encodeURIComponent(o.id) +
             '">View Order Details</a>' +
+            '<a class="btn teal wide" href="collect-sheet.html?c=' +
+            encodeURIComponent(CODE) +
+            "&o=" +
+            encodeURIComponent(o.id) +
+            '">Collect Payment</a>' +
             '<a class="btn line wide" href="route.html">Back to My Route</a><a class="btn line wide" href="home.html">Back to Home</a></div></div>';
           window.scrollTo(0, 0);
         }
+        // Leaving with items in the cart: show our own popup instead of Chrome's "Leave site?" box.
+        var leaving = false;
+        function unsaved() {
+          return !placed && !leaving && Object.keys(cart).length > 0;
+        }
+        function askLeave(onLeave) {
+          Sales.confirm(
+            { title: "Leave this order?", text: "This order is not saved yet. If you leave now, the items you added will be lost.", yes: "Leave", no: "Back to order" },
+            function () {
+              leaving = true;
+              onLeave();
+            },
+          );
+        }
+        // In-app links (back arrow, Home, Customers…)
+        document.addEventListener(
+          "click",
+          function (e) {
+            var a = e.target.closest && e.target.closest("a[href]");
+            if (!a || !unsaved() || a.target === "_blank" || /^(#|javascript:)/i.test(a.getAttribute("href"))) return;
+            e.preventDefault();
+            e.stopPropagation();
+            askLeave(function () {
+              location.href = a.href;
+            });
+          },
+          true
+        );
+        // Phone / browser Back button: keep one extra history entry so Back can be caught and asked about.
+        try {
+          history.pushState({ orderGuard: 1 }, "");
+        } catch (x) {}
+        window.addEventListener("popstate", function () {
+          if (unsaved()) {
+            try {
+              history.pushState({ orderGuard: 1 }, "");
+            } catch (x) {}
+            askLeave(function () {
+              history.go(-2);
+            });
+          } else if (!leaving) {
+            leaving = true;
+            history.back();
+          }
+        });
+        // Closing the tab or refreshing: Chrome only allows its own box here.
         window.addEventListener("beforeunload", function (e) {
-          if (!placed && Object.keys(cart).length) {
+          if (unsaved()) {
             e.preventDefault();
             e.returnValue = "";
           }
         });
+
+        // Punched out today: the order becomes an after-hours order and needs a reason (the server checks this too)
+        Sales.api("/api/sales/attendance?month=" + Sales.today().slice(0, 7))
+          .then(function (r) {
+            if (r && r.todayEntry && r.todayEntry.outAt) {
+              AH = true;
+              if (document.getElementById("nt")) drawCart();
+            }
+          })
+          .catch(function () {});
 
         Promise.all([
           Sales.data(),

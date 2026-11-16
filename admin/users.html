@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script src="../shared/loading.js"></script>
     <script src="../assets/icons.js"></script>
     <script src="../shared/sync.js"></script>
     <meta charset="utf-8" />
@@ -58,7 +59,7 @@
         GA.icon("plus") +
         " Create Admin</button>" +
         '</div><div id="uBody"><div class="us-empty">Loading users...</div></div></section>' +
-        '<section class="us-panel" style="margin-top:18px"><div class="us-head" style="padding:16px 18px 0"><h2 style="margin:0 0 4px;font-size:17px">Employee access</h2>' +
+        '<section class="us-panel us-panel-gap"><div class="us-head us-head-in"><h2>Employee access</h2>' +
         "<p>Choose which options each employee can open. An employee always gets the options of their own role (shown ticked). Delivery and Helper staff use the delivery app and are not listed.</p></div>" +
         '<div id="aBody"><div class="us-empty">Loading...</div></div></section>';
 
@@ -134,13 +135,13 @@
                 "</b><small>" +
                 esc(u.email || "No email") +
                 "</small></div></div></td>" +
-                "<td>" +
+                '<td data-l="Phone">' +
                 esc(US.phone(u.phone)) +
-                "</td><td>" +
+                '</td><td data-l="Role">' +
                 US.role(u.role) +
-                "</td><td>" +
+                '</td><td data-l="Status">' +
                 US.status(u.status) +
-                "</td><td>" +
+                '</td><td data-l="Last login">' +
                 US.when(u.last) +
                 "</td>" +
                 '<td class="acts"><button type="button" class="us-ib" data-edit="' +
@@ -235,6 +236,62 @@
         delivery: "Delivery",
         helper: "Attendance & Problems",
       };
+      var SPN = [
+        ["customers", "My Customers"],
+        ["orders", "Orders"],
+        ["products", "Products"],
+        ["payments", "Collections"],
+        ["payhist", "Collection history"],
+        ["cash", "Cash handover"],
+        ["route", "My Route"],
+        ["attendance", "Attendance"],
+      ];
+      function editSalesAccess(p) {
+        var d = DP.dialog({
+          title: "Sales menu: " + p.name,
+          sub: "Tick the pages this employee can see in the Sales app. Home is always shown. Ticking Collections, Collection history or Cash handover also lets them collect money.",
+          html:
+            '<div style="display:grid;gap:10px;margin:6px 0 14px">' +
+            SPN.map(function (x) {
+              return (
+                '<label style="display:flex;gap:10px;align-items:center;font-size:14px"><input type="checkbox" data-pg="' +
+                x[0] +
+                '"' +
+                (p.pages.indexOf(x[0]) > -1 ? " checked" : "") +
+                "> " +
+                esc(x[1]) +
+                "</label>"
+              );
+            }).join("") +
+            '</div><div class="us-dlg-acts"><button type="button" class="btn btn-secondary" data-no>Cancel</button><button type="button" class="btn" data-yes>Save</button></div>',
+        });
+        d.q("[data-no]").onclick = function () {
+          d.close();
+        };
+        d.q("[data-yes]").onclick = function () {
+          var b = this,
+            pages = [].map.call(
+              d.root.querySelectorAll("input[data-pg]:checked"),
+              function (c) {
+                return c.dataset.pg;
+              },
+            );
+          b.disabled = true;
+          US.api("PUT", "/api/access/" + encodeURIComponent(p.id), {
+            perms: [],
+            pages: pages,
+          }).then(function (x) {
+            b.disabled = false;
+            if (!x.ok) {
+              DP.toast(x.data.error || "Could not save.", "err");
+              return;
+            }
+            d.close();
+            DP.toast("Saved. It applies the next time they open a page.", "ok");
+            loadAccess();
+          });
+        };
+      }
       function loadAccess() {
         US.api("GET", "/api/access").then(function (r) {
           if (!r.ok) {
@@ -251,14 +308,21 @@
             return;
           }
           $("aBody").innerHTML =
-            '<div class="us-scroll"><table class="us-table"><thead><tr><th>Employee</th><th>Role</th><th>Can open</th><th style="text-align:right">Save</th></tr></thead><tbody>' +
+            '<div class="us-scroll"><table class="us-table us-table-acc"><thead><tr><th>Employee</th><th>Role</th><th>Can open</th><th style="text-align:right">Edit</th></tr></thead><tbody>' +
             P.map(function (p) {
               var cells;
               if (p.full) cells = '<span class="mu">Everything (Admin)</span>';
-              else if (p.panel === "sales")
+              else if (p.panel === "sales") {
+                var shown = SPN.filter(function (x) {
+                  return p.pages.indexOf(x[0]) > -1;
+                }).map(function (x) {
+                  return x[1];
+                });
                 cells =
-                  '<span class="mu">Sales panel: Home and Products</span>';
-              else
+                  '<span class="mu">Shows: Home' +
+                  (shown.length ? ", " + esc(shown.join(", ")) : "") +
+                  "</span>";
+              } else
                 cells = r.data.modules
                   .map(function (m) {
                     var base = p.base === m;
@@ -282,18 +346,32 @@
                 "</b><br><small>" +
                 esc(p.code || p.phone) +
                 (p.active ? "" : " - inactive") +
-                "</small></td><td>" +
+                '</small></td><td data-l="Role">' +
                 esc(p.role) +
-                "</td><td>" +
+                '</td><td data-l="Can open">' +
                 cells +
                 '</td><td class="acts">' +
-                (p.full || p.panel === "sales"
+                (p.full
                   ? ""
-                  : '<button type="button" class="btn btn-secondary" data-save>Save</button>') +
+                  : p.panel === "sales"
+                    ? '<button type="button" class="btn btn-secondary" data-edit>Edit</button>'
+                    : '<button type="button" class="btn btn-secondary" data-save>Save</button>') +
                 "</td></tr>"
               );
             }).join("") +
             "</tbody></table></div>";
+          [].forEach.call(
+            $("aBody").querySelectorAll("[data-edit]"),
+            function (b) {
+              b.onclick = function () {
+                var id = b.closest("tr").dataset.id;
+                var p = P.filter(function (x) {
+                  return x.id === id;
+                })[0];
+                if (p) editSalesAccess(p);
+              };
+            },
+          );
           [].forEach.call(
             $("aBody").querySelectorAll("[data-save]"),
             function (b) {

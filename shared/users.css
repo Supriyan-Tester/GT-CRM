@@ -602,3 +602,241 @@
 .us-dlg .us-grid.c2 {
   grid-template-columns: 1fr;
 }
+
+/* ---- Users list redesign: spacing, headings, mobile cards ---- */
+.us-head p {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.us-panel-gap {
+  margin-top: 20px;
+}
+.us-head-in {
+  display: block;
+  padding: 18px 18px 6px;
+  margin: 0;
+}
+.us-head-in h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+.us-bar {
+  padding: 14px 16px;
+}
+.us-table th {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: color-mix(in srgb, var(--muted) 5%, var(--card));
+}
+.us-table-acc td {
+  vertical-align: top;
+}
+.us-table-acc .acts .btn {
+  width: auto;
+  height: 36px;
+  padding: 0 16px;
+}
+.us-ib {
+  border-radius: 10px;
+}
+
+@media (max-width: 720px) {
+  .us-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .us-bar .us-q,
+  .us-bar .btn {
+    grid-column: 1 / -1;
+  }
+  .us-bar .us-f {
+    width: auto;
+    min-width: 0;
+  }
+  .us-bar .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .us-table {
+    min-width: 0;
+  }
+  .us-table thead {
+    display: none;
+  }
+  .us-table,
+  .us-table tbody,
+  .us-table tr,
+  .us-table td {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .us-table tbody tr {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .us-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+  .us-table td {
+    border: 0;
+    padding: 5px 0;
+  }
+  .us-table td.no {
+    display: none;
+  }
+  .us-table td[data-l] {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    text-align: right;
+  }
+  .us-table td[data-l]::before {
+    content: attr(data-l);
+    flex: none;
+    color: var(--muted);
+    font-size: 12.5px;
+    font-weight: 600;
+    text-align: left;
+  }
+  .us-table-acc td[data-l="Can open"] {
+    display: block;
+    text-align: left;
+  }
+  .us-table-acc td[data-l="Can open"]::before {
+    display: block;
+    margin-bottom: 6px;
+  }
+  .us-table .acts {
+    width: 100%;
+    text-align: left;
+    padding-top: 10px;
+  }
+  .us-table .acts:empty {
+    display: none;
+  }
+  .us-table .acts .us-ib {
+    margin: 0 8px 0 0;
+    width: 40px;
+    height: 40px;
+  }
+  .us-table-acc .acts .btn {
+    width: 100%;
+  }
+  .us-foot {
+    justify-content: center;
+  }
+}
+
+/* ---- Create / Edit user form redesign ---- */
+.us-form {
+  gap: 18px;
+}
+.us-panel .us-ph {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.us-panel .us-ph h3 {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+.us-panel .us-pb {
+  padding: 20px;
+}
+.us-form .a-fg label,
+.us-form .a-fg > label {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.us-form .field {
+  height: 48px;
+  background: var(--card);
+  border: 1.5px solid color-mix(in srgb, var(--muted) 35%, var(--border));
+  border-radius: 12px;
+}
+.us-form .field:hover {
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+}
+.us-form .field:focus-within {
+  border-color: var(--primary);
+}
+.us-form .field input::placeholder {
+  color: color-mix(in srgb, var(--muted) 75%, transparent);
+}
+.us-ck {
+  padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  min-height: 44px;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
+}
+.us-ck:hover:not(.off) {
+  border-color: var(--primary);
+}
+.us-ck:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--t-primary);
+}
+.us-note {
+  font-size: 13px;
+  line-height: 1.5;
+}
+.us-opt {
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.us-bar2 {
+  padding: 14px 0;
+}
+.us-bar2 .btn {
+  min-width: 140px;
+  height: 46px;
+}
+@media (max-width: 640px) {
+  .us-panel .us-ph {
+    padding: 14px 16px;
+  }
+  .us-panel .us-pb {
+    padding: 16px;
+  }
+  .us-perms {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .us-bar2 {
+    flex-wrap: nowrap;
+    padding: 10px 0 14px;
+  }
+  .us-bar2 .btn {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* role dropdown matches the other inputs */
+.us-form .field:has(> .gt-dd) {
+  border: 0;
+  background: none;
+  height: auto;
+  box-shadow: none;
+}
+.us-form .field .gt-dd-trigger {
+  min-height: 48px;
+  font-size: 16px;
+  border: 1.5px solid color-mix(in srgb, var(--muted) 35%, var(--border));
+  background: var(--card);
+}
+.us-form .field .gt-dd-trigger:hover,
+.us-form .field .gt-dd-trigger:focus-visible {
+  border-color: var(--primary);
+}

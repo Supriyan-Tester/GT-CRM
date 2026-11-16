@@ -340,7 +340,8 @@ function diffProfiles(oldV, newV, ctx) {
     const a = o[id],
       b = n[id];
     if (!b || typeof b !== "object") return;
-    const who = (ctx.workerName(id) || id) + " (" + id + ")";
+    const who =
+      (ctx.workerName(id) || id) + " (" + (b.empCode || (a && a.empCode) || id) + ")";
     if (!a) return; // a brand new profile belongs to a newly added employee, already reported
     if (blank(a.relieved) && !blank(b.relieved))
       out.push({

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script src="../shared/loading.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Collections - General Traders Sales</title><link rel="stylesheet" href="sales.css">
+  <style>
+    .cl-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:13px;display:grid;gap:10px;box-shadow:var(--shadow)}
+    .cl-alert{padding:11px;border-radius:10px;background:var(--pri-soft);font-size:12px}
+    .cl-field{display:grid;gap:6px;margin:0}.cl-field label{font-size:12px;color:var(--muted);font-weight:700}
+    .cl-field input{width:100%;box-sizing:border-box;min-height:42px;border:1px solid var(--line);border-radius:10px;padding:9px;background:var(--bg);color:var(--text);font:inherit}
+    .cl-hint{font-size:12px;color:var(--muted);line-height:1.5;margin:0}
+    .cl-pick{display:grid;gap:6px;max-height:300px;overflow:auto;margin-top:6px}
+    .cl-pk{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font:inherit;cursor:pointer}
+    .cl-pk small{color:var(--muted);font-size:11.5px}
+  </style>
+</head><body><div id="app"></div><script src="../assets/icons.js"></script><script src="sales.js"></script>
+<script>
+Sales.start("payments",function(me,hello,main){
+  hello.innerHTML="<h1>Collections</h1><p>Search a customer to collect payment</p>";
+  // Old links like collections.html?code=C016 go straight to the collect screen
+  var pre=new URLSearchParams(location.search).get("code");
+  if(pre){location.replace("collect-sheet.html?c="+encodeURIComponent(pre));return}
+  main.innerHTML='<div class="cl-card"><div class="cl-alert">Take a photo of each bill. The office will approve your collection.</div><div class="cl-field"><label>Customer</label><input id="clSearch" type="search" placeholder="Search customer name, code or phone" autocomplete="off"><div id="clPick" class="cl-pick" style="display:none"></div></div></div>'+
+    '<div class="cl-card"><b>My recent collections</b><div id="clMine" class="cl-hint">Loading...</div></div>';
+  var $=function(id){return document.getElementById(id)}, CUST=[];
+  function money(n){return "₹"+Number(n||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}
+  var MINE={pending_approval:"Waiting for approval",approved:"Approved",rejected:"Rejected",correction_requested:"Correction needed",reversed:"Reversed"};
+  function mineRow(x){var t=x.status==="rejected"?"Reason: "+(x.rejection_reason||""):x.status==="correction_requested"?(x.correction_note||"")+" — please record this collection again.":"";var d=new Date(x.received_at).toLocaleDateString("en-IN",{day:"2-digit",month:"short",timeZone:"Asia/Kolkata"});return '<div style="padding:10px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:10px"><b>'+Sales.esc(x.customer_name_snapshot)+'</b><b>'+money(x.total_amount)+'</b></div><div style="font-size:12px;color:var(--muted)">'+d+" · "+Sales.esc(MINE[x.status]||x.status)+'</div>'+(t?'<div style="margin-top:4px;font-size:13px;color:var(--red)">'+Sales.esc(t)+'</div>':"")+'</div>'}
+  function loadMine(){Sales.api("/api/accounts/my-collections").then(function(d){var r=d.collections||[];$("clMine").innerHTML=r.length?r.map(mineRow).join(""):"No collections recorded yet."}).catch(function(){$("clMine").textContent="Could not load your recent collections."})}
+  function nrm(s){return String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim()}
+  // Customers are listed only while the user is searching
+  function drawPick(){var q=nrm($("clSearch").value),box=$("clPick");
+    if(!q){box.style.display="none";box.innerHTML="";return}
+    var L=CUST.filter(function(c){return c._k.indexOf(q)>=0}),more=L.length>30;L=L.slice(0,30);box.style.display="";
+    box.innerHTML=L.length?L.map(function(c){return '<button type="button" class="cl-pk" data-code="'+Sales.esc(c.code)+'"><b>'+Sales.esc(c.name)+'</b><small>'+Sales.esc(c.code)+(c.area?" - "+Sales.esc(c.area):"")+'</small></button>'}).join("")+(more?'<div class="cl-hint">Showing the first 30. Type more to narrow the list.</div>':""):'<div class="cl-hint">No customer found.</div>'}
+  $("clSearch").addEventListener("input",drawPick);
+  $("clPick").addEventListener("click",function(e){var b=e.target.closest(".cl-pk");if(b)location.href="collect-sheet.html?c="+encodeURIComponent(b.getAttribute("data-code"))});
+  Sales.data().then(function(d){CUST=(d.customers||[]).filter(function(c){return c&&c.code&&!c.inactive}).sort(function(a,b){return String(a.name).localeCompare(String(b.name),"en",{sensitivity:"base",numeric:true})});
+    CUST.forEach(function(c){c._k=nrm([c.name,c.area,c.address,c.code,c.phone].join(" "))});drawPick()}).catch(function(){$("clPick").style.display="";$("clPick").innerHTML='<div class="cl-hint">Could not load customers.</div>'});
+  loadMine();
+});
+</script></body></html>

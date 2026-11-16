@@ -135,7 +135,9 @@
                 })
                 .join("") +
               (L.length > 8
-                ? '<p style="margin:8px 0 0;font-size:13px">+ ' + (L.length - 8) + " more shops. Open Customers to find them.</p>"
+                ? '<a class="btn sm" href="customers.html" style="display:flex;width:100%;margin-top:12px;background:transparent;color:var(--teal);border:1.5px solid var(--teal)">View All (' +
+                  L.length +
+                  ")</a>"
                 : "");
             main.insertBefore(box, main.firstChild);
           })

@@ -118,6 +118,61 @@
       }, 300);
     }, 2600);
   };
+  // In-app confirm / ask popup (replaces the browser's confirm() and prompt()).
+  // o: { title, text, yes, no, danger, input: "placeholder" } ; onYes(value) runs only when the person picks "yes".
+  S.confirm = function (o, onYes) {
+    if (document.getElementById("gmCf")) return;
+    if (!document.getElementById("gmCfCss")) {
+      var st = document.createElement("style");
+      st.id = "gmCfCss";
+      st.textContent =
+        ".cf-ov{position:fixed;inset:0;z-index:1000;background:rgba(10,20,25,.55);display:flex;align-items:center;justify-content:center;padding:18px}" +
+        ".cf-md{width:min(400px,100%);background:var(--card);color:var(--text);border-radius:18px;padding:22px 22px 18px;box-shadow:0 20px 60px rgba(0,0,0,.35)}" +
+        ".cf-md h2{margin:0 0 6px;font-size:19px}.cf-md p{margin:0 0 16px;color:var(--muted);font-size:14.5px;line-height:1.45}" +
+        ".cf-md input{display:block;width:100%;box-sizing:border-box;margin:0 0 16px;min-height:46px;border:1px solid var(--line);border-radius:12px;padding:0 12px;font:inherit;background:var(--card);color:var(--text)}" +
+        ".cf-b{display:grid;gap:10px}.cf-b button{min-height:46px;border-radius:12px;font:inherit;font-weight:700;font-size:15px;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--text)}" +
+        ".cf-b .cf-main{background:var(--teal);color:#fff;border-color:var(--teal)}.cf-b .cf-bad{color:#b91c1c}.cf-b button:disabled{opacity:.5;cursor:default}";
+      document.head.appendChild(st);
+    }
+    var ov = document.createElement("div");
+    ov.id = "gmCf";
+    ov.className = "cf-ov";
+    var safe = !!o.input, // with an input box the "yes" button is the main one; otherwise the safe "no" button is
+      yesCls = safe ? "cf-main" : o.danger === false ? "" : "cf-bad",
+      noCls = safe ? "" : "cf-main";
+    ov.innerHTML =
+      '<div class="cf-md" role="dialog" aria-modal="true" aria-labelledby="gmCfT"><h2 id="gmCfT">' + S.esc(o.title || "Are you sure?") + "</h2>" +
+      (o.text ? "<p>" + S.esc(o.text) + "</p>" : "") +
+      (o.input ? '<input id="gmCfIn" type="text" autocomplete="off" placeholder="' + S.esc(o.input) + '">' : "") +
+      '<div class="cf-b">' + (safe ? "" : '<button type="button" id="gmCfNo" class="' + noCls + '">' + S.esc(o.no || "Cancel") + "</button>") +
+      '<button type="button" id="gmCfYes" class="' + yesCls + '"' + (o.input ? " disabled" : "") + ">" + S.esc(o.yes || "OK") + "</button>" +
+      (safe ? '<button type="button" id="gmCfNo">' + S.esc(o.no || "Cancel") + "</button>" : "") + "</div></div>";
+    document.body.appendChild(ov);
+    var yes = ov.querySelector("#gmCfYes"), inp = ov.querySelector("#gmCfIn");
+    function close() {
+      ov.remove();
+      document.removeEventListener("keydown", key, true);
+    }
+    function ok() {
+      var v = inp ? inp.value.trim() : "";
+      if (inp && !v) return;
+      close();
+      onYes && onYes(v);
+    }
+    function key(e) {
+      if (e.key === "Escape") close();
+      else if (e.key === "Enter" && inp) {
+        e.preventDefault();
+        ok();
+      }
+    }
+    document.addEventListener("keydown", key, true);
+    ov.querySelector("#gmCfNo").onclick = close;
+    yes.onclick = ok;
+    ov.addEventListener("mousedown", function (e) { if (e.target === ov) close(); });
+    if (inp) inp.addEventListener("input", function () { yes.disabled = !inp.value.trim(); });
+    (inp || ov.querySelector(".cf-main") || yes).focus();
+  };
   S.init = function (n) {
     var p = String(n || "?")
       .trim()
@@ -451,9 +506,11 @@
     ["customers", "My Customers", "customers.html", "users"],
     ["orders", "Orders", "orders.html", "clipboard-list"],
     ["products", "Products", "products.html", "box"],
-    ["payments", "Payments", "", "credit-card"],
+    ["payments", "Collections", "collections.html", "credit-card"],
+    ["payhist", "Collection history", "collections-history.html", "clipboard-list"],
+    ["cash", "Cash handover", "cash-handover.html", "rupee"],
     ["route", "My Route", "route.html", "route"],
-    ["attendance", "Attendance", "", "clock"],
+    ["attendance", "Attendance", "attendance.html", "clock"],
     ["reports", "Reports", "", "chart"],
   ];
   // phone bottom bar; everything else is under "More"
@@ -526,11 +583,75 @@
     });
   };
 
+  /* Punch-in popup. Until Sales has punched in today, a popup covers the whole panel (no close button) so nothing else can be
+     used. Only Punch In (or Logout) works. If attendance cannot be read, nothing is blocked here: the server still refuses orders. */
+  function punchPopup() {
+    S.api("/api/sales/attendance?month=" + S.today().slice(0, 7))
+      .then(function (r) {
+        if (r && !r.todayEntry) openPopup();
+      })
+      .catch(function () {});
+  }
+  function openPopup() {
+    var st = document.createElement("style");
+    st.textContent =
+      ".pi-bg{position:fixed;inset:0;z-index:450;background:rgba(2,6,12,.65);display:flex;align-items:center;justify-content:center;padding:18px}" +
+      ".pi-box{background:var(--card);color:var(--text);width:100%;max-width:380px;border-radius:20px;padding:26px 22px 20px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.35)}" +
+      ".pi-ic{width:64px;height:64px;border-radius:50%;margin:0 auto 14px;display:grid;place-items:center;background:var(--teal-soft);color:var(--teal)}" +
+      ".pi-ic svg{width:30px;height:30px}.pi-box h2{font-size:19px;margin-bottom:6px}.pi-box p{font-size:14px;color:var(--muted);line-height:1.5;margin-bottom:18px}" +
+      ".pi-box .btn{width:100%;justify-content:center}.pi-lo{margin-top:12px;background:none;border:0;color:var(--muted);font:inherit;font-size:13px;cursor:pointer;text-decoration:underline}";
+    document.head.appendChild(st);
+    var bg = document.createElement("div");
+    bg.className = "pi-bg";
+    bg.innerHTML =
+      '<div class="pi-box" role="alertdialog" aria-modal="true" aria-labelledby="piT"><div class="pi-ic">' +
+      S.ic("clock") +
+      '</div><h2 id="piT">Punch in to start your day</h2><p>Record your attendance for today. You can use the other features after you punch in.</p>' +
+      '<button type="button" class="btn teal" id="piGo">Punch In</button>' +
+      '<button type="button" class="pi-lo" id="piOut">Log out</button></div>';
+    document.body.appendChild(bg);
+    document.getElementById("piOut").onclick = S.logout;
+    var go = document.getElementById("piGo");
+    go.onclick = function () {
+      go.disabled = true;
+      go.textContent = "Punching in…";
+      S.api("/api/sales/attendance", { action: "punch-in" })
+        .then(function () {
+          bg.remove();
+          st.remove();
+          S.toast("Punched in successfully.");
+          // reload so the page shows today's data now that Sales is punched in
+          location.reload();
+        })
+        .catch(function (e) {
+          go.disabled = false;
+          go.textContent = "Punch In";
+          S.toast(e.message || "Could not punch in. Try again.", true);
+        });
+    };
+  }
+
   /* S.start(page, build): checks the sign-in, draws the menu and header, then calls build(user, titleEl, mainEl). */
   S.start = function (page, build) {
+    // These pages need the price list and shops. Ask for them now, in parallel with the sign-in check, instead of after it.
+    if (/^(home|customers|order|products|shop)$/.test(page)) {
+      var early = S.data();
+      if (early && early.catch) early.catch(function () {});
+    }
     S.json("/api/me")
       .then(function (me) {
         if (!me || !me.ok || me.role !== "sales" || me.must) return toLogin();
+        // Pages the admin switched off for this employee: send them home.
+        var key = PARENT[page] || page;
+        if (
+          Array.isArray(me.menu) &&
+          key !== "home" &&
+          me.menu.indexOf(key) < 0 &&
+          !(page === "order" && me.menu.indexOf("orders") > -1)
+        ) {
+          window.location.replace("home.html");
+          return;
+        }
         draw(me, page, build);
       })
       .catch(function () {
@@ -544,7 +665,18 @@
   function draw(me, page, build) {
     var name = me.name || "Sales",
       ini = initials(name);
-    var menu = NAV.map(function (n) {
+    // Menu items the admin allowed for this employee (Home and Reports always stay).
+    var showNav = function (n) {
+      return (
+        n[0] === "home" ||
+        n[0] === "reports" ||
+        !Array.isArray(me.menu) ||
+        me.menu.indexOf(n[0]) > -1
+      );
+    };
+    var NAVF = NAV.filter(showNav),
+      BNF = BN.filter(showNav);
+    var menu = NAVF.map(function (n) {
       var on = n[0] === (PARENT[page] || page),
         inner = S.ic(n[3]) + "<span>" + n[1] + "</span>";
       return n[2]
@@ -561,8 +693,8 @@
             inner +
             '<span class="tag">Soon</span></span>';
     }).join("");
-    var more = NAV.filter(function (n) {
-      return !BN.some(function (b) {
+    var more = NAVF.filter(function (n) {
+      return !BNF.some(function (b) {
         return b[0] === n[0];
       });
     })
@@ -605,7 +737,7 @@
       "</div></header>" +
       '<main class="page" id="main"></main></div>' +
       '<nav class="bnav" aria-label="Sales menu">' +
-      BN.map(function (n) {
+      BNF.map(function (n) {
         return (
           '<a href="' +
           n[2] +
@@ -641,5 +773,6 @@
       document.getElementById("hello"),
       document.getElementById("main"),
     );
+    punchPopup();
   }
 })();

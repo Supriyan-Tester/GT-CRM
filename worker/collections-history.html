@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script src="../shared/loading.js"></script>
+    <script src="../assets/icons.js"></script>
+    <script src="../shared/sync.js"></script>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>General Traders - Collections history</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <style>
+      .ch-top { background: linear-gradient(135deg, #064e3b, #0f766e); color: #fff; border-radius: 24px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+      .ch-top a, .ch-top button { width: 40px; height: 40px; border-radius: 12px; background: rgba(255,255,255,.18); color: #fff; border: 0; display: grid; place-items: center; font-size: 20px; text-decoration: none; cursor: pointer; flex: none; }
+      .ch-top h1 { font-size: 20px; font-weight: 800; line-height: 1.2; }
+      .ch-top p { font-size: 12px; opacity: .85; margin-top: 2px; }
+      .ch-top .t { flex: 1; min-width: 0; }
+      .ch-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 5px; margin-bottom: 12px; }
+      .ch-seg button { border: 0; background: transparent; color: var(--text); border-radius: 12px; padding: 11px; font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; }
+      .ch-seg button.on { background: var(--primary); color: var(--on-primary, #fff); }
+      .ch-total { background: linear-gradient(135deg, #064e3b, #0f766e); color: #fff; border-radius: 20px; padding: 16px; display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+      .ch-total .em { font-size: 38px; }
+      .ch-total small { display: block; font-size: 14px; opacity: .9; }
+      .ch-total strong { display: block; font-size: 32px; font-weight: 800; }
+      .ch-total .pill { margin-left: auto; border: 1px solid rgba(255,255,255,.55); border-radius: 999px; padding: 8px 14px; font-weight: 700; font-size: 13px; white-space: nowrap; }
+      .ch-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+      .ch-tile { border-radius: 18px; padding: 12px; border: 1px solid var(--border); }
+      .ch-tile.c { background: rgba(34,197,94,.1); } .ch-tile.u { background: rgba(124,58,237,.1); } .ch-tile.b { background: rgba(59,130,246,.1); }
+      .ch-tile .em { font-size: 24px; display: block; }
+      .ch-tile small { display: block; font-size: 13px; margin-top: 6px; color: var(--muted); }
+      .ch-tile strong { font-size: 20px; font-weight: 800; }
+      .ch-bank { margin: -2px 0 12px; font-size: 13px; color: var(--muted); }
+      .ch-sec { display: flex; align-items: center; justify-content: space-between; margin: 6px 0 10px; }
+      .ch-sec h2 { font-size: 17px; font-weight: 800; }
+      .ch-sec select { border: 1px solid var(--border); background: var(--card); color: var(--text); border-radius: 12px; padding: 8px 10px; font: inherit; font-size: 13px; }
+      .ch-day { font-size: 13px; font-weight: 700; color: var(--muted); margin: 14px 2px 6px; }
+      .ch-item { background: var(--card); border: 1px solid var(--border); border-radius: 16px; margin-bottom: 8px; overflow: hidden; }
+      .ch-row { display: flex; align-items: center; gap: 12px; padding: 12px; width: 100%; border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+      .ch-ic { width: 44px; height: 44px; border-radius: 12px; background: var(--t-primary); display: grid; place-items: center; font-size: 22px; flex: none; }
+      .ch-mid { flex: 1; min-width: 0; }
+      .ch-mid b { display: block; font-size: 15px; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .ch-mid small { color: var(--muted); font-size: 13px; }
+      .ch-end { text-align: right; flex: none; }
+      .ch-end b { display: block; font-size: 16px; }
+      .ch-m { display: inline-block; margin-top: 4px; padding: 3px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+      .ch-m.cash { background: rgba(34,197,94,.18); color: #15803d; } .ch-m.upi { background: rgba(124,58,237,.16); color: #6d28d9; } .ch-m.bank_transfer { background: rgba(59,130,246,.16); color: #1d4ed8; } .ch-m.mix { background: rgba(34,197,94,.18); color: #15803d; }
+      .ch-arrow { color: var(--muted); font-size: 22px; }
+      .ch-more { display: none; padding: 0 12px 12px; border-top: 1px solid var(--border); font-size: 13px; }
+      .ch-item.open .ch-more { display: block; }
+      .ch-more .ln { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid var(--border); }
+      .ch-more .ln:first-child { border-top: 0; }
+      .ch-more img { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border); cursor: pointer; }
+      .ch-st { font-weight: 700; }
+      .ch-empty { text-align: center; color: var(--muted); padding: 28px 0; }
+      #chView { position: fixed; inset: 0; z-index: 99; background: rgba(0,0,0,.9); display: none; align-items: center; justify-content: center; padding: 12px; }
+      #chView img { max-width: 100%; max-height: 100%; border-radius: 10px; }
+      .nav a.brand-side {
+        display: none;
+      }
+      @media (min-width: 900px) {
+        .nav a.brand-side {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          gap: 12px;
+          min-height: 0;
+          padding: 4px 8px 20px;
+          margin-bottom: 12px;
+          border-radius: 0;
+          border-bottom: 1px solid var(--border);
+          color: var(--text);
+          background: none;
+        }
+        .nav a.brand-side:hover {
+          background: none;
+        }
+        .brand-name {
+          font:
+            800 16px "Plus Jakarta Sans",
+            "Inter",
+            sans-serif;
+          display: block;
+        }
+        .brand-sub {
+          display: block;
+          font-size: 11.5px;
+          color: var(--muted);
+          font-weight: 500;
+        }
+        .brand-logo {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          background: #fff;
+          border: 1px solid var(--border);
+          display: grid;
+          place-items: center;
+          overflow: hidden;
+          flex-shrink: 0;
+        }
+        .brand-logo img {
+          width: 40px;
+          display: block;
+        }
+      }
+    </style>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="ch-top">
+        <a href="advances.html" aria-label="Back">&larr;</a>
+        <div class="t"><h1>Collections history</h1><p>Your collection records and payments</p></div>
+        <button type="button" id="calBtn" aria-label="Pick a date">&#128197;</button>
+      </header>
+      <div class="ch-seg"><button type="button" id="tToday" class="on">Today</button><button type="button" id="tAll">All collections</button></div>
+      <div id="dayRow" style="display:none;margin-bottom:12px"><select id="daySel" style="width:100%;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:14px;padding:12px;font:inherit;font-size:15px"></select></div>
+      <div id="view"><div class="ch-empty">Loading...</div></div>
+    </main>
+    <div id="chView"><img id="chImg" alt="Bill photo" /></div>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="nav" aria-label="Main Navigation">
+      <a href="home.html" class="brand-side" aria-label="General Traders">
+        <span class="brand-logo"><img src="../assets/logo.png" alt="" /></span>
+        <span
+          ><b class="brand-name">General Traders</b
+          ><small class="brand-sub">Distribution &amp; Delivery</small></span
+        >
+      </a>
+      <div>
+        <a href="home.html">
+          <svg class="icon" data-icon="home"></svg>
+          Home
+        </a>
+        <a href="route.html">
+          <svg class="icon" data-icon="map"></svg>
+          Route
+        </a>
+        <a href="advances.html" aria-current="page">
+          <svg class="icon" data-icon="coin"></svg>
+          Account
+        </a>
+        <a href="attendance.html">
+          <svg class="icon" data-icon="calendar"></svg>
+          Attendance
+        </a>
+        <a href="profile.html">
+          <svg class="icon" data-icon="user"></svg>
+          Profile
+        </a>
+      </div>
+    </nav>
+    <script src="../shared/theme.js"></script>
+    <script src="../shared/mock-data.js"></script>
+    <script>
+      if (!localStorage.getItem("gm_logged_in")) window.location.href = "../login.html";
+      var IST = 5.5 * 3600e3;
+      function ymd(d) { return new Date(new Date(d).getTime() + IST).toISOString().slice(0, 10); }
+      var todayStr = ymd(Date.now()), day = todayStr, mode = "today", rows = [], method = "all";
+      var MN = { cash: "Cash", upi: "UPI", bank_transfer: "Bank" },
+        ST = { pending_approval: "Waiting for approval", approved: "Approved", rejected: "Rejected", reversed: "Reversed", correction_requested: "Correction needed" };
+      function esc(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+      function money(v) { return "\u20b9" + Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+      function tm(d) { return new Date(d).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" }); }
+      function dl(d) { return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }); }
+
+      // One visit paid by several methods is stored as several rows: show it as one line.
+      function visits(list) {
+        var map = {}, out = [];
+        list.forEach(function (r) {
+          if (r.status === "rejected" || r.status === "reversed") return;
+          var k = r.visitRef || r.id, v = map[k];
+          if (!v) { v = map[k] = { id: k, name: r.customerName, at: r.receivedAt, total: 0, methods: {}, invoices: [], status: r.status, note: r.note }; out.push(v); }
+          v.total += r.total; v.methods[r.method] = (v.methods[r.method] || 0) + r.total;
+          r.invoices.forEach(function (i) { v.invoices.push({ no: i.invoiceNo, amount: i.amount, url: i.evidenceUrl, method: r.method }); });
+          if (r.status === "pending_approval") v.status = "pending_approval";
+        });
+        return out;
+      }
+      function chip(v) {
+        var ms = Object.keys(v.methods);
+        if (ms.length > 1) return '<span class="ch-m mix">' + ms.map(function (m) { return MN[m]; }).join(" + ") + "</span>";
+        return '<span class="ch-m ' + ms[0] + '">' + MN[ms[0]] + "</span>";
+      }
+      function item(v) {
+        var nos = v.invoices.map(function (i) { return i.no; }).filter(function (x, i, a) { return x && a.indexOf(x) === i; });
+        return '<div class="ch-item"><button type="button" class="ch-row" data-open><span class="ch-ic">&#127978;</span><span class="ch-mid"><b>' + esc(v.name) + "</b><small>Inv " +
+          (nos.length ? "#" + esc(nos.join(", #")) : "-") + " &bull; " + tm(v.at) + '</small></span><span class="ch-end"><b>' + money(v.total) + "</b>" + chip(v) + '</span><span class="ch-arrow">&rsaquo;</span></button>' +
+          '<div class="ch-more"><div class="ln"><span>Status</span><span class="ch-st">' + (ST[v.status] || v.status) + "</span></div>" +
+          Object.keys(v.methods).map(function (m) { return '<div class="ln"><span>' + MN[m] + "</span><b>" + money(v.methods[m]) + "</b></div>"; }).join("") +
+          v.invoices.filter(function (x, i, a) { return a.findIndex(function (y) { return y.url === x.url; }) === i; }).map(function (i) {
+            return '<div class="ln"><span>Invoice #' + esc(i.no) + '</span><span><img data-v="' + esc(i.url) + '" src="' + esc(i.url) + '" alt="Bill photo" onerror="this.style.display=\'none\'"></span></div>'; }).join("") +
+          (v.note ? '<div class="ln"><span>Note</span><span>' + esc(v.note) + "</span></div>" : "") + "</div></div>";
+      }
+      function draw() {
+        var vs = visits(rows);
+        if (mode === "today") vs = vs.filter(function (v) { return ymd(v.at) === day; });
+        var f = vs.filter(function (v) { return method === "all" || v.methods[method]; });
+        var tot = {cash: 0, upi: 0, bank_transfer: 0}, shops = {};
+        vs.forEach(function (v) { Object.keys(v.methods).forEach(function (m) { tot[m] += v.methods[m]; }); shops[v.name] = 1; });
+        var sum = tot.cash + tot.upi + tot.bank_transfer, html = "";
+        html += '<div class="ch-total"><span class="em">&#129689;</span><div><small>' + (mode === "today" ? (day === todayStr ? "Today's collection" : "Collection on " + dl(day + "T12:00:00+05:30")) : "All collections") + "</small><strong>" + money(sum) + '</strong></div><span class="pill">&#127978; ' + Object.keys(shops).length + (Object.keys(shops).length === 1 ? " shop" : " shops") + "</span></div>" +
+          '<div class="ch-tiles"><div class="ch-tile c"><span class="em">&#128181;</span><small>Cash</small><strong>' + money(tot.cash) + '</strong></div><div class="ch-tile u"><span class="em">&#128241;</span><small>UPI</small><strong>' + money(tot.upi) + '</strong></div><div class="ch-tile b"><span class="em">&#129534;</span><small>Bills</small><strong>' + vs.reduce(function (n, v) { return n + v.invoices.length; }, 0) + "</strong></div></div>" +
+          (tot.bank_transfer > 0 ? '<div class="ch-bank">Bank transfer: <b>' + money(tot.bank_transfer) + "</b></div>" : "") +
+          '<div class="ch-sec"><h2>' + (mode === "today" ? (day === todayStr ? "Today's collection history" : "Collection history") : "All collection history") + '</h2><select id="mSel"><option value="all">All</option><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank_transfer">Bank</option></select></div>';
+        if (!f.length) html += '<div class="ch-empty">No collections ' + (mode === "today" ? "on this day" : "yet") + ".</div>";
+        else if (mode === "today") html += f.map(item).join("");
+        else { var last = ""; f.forEach(function (v) { var d = ymd(v.at); if (d !== last) { last = d; html += '<div class="ch-day">' + dl(v.at) + "</div>"; } html += item(v); }); }
+        document.getElementById("view").innerHTML = html;
+        var ms = document.getElementById("mSel"); ms.value = method; ms.onchange = function () { method = ms.value; draw(); };
+        document.querySelectorAll("[data-open]").forEach(function (b) { b.onclick = function () { b.parentNode.classList.toggle("open"); }; });
+        document.querySelectorAll("[data-v]").forEach(function (im) { im.onclick = function () { document.getElementById("chImg").src = im.getAttribute("data-v"); document.getElementById("chView").style.display = "flex"; }; });
+      }
+      function load() {
+        var from = mode === "today" ? day : "", q = from ? "?from=" + from + "&to=" + from : "";
+        fetch("/api/accounts/collections/mine" + q, { credentials: "same-origin" })
+          .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Could not load"); return j; }); })
+          .then(function (j) { rows = j.rows || []; draw(); })
+          .catch(function (e) { document.getElementById("view").innerHTML = '<div class="ch-empty">' + esc(e.message) + "</div>"; });
+      }
+      function setMode(m) {
+        mode = m; document.getElementById("tToday").className = m === "today" ? "on" : ""; document.getElementById("tAll").className = m === "all" ? "on" : ""; load();
+      }
+      document.getElementById("tToday").onclick = function () { setMode("today"); };
+      document.getElementById("tAll").onclick = function () { setMode("all"); };
+      document.getElementById("chView").onclick = function () { this.style.display = "none"; };
+      // Pick a past day (last 60 days) without a browser date input.
+      var ds = document.getElementById("daySel"), opts = "";
+      for (var k = 0; k < 60; k++) {
+        var dd = ymd(Date.now() - k * 86400000);
+        opts += '<option value="' + dd + '">' + (k === 0 ? "Today" : k === 1 ? "Yesterday" : dl(dd + "T12:00:00+05:30")) + "</option>";
+      }
+      ds.innerHTML = opts;
+      document.getElementById("calBtn").onclick = function () {
+        var r = document.getElementById("dayRow");
+        r.style.display = r.style.display === "none" ? "block" : "none";
+      };
+      ds.onchange = function () { day = ds.value; setMode("today"); };
+      load();
+    </script>
+  </body>
+</html>

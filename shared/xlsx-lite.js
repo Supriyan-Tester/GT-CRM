@@ -515,6 +515,7 @@ XLSXLite.bill = function (rows) {
           .trim(),
         gstin: g(r, "gstin").toUpperCase().replace(/\s/g, ""),
         amount: 0,
+        net: num(g(r, "net amount")) || num(g(r, "net amt")),
         qty: 0,
         lines: 0,
         items: [],
@@ -541,7 +542,11 @@ XLSXLite.bill = function (rows) {
           "amount",
           "amt",
         ];
-      for (var z = 0; z < nm.length && !a; z++) a = num(g(r, nm[z]));
+      for (var z = 0; z < nm.length && !a; z++) {
+        // "Net Amount" on the row that starts a bill is the whole bill's total, not this item's amount.
+        if (no && (nm[z] === "net amt" || nm[z] === "net amount")) continue;
+        a = num(g(r, nm[z]));
+      }
       if (!a && q && ri) a = q * ri; // no usable amount column (or its formulas have no saved result): quantity x rate with GST (the Rate+Tax column; plain Rate is before GST)
       cur.amount += a;
       cur.qty += q;
@@ -572,7 +577,8 @@ XLSXLite.bill = function (rows) {
     return b.party && b.lines;
   });
   bills.forEach(function (b) {
-    b.amount = Math.round(b.amount * 100) / 100;
+    b.amount = Math.round((b.net > 0 ? b.net : b.amount) * 100) / 100;
+    delete b.net;
     b.qty = Math.round(b.qty * 100) / 100;
     total += b.amount;
   });

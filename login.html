@@ -1,6 +1,7 @@
 ﻿<!doctype html>
 <html lang="en">
   <head>
+    <script src="shared/loading.js"></script>
     <script src="assets/icons.js"></script>
     <script src="shared/sync.js"></script>
     <meta charset="utf-8" />
@@ -942,10 +943,16 @@
       });
 
       function post(url, obj, cb) {
+        // Give up after 20 s so the sign-in spinner can never spin forever.
+        var ctrl = new AbortController();
+        var timer = setTimeout(function () {
+          ctrl.abort();
+        }, 20000);
         fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(obj),
+          signal: ctrl.signal,
         })
           .then(function (r) {
             return r
@@ -954,10 +961,12 @@
                 return {};
               })
               .then(function (j) {
+                clearTimeout(timer);
                 cb(r, j);
               });
           })
           .catch(function () {
+            clearTimeout(timer);
             cb(
               { ok: false, status: 0 },
               {
@@ -968,11 +977,17 @@
           });
       }
       function enter(j, typedPw) {
-        // Forget whatever the previous person left in this browser, then load only what this account may see.
+        // Forget the previous account's cached data, then asynchronously load only
+        // the newly authenticated account's data before opening its workspace.
         if (window.GMSync) {
           GMSync.clearLocal();
-          if (j.role !== "sales") GMSync.pull(); // Sales pages load their own price list; nothing is copied to this browser
+          var ready = Promise.resolve(j.role !== "sales" ? GMSync.pull() : true);
+          ready.then(function () { continueEnter(j, typedPw); });
+          return;
         }
+        continueEnter(j, typedPw);
+      }
+      function continueEnter(j, typedPw) {
         if (j.role === "sales") {
           if (j.must) {
             askNewPassword(typedPw, "sales/home.html");
@@ -980,9 +995,7 @@
           }
           msg.className = "msg";
           msg.textContent = "";
-          setTimeout(function () {
-            window.location.href = "sales/home.html";
-          }, 300);
+          window.location.href = "sales/home.html";
           return;
         }
         if (j.role === "admin") {
@@ -1032,16 +1045,16 @@
         box.style.display = "";
         box.className = "";
         box.innerHTML =
-          '<h2 style="margin:0 0 6px;font-size:20px">Choose your own password</h2><p style="margin:0 0 14px;color:var(--muted)">This was a temporary password. Pick a new one (at least 8 characters).</p>' +
-          '<div class="field" style="margin-bottom:10px"><input id="np1" type="password" autocomplete="new-password" placeholder="New password"></div>' +
-          '<div class="field" style="margin-bottom:10px"><input id="np2" type="password" autocomplete="new-password" placeholder="Repeat new password"></div>' +
+          '<h2 style="margin:0 0 6px;font-size:20px">Choose your own password</h2><p style="margin:0 0 14px;color:var(--muted)">This was a temporary password. Pick a new one (6 to 15 characters).</p>' +
+          '<div class="field" style="margin-bottom:10px"><input id="np1" type="password" autocomplete="new-password" maxlength="15" placeholder="New password"></div>' +
+          '<div class="field" style="margin-bottom:10px"><input id="np2" type="password" autocomplete="new-password" maxlength="15" placeholder="Repeat new password"></div>' +
           '<div class="msg" id="npMsg" role="alert"></div><button class="btn" id="npGo" type="button">Save and continue</button>';
         document.getElementById("npGo").onclick = function () {
           var a = document.getElementById("np1").value,
             b = document.getElementById("np2").value,
             m = document.getElementById("npMsg");
-          if (a.length < 8) {
-            m.textContent = "Use at least 8 characters.";
+          if (a.length < 6 || a.length > 15) {
+            m.textContent = "Use 6 to 15 characters.";
             return;
           }
           if (a !== b) {

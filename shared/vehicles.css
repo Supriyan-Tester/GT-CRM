@@ -978,7 +978,6 @@
   }
 }
 
-
 /* ---- Vehicle details: softer, rounder look (matches the new design) ---- */
 .vx-panel,
 .vx-banner,
@@ -1136,7 +1135,6 @@
   }
 }
 
-
 /* Banner: five facts fit on one row; an empty availability box (its buttons moved to the top bar) is hidden */
 .vx-spec {
   padding: 0 14px;
@@ -1193,7 +1191,9 @@
   gap: 0;
   overflow: hidden;
   align-items: stretch;
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
 }
 .vx-gc:hover {
   transform: translateY(-2px);
@@ -1317,4 +1317,169 @@
   .vx-cols > .vx-c3 {
     grid-column: span 12;
   }
+}
+/* ---- Vehicles redesign: type scale, list cards, mobile layout ---- */
+.vx-tile {
+  padding: 18px;
+}
+.vx-tile b {
+  font-size: 30px;
+  letter-spacing: -0.02em;
+}
+.vx-tile span {
+  font-size: 13px;
+}
+.vx-tile .lbl {
+  font-size: 14.5px;
+  margin-top: 2px;
+}
+.vx-ph2 {
+  padding: 16px 20px;
+}
+.vx-ph2 h3 {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.vx-ph2 .sub {
+  font-size: 13.5px;
+  margin-top: 2px;
+}
+.vx-ph2 .field {
+  height: 42px;
+  border-radius: 12px;
+  border: 1.5px solid color-mix(in srgb, var(--muted) 30%, var(--border));
+}
+.vx-card {
+  padding: 14px;
+  border-radius: 14px;
+  transition:
+    border-color 0.12s,
+    box-shadow 0.12s;
+}
+.vx-card:hover {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  box-shadow: var(--shadow);
+}
+.vx-card-top b {
+  font-size: 19px;
+  letter-spacing: -0.01em;
+}
+.vx-meta {
+  font-size: 14px;
+  gap: 8px 22px;
+}
+.vx-meta svg.icon {
+  width: 16px;
+  height: 16px;
+}
+@media (min-width: 901px) {
+  .vx-ph {
+    width: 112px;
+    height: 80px;
+  }
+}
+@media (max-width: 700px) {
+  .vx-tile {
+    padding: 12px;
+    gap: 10px;
+  }
+  .vx-tile b {
+    font-size: 26px;
+  }
+  .vx-tiles .vx-tile div > span:not(.lbl) {
+    display: none;
+  }
+  .vx-ph2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 14px 16px;
+  }
+  .vx-ph2 > div:first-child,
+  .vx-ph2 h3 {
+    grid-column: 1 / -1;
+  }
+  .vx-ph2 .field {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+/* Vehicle photo: show the whole vehicle, never crop it */
+.vx-ph {
+  background: #fff;
+}
+.vx-ph img {
+  object-fit: contain;
+  padding: 4px;
+  box-sizing: border-box;
+}
+@media (min-width: 901px) {
+  .vx-ph {
+    width: 128px;
+    height: 88px;
+  }
+}
+/* header date text uses the normal text colour, like the other pages */
+.a-acts .gt-cal-trigger,
+.a-acts .gt-cal-label,
+.a-acts .vx-datebox input {
+  color: var(--text);
+}
+.a-acts .gtp-label {
+  color: var(--text);
+}
+/* Real photos sit directly on the card, no extra box */
+.vx-ph:has(img) {
+  background: none;
+  border: 0;
+}
+.vx-ph img {
+  padding: 0;
+}
+
+/* Vehicle list rows: no box around each vehicle, thin dividers instead */
+.vx-list {
+  padding: 0;
+  gap: 0;
+}
+.vx-list > .vx-card {
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 16px 20px;
+  background: transparent;
+}
+.vx-list > .vx-card:last-child {
+  border-bottom: 0;
+}
+.vx-list > .vx-card:hover {
+  background: color-mix(in srgb, var(--primary) 5%, var(--card));
+  box-shadow: none;
+}
+.vx-list > .vx-card .vx-kebab {
+  top: 16px;
+  right: 16px;
+}
+@media (max-width: 700px) {
+  .vx-list > .vx-card {
+    padding: 16px;
+  }
+}
+.vx-ph:not(:has(img)) {
+  background: color-mix(in srgb, var(--muted) 8%, var(--card));
+  border: 1px solid var(--border);
+}
+/* List rows stay flat on hover: no lift, glow or edge bar, just a green tint */
+.a-main .vx-list > .vx-card:not(.on):hover,
+.a-main .vx-list > .vx-card:not(.on):active {
+  transform: none;
+  box-shadow: none;
+  background-image: none;
+  background-color: var(--t-primary);
+}
+.a-main .vx-list > .vx-card:hover .chip {
+  transform: none;
 }

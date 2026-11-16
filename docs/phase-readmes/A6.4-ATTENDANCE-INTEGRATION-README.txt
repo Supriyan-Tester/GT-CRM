@@ -1,0 +1,45 @@
+GM-CRM A6.4 - Attendance Integration Compatibility Patch
+
+Purpose
+-------
+This patch completes the overnight attendance UI/API integration identified during A6.4.
+
+Changes
+-------
+1. backend/modules/attendance/attendance.service.js
+   - Adds getPendingPunchOut() to expose only a valid immediately previous IST-day open session.
+2. backend/modules/attendance/attendance.routes.js
+   - Adds pendingEntry to GET /api/sales/attendance without changing existing fields.
+   - Rejects a new punch-in while an eligible previous-day session remains open.
+3. sales/attendance.js
+   - Shows the previous-day session and a Punch Out action when pendingEntry exists.
+4. tools/sales-attendance-regression.js
+   - Adds service and UI contract assertions for overnight visibility and action selection.
+
+Compatibility
+-------------
+- Existing endpoint URLs are unchanged.
+- Existing gm_sales_attendance_v1 key and employee attendanceLog mirror are unchanged.
+- Existing response fields remain; pendingEntry is additive and null when not applicable.
+- The session and role checks remain in server.js.
+- No database schema or production configuration changes.
+
+Apply
+-----
+Extract these files over the matching paths in a backup of the GM-CRM project.
+Do not replace the full project with this patch archive.
+
+Verify
+------
+From the project root, run:
+  node tools/sales-attendance-regression.js
+  node tools/run-regression-suite.js
+
+Validation in this isolated copy:
+- Sales attendance regression: passed
+- Full regression suite: 20/20 scripts passed
+- JavaScript syntax checks: passed for server.js, attendance routes/service, Sales attendance UI, and attendance regression test.
+
+Limitations
+-----------
+This is isolated local validation using synthetic accounts and local storage. It is not a live Render/Supabase staging test and does not represent a real mobile browser session. Test the overnight flow in staging before production deployment.

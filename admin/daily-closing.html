@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script src="../shared/loading.js"></script>
+    <script src="../assets/icons.js"></script>
+    <script src="../shared/sync.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Daily Cash Closing - General Traders</title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="../shared/admin.css" />
+    <script src="../shared/theme.js"></script>
+    <style>
+      .dc-card {
+        margin-bottom: 16px;
+      }
+      .dc-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 6px;
+      }
+      .dc-head .card-title {
+        margin: 0;
+      }
+      .dc-btn {
+        width: auto;
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+      .dc-note {
+        padding: 12px;
+        border-radius: 12px;
+        background: var(--t-info);
+        margin: 10px 0 14px;
+        font-size: 13px;
+      }
+      .dc-muted {
+        color: var(--muted);
+      }
+      .dc-sec {
+        font-weight: 700;
+        margin: 16px 0 8px;
+      }
+      .dc-f {
+        display: grid;
+        gap: 6px;
+        margin: 12px 0;
+        max-width: 420px;
+      }
+      .dc-f label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+      .dc-f input,
+      .dc-f textarea,
+      .dc-table input {
+        width: 100%;
+        min-height: 42px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-btn);
+        background: var(--card);
+        color: var(--text);
+        padding: 8px 12px;
+        font: inherit;
+        box-sizing: border-box;
+      }
+      .dc-table input {
+        max-width: 170px;
+        text-align: right;
+      }
+      .dc-live {
+        margin-top: 12px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: var(--t-primary);
+        font-weight: 600;
+      }
+      .dc-live b {
+        font-variant-numeric: tabular-nums;
+      }
+      .dc-live.bad {
+        background: var(--t-danger);
+      }
+      .dc-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 14px;
+      }
+      .dc-rowacts {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .dc-rowacts .btn {
+        width: auto;
+        padding-left: 12px;
+        padding-right: 12px;
+      }
+      td.dc-r,
+      th.dc-r {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="../shared/admin.js"></script>
+    <script>
+(function(){"use strict";GA.guard();var pg=GA.mount("daily-closing.html","Daily Cash Closing"),$=id=>document.getElementById(id),esc=GA.esc,money=n=>{n=Number(n||0);return (n<0?"-":"")+"₹"+Math.abs(n).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});};
+function toast(msg){var t=document.createElement("div");t.className="a-toast";t.innerHTML="<div><b>"+esc(msg)+"</b></div>";document.body.appendChild(t);setTimeout(function(){t.classList.add("out")},2600);setTimeout(function(){t.remove()},3200);}
+var CLOSE={pending_approval:["b-accent","Waiting for approval"],approved:["b-success","Approved"],disputed:["b-danger","Disputed"]};
+pg.innerHTML='<div id="dcStats"></div>'+
+'<div class="card dc-card"><div class="dc-head"><div class="card-title">Submit physical closing count</div><button class="btn btn-outline dc-btn" id="refresh" type="button">Refresh</button></div>'+
+'<p class="dc-muted" style="margin:4px 0 0;font-size:13px">Reconcile employee custody, office cash, UPI clearing and bank ledger balances.</p>'+
+'<div class="dc-note">Enter actual cash physically counted. Expected balances are read-only accounting figures. Any difference is flagged for investigation; this workflow does not post an automatic shortage/excess adjustment.</div>'+
+'<div class="dc-f"><label for="closingDate">Closing date</label><input id="closingDate" type="date" required></div>'+
+'<div class="dc-sec">Employee cash custody</div><div class="a-scroll"><table class="a-table dc-table"><thead><tr><th>Employee</th><th class="dc-r">Expected balance</th><th class="dc-r">Physical count (₹)</th></tr></thead><tbody id="employeeRows"><tr><td colspan="3"><div class="a-empty">Loading…</div></td></tr></tbody></table></div>'+
+'<div class="dc-f"><label for="officeCount">Physical office cash count (₹)</label><input id="officeCount" type="number" min="0" step="0.01" value="0"></div>'+
+'<div class="dc-f"><label for="note">Closing note (optional)</label><textarea id="note" rows="2" maxlength="300" placeholder="Cash count details or explanation"></textarea></div>'+
+'<div class="dc-live" id="live"></div>'+
+'<div class="dc-actions"><button class="btn dc-btn" id="submit" type="button">Submit closing for independent approval</button><span id="message" class="dc-muted"></span></div></div>'+
+'<div class="card dc-card"><div class="card-title">Closing history &amp; approvals</div><div class="a-scroll"><table class="a-table"><thead><tr><th>Date</th><th>Submitted by</th><th class="dc-r">Employee variance</th><th class="dc-r">Office variance</th><th class="dc-r">Total variance</th><th>Status</th><th>Action</th></tr></thead><tbody id="history"><tr><td colspan="7"><div class="a-empty">Loading…</div></td></tr></tbody></table></div></div>';
+var data=null;function request(url,opts){return fetch(url,Object.assign({credentials:"same-origin",headers:{"Content-Type":"application/json"}},opts||{})).then(async r=>{var d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"Request failed");return d;});}function localDate(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+var touched=false;function updateLive(){if(!data)return;if(!touched){$("live").style.display="none";return;}$("live").style.display="";var counted=Array.from(document.querySelectorAll("[data-employee]")).reduce((n,x)=>n+(Number(x.value)||0),0)+(Number($("officeCount").value)||0),expected=data.employees.reduce((n,x)=>n+x.expectedBalance,0)+Number(data.officeCash||0),diff=Math.round((counted-expected)*100)/100;$("live").className="dc-live"+(diff!==0?" bad":"");$("live").innerHTML="Counted "+money(counted)+" · Expected "+money(expected)+" · Variance so far: <b>"+(diff>0?"+":"")+money(diff)+"</b>"+(diff!==0?" (will be flagged for investigation)":"");}
+function load(){return request("/api/accounts/daily-closing").then(d=>{data=d;$("dcStats").innerHTML='<div class="a-stats">'+GA.tile("s-p","team",money(d.employees.reduce((n,x)=>n+x.expectedBalance,0)),"Employee custody (expected)")+GA.tile("s-s","coin",money(d.officeCash),"Office cash (expected)")+GA.tile("s-i","credit-card",money(d.upiClearing),"UPI clearing (expected)")+GA.tile("s-a","rupee",money(d.bankBalance),"Bank ledger (expected)")+"</div>";$("employeeRows").innerHTML=d.employees.length?d.employees.map((x,i)=>'<tr><td data-label="Employee">'+esc(x.name)+' <small class="dc-muted">('+esc(x.employeeId)+')</small></td><td data-label="Expected balance" class="dc-r">'+money(x.expectedBalance)+'</td><td data-label="Physical count" class="dc-r"><input type="number" min="0" step="0.01" data-employee="'+esc(x.employeeId)+'" value="'+Math.max(0,x.expectedBalance).toFixed(2)+'"></td></tr>').join(""):'<tr><td colspan="3"><div class="a-empty">No outstanding employee cash custody balances.</div></td></tr>';
+$("history").innerHTML=d.history.length?d.history.map(x=>{var s=CLOSE[x.status]||["b-muted",esc(x.status)],flag=x.variance_status&&x.variance_status!=="none"&&x.variance_status!=="matched"?' <span class="badge b-danger">'+esc(String(x.variance_status).replace(/_/g," "))+'</span>':"";return '<tr><td data-label="Date">'+esc(x.closing_date)+'</td><td data-label="Submitted by">'+esc(x.submitted_by)+'</td><td data-label="Employee variance" class="dc-r">'+money(x.employee_variance)+'</td><td data-label="Office variance" class="dc-r">'+money(x.office_variance)+'</td><td data-label="Total variance" class="dc-r"><b>'+money(x.total_cash_variance)+'</b></td><td data-label="Status"><span class="badge '+s[0]+'">'+s[1]+'</span>'+flag+'</td><td data-label="Action">'+(x.status==="pending_approval"?'<div class="dc-rowacts"><button class="btn btn-success" type="button" data-approve="'+esc(x.id)+'">Approve</button><button class="btn btn-outline" type="button" data-dispute="'+esc(x.id)+'">Dispute</button></div>':'—')+'</td></tr>';}).join(""):'<tr><td colspan="7"><div class="a-empty"><b>No closing records yet</b>Submit today\'s count above.</div></td></tr>';
+document.querySelectorAll("[data-employee]").forEach(i=>i.oninput=function(){touched=true;updateLive();});updateLive();
+document.querySelectorAll("[data-approve]").forEach(b=>b.onclick=()=>{if(!confirm("Approve this closing? Variances remain flagged and no adjustment is posted."))return;b.disabled=true;request("/api/accounts/daily-closing/"+b.dataset.approve+"/approve",{method:"POST",body:"{}"}).then(()=>{toast("Closing approved.");return load();}).catch(e=>{toast(e.message);b.disabled=false;});});document.querySelectorAll("[data-dispute]").forEach(b=>b.onclick=()=>{var reason=prompt("Reason for disputing this closing:");if(!reason)return;request("/api/accounts/daily-closing/"+b.dataset.dispute+"/dispute",{method:"POST",body:JSON.stringify({reason})}).then(()=>{toast("Closing disputed.");return load();}).catch(e=>toast(e.message));});}).catch(e=>{$("message").textContent=e.message;$("history").innerHTML='<tr><td colspan="7"><div class="a-empty"><b>Could not load</b>'+esc(e.message)+'</div></td></tr>';});}
+$("closingDate").value=localDate();$("refresh").onclick=load;$("officeCount").oninput=function(){touched=true;updateLive();};$("submit").onclick=()=>{if(!data)return;var rows=Array.from(document.querySelectorAll("[data-employee]")).map(x=>({employeeId:x.dataset.employee,amount:Number(x.value)}));if(rows.some(x=>!Number.isFinite(x.amount)||x.amount<0)){toast("Enter valid non-negative employee cash counts.");return;}var key="daily-close:"+$("closingDate").value+":"+Math.random().toString(36).slice(2,14);$("submit").disabled=true;request("/api/accounts/daily-closing",{method:"POST",body:JSON.stringify({closingDate:$("closingDate").value,requestKey:key,employeeCounts:rows,countedOfficeCash:Number($("officeCount").value),note:$("note").value})}).then(d=>{toast("Closing submitted. Variance: "+money(d.totalCashVariance||0)+". Status: "+d.varianceStatus+".");$("note").value="";return load();}).catch(e=>toast(e.message)).finally(()=>$("submit").disabled=false);};load();})();
+    </script>
+  </body>
+</html>

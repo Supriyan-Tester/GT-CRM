@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script src="../shared/loading.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Collections - General Traders Sales</title><link rel="stylesheet" href="sales.css"><link rel="stylesheet" href="../shared/dropdown.css">
+  <style>
+    /* Same look as the delivery Collections page, built with the Sales app's own colours (--line, --red, --teal-soft...). */
+    .cl-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:13px;display:grid;gap:10px;box-shadow:var(--shadow)}
+    .cl-alert{padding:11px;border-radius:10px;background:var(--pri-soft);font-size:12px}
+    .cl-field{display:grid;gap:6px;margin:0}.cl-field label{font-size:12px;color:var(--muted);font-weight:700}
+    .cl-field input,.cl-field select,.cl-field textarea{width:100%;box-sizing:border-box;min-height:42px;border:1px solid var(--line);border-radius:10px;padding:9px;background:var(--bg);color:var(--text);font:inherit}
+    .cl-field textarea{min-height:64px;resize:vertical}.cl-field input[type=checkbox]{width:auto;min-height:0;flex:none}
+    .cl-row{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:8px;border-top:1px solid var(--line);padding:12px 0}.cl-row:first-child{border-top:0}
+    .cl-row small{display:block;color:var(--muted);font-size:11px}
+    .cl-row input[type=number]{width:100%;box-sizing:border-box;min-height:38px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--text);padding:7px}
+    .cl-photo{grid-column:1/-1}
+    .cl-total{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:12px;font-weight:800}
+    .cl-hint{font-size:12px;color:var(--muted);line-height:1.5;margin:0}
+    .cl-shop{padding:10px 12px;border-radius:12px;background:var(--teal-soft);display:grid;gap:3px}.cl-shop b{font-size:16px}.cl-shop small{color:var(--muted)}
+    .cl-shop:empty,.cl-cr:empty{display:none}
+    .cl-cr{padding:10px 12px;border-radius:12px;border:1px solid var(--line);display:grid;gap:8px}
+    .cl-cr.has{border-color:#f59e0b;background:var(--amber-soft)}
+    .cl-crow{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:14px}.cl-crow small{color:var(--muted)}
+    .cl-crow button{flex:none;white-space:nowrap;border:1px solid var(--line);background:transparent;color:inherit;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer}
+    .cl-sub{font-weight:700;font-size:13px;color:var(--muted)}
+    #clBillView{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;padding:12px}#clBillView img{max-width:100%;max-height:100%;border-radius:8px}
+      .cl-pick{display:grid;gap:6px;max-height:240px;overflow:auto;margin-top:6px}.cl-pk{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font:inherit;cursor:pointer}.cl-pk small{color:var(--muted);font-size:11.5px}
+  </style>
+</head><body><div id="app"></div><script src="../assets/icons.js"></script><script src="sales.js"></script><script src="../shared/dropdown.js"></script>
+<script>
+Sales.start("payments",function(me,hello,main){
+  hello.innerHTML="<h1>Collections</h1><p>Collect against invoices of your customers</p>";
+  main.innerHTML='<div class="cl-card"><div class="cl-alert">Take a photo of each bill. The office will approve your collection.</div><div id="clShop" class="cl-shop"></div><div class="cl-field"><label>Customer</label><input id="clSearch" type="search" placeholder="Search customer name, code or phone" autocomplete="off"><input type="hidden" id="clCustomer"><div id="clPick" class="cl-pick"><div class="cl-hint">Loading customers...</div></div></div><div id="clCredit" class="cl-cr"></div><div id="clInvoices" class="cl-hint">Select a customer.</div></div><div class="cl-card"><div class="cl-field"><label>Payment method</label><select id="clMethod"><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank_transfer">Bank transfer</option></select></div><div class="cl-field"><label>Note (optional)</label><textarea id="clNote" maxlength="300" placeholder="Reference or collection remarks"></textarea></div><div class="cl-total"><span>Total collected</span><b id="clTotal">₹0.00</b></div><button class="btn" id="clSubmit" type="button" disabled style="width:100%">Save collection</button><p class="cl-hint" id="clMessage" role="status"></p></div>';
+  main.insertAdjacentHTML("beforeend",'<div class="cl-card"><b>My recent collections</b><div id="clMine" class="cl-hint">Loading...</div></div>');
+  document.body.insertAdjacentHTML("beforeend",'<div id="clBillView"><img id="clBillImg" alt="Bill"></div>');
+  var $=function(id){return document.getElementById(id)||document.querySelector(id)}, invoices=[], CUS={}, lastTotal=0, SPN={cash:"Cash",upi:"UPI",bank_transfer:"Bank transfer"};
+  $("clBillView").onclick=function(){this.style.display="none"};
+  function money(n){return "₹"+Number(n||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}
+  function say(t,bad){$("clMessage").textContent=t;$("clMessage").style.color=bad?"var(--red)":"var(--muted)"}
+  var MINE={pending_approval:"Waiting for approval",approved:"Approved",rejected:"Rejected",correction_requested:"Correction needed",reversed:"Reversed"};
+  function mineRow(x){var t=x.status==="rejected"?"Reason: "+(x.rejection_reason||""):x.status==="correction_requested"?(x.correction_note||"")+" — please record this collection again.":"";var d=new Date(x.received_at).toLocaleDateString("en-IN",{day:"2-digit",month:"short",timeZone:"Asia/Kolkata"});return '<div style="padding:10px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:10px"><b>'+Sales.esc(x.customer_name_snapshot)+'</b><b>'+money(x.total_amount)+'</b></div><div style="font-size:12px;color:var(--muted)">'+d+" · "+Sales.esc(MINE[x.status]||x.status)+'</div>'+(t?'<div style="margin-top:4px;font-size:13px;color:var(--red)">'+Sales.esc(t)+'</div>':"")+'</div>'}
+  function loadMine(){Sales.api("/api/accounts/my-collections").then(function(d){var r=d.collections||[];$("clMine").innerHTML=r.length?r.map(mineRow).join(""):"No collections recorded yet."}).catch(function(){$("clMine").textContent="Could not load your recent collections."})}
+  // Old credit: every earlier unpaid bill of this shop, with the bill photo
+  function evUrl(p){var t=String(p||"").split("/").pop().replace(/\.(jpg|png|webp)$/i,"");return t?"/api/accounts/evidence/"+t:""}
+  function showCredit(all){var open=all.filter(function(x){return Number(x.outstanding)>0}),sum=open.reduce(function(a,x){return a+Number(x.outstanding||0)},0);
+    $("clCredit").className="cl-cr"+(open.length?" has":"");
+    $("clCredit").innerHTML=open.length?'<div class="cl-crow"><b>Old credit: '+open.length+(open.length>1?" bills":" bill")+'</b><b>'+money(sum)+'</b></div>'+open.map(function(x){var u=evUrl(x.evidence_path);return '<div class="cl-crow"><span>'+Sales.esc(x.invoice_no)+" · "+Sales.esc(x.invoice_date)+'<br><small>Due '+money(x.outstanding)+(Number(x.pendingAmount)>0?" · "+money(x.pendingAmount)+" waiting for approval":"")+'</small></span>'+(u?'<button type="button" data-bill="'+Sales.esc(u)+'">View bill</button>':"")+'</div>'}).join(""):'<div class="cl-crow"><b>\u2713 No old credit from this shop</b></div>';
+    document.querySelectorAll("[data-bill]").forEach(function(b){b.onclick=function(){$("clBillImg").src=b.getAttribute("data-bill");$("clBillView").style.display="flex"}})}
+  function total(){var n=0;document.querySelectorAll("[data-cl-amount]").forEach(function(x){if(x.checked){n+=Number($('[data-amount="'+x.value+'"]').value)||0}});$("clTotal").textContent=money(n);lastTotal=n;$("clSubmit").disabled=n<=0||!splitOk();updSplit()}
+  function loadInvoices(code){invoices=[];$("clCredit").className="cl-cr";$("clCredit").innerHTML="";
+    var c=CUS[code];$("clShop").innerHTML=c?'<b>'+Sales.esc(c.name)+'</b><small>'+Sales.esc(c.code)+'</small>':"";
+    if(!code){$("clInvoices").textContent="Select a customer.";total();return}
+    $("clInvoices").textContent="Loading...";
+    Sales.api("/api/accounts/customers/"+encodeURIComponent(code)+"/invoices").then(function(d){showCredit(d.invoices||[]);invoices=(d.invoices||[]).filter(function(x){return Number(x.availableToCollect)>0});
+      if(!invoices.length){$("clInvoices").innerHTML='<p class="cl-hint">Nothing to collect for this shop. If the shop paid you, tell the office.</p>';return}
+      $("clInvoices").innerHTML=invoices.map(function(x){return '<div class="cl-row"><div><label><input type="checkbox" data-cl-amount value="'+Sales.esc(x.id)+'"> <b>'+Sales.esc(x.invoice_no)+'</b></label><small>'+Sales.esc(x.invoice_date)+' · Available '+money(x.availableToCollect)+'</small></div><input data-amount="'+Sales.esc(x.id)+'" type="number" min="0.01" max="'+Number(x.availableToCollect).toFixed(2)+'" step="0.01" placeholder="Amount" disabled><div class="cl-photo"><small>Bill photo for this invoice</small><input data-photo="'+Sales.esc(x.id)+'" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" disabled></div></div>'}).join("");
+      $("clInvoices").querySelectorAll("[data-cl-amount]").forEach(function(ch){ch.addEventListener("change",function(){var a=$('[data-amount="'+ch.value+'"]'),p=$('[data-photo="'+ch.value+'"]');a.disabled=!ch.checked;p.disabled=!ch.checked;total()})});
+      $("clInvoices").querySelectorAll("[data-amount]").forEach(function(a){a.addEventListener("input",total)});
+    }).catch(function(e){$("clCredit").innerHTML="";$("clInvoices").textContent=/not found/i.test(e.message)?"Nothing to collect for this shop. If the shop paid you, tell the office.":e.message});
+  }
+  function dataUrl(file){return new Promise(function(resolve,reject){var r=new FileReader();r.onload=function(){resolve(r.result)};r.onerror=reject;r.readAsDataURL(file)})}
+  async function upload(file){var data=await dataUrl(file);return Sales.api("/api/accounts/evidence",{data:data})}
+  function splitOn(){return $("clSplit").checked}
+  function pz(v){return Math.round(Number(v)*100)}
+  function splitPayments(){var o=[];["cash","upi","bank_transfer"].forEach(function(m){var v=Number($("clSp_"+m).value);if(v>0)o.push({method:m,amount:v})});return o}
+  function splitSum(){return splitPayments().reduce(function(n,p){return n+pz(p.amount)},0)}
+  function splitOk(){return !splitOn()||(splitPayments().length>=2&&splitSum()===pz(lastTotal))}
+  function updSplit(){var on=splitOn();$("clSplitBox").style.display=on?"":"none";$("clMethod").parentNode.style.display=on?"none":"";if(!on)return;var p=splitPayments(),m=$("clSplitMsg");
+    if(p.length<2){m.textContent="Enter amounts for at least two payment methods.";m.style.color="var(--muted)"}
+    else if(splitSum()!==pz(lastTotal)){m.textContent="Paid "+money(splitSum()/100)+" but the invoice total is "+money(lastTotal)+".";m.style.color="var(--red)"}
+    else{m.textContent="Matches the invoice total: "+p.map(function(q){return SPN[q.method]+" "+money(q.amount)}).join(" + ");m.style.color="var(--muted)"}}
+  $("clMethod").parentNode.insertAdjacentHTML("afterend",'<div class="cl-field"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="clSplit"> Paid by more than one method (cash + UPI)</label></div><div id="clSplitBox" style="display:none;gap:10px"><div class="cl-field"><label>Cash amount</label><input id="clSp_cash" type="number" min="0" step="0.01" placeholder="0.00"></div><div class="cl-field"><label>UPI amount</label><input id="clSp_upi" type="number" min="0" step="0.01" placeholder="0.00"></div><div class="cl-field"><label>Bank transfer amount</label><input id="clSp_bank_transfer" type="number" min="0" step="0.01" placeholder="0.00"></div><p class="cl-hint" id="clSplitMsg" role="status"></p></div>');
+  $("clSplit").onchange=function(){updSplit();total()};
+  ["cash","upi","bank_transfer"].forEach(function(m){$("clSp_"+m).oninput=total});
+  $("clCustomer").addEventListener("change",function(){loadInvoices(this.value)});
+  $("clSubmit").onclick=async function(){
+    var selected=Array.from(document.querySelectorAll("[data-cl-amount]:checked"));
+    if(!selected.length)return say("Select at least one invoice.",true);
+    $("clSubmit").disabled=true;say("Uploading bill photos...");
+    try{
+      var allocations=[];
+      for(var ch of selected){var id=ch.value,amount=Number($('[data-amount="'+id+'"]').value),file=$('[data-photo="'+id+'"]').files[0];
+        if(!(amount>0)||!file)throw new Error("Enter an amount and attach a bill photo for every selected invoice.");
+        if(file.size>5*1024*1024)throw new Error("Each bill photo must be 5 MB or smaller.");
+        var uploaded=await upload(file);
+        allocations.push({invoiceId:id,amount:amount,evidencePath:uploaded.evidencePath});
+      }
+      say("Submitting collection...");
+      var key=window.crypto&&crypto.randomUUID?crypto.randomUUID():"COL-"+Date.now()+"-"+Math.random().toString(36).slice(2);
+      if(splitOn()){
+        if(!splitOk())throw new Error("The payment amounts must add up to the invoice total.");
+        var split=await Sales.api("/api/accounts/collections/split",{customerCode:$("clCustomer").value,payments:splitPayments(),allocations:allocations,requestKey:key,note:$("clNote").value});
+        say("Split collection recorded: "+(split.parts||[]).map(function(q){return SPN[q.method]+" "+money(q.total)}).join(" + ")+". Each part waits for approval; customer balances change only after approval.");
+        ["cash","upi","bank_transfer"].forEach(function(m){$("clSp_"+m).value=""});$("clSplit").checked=false;updSplit();
+      }else{
+        var result=await Sales.api("/api/accounts/collections",{customerCode:$("clCustomer").value,method:$("clMethod").value,allocations:allocations,requestKey:key,note:$("clNote").value});
+        say("Collection recorded as "+(result.status||"pending approval")+". Employee cash custody is recorded; customer balances change only after approval.");
+      }
+      $("clNote").value="";loadMine();loadInvoices($("clCustomer").value);
+    }catch(e){say(e.message,true);$("clSubmit").disabled=false}
+  };
+  loadMine();
+  var CUST=[];function nrm(s){return String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();}
+  function pickCustomer(c){$("clCustomer").value=c.code;$("clSearch").value=c.name+" - "+c.code;$("clPick").style.display="none";$("clCustomer").dispatchEvent(new Event("change"));}
+  function drawPick(){var q=nrm($("clSearch").value),L=CUST.filter(function(c){return !q||c._k.indexOf(q)>=0;}),more=L.length>30;L=L.slice(0,30);$("clPick").style.display="";
+    $("clPick").innerHTML=L.length?L.map(function(c){return '<button type="button" class="cl-pk" data-code="'+Sales.esc(c.code)+'"><b>'+Sales.esc(c.name)+'</b><small>'+Sales.esc(c.code)+(c.area?" - "+Sales.esc(c.area):"")+'</small></button>';}).join("")+(more?'<div class="cl-hint">Showing the first 30. Type more to narrow the list.</div>':""):'<div class="cl-hint">No customer found.</div>';}
+  $("clSearch").addEventListener("input",function(){$("clCustomer").value="";loadInvoices("");drawPick();});
+  $("clSearch").addEventListener("focus",drawPick);
+  $("clPick").addEventListener("click",function(e){var b=e.target.closest(".cl-pk");if(!b)return;var c=CUST.filter(function(x){return x.code===b.getAttribute("data-code");})[0];if(c)pickCustomer(c);});
+  Sales.data().then(function(d){CUST=(d.customers||[]).filter(function(c){return c&&c.code&&!c.inactive;}).sort(function(a,b){return String(a.name).localeCompare(String(b.name),"en",{sensitivity:"base",numeric:true});});CUST.forEach(function(c){c._k=nrm([c.name,c.area,c.address,c.code,c.phone].join(" "));});drawPick();}).catch(function(e){$("clPick").innerHTML='<div class="cl-hint">Unable to load customers</div>';say(e.message,true);});
+  Promise.resolve({customers:[]}).then(function(d){var list=d.customers||[];list.forEach(function(c){CUS[c.code]=c});$("clCustomer").innerHTML='<option value="">Select customer</option>'+list.map(function(c){return '<option value="'+Sales.esc(c.code)+'">'+Sales.esc(c.name)+' · '+Sales.esc(c.code)+'</option>'}).join("");
+    var code=new URLSearchParams(location.search).get("code");if(code){var sel=$("clCustomer");if(![].some.call(sel.options,function(o){return o.value===code})){sel.insertAdjacentHTML("beforeend",'<option value="'+Sales.esc(code)+'">'+Sales.esc(code)+'</option>')}sel.value=code;loadInvoices(code)}
+  }).catch(function(e){$("clCustomer").innerHTML='<option value="">Unable to load customers</option>';say(e.message,true)});
+});
+</script></body></html>
