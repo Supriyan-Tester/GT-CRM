@@ -108,7 +108,7 @@ html[data-theme="dark"] .tile.on,html[data-theme="dark"] .tot,html[data-theme="d
    <h3>&#128179; Payment method</h3>
    <div class="tiles" id="tiles"><button type="button" class="tile on" data-m="cash"><span>&#128181;</span>Cash</button><button type="button" class="tile" data-m="upi"><span>&#128241;</span>UPI</button><button type="button" class="tile" data-m="bank_transfer"><span>&#127974;</span>Bank</button><button type="button" class="tile credit" data-m="credit"><span>&#129534;</span>Credit (Pay Later)</button></div>
    <div id="splitRow" style="display:grid;gap:6px"><small style="font-weight:700;font-size:13px">Payment mode</small><div class="seg"><button type="button" class="on" id="segOne">Single</button><button type="button" id="segSplit">Split</button></div><input type="checkbox" id="splitChk" style="display:none"></div>
-   <div id="crMsg" class="muted" style="display:none;font-size:14px">No payment today. Add to credit.</div>
+   <div id="crMsg" style="display:none;gap:8px"><div class="muted" style="font-size:14px">Amount typed above is received now. The balance goes to credit. Keep 0 for full credit.</div><label style="display:grid;gap:4px;font-size:13px;font-weight:700">Received amount paid by<select id="crMethod" style="min-height:44px;border:1px solid var(--border);border-radius:10px;padding:9px 11px;background:var(--bg);color:var(--text);font:inherit"><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank_transfer">Bank</option></select></label></div>
    <div class="split" id="splitBox" style="display:none">
     <label>Cash amount<input id="sp_cash" type="number" min="0" step="0.01" placeholder="0.00"></label>
     <label>UPI amount<input id="sp_upi" type="number" min="0" step="0.01" placeholder="0.00"></label>
@@ -224,7 +224,8 @@ html[data-theme="dark"] .tile.on,html[data-theme="dark"] .tot,html[data-theme="d
       if (pz(curAmount()) === pz(S.cur.max)) { b.className = "badge"; b.textContent = "\u2713 Matches bill"; }
       else { b.className = "badge warn"; b.textContent = "Part payment: " + money(S.cur.max - curAmount()) + " still due"; }
     } else b.style.display = "none";
-    $("#go").disabled = S.method === "credit" ? false : !ok;
+    var crPhoto = S.cur && (S.cur.id === "NEW" || curAmount() > 0);
+    $("#go").disabled = S.method === "credit" ? !!(crPhoto && !S.curFile) : !ok;
   }
 
   // ---- load invoices
@@ -304,8 +305,8 @@ html[data-theme="dark"] .tile.on,html[data-theme="dark"] .tot,html[data-theme="d
     S.method = t.getAttribute("data-m");
     document.querySelectorAll(".tile").forEach(function (x) { x.classList.toggle("on", x === t); });
     var cr = S.method === "credit";
-    ["curCard", "photoCard", "noteCard", "totCard", "splitRow", "splitBox"].forEach(function (id) { $("#" + id).classList.toggle("hide-credit", cr); });
-    $("#crMsg").style.display = cr ? "block" : "none";
+    ["splitRow", "splitBox"].forEach(function (id) { $("#" + id).classList.toggle("hide-credit", cr); });
+    $("#crMsg").style.display = cr ? "grid" : "none";
     recalc();
   };
   $("#segOne").onclick = function () { $("#splitChk").checked = false; recalc(); };
@@ -319,8 +320,9 @@ html[data-theme="dark"] .tile.on,html[data-theme="dark"] .tot,html[data-theme="d
     S.curFile = f; S.curPrev = URL.createObjectURL(f);
     var p = $("#curPrev"); p.style.display = "";
     p.innerHTML = '<img src="' + S.curPrev + '" alt="Bill photo"><button type="button" class="x" id="rmPhoto">\u00d7</button>';
-    $("#rmPhoto").onclick = function (e) { e.stopPropagation(); S.curFile = null; p.style.display = "none"; p.innerHTML = ""; $("#curFile").value = ""; };
+    $("#rmPhoto").onclick = function (e) { e.stopPropagation(); S.curFile = null; p.style.display = "none"; p.innerHTML = ""; $("#curFile").value = ""; recalc(); };
     p.onclick = function () { view(S.curPrev); };
+    recalc();
   };
 
   // ---- save
@@ -338,7 +340,21 @@ html[data-theme="dark"] .tile.on,html[data-theme="dark"] .tot,html[data-theme="d
     } else { try { $("#err").scrollIntoView({ block: "center" }); } catch (x) {} }
   }
   $("#go").onclick = async function () {
-    if (S.method === "credit") { try { parent.postMessage({ gmCollect: "done", credit: S.cur !== null }, location.origin); } catch (e) {} return; }
+    var isCr = S.method === "credit";
+    if (isCr && !(S.total > 0)) {
+      var cb = this, ce = $("#err"); ce.textContent = ""; cb.disabled = true; cb.textContent = "Saving...";
+      try {
+        if (S.cur && S.cur.id === "NEW") {
+          if (!S.curFile) throw fe("Add a photo of the bill.", "#photoCard");
+          if (S.curFile.size > 5 * 1024 * 1024) throw fe("Each photo must be 5 MB or smaller.", "#photoCard");
+          var cu = await api("/api/accounts/evidence", { data: await dataUrl(S.curFile) });
+          await api("/api/accounts/delivery-invoice", { customerCode: CODE, invoiceNo: INV, evidencePath: cu.evidencePath });
+        }
+        try { parent.postMessage({ gmCollect: "done", credit: S.cur !== null }, location.origin); } catch (e) {}
+      } catch (e) { showErr(e); cb.disabled = false; cb.textContent = "Save & Next \u2192"; }
+      return;
+    }
+    var PM = isCr ? $("#crMethod").value : S.method;
     var btn = this, err = $("#err"); err.textContent = ""; document.querySelectorAll(".bad").forEach(function (x) { x.classList.remove("bad"); }); btn.disabled = true; btn.textContent = "Saving...";
     try {
       var allocations = [];
@@ -358,6 +374,12 @@ html[data-theme="dark"] .tile.on,html[data-theme="dark"] .tot,html[data-theme="d
         var uo = await api("/api/accounts/evidence", { data: await dataUrl(f) });
         allocations.push({ invoiceId: k, amount: a, evidencePath: uo.evidencePath });
       }
+      if (isCr && S.cur && S.cur.id === "NEW" && !(curAmount() > 0)) {
+        if (!S.curFile) throw fe("Add a photo of the bill.", "#photoCard");
+        if (S.curFile.size > 5 * 1024 * 1024) throw fe("Each photo must be 5 MB or smaller.", "#photoCard");
+        var cu2 = await api("/api/accounts/evidence", { data: await dataUrl(S.curFile) });
+        await api("/api/accounts/delivery-invoice", { customerCode: CODE, invoiceNo: INV, evidencePath: cu2.evidencePath });
+      }
       if (!allocations.length) throw fe("Enter an amount to collect.", "#curCard");
       var key = crypto.randomUUID ? crypto.randomUUID() : "COL-" + Date.now() + "-" + Math.random().toString(36).slice(2), label;
       if ($("#splitChk").checked) {
@@ -365,8 +387,8 @@ html[data-theme="dark"] .tile.on,html[data-theme="dark"] .tot,html[data-theme="d
         var sp = await api("/api/accounts/collections/split", { customerCode: CODE, payments: splitPayments(), allocations: allocations, requestKey: key, note: $("#note").value });
         label = (sp.parts || splitPayments()).map(function (q) { return SPN[q.method]; }).join(" + ");
       } else {
-        await api("/api/accounts/collections", { customerCode: CODE, method: S.method, allocations: allocations, requestKey: key, note: $("#note").value });
-        label = SPN[S.method];
+        await api("/api/accounts/collections", { customerCode: CODE, method: PM, allocations: allocations, requestKey: key, note: $("#note").value });
+        label = SPN[PM] + (isCr ? " + Credit" : "");
       }
       $("#okInv").textContent = INV ? "Invoice #" + INV : "";
       $("#okAmt").textContent = money(S.total); $("#okM").textContent = label;
