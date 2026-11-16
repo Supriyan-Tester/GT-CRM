@@ -413,14 +413,48 @@
           ? 1
           : a.odometer - b.odometer;
     });
-    var prev = null; // mileage = km since the previous entry / litres filled now (full-tank method)
+    // Full-tank method: mileage is worked out between two FULL-tank fills.
+    // km = odometer now - odometer at the last full fill
+    // litres = every fill after that one, up to and including this one (partial fills are added in)
+    // Entries not marked as full tank (full === false) never get a mileage of their own.
+    // A full fill with a bad odometer (not higher than the last full fill) is skipped and its litres carry to the next one.
+    var anchor = null,
+      lit = 0;
     L.forEach(function (e) {
-      if (vid && prev && e.odometer > prev.odometer && e.litres > 0)
-        e.mileage = (e.odometer - prev.odometer) / e.litres;
-      else e.mileage = null;
-      prev = e;
+      e.mileage = null;
+      e.segKm = null;
+      e.segL = null;
+      e.partial = e.full === false;
+      if (!vid) return;
+      if (anchor && e.litres > 0) lit += e.litres;
+      if (e.partial) return;
+      if (!anchor) {
+        anchor = e;
+        lit = 0;
+        return;
+      }
+      var km = e.odometer - anchor.odometer;
+      if (km > 0 && lit > 0) {
+        e.mileage = km / lit;
+        e.segKm = km;
+        e.segL = lit;
+        anchor = e;
+        lit = 0;
+      }
     });
     return L;
+  };
+  // Average mileage = total km / total litres over the entries given (not an average of averages).
+  VX.avgMileage = function (L) {
+    var km = 0,
+      lt = 0;
+    L.forEach(function (e) {
+      if (e.mileage != null && e.segKm > 0 && e.segL > 0) {
+        km += e.segKm;
+        lt += e.segL;
+      }
+    });
+    return lt > 0 ? km / lt : null;
   };
   VX.checkFuel = function (e, selfId) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(e.date || "")) return "Choose the date.";
@@ -466,6 +500,7 @@
         odometer: Math.round(e.odometer),
         litres: Math.round(e.litres * 100) / 100,
         rate: Math.round(e.rate * 100) / 100,
+        full: e.full !== false,
         station: (e.station || "").trim(),
         notes: (e.notes || "").trim(),
       };

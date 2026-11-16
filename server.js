@@ -2946,6 +2946,9 @@ function api(req, res, url) {
             (workerData().workers || []).map((w) => ({
               id: w.id,
               name: w.name,
+              code:
+                ((stored("gm_admin_wprofile_v1") || {})[w.id] || {}).empCode ||
+                "",
               active: w.active !== false,
             })),
           ),
@@ -4416,7 +4419,12 @@ function api(req, res, url) {
         logEvents(s, [
           {
             type: "employee",
-            text: "Employee deleted: " + w.name + " (" + id + ")",
+            text:
+              "Employee deleted: " +
+              w.name +
+              " (" +
+              (((stored("gm_admin_wprofile_v1") || {})[id] || {}).empCode || id) +
+              ")",
           },
         ]);
         send(res, 200, { ok: true });

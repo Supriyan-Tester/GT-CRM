@@ -54,14 +54,7 @@
         }, 0);
       }
       function avgM(L) {
-        var m = L.filter(function (e) {
-          return e.mileage != null;
-        });
-        return m.length
-          ? m.reduce(function (s, e) {
-              return s + e.mileage;
-            }, 0) / m.length
-          : null;
+        return VX.avgMileage(L);
       }
       function delta(cur, prev, good) {
         if (prev == null || !(prev > 0) || cur == null) return "";
@@ -175,7 +168,7 @@
           label: "Mileage in km per litre",
           yName: "km per litre",
           empty: "No mileage data yet",
-          emptySub: "Mileage needs two entries with odometer readings.",
+          emptySub: "Mileage needs two full-tank entries with odometer readings.",
         });
         var best = cur
           .filter(function (e) {
@@ -247,7 +240,11 @@
                   '</td><td class="r" data-l="Total">' +
                   VX.money(e.total, 2) +
                   '</td><td class="r" data-l="Mileage">' +
-                  (e.mileage == null ? "-" : VX.num(e.mileage, 1) + " km/L") +
+                  (e.mileage == null
+                    ? e.partial
+                      ? '<span title="Partial fill: litres are added to the next full-tank entry" style="color:var(--muted)">Partial</span>'
+                      : "-"
+                    : '<span title="' + VX.num(e.segKm) + " km on " + VX.num(e.segL, 1) + ' L">' + VX.num(e.mileage, 1) + " km/L</span>") +
                   '</td><td data-l="Station">' +
                   esc(e.station || "-") +
                   '</td><td style="white-space:nowrap"><button type="button" class="vx-ib" data-edit="' +
@@ -387,6 +384,9 @@
             ) +
             '<div class="a-fg"><label>Total cost</label><div class="field a-f"><input id="ff_tot" readonly tabindex="-1" aria-live="polite" value=""></div></div>' +
             f("stn", "Fuel station", e.station, "text", 'maxlength="60"') +
+            '<div class="a-fg w3" style="grid-column:1/-1"><label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" id="ff_full"' +
+            (e.full === false ? "" : " checked") +
+            ' style="width:auto"> Tank filled to full</label><small style="color:var(--muted)">Untick if you only added some fuel. Mileage is then worked out at the next full-tank fill.</small></div>' +
             '<div class="a-fg w3" style="grid-column:1/-1"><label for="ff_notes">Notes</label><div class="field a-f"><input id="ff_notes" value="' +
             esc(e.notes || "") +
             '" maxlength="200"></div></div></div><div class="vx-fe" id="ff_err" role="alert"></div><div class="dp-foot"><button type="button" class="btn btn-secondary" data-no>Cancel</button><button type="button" class="btn" data-ok>' +
@@ -415,6 +415,7 @@
                 odometerRaw: q("#ff_odo").value,
                 odometer: Number(q("#ff_odo").value),
                 litres: Number(q("#ff_lit").value),
+                full: q("#ff_full").checked,
                 rate: Number(q("#ff_rate").value),
                 station: q("#ff_stn").value,
                 notes: q("#ff_notes").value,
@@ -518,6 +519,7 @@
                 "Rate (INR/L)",
                 "Total (INR)",
                 "Mileage (km/L)",
+                "Full tank",
                 "Station",
                 "Notes",
               ],
@@ -530,6 +532,7 @@
                   x.rate,
                   x.total,
                   x.mileage == null ? "" : x.mileage.toFixed(2),
+                  x.partial ? "No" : "Yes",
                   x.station,
                   x.notes,
                 ];

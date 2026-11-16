@@ -207,9 +207,11 @@
         }
 
         // Collections for the last 14 days: approved (solid) and still waiting for approval (amber).
-        function chart(days) {
-          var W = Math.max(560, Math.min(1600, ((document.querySelector(".a-main") || document.body).clientWidth || 720) - 90)),
-            H = 250,
+        // W is the real pixel width of the chart box, so text and bars are never stretched.
+        var adChartRO = null;
+        function chart(days, W) {
+          W = W || 720;
+          var H = 250,
             L = 52,
             R = 10,
             T = 12,
@@ -329,12 +331,31 @@
             "</div></div>" +
             '<div class="card ad-wide"><div class="ad-head"><div class="card-title">Collections, last 14 days</div>' +
             '<div class="ad-legend"><span><i style="background:var(--primary)"></i>Approved</span><span><i style="background:var(--accent)"></i>Waiting for approval</span></div></div>' +
-            '<div class="a-scroll">' + chart(d.daily || []) + "</div>" +
+            '<div class="a-scroll" id="adChartBox">' + chart(d.daily || []) + "</div>" +
             "</div>" +
             '<div class="card"><div class="ad-head"><div class="card-title">Recent collections</div><a class="btn btn-outline ad-btn" href="collections.html">View all</a></div>' +
             '<div class="a-scroll"><table class="a-table"><thead><tr><th>Customer</th><th>Invoice</th><th>Collected by</th><th>Method</th><th class="ad-r">Amount</th><th>Status</th></tr></thead><tbody>' +
             rows +
             "</tbody></table></div></div>";
+          // Draw the chart at the box's real width, and again whenever that width changes
+          // (window resize, browser zoom, sidebar open/close), so it never gets stretched.
+          var adBox = document.getElementById("adChartBox"),
+            adDaily = d.daily || [],
+            adDrawn = 0;
+          if (adChartRO) adChartRO.disconnect();
+          if (adBox) {
+            var adFit = function () {
+              var w = Math.max(560, Math.floor(adBox.clientWidth));
+              if (Math.abs(w - adDrawn) < 2) return;
+              adDrawn = w;
+              adBox.innerHTML = chart(adDaily, w);
+            };
+            adFit();
+            if (window.ResizeObserver) {
+              adChartRO = new ResizeObserver(adFit);
+              adChartRO.observe(adBox);
+            }
+          }
           // Clicking a recent collection opens it in the Collections page
           var adGo = function (e) {
             var tr = e.target.closest && e.target.closest("tr.ad-click");

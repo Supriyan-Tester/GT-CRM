@@ -1132,7 +1132,7 @@
           ">" +
           esc(x.name) +
           " (" +
-          esc(x.id) +
+          esc(GA.empCode(x.id)) +
           ")</option>"
         );
       })
@@ -1661,7 +1661,7 @@
           ">" +
           esc(x.name) +
           " (" +
-          esc(x.id) +
+          esc(GA.empCode(x.id)) +
           ")</option>"
         );
       })
@@ -1865,7 +1865,7 @@
         .map(function (x) {
           return [
             dshort(x.ds),
-            x.w.name + " (" + x.w.id + ")",
+            x.w.name + " (" + GA.empCode(x.w.id) + ")",
             (BADGE[x.d.st] || BADGE.none)[1],
             t12(x.d.inT),
             t12(x.d.outT),

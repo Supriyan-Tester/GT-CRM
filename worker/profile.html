@@ -1088,7 +1088,7 @@
           "Hi, please reset my GM-CRM PIN.\nName: " +
           (w.name || "") +
           "\nWorker ID: " +
-          (w.id || "") +
+          (prof().empCode || w.id || "") +
           "\nPhone: " +
           (w.phone || "");
         var pw = $("pwBtn");
@@ -1103,7 +1103,7 @@
               "Hi, I need help.\nName: " +
                 (w.name || "") +
                 "\nWorker ID: " +
-                (w.id || ""),
+                (prof().empCode || w.id || ""),
             );
         var ap = me().adminPhone || "";
         document.querySelectorAll("[data-admin-phone]").forEach(function (e) {

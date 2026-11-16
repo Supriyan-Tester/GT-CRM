@@ -870,7 +870,9 @@ function createAccountsRoutes(config) {
         restAll("gm_accounts_journal_lines?select=employee_id,debit,credit&account_code=eq.EMPLOYEE_CASH_CUSTODY&order=id&employee_id=eq." + encodeURIComponent(employeeId))
       ]).then(([movements, ownLines]) => {
         const ownBalance = Number(ownLines.reduce((n, x) => n + Number(x.debit || 0) - Number(x.credit || 0), 0).toFixed(2));
-        send(res, 200, { ok: true, employeeId, ownBalance, movements: movements.filter(x => !ownOnly || x.from_employee_id === employeeId || x.to_employee_id === employeeId) });
+        const labels = {};
+        for (const e of (config.employeeList ? config.employeeList() : [])) if (e && e.id) labels[String(e.id)] = String(e.name || "Employee").slice(0, 120) + (e.code ? " (" + e.code + ")" : "");
+        send(res, 200, { ok: true, employeeId, ownBalance, labels, movements: movements.filter(x => !ownOnly || x.from_employee_id === employeeId || x.to_employee_id === employeeId) });
       }).catch(e => { console.error("Accounts cash custody read:", e.message); send(res, 502, { error: "Unable to load cash custody." }); });
       return true;
     }
