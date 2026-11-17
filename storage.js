@@ -29,12 +29,8 @@ module.exports = function (cfg) {
     const endpoint = String(cfg.B2_ENDPOINT || env.B2_ENDPOINT).trim();
     const m = endpoint.match(/s3\.([a-z0-9-]+)\.backblazeb2\.com/i);
     s3 = new S3.S3Client({
-      endpoint: /^https?:\/\//i.test(endpoint)
-        ? endpoint
-        : "https://" + endpoint,
-      region: String(
-        cfg.B2_REGION || env.B2_REGION || (m && m[1]) || "us-west-004",
-      ).trim(),
+      endpoint: /^https?:\/\//i.test(endpoint) ? endpoint : "https://" + endpoint,
+      region: String(cfg.B2_REGION || env.B2_REGION || (m && m[1]) || "us-west-004").trim(),
       credentials: {
         accessKeyId: String(cfg.B2_KEY_ID || env.B2_KEY_ID).trim(),
         secretAccessKey: String(cfg.B2_APP_KEY || env.B2_APP_KEY).trim(),
@@ -56,9 +52,7 @@ module.exports = function (cfg) {
   // Folder names in B2 are written out in full (customers/, vehicles/, products/). The rest of the app keeps using the
   // short names (c/, v/, p/), so nothing saved in the data changes. Files already saved under a short name still work.
   const B2_DIRS = { v: "vehicles", p: "products", c: "customers" };
-  const B2_SHORT = Object.fromEntries(
-    Object.entries(B2_DIRS).map(([s, f]) => [f, s]),
-  );
+  const B2_SHORT = Object.fromEntries(Object.entries(B2_DIRS).map(([s, f]) => [f, s]));
   const toKey = (p) => {
     const i = p.indexOf("/");
     const full = B2_DIRS[p.slice(0, i)];
@@ -79,23 +73,15 @@ module.exports = function (cfg) {
       let token;
       do {
         const r = await b2Client().send(
-          new S3.ListObjectsV2Command({
-            Bucket: B2_BUCKET,
-            ContinuationToken: token,
-          }),
+          new S3.ListObjectsV2Command({ Bucket: B2_BUCKET, ContinuationToken: token }),
         );
         (r.Contents || []).forEach((o) => {
           const p = fromKey(o.Key);
           // If a file exists under both names, the full-name one wins.
-          if (seen.has(p) && seen.get(p) === toKey(p) && o.Key !== toKey(p))
-            return;
+          if (seen.has(p) && seen.get(p) === toKey(p) && o.Key !== toKey(p)) return;
           seen.set(p, o.Key);
           known.set(p, o.Key);
-          out.push({
-            p,
-            at: o.LastModified ? +o.LastModified : Date.now(),
-            size: o.Size || 0,
-          });
+          out.push({ p, at: o.LastModified ? +o.LastModified : Date.now(), size: o.Size || 0 });
         });
         token = r.IsTruncated ? r.NextContinuationToken : undefined;
       } while (token);
@@ -107,9 +93,7 @@ module.exports = function (cfg) {
     async get(p) {
       const tryKey = async (k) => {
         try {
-          const r = await b2Client().send(
-            new S3.GetObjectCommand({ Bucket: B2_BUCKET, Key: k }),
-          );
+          const r = await b2Client().send(new S3.GetObjectCommand({ Bucket: B2_BUCKET, Key: k }));
           return Buffer.from(await r.Body.transformToByteArray());
         } catch (e) {
           if (isMissing(e)) return null;
@@ -124,26 +108,15 @@ module.exports = function (cfg) {
       const key = toKey(p),
         old = known.get(p);
       await b2Client().send(
-        new S3.PutObjectCommand({
-          Bucket: B2_BUCKET,
-          Key: key,
-          Body: buf,
-          ContentType: mime || mimeOf(p),
-        }),
+        new S3.PutObjectCommand({ Bucket: B2_BUCKET, Key: key, Body: buf, ContentType: mime || mimeOf(p) }),
       );
       known.set(p, key);
-      if (old && old !== key)
-        // an older copy under the short name: remove it so there is one file, not two
-        await b2Client()
-          .send(new S3.DeleteObjectCommand({ Bucket: B2_BUCKET, Key: old }))
-          .catch(() => {});
+      if (old && old !== key) // an older copy under the short name: remove it so there is one file, not two
+        await b2Client().send(new S3.DeleteObjectCommand({ Bucket: B2_BUCKET, Key: old })).catch(() => {});
     },
     async del(p) {
       const keys = new Set([toKey(p), known.get(p)].filter(Boolean));
-      for (const k of keys)
-        await b2Client().send(
-          new S3.DeleteObjectCommand({ Bucket: B2_BUCKET, Key: k }),
-        );
+      for (const k of keys) await b2Client().send(new S3.DeleteObjectCommand({ Bucket: B2_BUCKET, Key: k }));
       known.delete(p);
     },
   };
@@ -173,6 +146,13 @@ module.exports = function (cfg) {
     return r;
   }
 
+  // ---- optional: also copy employees/advances into the new GT-CRM tables (set GT_SYNC_EMPLOYEES=1) ----
+  // The app still reads and writes gm_kv as before; this only copies in the background and never blocks or breaks a save.
+  const syncOn = cloud && /^(1|true|on|yes)$/i.test(String(cfg.GT_SYNC_EMPLOYEES || env.GT_SYNC_EMPLOYEES || ""));
+  const employeeSync = syncOn
+    ? require("./backend/modules/employees/employees.sync").createEmployeeSync({ url: URL, key: KEY })
+    : null;
+
   // ---- saved data: table gm_kv (key, v, rev) ----
   const kv = {
     async loadAll() {
@@ -186,6 +166,10 @@ module.exports = function (cfg) {
         rows.push.apply(rows, part);
         if (part.length < 1000) break;
       }
+      if (employeeSync) {
+        employeeSync.prime(rows);
+        employeeSync.schedule(5000); // a few seconds after start-up, in the background
+      }
       return rows;
     },
     async save(rows) {
@@ -193,6 +177,7 @@ module.exports = function (cfg) {
         await rest("POST", "gm_kv?on_conflict=key", rows.slice(i, i + 100), {
           Prefer: "resolution=merge-duplicates,return=minimal",
         });
+      if (employeeSync) employeeSync.onSave(rows); // only after the normal save worked
     },
     async ping() {
       await rest("GET", "gm_kv?select=key&limit=1");
@@ -200,12 +185,7 @@ module.exports = function (cfg) {
   };
 
   // ---- files: paths look like v/<id>__<kind>.<ext>, p/<product>__<slot>.<ext>, c/<code>.jpg, backups/db-<date>.json ----
-  const DIRS = {
-    v: "vehicle-files",
-    p: "product-files",
-    c: "photos",
-    accounts: "accounts",
-  };
+  const DIRS = { v: "vehicle-files", p: "product-files", c: "photos", accounts: "accounts" };
   const idx = {}; // path -> { at, size }
   const cache = new Map();
   let cacheBytes = 0;
@@ -268,21 +248,11 @@ module.exports = function (cfg) {
   const supaBackend = {
     async list() {
       const out = [];
-      for (const pre of [
-        "v",
-        "p",
-        "c",
-        "accounts",
-        "accounts/evidence",
-        "backups",
-      ])
-        await supaList(pre, out);
+      for (const pre of ["v", "p", "c", "accounts", "accounts/evidence", "backups"]) await supaList(pre, out);
       return out;
     },
     async get(p) {
-      const r = await fetch(URL + "/storage/v1/object/" + BUCKET + "/" + p, {
-        headers: H(),
-      });
+      const r = await fetch(URL + "/storage/v1/object/" + BUCKET + "/" + p, { headers: H() });
       if (r.status === 404 || r.status === 400) return null;
       if (!r.ok) throw new Error("Supabase storage get " + r.status);
       return Buffer.from(await r.arrayBuffer());
@@ -299,16 +269,11 @@ module.exports = function (cfg) {
       });
       if (!r.ok) {
         const t = await r.text().catch(() => "");
-        throw new Error(
-          "Supabase storage put " + r.status + " " + t.slice(0, 160),
-        );
+        throw new Error("Supabase storage put " + r.status + " " + t.slice(0, 160));
       }
     },
     async del(p) {
-      const r = await fetch(URL + "/storage/v1/object/" + BUCKET + "/" + p, {
-        method: "DELETE",
-        headers: H(),
-      });
+      const r = await fetch(URL + "/storage/v1/object/" + BUCKET + "/" + p, { method: "DELETE", headers: H() });
       if (!r.ok && r.status !== 404 && r.status !== 400)
         throw new Error("Supabase storage delete " + r.status);
     },
@@ -341,20 +306,13 @@ module.exports = function (cfg) {
       }
       // Accounts bill photos live one folder deeper: accounts/evidence
       try {
-        fs.readdirSync(path.join(DATA, DIRS.accounts, "evidence")).forEach(
-          (n) => {
-            try {
-              const st = fs.statSync(
-                path.join(DATA, DIRS.accounts, "evidence", n),
-              );
-              if (st.isFile())
-                idx["accounts/evidence/" + n] = {
-                  at: Math.floor(st.mtimeMs),
-                  size: st.size,
-                };
-            } catch (e) {}
-          },
-        );
+        fs.readdirSync(path.join(DATA, DIRS.accounts, "evidence")).forEach((n) => {
+          try {
+            const st = fs.statSync(path.join(DATA, DIRS.accounts, "evidence", n));
+            if (st.isFile())
+              idx["accounts/evidence/" + n] = { at: Math.floor(st.mtimeMs), size: st.size };
+          } catch (e) {}
+        });
       } catch (e) {}
     },
     has: (p) => !!idx[p],
@@ -378,9 +336,7 @@ module.exports = function (cfg) {
     },
     async put(p, buf, mime) {
       if (!remote) {
-        await fs.promises.mkdir(path.dirname(localPath(p)), {
-          recursive: true,
-        });
+        await fs.promises.mkdir(path.dirname(localPath(p)), { recursive: true });
         await fs.promises.writeFile(localPath(p), buf);
       } else {
         await remote.put(p, buf, mime);
@@ -421,5 +377,5 @@ module.exports = function (cfg) {
     mimeOf,
   };
 
-  return { cloud, kv, files };
+  return { cloud, kv, files, employeeSync };
 };

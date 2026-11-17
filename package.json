@@ -13,7 +13,9 @@
     "test:delivery": "node tools/sales-order-workflow-regression.js",
     "test:returns": "node tools/returns-reconciliation-regression.js",
     "copy:old": "node tools/copy-old-to-new.js",
-    "copy:check": "node tools/copy-old-to-new.js --check"
+    "copy:check": "node tools/copy-old-to-new.js --check",
+    "sync:employees": "node tools/sync-employees.js",
+    "sync:employees:check": "node tools/sync-employees.js --check"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
