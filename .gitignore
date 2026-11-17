@@ -3,9 +3,8 @@ data/
 Test Files/
 backup-before-backend/
 node_modules/
-*.bak
+*.bak*
 *.corrupt-*
 .env
 _backup_manual/
 _backup_before_updates/
-*.bak
