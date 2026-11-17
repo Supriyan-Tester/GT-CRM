@@ -16,7 +16,7 @@ assert(routes.includes("files.has(allocation.evidencePath)"), "Collection alloca
 assert(routes.includes("canAccessCustomer(session, customerCode)"), "Customer ledger must enforce assigned-customer access");
 assert(server.includes("deliveryAssignment.workerId === session.id"), "Delivery collection customer scope must use assigned orders");
 assert(storage.includes('accounts: "accounts"'), "Local accounts evidence storage directory missing");
-assert(storage.includes('await cloudList(pre)'), "Supabase evidence folder must be indexed on startup");
+assert(storage.includes('await remote.list()') && storage.includes('"accounts/evidence"'), "Remote evidence folder must be indexed on startup");
 for (const token of ["data-f=", "availableToCollect", "requestKey"]) assert(sales.includes(token), "Sales collection UI missing "+token);
 for (const token of ["data-photo", "availableToCollect", "requestKey"]) assert(worker.includes(token), "Delivery collection UI missing "+token);
 for (const token of ["acEvidenceChecked", "acApprove", "evidenceUrl"]) assert(admin.includes(token), "Admin approval evidence control missing "+token);

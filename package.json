@@ -11,7 +11,9 @@
     "test:e2e": "playwright test",
     "test:workflow": "node tools/sales-order-workflow-regression.js",
     "test:delivery": "node tools/sales-order-workflow-regression.js",
-    "test:returns": "node tools/returns-reconciliation-regression.js"
+    "test:returns": "node tools/returns-reconciliation-regression.js",
+    "copy:old": "node tools/copy-old-to-new.js",
+    "copy:check": "node tools/copy-old-to-new.js --check"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
@@ -19,6 +21,7 @@
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
-    "@supabase/supabase-js": "^2.119.0"
+    "@supabase/supabase-js": "^2.119.0",
+    "@aws-sdk/client-s3": "^3.750.0"
   }
 }
