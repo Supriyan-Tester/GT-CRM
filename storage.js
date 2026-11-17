@@ -29,8 +29,12 @@ module.exports = function (cfg) {
     const endpoint = String(cfg.B2_ENDPOINT || env.B2_ENDPOINT).trim();
     const m = endpoint.match(/s3\.([a-z0-9-]+)\.backblazeb2\.com/i);
     s3 = new S3.S3Client({
-      endpoint: /^https?:\/\//i.test(endpoint) ? endpoint : "https://" + endpoint,
-      region: String(cfg.B2_REGION || env.B2_REGION || (m && m[1]) || "us-west-004").trim(),
+      endpoint: /^https?:\/\//i.test(endpoint)
+        ? endpoint
+        : "https://" + endpoint,
+      region: String(
+        cfg.B2_REGION || env.B2_REGION || (m && m[1]) || "us-west-004",
+      ).trim(),
       credentials: {
         accessKeyId: String(cfg.B2_KEY_ID || env.B2_KEY_ID).trim(),
         secretAccessKey: String(cfg.B2_APP_KEY || env.B2_APP_KEY).trim(),
@@ -49,46 +53,101 @@ module.exports = function (cfg) {
       e.name === "NotFound" ||
       (e.$metadata && e.$metadata.httpStatusCode === 404));
 
+  // Folder names in B2 are written out in full (customers/, vehicles/, products/). The rest of the app keeps using the
+  // short names (c/, v/, p/), so nothing saved in the data changes. Files already saved under a short name still work.
+  const B2_DIRS = { v: "vehicles", p: "products", c: "customers" };
+  const B2_SHORT = Object.fromEntries(
+    Object.entries(B2_DIRS).map(([s, f]) => [f, s]),
+  );
+  const toKey = (p) => {
+    const i = p.indexOf("/");
+    const full = B2_DIRS[p.slice(0, i)];
+    return full ? full + p.slice(i) : p;
+  };
+  const fromKey = (k) => {
+    const i = k.indexOf("/");
+    const short = B2_SHORT[k.slice(0, i)];
+    return short ? short + k.slice(i) : k;
+  };
+  const known = new Map(); // app path -> the key it is really stored under in B2
+
   // Same four actions for B2 and for the Supabase bucket, so the code below does not care which one is used.
   const b2Backend = {
     async list() {
       const out = [];
+      const seen = new Map();
       let token;
       do {
         const r = await b2Client().send(
-          new S3.ListObjectsV2Command({ Bucket: B2_BUCKET, ContinuationToken: token }),
+          new S3.ListObjectsV2Command({
+            Bucket: B2_BUCKET,
+            ContinuationToken: token,
+          }),
         );
-        (r.Contents || []).forEach((o) =>
-          out.push({ p: o.Key, at: o.LastModified ? +o.LastModified : Date.now(), size: o.Size || 0 }),
-        );
+        (r.Contents || []).forEach((o) => {
+          const p = fromKey(o.Key);
+          // If a file exists under both names, the full-name one wins.
+          if (seen.has(p) && seen.get(p) === toKey(p) && o.Key !== toKey(p))
+            return;
+          seen.set(p, o.Key);
+          known.set(p, o.Key);
+          out.push({
+            p,
+            at: o.LastModified ? +o.LastModified : Date.now(),
+            size: o.Size || 0,
+          });
+        });
         token = r.IsTruncated ? r.NextContinuationToken : undefined;
       } while (token);
-      return out;
+      // keep one entry per app path
+      const uniq = new Map();
+      out.forEach((o) => uniq.set(o.p, o));
+      return [...uniq.values()];
     },
     async get(p) {
-      try {
-        const r = await b2Client().send(new S3.GetObjectCommand({ Bucket: B2_BUCKET, Key: p }));
-        return Buffer.from(await r.Body.transformToByteArray());
-      } catch (e) {
-        if (isMissing(e)) return null;
-        throw e;
-      }
+      const tryKey = async (k) => {
+        try {
+          const r = await b2Client().send(
+            new S3.GetObjectCommand({ Bucket: B2_BUCKET, Key: k }),
+          );
+          return Buffer.from(await r.Body.transformToByteArray());
+        } catch (e) {
+          if (isMissing(e)) return null;
+          throw e;
+        }
+      };
+      const k = known.get(p) || toKey(p);
+      const buf = await tryKey(k);
+      return buf || (k !== toKey(p) ? tryKey(toKey(p)) : null); // e.g. the folder was just renamed
     },
     async put(p, buf, mime) {
+      const key = toKey(p),
+        old = known.get(p);
       await b2Client().send(
         new S3.PutObjectCommand({
           Bucket: B2_BUCKET,
-          Key: p,
+          Key: key,
           Body: buf,
           ContentType: mime || mimeOf(p),
         }),
       );
+      known.set(p, key);
+      if (old && old !== key)
+        // an older copy under the short name: remove it so there is one file, not two
+        await b2Client()
+          .send(new S3.DeleteObjectCommand({ Bucket: B2_BUCKET, Key: old }))
+          .catch(() => {});
     },
     async del(p) {
-      await b2Client().send(new S3.DeleteObjectCommand({ Bucket: B2_BUCKET, Key: p }));
+      const keys = new Set([toKey(p), known.get(p)].filter(Boolean));
+      for (const k of keys)
+        await b2Client().send(
+          new S3.DeleteObjectCommand({ Bucket: B2_BUCKET, Key: k }),
+        );
+      known.delete(p);
     },
   };
-  const H =(extra) =>
+  const H = (extra) =>
     Object.assign({ apikey: KEY, Authorization: "Bearer " + KEY }, extra || {});
   const MIME = {
     jpg: "image/jpeg",
@@ -141,7 +200,12 @@ module.exports = function (cfg) {
   };
 
   // ---- files: paths look like v/<id>__<kind>.<ext>, p/<product>__<slot>.<ext>, c/<code>.jpg, backups/db-<date>.json ----
-  const DIRS = { v: "vehicle-files", p: "product-files", c: "photos", accounts: "accounts" };
+  const DIRS = {
+    v: "vehicle-files",
+    p: "product-files",
+    c: "photos",
+    accounts: "accounts",
+  };
   const idx = {}; // path -> { at, size }
   const cache = new Map();
   let cacheBytes = 0;
@@ -204,11 +268,21 @@ module.exports = function (cfg) {
   const supaBackend = {
     async list() {
       const out = [];
-      for (const pre of ["v", "p", "c", "accounts", "accounts/evidence", "backups"]) await supaList(pre, out);
+      for (const pre of [
+        "v",
+        "p",
+        "c",
+        "accounts",
+        "accounts/evidence",
+        "backups",
+      ])
+        await supaList(pre, out);
       return out;
     },
     async get(p) {
-      const r = await fetch(URL + "/storage/v1/object/" + BUCKET + "/" + p, { headers: H() });
+      const r = await fetch(URL + "/storage/v1/object/" + BUCKET + "/" + p, {
+        headers: H(),
+      });
       if (r.status === 404 || r.status === 400) return null;
       if (!r.ok) throw new Error("Supabase storage get " + r.status);
       return Buffer.from(await r.arrayBuffer());
@@ -225,11 +299,16 @@ module.exports = function (cfg) {
       });
       if (!r.ok) {
         const t = await r.text().catch(() => "");
-        throw new Error("Supabase storage put " + r.status + " " + t.slice(0, 160));
+        throw new Error(
+          "Supabase storage put " + r.status + " " + t.slice(0, 160),
+        );
       }
     },
     async del(p) {
-      const r = await fetch(URL + "/storage/v1/object/" + BUCKET + "/" + p, { method: "DELETE", headers: H() });
+      const r = await fetch(URL + "/storage/v1/object/" + BUCKET + "/" + p, {
+        method: "DELETE",
+        headers: H(),
+      });
       if (!r.ok && r.status !== 404 && r.status !== 400)
         throw new Error("Supabase storage delete " + r.status);
     },
@@ -262,13 +341,20 @@ module.exports = function (cfg) {
       }
       // Accounts bill photos live one folder deeper: accounts/evidence
       try {
-        fs.readdirSync(path.join(DATA, DIRS.accounts, "evidence")).forEach((n) => {
-          try {
-            const st = fs.statSync(path.join(DATA, DIRS.accounts, "evidence", n));
-            if (st.isFile())
-              idx["accounts/evidence/" + n] = { at: Math.floor(st.mtimeMs), size: st.size };
-          } catch (e) {}
-        });
+        fs.readdirSync(path.join(DATA, DIRS.accounts, "evidence")).forEach(
+          (n) => {
+            try {
+              const st = fs.statSync(
+                path.join(DATA, DIRS.accounts, "evidence", n),
+              );
+              if (st.isFile())
+                idx["accounts/evidence/" + n] = {
+                  at: Math.floor(st.mtimeMs),
+                  size: st.size,
+                };
+            } catch (e) {}
+          },
+        );
       } catch (e) {}
     },
     has: (p) => !!idx[p],
@@ -292,7 +378,9 @@ module.exports = function (cfg) {
     },
     async put(p, buf, mime) {
       if (!remote) {
-        await fs.promises.mkdir(path.dirname(localPath(p)), { recursive: true });
+        await fs.promises.mkdir(path.dirname(localPath(p)), {
+          recursive: true,
+        });
         await fs.promises.writeFile(localPath(p), buf);
       } else {
         await remote.put(p, buf, mime);
