@@ -6,3 +6,6 @@ node_modules/
 *.bak
 *.corrupt-*
 .env
+_backup_manual/
+_backup_before_updates/
+*.bak
