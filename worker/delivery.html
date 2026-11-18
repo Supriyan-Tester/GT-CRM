@@ -1513,6 +1513,7 @@
 
       <div class="dv-cols">
         <div class="dv-l">
+          <img id="shopPhoto" alt="Shop photo" onclick="gmZoom(this.src)" style="display:none;width:100%;max-height:240px;object-fit:cover;border-radius:16px;margin:0 0 12px;cursor:zoom-in" />
           <section class="dv-shop o2">
             <div class="top">
               <span class="dv-av"
@@ -1879,6 +1880,34 @@
     <script src="../shared/vendor/leaflet/leaflet.js"></script>
     <script src="../shared/theme.js"></script>
     <script src="../shared/mock-data.js"></script>
+    <script>
+      /* Punch-in required: the route and delivery pages stay locked until today's punch-in. */
+      (function () {
+        var box;
+        function punched() {
+          try {
+            var s = GM.getShift();
+            return !!(s && s.punchedIn);
+          } catch (e) {
+            return true; /* if the shift cannot be read, never lock someone out */
+          }
+        }
+        function check() {
+          if (punched()) {
+            if (box) { box.remove(); box = null; }
+            return;
+          }
+          if (box || !document.body) return;
+          box = document.createElement("div");
+          box.style.cssText = "position:fixed;inset:0;z-index:99999;background:var(--bg,#0f172a);color:var(--text,#fff);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center";
+          box.innerHTML = '<div style="max-width:340px"><h2 style="margin:0 0 8px">Punch in first</h2><p style="margin:0 0 18px;opacity:.8">Your route and shops open after you punch in for today.</p><a href="punch-in.html" style="display:inline-block;padding:12px 20px;border-radius:12px;background:#14b8a6;color:#04201d;font-weight:700;text-decoration:none">Punch In</a><div style="margin-top:14px"><a href="home.html" style="color:inherit;opacity:.8">Back to Home</a></div></div>';
+          document.body.appendChild(box);
+        }
+        if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", check);
+        else check();
+        window.addEventListener("gm-sync", check);
+      })();
+    </script>
     <script src="../shared/visit.js"></script>
     <script src="../shared/road-line.js"></script>
     <script>
@@ -1900,6 +1929,14 @@
         document.getElementById("shopName").textContent =
           "Stop " + idx + " of " + all.length;
         document.getElementById("shopNameCard").textContent = shop.name;
+        (function () {
+          var im = document.getElementById("shopPhoto"),
+            pc = String(shop.code || shop.customerCode || "").replace(/[^A-Za-z0-9_-]/g, "");
+          if (!im || !pc) return;
+          im.onload = function () { im.style.display = "block"; };
+          im.onerror = function () { im.style.display = "none"; };
+          im.src = "/api/photo?code=" + encodeURIComponent(pc);
+        })();
         document.getElementById("stopSubtitle").textContent =
           shop.owner || "Today\u2019s route";
         document.getElementById("shopAddress").textContent =
@@ -3120,7 +3157,7 @@
             // The employee chose "Credit: no payment now": tell the office.
             if (ev.data.credit && window.GMnotify)
               try {
-                window.GMnotify("credit", "Credit, not collected: " + (shop.name || ""), "Invoice " + (shop.billNo || "-") + " (" + "\u20b9" + Math.round(Number(shop.billAmount) || 0).toLocaleString("en-IN") + ") was left as credit. No payment was collected.");
+                window.GMnotify("credit", "Credit, not collected: " + (shop.name || ""), "Invoice " + (shop.billNo || "-") + " (" + "\u20b9" + Math.round(Number(shop.billAmount) || 0).toLocaleString("en-IN") + ") was left as credit. No payment was collected.", { code: shop.code || shop.customerCode || "" });
               } catch (e) {}
             advanceToNext();
           }
@@ -3150,5 +3187,19 @@
         }, 600);
       }
     </script>
-  </body>
+      <script>
+      /* Tap the shop photo to see it big; tap anywhere or press Esc to close. */
+      function gmZoom(src) {
+        var b = document.createElement("div");
+        b.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:12px;cursor:zoom-out";
+        b.innerHTML = '<img alt="Shop photo" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:10px"><span style="position:absolute;top:12px;right:16px;color:#fff;font-size:30px;line-height:1">&times;</span>';
+        b.firstChild.src = src;
+        function close() { b.remove(); document.removeEventListener("keydown", key); }
+        function key(e) { if (e.key === "Escape") close(); }
+        b.onclick = close;
+        document.addEventListener("keydown", key);
+        document.body.appendChild(b);
+      }
+    </script>
+</body>
 </html>

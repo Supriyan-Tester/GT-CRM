@@ -916,7 +916,21 @@
         if (t === "sales_order" || t === "sales_cancel")
           return "orders.html?q=" + encodeURIComponent(oid || shop);
         if (t === "sales_noorder") return "sales.html?date=" + (n.date || "");
-        if (t === "collection" || t === "credit") return "collections.html";
+        if (t === "credit") {
+          // Credit left, no payment: open that customer in Accounts & Ledger.
+          var cc = n.code || "";
+          if (!cc) {
+            try {
+              var low = shop.toLowerCase(),
+                cu = (GA.ops.get().customers || []).filter(function (c) {
+                  return String(c.name || c.shopName || "").trim().toLowerCase() === low;
+                })[0];
+              if (cu) cc = cu.code;
+            } catch (e) {}
+          }
+          return "accounts.html" + (cc ? "?customer=" + encodeURIComponent(cc) : "");
+        }
+        if (t === "collection") return "collections.html";
         return "notifications.html";
       },
       // Marks it read, then goes to its page.
@@ -2313,4 +2327,3 @@ GA.tile = function (cls, icon, n, label, sub) {
     document.addEventListener("DOMContentLoaded", go);
   else go();
 })();
-

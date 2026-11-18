@@ -110,7 +110,10 @@
             Sales.ic("chevron-left") +
             BACK.label +
             "</a>" +
-            '<div class="card"><div class="shead"><div class="tile t0">' +
+            '<img src="/api/photo?code=' +
+            encodeURIComponent(String(S.code || "").replace(/[^A-Za-z0-9_-]/g, "")) +
+            '" alt="Shop photo" onclick="gmZoom(this.src)" style="display:block;width:100%;max-height:240px;object-fit:cover;border-radius:16px;margin:0 0 12px;cursor:zoom-in" onload="var t=document.getElementById(\'shTile\');if(t)t.remove()" onerror="this.remove()">' +
+            '<div class="card"><div class="shead"><div class="tile t0" id="shTile">' +
             Sales.esc(Sales.init(S.name)) +
             '</div><div class="info"><h2>' +
             Sales.esc(S.name) +
@@ -355,5 +358,19 @@
           });
       });
     </script>
-  </body>
+      <script>
+      /* Tap the shop photo to see it big; tap anywhere or press Esc to close. */
+      function gmZoom(src) {
+        var b = document.createElement("div");
+        b.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:12px;cursor:zoom-out";
+        b.innerHTML = '<img alt="Shop photo" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:10px"><span style="position:absolute;top:12px;right:16px;color:#fff;font-size:30px;line-height:1">&times;</span>';
+        b.firstChild.src = src;
+        function close() { b.remove(); document.removeEventListener("keydown", key); }
+        function key(e) { if (e.key === "Escape") close(); }
+        b.onclick = close;
+        document.addEventListener("keydown", key);
+        document.body.appendChild(b);
+      }
+    </script>
+</body>
 </html>

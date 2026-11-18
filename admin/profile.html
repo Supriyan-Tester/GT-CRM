@@ -541,9 +541,45 @@
         '<div class="pf2-acts"><button class="btn btn-secondary a-btn" id="dHere" type="button">Use my current location</button><button class="btn a-btn" id="dSave" type="button">Save depot location</button><button class="btn btn-secondary a-btn" id="dClear" type="button">Remove</button></div>' +
         '<div class="pf2-msg" id="dMsg" role="status"></div>' +
         "</div></div>" +
+        '<div class="card" id="qrCard" style="margin:0"><div class="card-title">UPI QR code</div>' +
+        '<p class="pf2-hint">Upload your shop\u2019s UPI QR picture once. Delivery, sales and office staff see it when they choose UPI while collecting a payment.</p>' +
+        '<div id="qrBox" style="margin:10px 0"></div>' +
+        '<div class="pf2-acts"><label class="btn a-btn" for="qrFile" style="cursor:pointer">Upload QR picture</label><input type="file" id="qrFile" accept="image/jpeg,image/png,image/webp" hidden><button class="btn btn-secondary a-btn" id="qrDel" type="button" hidden>Remove</button></div>' +
+        '<div class="pf2-msg" id="qrMsg" role="status"></div></div>' +
         GA.backupCard() +
         consentCard() +
         '<p class="mu" style="margin:4px 4px 12px;font-size:13px"><a href="../privacy.html" style="color:var(--primary);font-weight:600">Privacy notice</a> &middot; shown to drivers on the sign-in page and in their profile.</p></div>';
+      (function () {
+        var box = $("qrBox"), msg = $("qrMsg"), del = $("qrDel");
+        function load() {
+          var im = new Image();
+          im.alt = "UPI QR code";
+          im.style.cssText = "max-width:220px;width:100%;border-radius:10px;background:#fff;padding:8px";
+          im.onload = function () { box.innerHTML = ""; box.appendChild(im); del.hidden = false; };
+          im.onerror = function () { box.innerHTML = '<small class="pf2-hint">No QR uploaded yet.</small>'; del.hidden = true; };
+          im.src = "/api/upi-qr?t=" + Date.now();
+        }
+        $("qrFile").onchange = function (e) {
+          var f = e.target.files[0];
+          if (!f) return;
+          if (f.size > 3 * 1024 * 1024) { msg.textContent = "Picture must be 3 MB or smaller."; return; }
+          var rd = new FileReader();
+          rd.onload = function () {
+            msg.textContent = "Uploading...";
+            fetch("/api/upi-qr", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: rd.result }) })
+              .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+              .then(function (x) { msg.textContent = x.ok ? "QR saved." : (x.j.error || "Could not save."); if (x.ok) load(); })
+              .catch(function () { msg.textContent = "No connection."; });
+          };
+          rd.readAsDataURL(f);
+          e.target.value = "";
+        };
+        del.onclick = function () {
+          if (!confirm("Remove the UPI QR code?")) return;
+          fetch("/api/upi-qr", { method: "DELETE" }).then(function () { msg.textContent = "QR removed."; load(); });
+        };
+        load();
+      })();
       GA.bindBackup();
       GA.bindImport();
       (function () {

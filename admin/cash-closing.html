@@ -12,6 +12,16 @@
     <script src="../shared/theme.js"></script>
     <style>
 .cc-card{margin-bottom:16px}
+.cc-warn{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:12px 16px;border-radius:12px;border:1px solid #b45309;background:rgba(180,83,9,.14);color:var(--text);font-size:14px}
+.cc-warn b{color:#f59e0b}
+.cc-since{font-size:12px;color:#f59e0b;font-weight:700}
+.cc-date{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.cc-date .gtp{flex:none!important;width:auto!important;height:42px;border:1px solid var(--border);border-radius:12px;background:var(--card)}
+.cc-date .gtp-btn{flex:none!important;width:auto!important;justify-content:flex-start;gap:14px;padding:0 14px}
+.cc-date .gt-cal,.cc-date .gt-calendar-host{width:auto!important;min-width:0!important;flex:none!important}
+.cc-date .gt-cal-trigger,.cc-date .gt-calendar-trigger{width:auto!important;min-width:0!important;justify-content:flex-start!important;gap:14px!important}
+.cc-date input[type=date]{width:190px;max-width:100%;flex:none;cursor:pointer;height:40px;border:1px solid var(--border);border-radius:10px;padding:0 12px;background:var(--card);color:var(--text);font:inherit;color-scheme:light dark}
+.cc-date .btn{width:auto;padding:0 14px;height:40px}
 .cc-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .cc-head .card-title{margin:0}.cc-head .btn{width:auto;padding:0 16px}
 .cc-note{color:var(--muted);font-size:13px;margin:4px 0 12px}
@@ -66,7 +76,8 @@
           esc = GA.esc,
           $ = function (id) { return document.getElementById(id); },
           DENOMS = [500, 200, 100, 50, 20, 10, 5, 2, 1],
-          DATA = null;
+          DATA = null,
+          VIEW = "";
         function money(n) { return "₹" + Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
         function toast(msg) {
           var t = document.createElement("div");
@@ -84,10 +95,10 @@
             });
           });
         }
-        function newKey() {
+        function newKey(scope) {
           var a = new Uint8Array(12);
           crypto.getRandomValues(a);
-          return "cc-" + Array.prototype.map.call(a, function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+          return "cc-" + (scope === "earlier" ? "e-" : scope === "today" ? "t-" : "") + Array.prototype.map.call(a, function (b) { return b.toString(16).padStart(2, "0"); }).join("");
         }
         function dateLabel(iso) {
           var d = new Date(iso + "T00:00:00");
@@ -95,21 +106,56 @@
         }
 
         pg.innerHTML =
-          '<div id="ccStats"></div>' +
-          '<div class="card cc-card"><div class="cc-head"><div class="card-title">Waiting to be received</div><button class="btn btn-outline" id="refresh" type="button">Refresh</button></div>' +
+          '<div class="cc-date"><label for="ccDate" class="cc-note" style="margin:0">Date</label><input type="date" id="ccDate"><button class="btn btn-outline" id="ccToday" type="button">Today</button></div>' +
+          '<div id="ccStats"></div><div id="ccWarn"></div>' +
+          '<div class="card cc-card" id="oldCard" hidden><div class="cc-head"><div class="card-title">Pending from earlier days</div></div><div class="cc-note">These employees did not close their earlier cash. Receive it first.</div><div class="cc-list" id="oldList"></div></div>' +
+          '<div class="card cc-card" id="pendCard"><div class="cc-head"><div class="card-title">Waiting to be received</div><button class="btn btn-outline" id="refresh" type="button">Refresh</button></div>' +
           '<div class="cc-note">Count the cash in your hand, then press Receive and enter the notes and coins.</div><div class="cc-list" id="pending"><div class="cc-empty">Loading…</div></div></div>' +
-          '<div class="card cc-card"><div class="card-title">Received today</div><div class="cc-list" id="done" style="margin-top:10px"></div></div>';
+          '<div class="card cc-card" id="colCard" hidden><div class="card-title">Collected on this day</div><div class="cc-note">Cash collected by each employee and whether it has been closed.</div><div class="cc-list" id="colList"></div></div>' +
+          '<div class="card cc-card"><div class="card-title" id="doneTitle">Received today</div><div class="cc-list" id="done" style="margin-top:10px"></div></div>';
 
         function load() {
-          return req("/api/accounts/cash-closing").then(function (d) {
+          return req("/api/accounts/cash-closing" + (VIEW ? "?date=" + encodeURIComponent(VIEW) : "")).then(function (d) {
             DATA = d;
-            $("ccStats").innerHTML = '<div class="a-stats">' +
-              GA.tile("s-s", "coin", money(d.totalExpected), "Still to receive", dateLabel(d.date)) +
-              GA.tile("s-a", "users", d.employees.length, "Employees waiting") +
-              GA.tile("s-p", "check-circle", money(d.totalReceived), "Received today", d.received.length + " receipts") + "</div>";
-            $("pending").innerHTML = d.employees.length
-              ? d.employees.map(function (x, i) {
-                  return '<div class="cc-row"><div class="cc-av">' + esc(x.name.charAt(0).toUpperCase()) + '</div><div class="cc-who"><b>' + esc(x.name) + '</b><span>Employee ID ' + esc(code(x.employeeId)) + '</span></div><div class="cc-amt">' + money(x.expected) + '</div><button class="btn cc-btn" type="button" data-i="' + i + '">Receive</button></div>';
+            var past = d.isToday === false, dl = $("ccDate");
+            dl.max = d.todayDate || d.date; dl.value = d.date;
+            $("doneTitle").textContent = past ? "Received on " + dateLabel(d.date) : "Received today";
+            $("pendCard").hidden = past;
+            var col = d.collected || [], colTotal = col.reduce(function (n, x) { return n + x.cash; }, 0),
+              colOpen = col.filter(function (x) { return x.status === "pending"; }),
+              openTotal = colOpen.reduce(function (n, x) { return n + x.cash; }, 0);
+            $("colCard").hidden = !past || !col.length;
+            $("colList").innerHTML = col.map(function (x) {
+              var badge = x.status === "pending" ? '<span class="cc-diff">Not closed yet</span>' : x.status === "closed" ? '<span class="badge">Closed</span>' : '<span class="badge">Closed later</span>';
+              return '<div class="cc-row done"><div class="cc-av">' + esc(x.name.charAt(0).toUpperCase()) + '</div><div class="cc-who"><b>' + esc(x.name) + '</b><span>' + x.count + ' cash collection' + (x.count > 1 ? "s" : "") + '</span></div><div class="cc-amt">' + money(x.cash) + "</div>" + badge + "</div>";
+            }).join("");
+            var net = d.received.reduce(function (n, x) { return n + (x.difference ? (x.difference.type === "shortage" ? -1 : 1) * x.difference.amount : 0); }, 0);
+            $("ccStats").innerHTML = past
+              ? '<div class="a-stats">' +
+                GA.tile("s-p", "check-circle", money(colTotal), "Cash collected", dateLabel(d.date)) +
+                GA.tile("s-a", "users", col.length - colOpen.length + " / " + col.length, "Employees closed", d.received.length + " received this day") +
+                GA.tile("s-s", "coin", money(openTotal), "Not closed yet", net ? (net < 0 ? "Short " : "Excess ") + money(Math.abs(net)) : "Difference: none") + "</div>"
+              : '<div class="a-stats">' +
+                GA.tile("s-s", "coin", money(d.totalExpected), "Still to receive", dateLabel(d.date)) +
+                GA.tile("s-a", "users", d.employees.length, "Employees waiting") +
+                GA.tile("s-p", "check-circle", money(d.totalReceived), "Received today", d.received.length + " receipts") + "</div>";
+            var oldIdx = [], newIdx = [];
+            d.employees.forEach(function (x, i) {
+              var tp = Number((x.expected - (x.carried || 0)).toFixed(2));
+              if (!past && x.carried > 0) oldIdx.push(i);
+              if (past || !(x.carried > 0) || tp > 0.004) newIdx.push(i);
+            });
+            var oldTotal = oldIdx.reduce(function (n, i) { return n + d.employees[i].carried; }, 0);
+            $("oldCard").hidden = past || !oldIdx.length;
+            $("ccWarn").innerHTML = !past && oldIdx.length ? '<div class="cc-warn"><span><b>Pending:</b> Yesterday’s cash closing is still pending for ' + oldIdx.length + (oldIdx.length > 1 ? " employees" : " employee") + " (" + money(oldTotal) + ").</span></div>" : "";
+            $("oldList").innerHTML = oldIdx.map(function (i) {
+              var x = d.employees[i], today = Number((x.expected - x.carried).toFixed(2)),
+                sc = today > 0.004 ? ' data-p="earlier"' : "";
+              return '<div class="cc-row"><div class="cc-av">' + esc(x.name.charAt(0).toUpperCase()) + '</div><div class="cc-who"><b>' + esc(x.name) + '</b><span>Employee ID ' + esc(code(x.employeeId)) + '</span><span class="cc-since" style="display:block">Pending since ' + dateLabel((x.carriedDates && x.carriedDates[0] ? x.carriedDates[0].date : d.date)) + '</span><span style="display:block">' + (x.carriedDates || []).map(function (c) { return esc(dateLabel(c.date)) + " · " + money(c.amount); }).join(" &nbsp;|&nbsp; ") + '</span></div><div class="cc-amt">' + money(x.carried) + '</div><button class="btn cc-btn" type="button"' + sc + ' data-i="' + i + '">Receive</button></div>';
+            }).join("");
+            if (!past) $("pending").innerHTML = newIdx.length
+              ? newIdx.map(function (i) { var x = d.employees[i], mix = x.carried > 0.004;
+                  return '<div class="cc-row"><div class="cc-av">' + esc(x.name.charAt(0).toUpperCase()) + '</div><div class="cc-who"><b>' + esc(x.name) + '</b><span>Employee ID ' + esc(code(x.employeeId)) + '</span>' + "" + '</div><div class="cc-amt">' + money(mix ? x.expected - x.carried : x.expected) + '</div><button class="btn cc-btn" type="button"' + (mix ? ' data-p="today"' : "") + ' data-i="' + i + '">Receive</button></div>';
                 }).join("")
               : '<div class="cc-empty"><b>Nothing to receive</b>Every employee has handed in their cash.</div>';
             $("done").innerHTML = d.received.length
@@ -117,8 +163,12 @@
                   var df = x.difference ? '<span class="cc-diff">' + (x.difference.type === "shortage" ? "Short " : "Excess ") + money(x.difference.amount) + "</span>" : '<span class="badge">Matched</span>';
                   return '<div class="cc-row done"><div class="cc-av">' + esc(x.name.charAt(0).toUpperCase()) + '</div><div class="cc-who"><b>' + esc(x.name) + '</b><span>' + esc(code(x.employeeId)) + '</span></div><div class="cc-amt">' + money(x.counted) + "</div>" + df + "</div>";
                 }).join("")
-              : '<div class="cc-empty">No cash received yet today.</div>';
-            document.querySelectorAll("[data-i]").forEach(function (b) { b.onclick = function () { openModal(DATA.employees[Number(b.dataset.i)]); }; });
+              : '<div class="cc-empty">' + (past ? "No cash was received (closed) on this day." : "No cash received yet today.") + '</div>';
+            if (!past) document.querySelectorAll("[data-i]").forEach(function (b) { b.onclick = function () {
+            var emp = DATA.employees[Number(b.dataset.i)], sc = b.dataset.p || "";
+            if (sc) emp = Object.assign({}, emp, { scope: sc, expected: sc === "earlier" ? emp.carried : Number((emp.expected - emp.carried).toFixed(2)) });
+            openModal(emp);
+          }; });
           }).catch(function (e) { $("pending").innerHTML = '<div class="cc-empty">' + esc(e.message) + "</div>"; });
         }
 
@@ -142,11 +192,11 @@
           o.querySelector("#ccReason").focus();
         }
         function openModal(emp) {
-          var key = newKey(), busy = false, ov = document.createElement("div"), rounded = Math.round(emp.expected), paise = Number((emp.expected - rounded).toFixed(2));
+          var key = newKey(emp.scope), busy = false, ov = document.createElement("div"), rounded = Math.round(emp.expected), paise = Number((emp.expected - rounded).toFixed(2));
           function drow(d) { return '<div class="cc-dr" id="r' + d + '"><div class="cc-chip">₹' + d + '</div><button type="button" data-s="-1" data-for="' + d + '" aria-label="Less ₹' + d + '">−</button><input type="number" inputmode="numeric" min="0" step="1" placeholder="0" data-d="' + d + '" aria-label="Number of ₹' + d + '"><button type="button" data-s="1" data-for="' + d + '" aria-label="More ₹' + d + '">+</button><em id="sub' + d + '">₹0</em></div>'; }
           ov.className = "cc-ov";
           ov.innerHTML = '<div class="cc-md" role="dialog" aria-modal="true">' +
-            '<div class="cc-mh"><div class="cc-av">' + esc(emp.name.charAt(0).toUpperCase()) + '</div><div><h2>Receive cash from ' + esc(emp.name) + '</h2><span>Employee ID ' + esc(code(emp.employeeId)) + '</span></div><button class="cc-x" id="ccX" type="button" aria-label="Close" title="Close">' + GA.icon("close") + '</button></div>' +
+            '<div class="cc-mh"><div class="cc-av">' + esc(emp.name.charAt(0).toUpperCase()) + '</div><div><h2>Receive cash from ' + esc(emp.name) + '</h2><span>Employee ID ' + esc(code(emp.employeeId)) + '</span>' + (emp.scope ? '<span style="display:block">' + (emp.scope === "earlier" ? "Earlier days’ cash only" : "Today’s cash only") + '</span>' : "") + '</div><button class="cc-x" id="ccX" type="button" aria-label="Close" title="Close">' + GA.icon("close") + '</button></div>' +
             '<div class="cc-mb"><div class="cc-left"><p class="cc-sec">Notes</p>' + [500, 200, 100, 50, 20, 10].map(drow).join("") + '<p class="cc-sec">Coins</p>' + [5, 2, 1].map(drow).join("") + '</div>' +
             '<div class="cc-right"><div class="cc-big"><span>Should hand in (bills are rounded off)</span><b>₹' + rounded.toLocaleString("en-IN") + '</b>' + (paise ? '<span>Books show ' + money(emp.expected) + ' · round-off ' + money(Math.abs(paise)) + '</span>' : "") + '</div>' +
             '<div class="cc-two"><div class="cc-big"><span>You counted</span><b id="ccTotal">₹0</b></div><div class="cc-big" id="ccDiffRow"><span>Difference</span><b id="ccDiff">—</b></div></div>' +
@@ -177,7 +227,7 @@
           function send(reason, action) {
             var err = ov.querySelector("#ccErr");
             busy = true; ok.disabled = true; err.hidden = true;
-            req("/api/accounts/cash-closing/receive", { method: "POST", body: JSON.stringify({ requestKey: key, employeeId: emp.employeeId, expected: emp.expected, denominations: counts(), reason: reason, differenceAction: action }) })
+            req("/api/accounts/cash-closing/receive", { method: "POST", body: JSON.stringify({ requestKey: key, employeeId: emp.employeeId, expected: emp.expected, scope: emp.scope || "", denominations: counts(), reason: reason, differenceAction: action }) })
               .then(function () { busy = false; ov.remove(); toast("Cash received from " + emp.name + "."); return load(); })
               .catch(function (e) { busy = false; err.textContent = e.message; err.hidden = false; refresh(); });
           }
@@ -188,6 +238,9 @@
           inputs[0].focus();
         }
         $("refresh").onclick = load;
+        $("ccDate").onchange = function () { VIEW = this.value; load(); };
+        $("ccDate").onclick = function () { try { if (this.showPicker) this.showPicker(); } catch (e) {} };
+        $("ccToday").onclick = function () { VIEW = ""; load(); };
         load();
       })();
     </script>

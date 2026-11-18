@@ -1513,6 +1513,43 @@
       badBox("mEk", "End km cannot be less than the start km.");
       return;
     }
+    if (times && outV && !(ek > 0) && !skChanged) {
+      // No km: a Sales person who forgot to punch out. The server closes their open punch-in; anyone else is saved as before.
+      $("mSave").disabled = true;
+      $("mErr").textContent = "";
+      fetch("/api/close-day", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: w.id, date: M.ds, outTime: t12(outV), inTime: t12(inV), reason: (M.rm || "").trim() || "Set by office" }),
+      })
+        .then(function (r) {
+          return r.json().then(
+            function (j) { return { ok: r.ok, j: j || {} }; },
+            function () { return { ok: false, j: {} }; },
+          );
+        })
+        .then(
+          function (x) {
+            if (!x.ok) {
+              $("mSave").disabled = false;
+              $("mErr").textContent = x.j.error || "Could not save. Try again.";
+              return;
+            }
+            if (x.j.entry) {
+              var rr = (DB.rec[w.id] = DB.rec[w.id] || {});
+              rr.attendanceLog = rr.attendanceLog || {};
+              rr.attendanceLog[M.ds.slice(0, 7)] = rr.attendanceLog[M.ds.slice(0, 7)] || {};
+              rr.attendanceLog[M.ds.slice(0, 7)][+M.ds.slice(8)] = x.j.entry;
+            }
+            finishEdit(w, st, inV, outV, km, times, 0);
+          },
+          function () {
+            $("mSave").disabled = false;
+            $("mErr").textContent = "No connection. Try again.";
+          },
+        );
+      return;
+    }
     if (times && (ek > 0 || skChanged)) {
       if (ek > 0 && !outV) {
         badBox("mOut", "Enter the check-out time to close the day with an end km.");

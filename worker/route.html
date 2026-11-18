@@ -714,6 +714,34 @@
     </nav>
     <script src="../shared/theme.js"></script>
     <script src="../shared/mock-data.js"></script>
+    <script>
+      /* Punch-in required: the route and delivery pages stay locked until today's punch-in. */
+      (function () {
+        var box;
+        function punched() {
+          try {
+            var s = GM.getShift();
+            return !!(s && s.punchedIn);
+          } catch (e) {
+            return true; /* if the shift cannot be read, never lock someone out */
+          }
+        }
+        function check() {
+          if (punched()) {
+            if (box) { box.remove(); box = null; }
+            return;
+          }
+          if (box || !document.body) return;
+          box = document.createElement("div");
+          box.style.cssText = "position:fixed;inset:0;z-index:99999;background:var(--bg,#0f172a);color:var(--text,#fff);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center";
+          box.innerHTML = '<div style="max-width:340px"><h2 style="margin:0 0 8px">Punch in first</h2><p style="margin:0 0 18px;opacity:.8">Your route and shops open after you punch in for today.</p><a href="punch-in.html" style="display:inline-block;padding:12px 20px;border-radius:12px;background:#14b8a6;color:#04201d;font-weight:700;text-decoration:none">Punch In</a><div style="margin-top:14px"><a href="home.html" style="color:inherit;opacity:.8">Back to Home</a></div></div>';
+          document.body.appendChild(box);
+        }
+        if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", check);
+        else check();
+        window.addEventListener("gm-sync", check);
+      })();
+    </script>
     <script src="../shared/visit.js"></script>
     <script src="../shared/vendor/leaflet/leaflet.js"></script>
     <script>

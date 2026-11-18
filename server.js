@@ -2961,6 +2961,8 @@ function api(req, res, url) {
         ),
       canBill: (session) =>
         session.role === "admin" && hasAny(acctOf(session), ["billing"]),
+      canEditInvoice: (session) =>
+        session.role === "admin" && isFull(acctOf(session)),
       canCollect: (session) =>
         (session.role === "admin" && hasAny(acctOf(session), ["billing"])) ||
         (session.role === "sales" && hasAny(acctOf(session), ["sales"])) ||
@@ -3672,6 +3674,9 @@ function api(req, res, url) {
     !(
       (p === "/api/state" && req.method === "GET") ||
       (p === "/api/pfile" && req.method === "GET") ||
+      (p === "/api/photo" && req.method === "GET") || // shop photos are view-only for Sales
+      (p === "/api/photos" && req.method === "GET") || // which shops have a photo
+      (p === "/api/upi-qr" && req.method === "GET") || // UPI QR is view-only for Sales
       p.indexOf("/api/sales/") === 0
     )
   )
@@ -4215,10 +4220,51 @@ function api(req, res, url) {
           !/^\d{4}-\d{2}-\d{2}$/.test(date)
         )
           return send(res, 400, { error: "bad request" });
-        if (!(endKm > 0) && !(stKm > 0))
+        if (!(endKm > 0) && !(stKm > 0)) {
+          // No km given: this is a Sales person (no vehicle). Close their open punch-in in the Sales attendance store.
+          if (tOut) {
+            const salesAll = stored("gm_sales_attendance_v1") || {},
+              se = salesAll[id] && salesAll[id][date];
+            if (se && Number(se.inAt) > 0 && !se.outAt) {
+              const om = clockMins(tOut[0]);
+              const outAt =
+                om == null
+                  ? NaN
+                  : Date.parse(
+                      date + "T" + String(Math.floor(om / 60)).padStart(2, "0") + ":" + String(om % 60).padStart(2, "0") + ":00+05:30",
+                    );
+              if (!(outAt > Number(se.inAt)) || outAt > Number(se.inAt) + 24 * 3600e3 || outAt > Date.now())
+                return send(res, 400, {
+                  error: "Check-out must be after check-in (" + (se.inTime || "") + "), within 24 hours of it, and not in the future.",
+                });
+              const mins = Math.round((outAt - Number(se.inAt)) / 60000),
+                hh = String(Math.floor(om / 60)).padStart(2, "0"),
+                reason = String(b.reason || "").trim().slice(0, 200);
+              const entry = Object.assign({}, se, {
+                outAt,
+                outTime: hh + ":" + String(om % 60).padStart(2, "0"),
+                hours: Math.floor(mins / 60) + "h " + String(mins % 60).padStart(2, "0") + "m",
+                closedByOffice: true,
+              });
+              if (reason) entry.officeReason = reason;
+              salesAll[id][date] = entry;
+              setItem("gm_sales_attendance_v1", JSON.stringify(salesAll));
+              const srec = stored("gm_crm_data_v5__" + id);
+              if (srec && typeof srec === "object" && !Array.isArray(srec)) {
+                srec.attendanceLog = srec.attendanceLog || {};
+                srec.attendanceLog[date.slice(0, 7)] = srec.attendanceLog[date.slice(0, 7)] || {};
+                srec.attendanceLog[date.slice(0, 7)][String(+date.slice(8))] = Object.assign({}, entry);
+                setItem("gm_crm_data_v5__" + id, JSON.stringify(srec));
+              }
+              logEvents(s, [{ type: "employee", text: "Closed " + id + "'s day " + date + " at " + entry.outTime + (reason ? " (" + reason + ")" : "") }]);
+              return send(res, 200, { ok: true, entry, sales: true });
+            }
+            return send(res, 200, { ok: true, skipped: true });
+          }
           return send(res, 400, {
             error: "Enter the start km or the end km (odometer reading).",
           });
+        }
         if (endKm > 0 && !tOut)
           return send(res, 400, { error: "Enter the check-out time too." });
         const w = (workerData().workers || []).filter(
@@ -5000,6 +5046,42 @@ function api(req, res, url) {
         .catch(fail);
     }
   }
+  // The shop's UPI QR code. Everyone signed in can view it (collection pages); only a full-access admin can change it.
+  if (p === "/api/upi-qr") {
+    if (!s) return send(res, 401, { error: "Login required" });
+    const qrFiles = ["jpg", "png", "webp"].map((ext) => ({ path: "q/upi-qr." + ext, ext })),
+      qrExisting = qrFiles.filter((f) => Files.has(f.path));
+    if (req.method === "GET") {
+      const f = qrExisting[0];
+      if (!f) {
+        res.writeHead(404);
+        return res.end();
+      }
+      return sendFile(f.path, f.ext, "no-cache");
+    }
+    if (s.role !== "admin" || !isFull(acctOf(s))) return send(res, 403, { error: "Not allowed" });
+    if (req.method === "PUT")
+      return body(req, (err, b) => {
+        const d = !err && decode(b, false);
+        if (!d) return send(res, 400, { error: "send a valid JPG, PNG or WEBP picture" });
+        if (d.buf.length > 3 * 1024 * 1024) return send(res, 400, { error: "picture is too large" });
+        const fp = "q/upi-qr." + VEXT[d.mime];
+        Files.put(fp, d.buf, d.mime)
+          .then(() => Promise.all(qrExisting.filter((f) => f.path !== fp).map((f) => Files.del(f.path))))
+          .then(() => {
+            logEvents(s, [{ type: "settings", text: "Changed the UPI QR code" }]);
+            send(res, 200, { ok: true });
+          })
+          .catch(fail);
+      });
+    if (req.method === "DELETE")
+      return Promise.all(qrExisting.map((f) => Files.del(f.path)))
+        .then(() => {
+          logEvents(s, [{ type: "settings", text: "Removed the UPI QR code" }]);
+          send(res, 200, { ok: true });
+        })
+        .catch(fail);
+  }
   if (p === "/api/photos" && req.method === "GET") {
     const out = {};
     Files.names("c/").forEach((n) => {
@@ -5015,13 +5097,18 @@ function api(req, res, url) {
       .replace(/[^A-Za-z0-9_-]/g, "")
       .slice(0, 60);
     if (!code) return send(res, 400, { error: "bad code" });
-    if (s.role !== "admin") return send(res, 403, { error: "Not allowed" });
-    const customerPhotoAccess = acctOf(s);
-    if (
-      !isFull(customerPhotoAccess) &&
-      !hasAny(customerPhotoAccess, ["sales", "billing"])
-    )
-      return send(res, 403, { error: "Not allowed" });
+    // Any logged-in user (admin, sales, delivery) may VIEW a shop photo so they can find the shop.
+    // Only admin users with full, sales or billing access may upload, replace or delete it.
+    if (!s) return send(res, 401, { error: "Login required" });
+    if (req.method !== "GET") {
+      if (s.role !== "admin") return send(res, 403, { error: "Not allowed" });
+      const customerPhotoAccess = acctOf(s);
+      if (
+        !isFull(customerPhotoAccess) &&
+        !hasAny(customerPhotoAccess, ["sales", "billing"])
+      )
+        return send(res, 403, { error: "Not allowed" });
+    }
     const photoFiles = ["jpg", "png", "webp"].map((ext) => ({
       path: "c/" + code + "." + ext,
       ext,

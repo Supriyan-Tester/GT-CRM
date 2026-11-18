@@ -14,6 +14,7 @@ function createAccountsRoutes(config) {
   const canAccessCustomer = config.canAccessCustomer || (() => true);
   const canBill = config.canBill;
   const canCollect = config.canCollect;
+  const canEditInvoice = config.canEditInvoice || (() => false);
   const planInvoiceOwner = config.planInvoiceOwner || (() => null);
   const planStopFor = config.planStopFor || (() => null);
   const notifyAdmin = config.notifyAdmin || (() => {});
@@ -47,14 +48,14 @@ function createAccountsRoutes(config) {
   }
   function sendEvidence(res, bytes, ext) {
     const mime = ext === "jpg" ? "image/jpeg" : ext === "png" ? "image/png" : "image/webp";
-    res.writeHead(200, { "Content-Type": mime, "Content-Length": bytes.length, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" });
+    res.writeHead(200, { "Content-Type": mime, "Content-Length": bytes.length, "Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff" });
     res.end(bytes);
   }
 
   // Short-lived read cache: the same read asked again within a few seconds (several people opening dashboards, or one page
   // asking twice) is answered from memory and shares one database call. Every write goes through rpc(), which empties the
   // cache before and after, so a balance never shows an old value after an approval, handover or closing.
-  const READ_CACHE_MS = 10000, readCache = new Map();
+  const READ_CACHE_MS = 10000, readCache = new Map(), SUMMARY_CACHE_MS = 20000, summaryCache = new Map();
   async function rest(path) {
     const hit = readCache.get(path);
     let data;
@@ -86,6 +87,10 @@ function createAccountsRoutes(config) {
     }
     return rows;
   }
+  // Debit/credit totals per account and employee, added up by the database (replaces downloading every journal line).
+  function ledgerTotals(accounts, employeeId) {
+    return rpc("gm_accounts_ledger_totals", { p_accounts: accounts, p_employee_id: employeeId || null });
+  }
   // One page of rows plus the total number of matching rows (for "Showing 1 to 25 of 137").
   async function restPage(path, offset, limit) {
     const response = await fetchImpl(URL + "/rest/v1/" + path + "&limit=" + limit + "&offset=" + offset, {
@@ -98,6 +103,8 @@ function createAccountsRoutes(config) {
     return { rows, total };
   }
   async function rpc(name, args) {
+    const isRead = name === "gm_accounts_ledger_totals" || name === "gm_accounts_collection_stats" || name === "gm_accounts_invoice_paid"; // reads: they must not wipe the caches
+    if (!isRead) { readCache.clear(); summaryCache.clear(); }
     const response = await fetchImpl(URL + "/rest/v1/rpc/" + name, {
       method: "POST",
       headers: { apikey: KEY, Authorization: "Bearer " + KEY, "Content-Type": "application/json" },
@@ -109,7 +116,14 @@ function createAccountsRoutes(config) {
       error.status = response.status;
       throw error;
     }
-    return response.json();
+    const out = await response.json();
+    if (!isRead) { readCache.clear(); summaryCache.clear(); }
+    return out;
+  }
+  // Message raised by our own database functions (shown to the admin), or "" for anything else.
+  function dbMessage(e) {
+    try { const j = JSON.parse(String(e && e.message || "")); if (j && j.code === "P0001" && j.message) return String(j.message).slice(0, 200); } catch (_) {}
+    return "";
   }
   function fail(res, error) {
     const detail = String(error && error.message || "");
@@ -188,13 +202,15 @@ function createAccountsRoutes(config) {
       if (!canBill(session) && !canCollect(session)) { send(res, 403, { error: "Accounts evidence permission required." }); return true; }
       const token = evidenceMatch[1].toLowerCase();
       (async () => {
-        for (const ext of ["jpg", "png", "webp"]) {
-          const evidencePath = "accounts/evidence/" + token + "." + ext;
-          const encoded = encodeURIComponent(evidencePath);
-          const [allocations, invoices] = await Promise.all([
-            rest("gm_accounts_collection_allocations?select=evidence_path,collection_id&evidence_path=eq." + encoded),
-            rest("gm_accounts_invoices?select=evidence_path,customer_code&evidence_path=eq." + encoded),
-          ]);
+        // One lookup for any file type (the stored path is "accounts/evidence/<id>.<jpg|png|webp>"), instead of trying each type in turn.
+        const like = encodeURIComponent("accounts/evidence/" + token + ".*");
+        const [allocations, invoices] = await Promise.all([
+          rest("gm_accounts_collection_allocations?select=evidence_path,collection_id&evidence_path=like." + like),
+          rest("gm_accounts_invoices?select=evidence_path,customer_code&evidence_path=like." + like),
+        ]);
+        const evidencePath = String((allocations[0] || invoices[0] || {}).evidence_path || "");
+        const ext = (/\.(jpg|png|webp)$/i.exec(evidencePath) || [])[1];
+        if (ext) {
           let allowed = false;
           if (allocations.length) {
             const ids = Array.from(new Set(allocations.map((x) => x.collection_id)));
@@ -202,10 +218,11 @@ function createAccountsRoutes(config) {
             allowed = collections.some((x) => canBill(session) || String(x.collected_by) === String(session.id));
           }
           if (invoices.length && (canBill(session) || invoices.some((x) => canAccessCustomer(session, x.customer_code)))) allowed = true;
-          if (!allowed) continue;
-          const bytes = await files.get(evidencePath);
-          if (!bytes) return send(res, 404, { error: "Evidence file is missing." });
-          return sendEvidence(res, bytes, ext);
+          if (allowed) {
+            const bytes = await files.get(evidencePath);
+            if (!bytes) return send(res, 404, { error: "Evidence file is missing." });
+            return sendEvidence(res, bytes, ext.toLowerCase());
+          }
         }
         send(res, 404, { error: "Evidence not found." });
       })().catch((e) => { console.error("Accounts evidence read:", e.message); send(res, 502, { error: "Unable to load invoice evidence." }); });
@@ -298,13 +315,17 @@ function createAccountsRoutes(config) {
       let customerCode;
       try { customerCode = decodeURIComponent(invoiceMatch[1]); } catch (_) { send(res, 400, { error: "Invalid customer code." }); return true; }
       if (!customerCode || customerCode.length > 80 || !customerLookup(customerCode) || !canAccessCustomer(session, customerCode)) { send(res, 404, { error: "Customer not found." }); return true; }
-      rest("gm_accounts_invoices?select=id,customer_code,customer_name_snapshot,invoice_no,invoice_date,source_kind,original_amount,initial_outstanding,evidence_path,created_at,gm_accounts_collection_allocations(invoice_id,amount,collection_id,gm_accounts_collections(status,method,received_at,collector_name_snapshot))&customer_code=eq." + encodeURIComponent(customerCode) + "&order=invoice_date.desc,created_at.desc")
+      rest("gm_accounts_invoices?select=id,customer_code,customer_name_snapshot,invoice_no,invoice_date,source_kind,original_amount,initial_outstanding,evidence_path,created_at,gm_accounts_invoice_adjustments(id,kind,amount,reason,created_by,created_at,reversed_at),gm_accounts_collection_allocations(invoice_id,amount,collection_id,gm_accounts_collections(status,method,received_at,collector_name_snapshot))&customer_code=eq." + encodeURIComponent(customerCode) + "&order=invoice_date.desc,created_at.desc")
         .then(async (rows) => {
           // One database call: invoices with their payment allocations and each payment's status.
           const approved = {}, pending = {};
           const paymentsBy = {};
           const invoices = rows.map((r) => {
-            const { gm_accounts_collection_allocations: al, ...inv } = r;
+            const { gm_accounts_collection_allocations: al, gm_accounts_invoice_adjustments: adj, ...inv } = r;
+            const live = (adj || []).filter((x) => !x.reversed_at).sort((x, y) => String(x.created_at).localeCompare(String(y.created_at)));
+            inv.adjustments = live.map((x) => ({ id: x.id, kind: x.kind, amount: Number(x.amount), reason: String(x.reason || "").slice(0, 200), by: String(x.created_by || "").slice(0, 80), at: x.created_at }));
+            inv.discountAmount = Number(live.filter((x) => x.kind === "discount").reduce((t, x) => t + Number(x.amount || 0), 0).toFixed(2));
+            inv.returnAmount = Number(live.filter((x) => x.kind === "return").reduce((t, x) => t + Number(x.amount || 0), 0).toFixed(2));
             for (const a of al || []) {
               const st = a.gm_accounts_collections && a.gm_accounts_collections.status;
               if (st === "approved") approved[inv.id] = (approved[inv.id] || 0) + Number(a.amount || 0);
@@ -317,7 +338,7 @@ function createAccountsRoutes(config) {
             return inv;
           });
           const result = invoices.map((inv) => ({ ...inv, payments: (paymentsBy[inv.id] || []).sort((x, y) => String(x.at).localeCompare(String(y.at))), approvedPaid: Number((approved[inv.id] || 0).toFixed(2)), pendingAmount: Number((pending[inv.id] || 0).toFixed(2)), outstanding: Number((Number(inv.initial_outstanding) - (approved[inv.id] || 0)).toFixed(2)), availableToCollect: Number((Number(inv.initial_outstanding) - (approved[inv.id] || 0) - (pending[inv.id] || 0)).toFixed(2)) }));
-          send(res, 200, { ok: true, customerCode, invoices: result });
+          send(res, 200, { ok: true, customerCode, invoices: result, canEdit: !!canEditInvoice(session) });
         }).catch((e) => { console.error("Accounts invoice read:", e.message); send(res, 502, { error: "Unable to load customer ledger." }); });
       return true;
     }
@@ -337,25 +358,35 @@ function createAccountsRoutes(config) {
         : range === "month" ? new Date(today.slice(0, 7) + "-01T00:00:00+05:30").getTime()
         : range === "year" ? new Date(today.slice(0, 4) + "-01-01T00:00:00+05:30").getTime() : todayStart;
       const chartFrom = new Date(Math.min(chartFromMs, rangeStartMs)).toISOString();
+      const cachedSummary = summaryCache.get(range);
+      if (cachedSummary && cachedSummary.exp > Date.now()) { send(res, 200, cachedSummary.body); return true; }
       Promise.all([
-        restAll("gm_accounts_journal_lines?select=account_code,debit,credit&account_code=in.(CUSTOMER_RECEIVABLE,EMPLOYEE_CASH_CUSTODY,OFFICE_CASH,UPI_CLEARING,BANK)&order=id"),
+        ledgerTotals(["CUSTOMER_RECEIVABLE","EMPLOYEE_CASH_CUSTODY","OFFICE_CASH","UPI_CLEARING","BANK"]),
         restAll("gm_accounts_collections?select=method,total_amount,status,received_at&received_at=gte." + encodeURIComponent(chartFrom) + "&status=in.(approved,pending_approval)&order=received_at"),
         restAll("gm_accounts_collections?select=id,total_amount&status=eq.pending_approval&order=id"),
         restAll("gm_accounts_cash_movements?select=id&movement_type=in.(handover,office_receipt)&status=eq.recorded&order=id"),
         restAll("gm_accounts_upi_settlements?select=id&status=eq.pending&order=id"),
         restAll("gm_accounts_daily_closings?select=id&status=eq.pending_approval&order=id"),
-        rest("gm_accounts_collections?select=id,customer_name_snapshot,collector_name_snapshot,method,total_amount,status,received_at&order=received_at.desc&limit=8"),
+        rest("gm_accounts_collections?select=id,customer_name_snapshot,collector_name_snapshot,method,total_amount,status,received_at,gm_accounts_collection_allocations(gm_accounts_invoices(invoice_no))&order=received_at.desc&limit=8")
+          .catch(() => rest("gm_accounts_collections?select=id,customer_name_snapshot,collector_name_snapshot,method,total_amount,status,received_at&order=received_at.desc&limit=8")),
         restAll("gm_accounts_cash_movements?select=id&status=eq.disputed&order=id"),
         restAll("gm_accounts_upi_settlements?select=id&status=eq.disputed&order=id"),
         restAll("gm_accounts_daily_closings?select=id&status=eq.disputed&order=id"),
       ]).then(async ([lines, recentWindow, pendingCollections, pendingMoves, pendingUpi, pendingClosings, recent, badMoves, badUpi, badClosings]) => {
-        // Invoice numbers for the recent rows
-        const recentIds = recent.map((x) => x.id);
-        const recentAlloc = recentIds.length ? await rest("gm_accounts_collection_allocations?select=collection_id,invoice_id&collection_id=in.(" + recentIds.join(",") + ")") : [];
-        const recentInvIds = Array.from(new Set(recentAlloc.map((x) => x.invoice_id)));
-        const recentInv = recentInvIds.length ? await rest("gm_accounts_invoices?select=id,invoice_no&id=in.(" + recentInvIds.join(",") + ")") : [];
-        const invNo = Object.fromEntries(recentInv.map((x) => [x.id, x.invoice_no]));
-        for (const r of recent) r.invoiceNos = Array.from(new Set(recentAlloc.filter((a) => a.collection_id === r.id).map((a) => invNo[a.invoice_id]).filter(Boolean)));
+        // Invoice numbers for the recent rows (already joined in the one request above when the database allows it)
+        if (recent.length && recent.every((r) => Array.isArray(r.gm_accounts_collection_allocations))) {
+          for (const r of recent) {
+            r.invoiceNos = Array.from(new Set(r.gm_accounts_collection_allocations.map((a) => { const v = Array.isArray(a.gm_accounts_invoices) ? a.gm_accounts_invoices[0] : a.gm_accounts_invoices; return v && v.invoice_no; }).filter(Boolean)));
+            delete r.gm_accounts_collection_allocations;
+          }
+        } else {
+          const recentIds = recent.map((x) => x.id);
+          const recentAlloc = recentIds.length ? await rest("gm_accounts_collection_allocations?select=collection_id,invoice_id&collection_id=in.(" + recentIds.join(",") + ")") : [];
+          const recentInvIds = Array.from(new Set(recentAlloc.map((x) => x.invoice_id)));
+          const recentInv = recentInvIds.length ? await rest("gm_accounts_invoices?select=id,invoice_no&id=in.(" + recentInvIds.join(",") + ")") : [];
+          const invNo = Object.fromEntries(recentInv.map((x) => [x.id, x.invoice_no]));
+          for (const r of recent) r.invoiceNos = Array.from(new Set(recentAlloc.filter((a) => a.collection_id === r.id).map((a) => invNo[a.invoice_id]).filter(Boolean)));
+        }
         const sums = { CUSTOMER_RECEIVABLE: 0, EMPLOYEE_CASH_CUSTODY: 0, OFFICE_CASH: 0, UPI_CLEARING: 0, BANK: 0 };
         for (const line of lines) sums[line.account_code] += Number(line.debit || 0) - Number(line.credit || 0);
         const money = (n) => Number(Number(n || 0).toFixed(2));
@@ -370,7 +401,7 @@ function createAccountsRoutes(config) {
           if (new Date(row.received_at).getTime() >= rangeStartMs && rangeBy[row.method] !== undefined) { rangeBy[row.method] += amount; rangeBy.count += 1; }
           if (day === today && todayBy[row.method] !== undefined) { todayBy[row.method] += amount; todayBy.count += 1; }
         }
-        send(res, 200, {
+        const summaryBody = {
           ok: true,
           today,
           balances: {
@@ -390,7 +421,9 @@ function createAccountsRoutes(config) {
           },
           recent,
           daily: Object.values(dayTotals).map((d) => ({ date: d.date, approved: money(d.approved), pending: money(d.pending) })),
-        });
+        };
+        summaryCache.set(range, { exp: Date.now() + SUMMARY_CACHE_MS, body: summaryBody });
+        send(res, 200, summaryBody);
       }).catch((e) => { console.error("Accounts summary read:", e.message); send(res, 502, { error: "Unable to load the Accounts dashboard." }); });
       return true;
     }
@@ -429,31 +462,34 @@ function createAccountsRoutes(config) {
       const nameOf = (id) => { if (!id) return ""; const n = config.employeeName(String(id)); return n && n !== "Employee" ? n : String(id); };
       // The tile totals and the list are read at the same time (not one after the other), so the page loads faster.
       const noStats = url.searchParams.get("nostats") === "1";
-      const statsP = noStats ? Promise.resolve(null) : Promise.all([
-        restAll("gm_accounts_collections?select=total_amount&status=eq.pending_approval&order=id"),
-        restPage("gm_accounts_collections?select=id&status=eq.approved&order=id", 0, 1),
-        restPage("gm_accounts_collections?select=id&status=eq.rejected&order=id", 0, 1),
-        restPage("gm_accounts_collections?select=id&status=eq.correction_requested&order=id", 0, 1),
-        restAll("gm_accounts_collections?select=total_amount&status=eq.approved&approved_at=gte." + encodeURIComponent(monthStart) + "&order=id"),
-      ]);
+      // The tile totals are added up by the database (one small call), not by downloading every collection row.
+      const statsKey = "colstats:" + monthStart;
+      const statsP = noStats ? Promise.resolve(null) : (async () => {
+        const hit = summaryCache.get(statsKey);
+        if (hit && hit.exp > Date.now()) return hit.body;
+        const rows = await rpc("gm_accounts_collection_stats", { p_month_start: monthStart });
+        const r = (Array.isArray(rows) ? rows[0] : rows) || {};
+        const stats = {
+          pendingCount: Number(r.pending_count || 0), pendingAmount: Number(Number(r.pending_amount || 0).toFixed(2)),
+          approvedCount: Number(r.approved_count || 0), rejectedCount: Number(r.rejected_count || 0), correctionCount: Number(r.correction_count || 0),
+          approvedMonthAmount: Number(Number(r.approved_month_amount || 0).toFixed(2)),
+        };
+        summaryCache.set(statsKey, { body: stats, exp: Date.now() + SUMMARY_CACHE_MS });
+        return stats;
+      })();
       statsP.catch(() => {});
       restPage("gm_accounts_collections?select=" + cols + filter + "&order=received_at.desc,id", (page - 1) * size, size).then(async (list) => {
         const ids = list.rows.map((x) => x.id);
         const allocations = ids.length ? await rest("gm_accounts_collection_allocations?select=collection_id,invoice_id,amount,evidence_path&collection_id=in.(" + ids.join(",") + ")") : [];
         const invoiceIds = Array.from(new Set(allocations.map((x) => x.invoice_id)));
-        const everyP = invoiceIds.length ? restAll("gm_accounts_collection_allocations?select=invoice_id,amount,collection_id&invoice_id=in.(" + invoiceIds.join(",") + ")&order=id") : Promise.resolve([]);
-        everyP.catch(() => {});
-        const invoiceRows = invoiceIds.length ? await rest("gm_accounts_invoices?select=id,invoice_no,invoice_date,original_amount,initial_outstanding&id=in.(" + invoiceIds.join(",") + ")") : [];
+        const [invoiceRows, paidRows] = invoiceIds.length ? await Promise.all([
+          rest("gm_accounts_invoices?select=id,invoice_no,invoice_date,original_amount,initial_outstanding&id=in.(" + invoiceIds.join(",") + ")"),
+          rpc("gm_accounts_invoice_paid", { p_invoice_ids: invoiceIds }),
+        ]) : [[], []];
         const invoiceMap = Object.fromEntries(invoiceRows.map((x) => [x.id, x]));
-        // Outstanding now = amount owed when the invoice was entered, minus every APPROVED payment against it.
+        // Outstanding now = amount owed when the invoice was entered, minus every APPROVED payment against it (added up by the database).
         const approvedPaid = {};
-        if (invoiceIds.length) {
-          const every = await everyP;
-          const cids = Array.from(new Set(every.map((x) => x.collection_id)));
-          const okRows = cids.length ? await rest("gm_accounts_collections?select=id&status=eq.approved&id=in.(" + cids.join(",") + ")") : [];
-          const okIds = new Set(okRows.map((x) => x.id));
-          for (const row of every) if (okIds.has(row.collection_id)) approvedPaid[row.invoice_id] = (approvedPaid[row.invoice_id] || 0) + Number(row.amount || 0);
-        }
+        for (const row of paidRows || []) approvedPaid[row.invoice_id] = Number(row.paid || 0);
         const grouped = {};
         for (const row of allocations) {
           const inv = invoiceMap[row.invoice_id] || {};
@@ -463,16 +499,10 @@ function createAccountsRoutes(config) {
             evidenceUrl: "/api/accounts/evidence/" + (String(row.evidence_path).split("/").pop() || "").replace(/\.(jpg|png|webp)$/i, ""),
           });
         }
-        const sp = await statsP;
-        const [pendingRows, approvedCount, rejectedCount, correctionCount, approvedMonth] = sp || [[], { total: 0 }, { total: 0 }, { total: 0 }, []];
-        const money = (n) => Number(Number(n || 0).toFixed(2));
+        const stats = await statsP;
         send(res, 200, {
           ok: true, page, pageSize: size, total: list.total,
-          stats: !sp ? null : {
-            pendingCount: pendingRows.length, pendingAmount: money(pendingRows.reduce((n, x) => n + Number(x.total_amount || 0), 0)),
-            approvedCount: approvedCount.total, rejectedCount: rejectedCount.total, correctionCount: correctionCount.total,
-            approvedMonthAmount: money(approvedMonth.reduce((n, x) => n + Number(x.total_amount || 0), 0)),
-          },
+          stats,
           rows: list.rows.map((x) => ({
             ...x, total_amount: Number(x.total_amount || 0), invoices: grouped[x.id] || [],
             // Show the person's name, not just their login id (A1).
@@ -526,6 +556,79 @@ function createAccountsRoutes(config) {
           send(res, 200, { ok: true, collections: collections.map((x) => ({ ...x, allocations: grouped[x.id] || [] })) });
         })
         .catch((e) => { console.error("Accounts pending read:", e.message); send(res, 502, { error: "Unable to load pending collections." }); });
+      return true;
+    }
+
+    if (req.method === "POST" && /^\/api\/accounts\/invoices\/[0-9a-f-]{36}\/edit$/i.test(p)) {
+      if (!canEditInvoice(session)) { send(res, 403, { error: "Only Super Admin or Admin can edit invoices." }); return true; }
+      const editId = p.split("/")[4];
+      body(req, (err, input) => {
+        if (err) return send(res, 400, { error: "Invalid request body." });
+        const reason = String((input && input.reason) || "").trim();
+        if (reason.length < 3 || reason.length > 200) return send(res, 400, { error: "Enter a reason for the change (3 to 200 characters)." });
+        rest("gm_accounts_invoices?select=id,customer_code,evidence_path&id=eq." + encodeURIComponent(editId) + "&limit=1").then((found) => {
+          if (!found.length) { send(res, 404, { error: "Invoice not found." }); return null; }
+          const inv = found[0];
+          const newPath = String((input && input.evidencePath) || "").trim();
+          if (newPath && (!/^accounts\/evidence\/[0-9a-f-]{36}\.(jpg|png|webp)$/i.test(newPath) || !files || !files.has(newPath)))
+            throw new Error("Upload and verify the new bill photo first.");
+          const valid = validateOpeningInvoice({ customerCode: inv.customer_code, invoiceNo: input.invoiceNo, invoiceDate: input.invoiceDate,
+            originalAmount: input.originalAmount, outstandingAmount: input.outstandingAmount, evidencePath: newPath || inv.evidence_path });
+          const onPlan = planInvoiceOwner(valid.invoiceNo, valid.customerCode);
+          if (onPlan) { send(res, 409, { error: "Invoice " + valid.invoiceNo + " is already on a Daily plan for " + onPlan.name + " (" + onPlan.code + ")." }); return null; }
+          return rpc("gm_accounts_edit_invoice", {
+            p_invoice_id: editId, p_invoice_no: valid.invoiceNo, p_invoice_date: valid.invoiceDate,
+            p_original_amount: valid.originalAmount, p_outstanding_amount: valid.openingOutstanding,
+            p_evidence_path: newPath, p_edited_by: String(session.id).slice(0, 80), p_reason: reason,
+          }).then((out) => { send(res, 200, { ok: true, result: out }); });
+        }).catch((e) => { if (e && !e.status && /^(Upload|Enter|Choose|Original|Outstanding|A valid)/.test(e.message || "")) send(res, 400, { error: e.message }); else fail(res, e); });
+      }, 16384);
+      return true;
+    }
+
+    if (req.method === "POST" && /^\/api\/accounts\/invoices\/[0-9a-f-]{36}\/delete$/i.test(p)) {
+      if (!canEditInvoice(session)) { send(res, 403, { error: "Only Super Admin or Admin can delete invoices." }); return true; }
+      const delId = p.split("/")[4];
+      body(req, (err, input) => {
+        if (err) return send(res, 400, { error: "Invalid request body." });
+        const reason = String((input && input.reason) || "").trim();
+        if (reason.length < 3 || reason.length > 200) return send(res, 400, { error: "Enter a reason for the deletion (3 to 200 characters)." });
+        rpc("gm_accounts_delete_invoice", { p_invoice_id: delId, p_deleted_by: String(session.id).slice(0, 80), p_reason: reason })
+          .then((out) => { send(res, 200, { ok: true, result: out }); })
+          .catch((e) => { const m = dbMessage(e); if (m) send(res, 400, { error: m }); else fail(res, e); });
+      }, 4096);
+      return true;
+    }
+
+    if (req.method === "POST" && /^\/api\/accounts\/invoices\/[0-9a-f-]{36}\/adjust$/i.test(p)) {
+      if (!canEditInvoice(session)) { send(res, 403, { error: "Only Super Admin or Admin can add a discount or return credit." }); return true; }
+      const adjId = p.split("/")[4];
+      body(req, (err, input) => {
+        if (err) return send(res, 400, { error: "Invalid request body." });
+        const kind = String((input && input.kind) || "");
+        const amount = Number(input && input.amount);
+        const reason = String((input && input.reason) || "").trim();
+        if (kind !== "discount" && kind !== "return") return send(res, 400, { error: "Choose discount or return credit." });
+        if (!Number.isInteger(amount) || amount < 1 || amount > 100000000) return send(res, 400, { error: "Enter a whole-rupee amount, 1 or more." });
+        if (reason.length < 3 || reason.length > 200) return send(res, 400, { error: "Enter a reason (3 to 200 characters)." });
+        rpc("gm_accounts_adjust_invoice", { p_invoice_id: adjId, p_kind: kind, p_amount: amount, p_by: String(session.id).slice(0, 80), p_reason: reason })
+          .then((out) => { send(res, 200, { ok: true, result: out }); })
+          .catch((e) => { const m = dbMessage(e); if (m) send(res, 400, { error: m }); else fail(res, e); });
+      }, 4096);
+      return true;
+    }
+
+    if (req.method === "POST" && /^\/api\/accounts\/invoice-adjustments\/[0-9a-f-]{36}\/reverse$/i.test(p)) {
+      if (!canEditInvoice(session)) { send(res, 403, { error: "Only Super Admin or Admin can reverse a discount or return credit." }); return true; }
+      const revId = p.split("/")[4];
+      body(req, (err, input) => {
+        if (err) return send(res, 400, { error: "Invalid request body." });
+        const reason = String((input && input.reason) || "").trim();
+        if (reason.length < 3 || reason.length > 200) return send(res, 400, { error: "Enter a reason (3 to 200 characters)." });
+        rpc("gm_accounts_reverse_invoice_adjustment", { p_adjustment_id: revId, p_by: String(session.id).slice(0, 80), p_reason: reason })
+          .then((out) => { send(res, 200, { ok: true, result: out }); })
+          .catch((e) => { const m = dbMessage(e); if (m) send(res, 400, { error: m }); else fail(res, e); });
+      }, 4096);
       return true;
     }
 
@@ -661,7 +764,7 @@ function createAccountsRoutes(config) {
     if (req.method === "GET" && p === "/api/accounts/upi-settlements") {
       if (!canBill(session)) { send(res,403,{error:"Billing permission required."}); return true; }
       Promise.all([
-        restAll("gm_accounts_journal_lines?select=debit,credit&account_code=eq.UPI_CLEARING&order=id"),
+        ledgerTotals(["UPI_CLEARING"]),
         rest("gm_accounts_upi_settlements?select=id,request_key,amount,bank_reference,bank_credit_date,note,status,recorded_by,recorded_at,confirmed_by,confirmed_at&order=recorded_at.desc&limit=200"),
         rest("gm_accounts_collections?select=id,customer_name_snapshot,collected_by,collector_name_snapshot,total_amount,received_at,status&method=eq.upi&status=eq.approved&order=received_at.desc&limit=100")
       ]).then(([lines,settlements,collections])=>{
@@ -710,7 +813,7 @@ function createAccountsRoutes(config) {
     if (req.method === "GET" && p === "/api/accounts/daily-closing") {
       if (!canBill(session)) { send(res,403,{error:"Billing permission required."}); return true; }
       Promise.all([
-        restAll("gm_accounts_journal_lines?select=account_code,employee_id,debit,credit&account_code=in.(EMPLOYEE_CASH_CUSTODY,OFFICE_CASH,UPI_CLEARING,BANK)&order=id"),
+        ledgerTotals(["EMPLOYEE_CASH_CUSTODY","OFFICE_CASH","UPI_CLEARING","BANK"]),
         rest("gm_accounts_daily_closings?select=id,closing_date,expected_employee_total,counted_employee_total,expected_office_cash,counted_office_cash,expected_upi_clearing,expected_bank,employee_variance,office_variance,total_cash_variance,status,variance_status,note,submitted_by,submitted_at,approved_by,approved_at,dispute_reason&order=closing_date.desc&limit=60")
       ]).then(([lines,history])=>{
         const balances=new Map(); const totals={OFFICE_CASH:0,UPI_CLEARING:0,BANK:0};
@@ -760,23 +863,84 @@ function createAccountsRoutes(config) {
     // Cash Closing: the office counts cash at the desk and receives it from each employee in one step.
     if (req.method === "GET" && p === "/api/accounts/cash-closing") {
       if (!canBill(session)) { send(res, 403, { error: "Billing permission required." }); return true; }
+      const todayIst = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+      const qDate = String(url.searchParams.get("date") || "");
+      const viewDate = /^\d{4}-\d{2}-\d{2}$/.test(qDate) && qDate <= todayIst ? qDate : todayIst;
+      const dayFrom = new Date(viewDate + "T00:00:00+05:30").toISOString();
+      const dayTo = new Date(new Date(viewDate + "T00:00:00+05:30").getTime() + 86400000).toISOString();
+      const startIso = new Date(todayIst + "T00:00:00+05:30").toISOString();
+      const custodyLines = async () => {
+        const none = { rows: [], scopes: new Map() };
+        if (viewDate !== todayIst) return none;
+        const fetchAll = async (select) => {
+          let out = [], off = 0;
+          for (let n = 0; n < 60; n++) {
+            const page = await rest("gm_accounts_journal_lines?select=" + select + "&account_code=eq.EMPLOYEE_CASH_CUSTODY&order=created_at.asc,id.asc&limit=1000&offset=" + off);
+            out = out.concat(page); if (page.length < 1000) break; off += 1000;
+          }
+          return out;
+        };
+        try {
+          let rows;
+          try { rows = await fetchAll("employee_id,debit,credit,created_at,gm_accounts_journal_entries(source_type,source_id)"); }
+          catch (e) { rows = await fetchAll("employee_id,debit,credit,created_at"); }
+          const scopes = new Map();
+          try {
+            const sm = await restAll("gm_accounts_cash_movements?select=id,reference&or=(reference.like.cash-closing:cc-e-*,reference.like.cash-closing:cc-t-*)&order=confirmed_at,id");
+            for (const m of sm) scopes.set(m.id, String(m.reference).startsWith("cash-closing:cc-e-") ? "earlier" : "today");
+          } catch (e) { console.error("Cash closing scope lookup skipped:", e.message); }
+          return { rows, scopes };
+        } catch (e) { console.error("Cash closing earlier-days lookup skipped:", e.message); return none; }
+      };
+      const dayCash = () => viewDate === todayIst ? Promise.resolve([]) :
+        restAll("gm_accounts_collections?select=collected_by,collector_name_snapshot,total_amount&status=eq.approved&method=eq.cash&approved_at=gte." + encodeURIComponent(dayFrom) + "&approved_at=lt." + encodeURIComponent(dayTo) + "&order=approved_at,id").catch(e => { console.error("Cash closing day collections skipped:", e.message); return []; });
       Promise.all([
-        restAll("gm_accounts_journal_lines?select=employee_id,debit,credit&account_code=eq.EMPLOYEE_CASH_CUSTODY&order=id"),
-        rest("gm_accounts_cash_movements?select=id,movement_type,from_employee_id,amount,reference,note,recorded_by,confirmed_at&or=(reference.like.cash-closing:*,reference.like.cash-closing-diff:*)&order=confirmed_at.desc&limit=300")
-      ]).then(([lines, moves]) => {
+        dayCash(),
+        custodyLines(),
+        ledgerTotals(["EMPLOYEE_CASH_CUSTODY"]),
+        rest("gm_accounts_cash_movements?select=id,movement_type,from_employee_id,amount,reference,note,recorded_by,confirmed_at&or=(reference.like.cash-closing:*,reference.like.cash-closing-diff:*)&confirmed_at=gte." + encodeURIComponent(dayFrom) + "&confirmed_at=lt." + encodeURIComponent(dayTo) + "&order=confirmed_at.desc&limit=300")
+      ]).then(([cols, cl, lines, moves]) => {
+        const istDay = (t) => new Date(t).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+        const queues = new Map(); // unclosed cash per employee, oldest first: [{date, amount}]
+        for (const l of cl.rows) {
+          const id = l.employee_id; if (!id) continue;
+          const q = queues.get(id) || []; queues.set(id, q);
+          const day = istDay(l.created_at), dr = Number(l.debit || 0); let cr = Number(l.credit || 0);
+          if (dr > 0) q.push({ date: day, amount: dr });
+          if (cr > 0) {
+            let ent = l.gm_accounts_journal_entries; if (Array.isArray(ent)) ent = ent[0];
+            const sc = ent && ent.source_type === "office_cash_receipt" ? cl.scopes.get(ent.source_id) : null;
+            const take = (pred) => { for (let k = 0; k < q.length && cr > 0.0001;) { if (!pred(q[k])) { k++; continue; } const t = Math.min(cr, q[k].amount); q[k].amount -= t; cr -= t; if (q[k].amount <= 0.0001) q.splice(k, 1); else k++; } };
+            if (sc === "earlier") take(x => x.date < day); else if (sc === "today") take(x => x.date === day);
+            take(() => true);
+          }
+        }
+        const carriedFor = (id, b) => {
+          const by = new Map();
+          for (const x of (queues.get(id) || [])) if (x.date < todayIst) by.set(x.date, (by.get(x.date) || 0) + x.amount);
+          let dates = Array.from(by.entries()).map(([date, amount]) => ({ date, amount: Number(amount.toFixed(2)) })).filter(x => x.amount > 0.004);
+          let carried = Number(Math.min(b, dates.reduce((n, x) => n + x.amount, 0)).toFixed(2));
+          if (carried <= 0.004) { carried = 0; dates = []; }
+          return { carried, dates };
+        };
         const balances = new Map();
         for (const l of lines) if (l.employee_id) balances.set(l.employee_id, (balances.get(l.employee_id) || 0) + Number(l.debit || 0) - Number(l.credit || 0));
         const list = config.employeeList ? config.employeeList() : [];
         const names = new Map(list.map(x => [String(x.id), String(x.name || "Employee")]));
-        const employees = Array.from(balances.entries()).filter(([, b]) => b > 0.0001).map(([id, b]) => ({ employeeId: id, name: names.get(id) || "Employee", expected: Number(b.toFixed(2)) })).sort((a, b) => a.name.localeCompare(b.name));
-        const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+        const employees = Array.from(balances.entries()).filter(([, b]) => b > 0.0001).map(([id, b]) => ({ employeeId: id, name: names.get(id) || "Employee", expected: Number(b.toFixed(2)), carried: carriedFor(id, b).carried, carriedDates: carriedFor(id, b).dates })).sort((a, b) => a.name.localeCompare(b.name));
+        const today = viewDate;
         const diffs = new Map();
         for (const m of moves) if ((m.movement_type === "shortage" || m.movement_type === "excess") && String(m.reference).startsWith("cash-closing-diff:")) diffs.set(String(m.reference).slice(18), { type: m.movement_type, amount: Number(m.amount), note: m.note });
         const received = moves.filter(m => m.movement_type === "office_receipt" && m.confirmed_at && new Date(m.confirmed_at).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }) === today)
           .map(m => ({ id: m.id, employeeId: m.from_employee_id, name: names.get(m.from_employee_id) || "Employee", counted: Number(m.amount), at: m.confirmed_at, difference: diffs.get(m.id) || null }));
+        const byEmp = new Map();
+        for (const c of cols) { const id = String(c.collected_by); const r = byEmp.get(id) || { employeeId: id, name: names.get(id) || c.collector_name_snapshot || "Employee", cash: 0, count: 0 }; r.cash += Number(c.total_amount || 0); r.count++; byEmp.set(id, r); }
+        const recvIds = new Set(received.map(x => String(x.employeeId)));
+        const liveIds = new Set(employees.map(x => x.employeeId));
+        const collected = Array.from(byEmp.values()).map(r => ({ ...r, cash: Number(r.cash.toFixed(2)), status: recvIds.has(r.employeeId) ? "closed" : liveIds.has(r.employeeId) ? "pending" : "closed_later" })).sort((a, b) => a.name.localeCompare(b.name));
         const totalExpected = Number(employees.reduce((n, x) => n + x.expected, 0).toFixed(2));
         const totalReceived = Number(received.reduce((n, x) => n + x.counted, 0).toFixed(2));
-        send(res, 200, { ok: true, date: today, employees, received, totalExpected, totalReceived });
+        send(res, 200, { ok: true, date: today, isToday: today === todayIst, collected, todayDate: todayIst, employees, received, totalExpected, totalReceived });
       }).catch(e => { console.error("Cash closing read:", e.message); send(res, 502, { error: "Unable to load cash closing." }); });
       return true;
     }
@@ -807,7 +971,10 @@ function createAccountsRoutes(config) {
           if (different && action !== "record" && action !== "employee") throw new Error("Choose how to handle the difference.");
           const key = String(input.requestKey || "").trim();
           if (!/^[a-zA-Z0-9:_-]{12,100}$/.test(key)) throw new Error("Invalid receipt reference.");
-          return rpc("gm_accounts_receive_cash", { p_request_key: key, p_employee_id: employeeId, p_expected: expected, p_denominations: rows, p_reason: reason, p_difference_action: different ? action : "", p_received_by: String(session.id) })
+          const scope = String(input.scope || "");
+          if (scope && scope !== "earlier" && scope !== "today") throw new Error("Invalid receipt scope.");
+          if (scope && !key.startsWith(scope === "earlier" ? "cc-e-" : "cc-t-")) throw new Error("Invalid receipt reference.");
+          return rpc(scope ? "gm_accounts_receive_cash_part" : "gm_accounts_receive_cash", { p_request_key: key, p_employee_id: employeeId, p_expected: expected, p_denominations: rows, p_reason: reason, p_difference_action: different ? action : "", p_received_by: String(session.id) })
             .then(result => send(res, 201, result)).catch(e => fail(res, e));
         } catch (e) { send(res, 400, { error: e.message }); }
       }, 16384);
@@ -817,7 +984,7 @@ function createAccountsRoutes(config) {
     if (req.method === "GET" && p === "/api/accounts/office-cash") {
       if (!canBill(session)) { send(res, 403, { error: "Billing permission required." }); return true; }
       Promise.all([
-        restAll("gm_accounts_journal_lines?select=debit,credit&account_code=eq.OFFICE_CASH&order=id"),
+        ledgerTotals(["OFFICE_CASH"]),
         rest("gm_accounts_cash_movements?select=id,movement_type,from_employee_id,to_employee_id,amount,status,reference,note,recorded_by,recorded_at,confirmed_by,confirmed_at&movement_type=eq.office_receipt&order=recorded_at.desc&limit=200")
       ]).then(([lines,movements])=>{
         const balance=Number(lines.reduce((n,x)=>n+Number(x.debit||0)-Number(x.credit||0),0).toFixed(2));
@@ -867,7 +1034,7 @@ function createAccountsRoutes(config) {
       const employeeId = String(session.id);
       Promise.all([
         rest("gm_accounts_cash_movements?select=id,movement_type,method,from_employee_id,to_employee_id,amount,status,reference,note,recorded_by,recorded_at,confirmed_by,confirmed_at&or=(from_employee_id.eq." + encodeURIComponent(employeeId) + ",to_employee_id.eq." + encodeURIComponent(employeeId) + ")&order=recorded_at.desc&limit=100"),
-        restAll("gm_accounts_journal_lines?select=employee_id,debit,credit&account_code=eq.EMPLOYEE_CASH_CUSTODY&order=id&employee_id=eq." + encodeURIComponent(employeeId))
+        ledgerTotals(["EMPLOYEE_CASH_CUSTODY"], employeeId)
       ]).then(([movements, ownLines]) => {
         const ownBalance = Number(ownLines.reduce((n, x) => n + Number(x.debit || 0) - Number(x.credit || 0), 0).toFixed(2));
         const labels = {};

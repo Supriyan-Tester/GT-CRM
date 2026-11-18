@@ -50,4 +50,4 @@ loadMine();
 api("/api/me").then(function(me){if(!me.ok||me.role!=="worker")throw new Error("Delivery employee login required.");return api("/api/accounts/collectible-customers");}).then(function(d){$("customer").innerHTML='<option value="">Select assigned customer</option>'+(d.customers||[]).map(function(c){return '<option value="'+esc(c.code)+'">'+esc(c.name)+' · '+esc(c.code)+'</option>';}).join("");}).then(function(){var q=new URLSearchParams(location.search),code=q.get("code");if(code){var sel=$("customer");if(![].some.call(sel.options,function(o){return o.value===code})){sel.insertAdjacentHTML("beforeend",'<option value="'+esc(code)+'">'+esc(code)+'</option>');}sel.value=code;load(code);}}).catch(function(e){$("customer").innerHTML='<option value="">Unable to load assigned customers</option>';say(e.message);});
 if(new URLSearchParams(location.search).get("embed")){document.body.classList.add("embed");}
 })();
-</script></body></html>
+</script><script src="../shared/upi-qr.js"></script></body></html>

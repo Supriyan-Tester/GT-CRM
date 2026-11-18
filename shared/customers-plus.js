@@ -1560,3 +1560,24 @@
   });
   render();
 })();
+
+// Tap a shop photo anywhere on the Customers page to view it full size.
+(function () {
+  var box;
+  function close() { if (box) { box.remove(); box = null; } }
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  document.addEventListener("click", function (e) {
+    var img = e.target.closest && e.target.closest(".gp-av-img img, .gp-fphoto-img img");
+    if (!img) return;
+    e.preventDefault();
+    e.stopPropagation();
+    close();
+    box = document.createElement("div");
+    box.setAttribute("role", "dialog");
+    box.setAttribute("aria-label", "Shop photo");
+    box.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:16px;cursor:zoom-out";
+    box.innerHTML = '<img src="' + img.getAttribute("src") + '" alt="Shop photo" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:10px"><button type="button" aria-label="Close" style="position:absolute;top:14px;right:18px;border:0;background:rgba(255,255,255,.15);color:#fff;font-size:26px;line-height:1;width:40px;height:40px;border-radius:50%;cursor:pointer">&times;</button>';
+    box.onclick = close;
+    document.body.appendChild(box);
+  }, true);
+})();

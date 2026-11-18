@@ -953,10 +953,10 @@
       String(t.getDate()).padStart(2, "0")
     );
   }
-  window.GMnotify = function (type, title, text) {
-    notify(type, title, text);
+  window.GMnotify = function (type, title, text, extra) {
+    notify(type, title, text, extra);
   };
-  function notify(type, title, text) {
+  function notify(type, title, text, extra) {
     try {
       var l = JSON.parse(localStorage.getItem(NK));
       if (!Array.isArray(l)) l = [];
@@ -970,6 +970,7 @@
         worker: loadStore().worker.name,
         read: false,
       };
+      if (extra && extra.code) nn.code = String(extra.code); // shop code, so the office can open the right customer
       try {
         var fx = GM.fix && GM.fix();
         if (

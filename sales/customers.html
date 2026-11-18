@@ -67,16 +67,32 @@
             return (!set || set[c.code]) && (!t || c._k.indexOf(t) > -1);
           });
         }
+        var PH = {}; /* shop code -> photo version, for shops that have a photo */
+        fetch("/api/photos")
+          .then(function (r) { return r.ok ? r.json() : { photos: {} }; })
+          .then(function (d) { PH = d.photos || {}; if (typeof draw === "function" && ALL && ALL.length) draw(); })
+          .catch(function () {});
         function row(c, i) {
           var sub =
             [c.area, c.address].filter(Boolean).map(Sales.esc).join(" · ") ||
             "No address yet";
           return (
-            '<div class="shop"><div class="tile t' +
-            (i % 4) +
-            '">' +
-            Sales.esc(Sales.init(c.name)) +
-            "</div>" +
+            '<div class="shop">' +
+            (PH[c.code]
+              ? '<div class="tile" style="padding:0;overflow:hidden"><img src="/api/photo?code=' +
+                encodeURIComponent(c.code) +
+                "&v=" +
+                PH[c.code] +
+                '" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.parentNode.className=\'tile t' +
+                (i % 4) +
+                "\';this.parentNode.textContent=\'" +
+                Sales.esc(Sales.init(c.name)) +
+                "\'\"></div>"
+              : '<div class="tile t' +
+                (i % 4) +
+                '">' +
+                Sales.esc(Sales.init(c.name)) +
+                "</div>") +
             '<a class="nm" href="shop.html?c=' +
             encodeURIComponent(c.code) +
             '&from=customers"><b>' +

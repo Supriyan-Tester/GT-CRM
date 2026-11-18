@@ -379,7 +379,12 @@
         }
 
         function load() {
-          pg.innerHTML = '<div class="card ad-sk">Loading the Accounts dashboard…</div>';
+          var ck = "gm_acc_summary_" + range, shown = false;
+          try {
+            var old = JSON.parse(sessionStorage.getItem(ck) || "null");
+            if (old && old.ok) { draw(old); shown = true; }
+          } catch (er) {}
+          if (!shown) pg.innerHTML = '<div class="card ad-sk">Loading the Accounts dashboard…</div>';
           fetch("/api/accounts/summary?range=" + encodeURIComponent(range), { credentials: "same-origin" })
             .then(function (r) {
               return r
@@ -392,8 +397,12 @@
                   return j;
                 });
             })
-            .then(draw)
+            .then(function (j) {
+              try { sessionStorage.setItem(ck, JSON.stringify(j)); } catch (er) {}
+              draw(j);
+            })
             .catch(function (e) {
+              if (shown) return; // keep showing the last numbers if the refresh fails
               pg.innerHTML =
                 '<div class="card"><div class="a-empty"><b>Could not load the dashboard</b>' + esc(e.message || "Try again.") +
                 '<div style="margin-top:14px"><button class="btn" id="adRetry" type="button">Try again</button></div></div></div>';
