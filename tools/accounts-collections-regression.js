@@ -16,7 +16,14 @@ const fakeFetch = async (url, opts) => {
   const table = u.pathname.split("/").pop();
   seen.push(url);
   let rows = [], range = "";
-  if (u.pathname.includes("/rpc/")) { rpcCalls.push({ name: table, body: JSON.parse(opts.body) }); rows = { ok: true }; }
+  if (u.pathname.includes("/rpc/")) {
+    const body = JSON.parse(opts.body);
+    // Read-only database functions return rows; the write functions (approve/reject) are recorded in rpcCalls.
+    if (table === "gm_accounts_collection_stats") rows = [{ pending_count: 2, pending_amount: 250, approved_count: 9, rejected_count: 3, correction_count: 0, approved_month_amount: 400 }];
+    else if (table === "gm_accounts_invoice_paid") rows = [];
+    else if (table === "gm_accounts_ledger_totals") rows = [{ account_code: "OFFICE_CASH", employee_id: null, debit: 12000, credit: 0 }];
+    else { rpcCalls.push({ name: table, body }); rows = { ok: true }; }
+  }
   else if (table === "gm_accounts_collections") {
     const sel = u.searchParams.get("select");
     if (sel.startsWith("id,customer_code")) {

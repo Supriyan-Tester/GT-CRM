@@ -13,8 +13,13 @@ const fetch = async (url) => {
   const u = new URL(url);
   const path = u.pathname + u.search;
   if (path.includes("gm_accounts_collection_allocations")) {
-    const evidence = (u.searchParams.get("evidence_path") || "").replace(/^eq\./,"");
-    return { ok: true, json: async () => evidence && objects.has(evidence) ? [{ evidence_path: evidence, collection_id: "11111111-1111-4111-8111-111111111111" }] : [] };
+    // The route looks a photo up with "like.accounts/evidence/<id>.*" (any file type in one query); "eq." is still understood.
+    const param = u.searchParams.get("evidence_path") || "";
+    const wanted = param.replace(/^(eq|like)\./, "");
+    const found = param.startsWith("like.") && wanted.endsWith(".*")
+      ? Array.from(objects.keys()).find((k) => k.startsWith(wanted.slice(0, -1)))
+      : (objects.has(wanted) ? wanted : "");
+    return { ok: true, json: async () => found ? [{ evidence_path: found, collection_id: "11111111-1111-4111-8111-111111111111" }] : [] };
   }
   if (path.includes("gm_accounts_invoices")) return { ok: true, json: async () => [] };
   if (path.includes("gm_accounts_collections")) return { ok: true, json: async () => [{ id: "11111111-1111-4111-8111-111111111111", collected_by: "S1" }] };

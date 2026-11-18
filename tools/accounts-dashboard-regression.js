@@ -15,12 +15,22 @@ function response() {
 const send = (res, code, value) => { res.writeHead(code); res.end(JSON.stringify(value)); };
 const nowIso = new Date().toISOString();
 let lineRequests = 0;
-const fakeFetch = async (url) => {
+const fakeFetch = async (url, opts) => {
   const u = new URL(url);
   const table = u.pathname.split("/").pop();
   const offset = Number(u.searchParams.get("offset") || 0);
   let rows = [];
-  if (table === "gm_accounts_journal_lines") {
+  if (table === "gm_accounts_ledger_totals") {
+    // The database adds the journal up and returns one row per account (1500 receivable debits of 10 => 15000).
+    lineRequests++;
+    const want = JSON.parse(opts.body).p_accounts;
+    const totals = [
+      { account_code: "CUSTOMER_RECEIVABLE", employee_id: null, debit: 15000, credit: 0 },
+      { account_code: "OFFICE_CASH", employee_id: null, debit: 500, credit: 100 },
+      { account_code: "BANK", employee_id: null, debit: 70, credit: 0 },
+    ];
+    rows = totals.filter((t) => want.includes(t.account_code));
+  } else if (table === "gm_accounts_journal_lines") {
     lineRequests++;
     // 1500 receivable debits of 10 => 15000, split over two pages of the 1000-row limit
     const all = Array.from({ length: 1500 }, () => ({ account_code: "CUSTOMER_RECEIVABLE", debit: 10, credit: 0 }));
@@ -56,8 +66,8 @@ const call = (session, query = "") => new Promise((resolve) => {
   const ok = await call({ role: "admin", billing: true, id: "A1" });
   assert.strictEqual(ok.status, 200, "summary loads for Billing");
   const b = ok.payload.balances;
-  assert.strictEqual(b.receivables, 15000, "balance is added up past the 1000-row page limit");
-  assert(lineRequests >= 2, "journal lines are read in more than one page");
+  assert.strictEqual(b.receivables, 15000, "balance is added up by the database, so it is right past the 1000-row page limit");
+  assert(lineRequests >= 1, "balances are read from the ledger-totals database function");
   assert.strictEqual(b.officeCash, 400, "office cash is debits minus credits");
   assert.strictEqual(b.bank, 70, "bank balance is read");
   assert.strictEqual(ok.payload.todayCollections.cash, 200, "today's cash collections");
