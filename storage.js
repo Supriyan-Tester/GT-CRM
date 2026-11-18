@@ -330,7 +330,16 @@ module.exports = function (cfg) {
     count: () => Object.keys(idx).length,
     names: (prefix) => Object.keys(idx).filter((k) => k.indexOf(prefix) === 0),
     async get(p) {
-      if (!idx[p]) return null;
+      if (!idx[p]) {
+        // The list of files is read once when the server starts. A file saved since then by another server or phone is not in
+        // it yet, so ask the storage directly instead of answering "missing".
+        if (!remote) return null;
+        const found = await remote.get(p);
+        if (!found) return null;
+        idx[p] = { at: Date.now(), size: found.length };
+        cacheAdd(p, found);
+        return found;
+      }
       if (!remote) {
         try {
           return await fs.promises.readFile(localPath(p));

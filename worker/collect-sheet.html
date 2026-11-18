@@ -1799,8 +1799,8 @@
               if (S.cur && S.cur.id === "NEW") {
                 if (!S.curFile)
                   throw fe("Add a photo of the bill.", "#photoCard");
-                if (S.curFile.size > 5 * 1024 * 1024)
-                  throw fe("Each photo must be 5 MB or smaller.", "#photoCard");
+                if (S.curFile.size > 25 * 1024 * 1024)
+                  throw fe("Each photo must be 25 MB or smaller.", "#photoCard");
                 var cu = await api("/api/accounts/evidence", {
                   data: await dataUrl(S.curFile),
                 });
@@ -1837,8 +1837,8 @@
             if (curAmount() > 0) {
               if (!S.curFile)
                 throw fe("Add a photo of the current bill.", "#photoCard");
-              if (S.curFile.size > 5 * 1024 * 1024)
-                throw fe("Each photo must be 5 MB or smaller.", "#photoCard");
+              if (S.curFile.size > 25 * 1024 * 1024)
+                throw fe("Each photo must be 25 MB or smaller.", "#photoCard");
               var u = await api("/api/accounts/evidence", {
                   data: await dataUrl(S.curFile),
                 }),
@@ -1867,9 +1867,9 @@
                   "Add a photo for every old credit bill you collect.",
                   '[data-oadd="' + k + '"]',
                 );
-              if (f.size > 5 * 1024 * 1024)
+              if (f.size > 25 * 1024 * 1024)
                 throw fe(
-                  "Each photo must be 5 MB or smaller.",
+                  "Each photo must be 25 MB or smaller.",
                   '[data-oadd="' + k + '"]',
                 );
               var uo = await api("/api/accounts/evidence", {
@@ -1884,8 +1884,8 @@
             if (isCr && S.cur && S.cur.id === "NEW" && !(curAmount() > 0)) {
               if (!S.curFile)
                 throw fe("Add a photo of the bill.", "#photoCard");
-              if (S.curFile.size > 5 * 1024 * 1024)
-                throw fe("Each photo must be 5 MB or smaller.", "#photoCard");
+              if (S.curFile.size > 25 * 1024 * 1024)
+                throw fe("Each photo must be 25 MB or smaller.", "#photoCard");
               var cu2 = await api("/api/accounts/evidence", {
                 data: await dataUrl(S.curFile),
               });
