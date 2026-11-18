@@ -18,6 +18,7 @@ const tests = [
   "xss-render-regression.js",
   "rbac-regression.js",
   "api-auth-regression.js",
+  "public-exposure-regression.js",
   "sales-attendance-regression.js",
   "sales-order-workflow-regression.js",
   "returns-reconciliation-regression.js",
