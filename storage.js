@@ -158,6 +158,12 @@ module.exports = function (cfg) {
     ? require("./backend/modules/catalog/catalog.sync").createCatalogSync({ url: URL, key: KEY })
     : null;
 
+  // and for sales orders, shop visits and returns (set GT_SYNC_SALES=1)
+  const salesOn = cloud && /^(1|true|on|yes)$/i.test(String(cfg.GT_SYNC_SALES || env.GT_SYNC_SALES || ""));
+  const salesSync = salesOn
+    ? require("./backend/modules/sales/sales.sync").createSalesSync({ url: URL, key: KEY })
+    : null;
+
   // ---- saved data: table gm_kv (key, v, rev) ----
   const kv = {
     async loadAll() {
@@ -179,6 +185,10 @@ module.exports = function (cfg) {
         catalogSync.prime(rows);
         catalogSync.schedule(9000); // after the employees copy, so "pinned by" can be matched
       }
+      if (salesSync) {
+        salesSync.prime(rows);
+        salesSync.schedule(14000); // after employees and catalog, so shops, products and people can be matched
+      }
       return rows;
     },
     async save(rows) {
@@ -188,6 +198,7 @@ module.exports = function (cfg) {
         });
       if (employeeSync) employeeSync.onSave(rows); // only after the normal save worked
       if (catalogSync) catalogSync.onSave(rows);
+      if (salesSync) salesSync.onSave(rows);
     },
     async ping() {
       await rest("GET", "gm_kv?select=key&limit=1");
@@ -396,5 +407,5 @@ module.exports = function (cfg) {
     mimeOf,
   };
 
-  return { cloud, kv, files, employeeSync, catalogSync };
+  return { cloud, kv, files, employeeSync, catalogSync, salesSync };
 };

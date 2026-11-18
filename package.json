@@ -17,7 +17,9 @@
     "sync:employees": "node tools/sync-employees.js",
     "sync:employees:check": "node tools/sync-employees.js --check",
     "sync:catalog": "node tools/sync-catalog.js",
-    "sync:catalog:check": "node tools/sync-catalog.js --check"
+    "sync:catalog:check": "node tools/sync-catalog.js --check",
+    "sync:sales": "node tools/sync-sales.js",
+    "sync:sales:check": "node tools/sync-sales.js --check"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
