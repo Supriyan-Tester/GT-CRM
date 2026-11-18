@@ -78,6 +78,7 @@ let child = null;
     fs.writeFileSync(path.join(app, "data", "sessions.json"), JSON.stringify({ marker: "synthetic-sessions" }));
     const env = { ...process.env, PORT: String(port), NODE_ENV: "test" };
     for (const k of ["SUPABASE_URL", "SUPABASE_SERVICE_KEY", "SUPABASE_BUCKET", "RENDER", "TRUST_PROXY"]) delete env[k];
+    for (const k of Object.keys(env)) if (/^B2_/.test(k)) delete env[k]; // never let a test reach the real Backblaze bucket
     child = spawn(process.execPath, ["server.js"], { cwd: app, env, stdio: ["ignore", "pipe", "pipe"] });
     let logs = ""; child.stdout.on("data", (d) => logs += d); child.stderr.on("data", (d) => logs += d);
     for (let i = 0; ; i++) {

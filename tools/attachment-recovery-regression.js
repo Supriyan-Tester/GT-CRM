@@ -4,6 +4,8 @@ const assert = require("assert");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+// Never let this test reach the real Backblaze bucket, even when the build machine has the B2_* settings.
+for (const k of Object.keys(process.env)) if (/^B2_/.test(k)) delete process.env[k];
 const storageFactory = require("../storage");
 const Backup = require("./attachment-backup");
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "gmcrm-recovery-"));

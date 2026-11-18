@@ -54,6 +54,7 @@ let child = null;
     delete childEnv.SUPABASE_SERVICE_KEY;
     delete childEnv.SUPABASE_BUCKET;
     delete childEnv.RENDER;
+    for (const k of Object.keys(childEnv)) if (/^B2_/.test(k)) delete childEnv[k]; // never let a test reach the real Backblaze bucket
     delete childEnv.TRUST_PROXY;
     child = spawn(process.execPath, ["server.js"], { cwd: app, env: childEnv, stdio: ["ignore", "pipe", "pipe"] });
     let logs = ""; child.stdout.on("data", d => logs += d); child.stderr.on("data", d => logs += d);

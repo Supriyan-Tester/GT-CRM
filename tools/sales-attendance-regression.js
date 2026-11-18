@@ -80,6 +80,7 @@ assert(/@media \(max-width:\s*640px\)/.test(cssSource) && cssSource.includes(".s
     writeJson(path.join(app, "data", "auth.json"), { admins: { SA1: { h: hash, must: false } }, workers: { W001: { h: hash }, W002: { h: hash } } });
     const env = { ...process.env, PORT: String(port), NODE_ENV: "test" };
     for (const k of ["SUPABASE_URL", "SUPABASE_SERVICE_KEY", "SUPABASE_BUCKET", "RENDER", "TRUST_PROXY"]) delete env[k];
+    for (const k of Object.keys(env)) if (/^B2_/.test(k)) delete env[k]; // never let a test reach the real Backblaze bucket
     child = spawn(process.execPath, ["server.js"], { cwd: app, env, stdio: ["ignore", "pipe", "pipe"] });
     let logs = ""; child.stdout.on("data", d => logs += d); child.stderr.on("data", d => logs += d);
     for (let i=0;i<100;i++) { if (child.exitCode !== null) throw new Error("server exited: " + logs); try { if ((await req("GET", "/api/health")).status === 200) break; } catch {} await wait(100); }

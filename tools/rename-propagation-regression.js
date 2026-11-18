@@ -81,6 +81,7 @@ let child;
     fs.writeFileSync(path.join(app, "data", "auth.json"), JSON.stringify({ admins: { ADM1: { h: hash, must: false } }, workers: { W1: { h: hash }, SAL1: { h: hash } } }));
     const env = { ...process.env, PORT: String(port), NODE_ENV: "test" };
     for (const k of ["SUPABASE_URL", "SUPABASE_SERVICE_KEY", "SUPABASE_BUCKET", "RENDER", "TRUST_PROXY"]) delete env[k];
+    for (const k of Object.keys(env)) if (/^B2_/.test(k)) delete env[k]; // never let a test reach the real Backblaze bucket
     child = spawn(process.execPath, ["server.js"], { cwd: app, env, stdio: "ignore" });
     for (let i = 0; i < 100; i++) { try { if ((await request("GET", "/api/health")).status === 200) break; } catch (_) {} await wait(100); }
 

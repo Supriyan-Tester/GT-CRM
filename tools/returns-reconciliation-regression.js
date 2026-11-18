@@ -103,6 +103,7 @@ let child;
 
     const env = { ...process.env, PORT: String(port), NODE_ENV: "test" };
     for (const key of ["SUPABASE_URL", "SUPABASE_SERVICE_KEY", "SUPABASE_BUCKET", "RENDER", "TRUST_PROXY"]) delete env[key];
+    for (const k of Object.keys(env)) if (/^B2_/.test(k)) delete env[k]; // never let a test reach the real Backblaze bucket
     child = spawn(process.execPath, ["server.js"], { cwd: app, env, stdio: ["ignore", "pipe", "pipe"] });
     let logs = "";
     child.stdout.on("data", data => logs += data);
