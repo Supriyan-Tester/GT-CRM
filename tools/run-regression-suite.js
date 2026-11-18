@@ -51,10 +51,16 @@ const tests = [
   "browser-e2e-regression.js",
 ];
 let failed = 0;
+const failedNames = [];
 for (const test of tests) {
   console.log("\n=== " + test + " ===");
   const result = spawnSync(process.execPath, [path.join(__dirname, test)], { stdio: "inherit" });
-  if (result.status !== 0) failed++;
+  if (result.status !== 0) {
+    failed++;
+    failedNames.push(test + " (exit " + (result.status === null ? "signal " + result.signal : result.status) + (result.error ? ", " + result.error.message : "") + ")");
+  }
 }
 console.log("\nRegression suite: " + (tests.length - failed) + "/" + tests.length + " scripts passed.");
+// Listed at the very end so the last lines of a build log say exactly which scripts failed.
+if (failedNames.length) console.log("FAILED SCRIPTS:\n  - " + failedNames.join("\n  - "));
 if (failed) process.exitCode = 1;
