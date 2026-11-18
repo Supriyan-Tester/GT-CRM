@@ -6,6 +6,8 @@
 // Safe to run again: rows/files that already exist are skipped. Any error stops the run and says what failed.
 // Run:  node tools/copy-old-to-new.js            (copy)
 //       node tools/copy-old-to-new.js --check    (only compare counts, change nothing)
+//       --overwrite-kv                           (also replace saved records that already exist in the new database;
+//                                                 normally NOT wanted once the app is live on the new database)
 // Stop the old app (or put it in maintenance) before the final copy, so nothing changes while copying.
 
 try {
@@ -23,6 +25,10 @@ const TABLES = [
   { name: "gm_accounts_collection_allocations", key: "id" },
   { name: "gm_accounts_journal_entries", key: "entry_no", conflict: "id" },
   { name: "gm_accounts_journal_lines", key: "id" },
+  // added by Accounts phases 9-12 (invoice edits, deletions, discounts/returns); skipped if the old database does not have them
+  { name: "gm_accounts_invoice_edits", key: "id" },
+  { name: "gm_accounts_invoice_deletions", key: "id" },
+  { name: "gm_accounts_invoice_adjustments", key: "id" },
   { name: "gm_accounts_cash_movements", key: "id" },
   { name: "gm_accounts_cash_denominations", key: "movement_id,denomination", conflict: "movement_id,denomination" },
   { name: "gm_accounts_daily_closings", key: "closing_date" },
@@ -93,7 +99,7 @@ async function copyTable(oldDb, newDb, t, checkOnly) {
   return { name: t.name, old: oldCount, now: newCount, ok };
 }
 
-async function copyKv(oldDb, newDb, checkOnly) {
+async function copyKv(oldDb, newDb, checkOnly, overwrite) {
   const { count: oldCount, error: oe } = await countRows(oldDb, "gm_kv");
   must(oe, "Counting gm_kv in old database");
   if (!checkOnly) {
@@ -101,8 +107,9 @@ async function copyKv(oldDb, newDb, checkOnly) {
     must(error, "Reading gm_kv from old database");
     if (rows.length !== oldCount) throw new Error(`gm_kv: read ${rows.length} rows but old database says ${oldCount}`);
     for (let i = 0; i < rows.length; i += 100) {
-      // Always take the old value: this is the copy of record. (Same columns: key, v, rev.)
-      const { error: ie } = await newDb.from("gm_kv").upsert(rows.slice(i, i + 100), { onConflict: "key" });
+      // By default a key that already exists in the NEW database is left alone: once the app runs on the new database,
+      // it holds newer data than the old one. Use --overwrite-kv only for a deliberate fresh copy.
+      const { error: ie } = await newDb.from("gm_kv").upsert(rows.slice(i, i + 100), { onConflict: "key", ignoreDuplicates: !overwrite });
       must(ie, `Writing gm_kv (rows ${i + 1}-${Math.min(i + 100, rows.length)}) to new database`);
     }
   }
@@ -168,11 +175,11 @@ async function copyFiles(oldDb, bucket, b2, checkOnly) {
   return { name: "files", old: files.length, now: files.length - missing.length, ok };
 }
 
-async function run({ oldDb, newDb, bucket, b2, checkOnly }) {
+async function run({ oldDb, newDb, bucket, b2, checkOnly, overwriteKv }) {
   const results = [];
   log(checkOnly ? "Checking counts only (nothing is changed)...\n" : "Copying old data to the new setup...\n");
   log("1. gm_kv (all saved records, logins, sessions)");
-  results.push(await copyKv(oldDb, newDb, checkOnly));
+  results.push(await copyKv(oldDb, newDb, checkOnly, !!overwriteKv));
   log("\n2. Accounts tables");
   for (const t of TABLES) results.push(await copyTable(oldDb, newDb, t, checkOnly));
   log("\n3. Files -> Backblaze B2");
@@ -216,6 +223,7 @@ if (require.main === module) {
     bucket: clean("OLD_SUPABASE_BUCKET") || "gm-files",
     b2: makeB2(),
     checkOnly: process.argv.includes("--check"),
+    overwriteKv: process.argv.includes("--overwrite-kv"),
   })
     .then((r) => process.exit(r.ok ? 0 : 2))
     .catch((e) => {

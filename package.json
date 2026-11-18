@@ -15,7 +15,9 @@
     "copy:old": "node tools/copy-old-to-new.js",
     "copy:check": "node tools/copy-old-to-new.js --check",
     "sync:employees": "node tools/sync-employees.js",
-    "sync:employees:check": "node tools/sync-employees.js --check"
+    "sync:employees:check": "node tools/sync-employees.js --check",
+    "sync:catalog": "node tools/sync-catalog.js",
+    "sync:catalog:check": "node tools/sync-catalog.js --check"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",

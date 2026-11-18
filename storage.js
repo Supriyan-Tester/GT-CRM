@@ -152,6 +152,11 @@ module.exports = function (cfg) {
   const employeeSync = syncOn
     ? require("./backend/modules/employees/employees.sync").createEmployeeSync({ url: URL, key: KEY })
     : null;
+  // same idea for products, vehicles, routes, customers (set GT_SYNC_CATALOG=1)
+  const catalogOn = cloud && /^(1|true|on|yes)$/i.test(String(cfg.GT_SYNC_CATALOG || env.GT_SYNC_CATALOG || ""));
+  const catalogSync = catalogOn
+    ? require("./backend/modules/catalog/catalog.sync").createCatalogSync({ url: URL, key: KEY })
+    : null;
 
   // ---- saved data: table gm_kv (key, v, rev) ----
   const kv = {
@@ -170,6 +175,10 @@ module.exports = function (cfg) {
         employeeSync.prime(rows);
         employeeSync.schedule(5000); // a few seconds after start-up, in the background
       }
+      if (catalogSync) {
+        catalogSync.prime(rows);
+        catalogSync.schedule(9000); // after the employees copy, so "pinned by" can be matched
+      }
       return rows;
     },
     async save(rows) {
@@ -178,6 +187,7 @@ module.exports = function (cfg) {
           Prefer: "resolution=merge-duplicates,return=minimal",
         });
       if (employeeSync) employeeSync.onSave(rows); // only after the normal save worked
+      if (catalogSync) catalogSync.onSave(rows);
     },
     async ping() {
       await rest("GET", "gm_kv?select=key&limit=1");
@@ -377,5 +387,5 @@ module.exports = function (cfg) {
     mimeOf,
   };
 
-  return { cloud, kv, files, employeeSync };
+  return { cloud, kv, files, employeeSync, catalogSync };
 };
