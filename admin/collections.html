@@ -504,147 +504,6 @@
         background: rgba(255, 255, 255, 0.25);
       }
 
-      /* Command bar pill + filter chips */
-      .co-top {
-        display: flex;
-        gap: 16px;
-        align-items: center;
-        margin-bottom: 16px;
-      }
-      .co-pill {
-        flex: 1;
-        min-width: 0;
-        display: flex;
-        align-items: center;
-        background: var(--card);
-        border-radius: 999px;
-        padding: 6px 8px 6px 28px;
-        box-shadow: 0 6px 24px rgba(15, 23, 42, 0.08);
-        min-height: 64px;
-      }
-      .co-s {
-        flex: 1;
-        min-width: 0;
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        color: var(--muted);
-      }
-      .co-s svg {
-        width: 22px;
-        height: 22px;
-        flex: none;
-      }
-      .co-s input {
-        flex: 1;
-        min-width: 0;
-        border: 0;
-        outline: 0;
-        background: none;
-        font: inherit;
-        font-size: 16px;
-        color: var(--text);
-        height: 44px;
-      }
-      .co-f2 {
-        padding: 0 20px;
-        border-left: 1.5px solid var(--border);
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        flex: none;
-      }
-      .co-f2 .co-fl {
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--muted);
-        line-height: 1.2;
-      }
-      .co-f2 select,
-      .co-f2 input {
-        border: 0;
-        outline: 0;
-        background: none;
-        font: inherit;
-        font-size: 15px;
-        font-weight: 700;
-        color: var(--text);
-        padding: 0;
-        height: 24px;
-        cursor: pointer;
-        max-width: 150px;
-      }
-      .co-f2 select {
-        appearance: none;
-        -webkit-appearance: none;
-      }
-      .co-dates {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-      .co-dates input {
-        max-width: 132px;
-        font-size: 14px;
-      }
-      .co-dates i {
-        font-style: normal;
-        color: var(--muted);
-      }
-      .co-go {
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        border: 0;
-        background: var(--primary);
-        color: var(--on-primary);
-        display: grid;
-        place-items: center;
-        cursor: pointer;
-        flex: none;
-        margin-left: 8px;
-      }
-      .co-go svg {
-        width: 22px;
-        height: 22px;
-      }
-      .co-exp {
-        height: 64px;
-        padding: 0 28px;
-        border-radius: 999px;
-        border: 2px solid var(--primary);
-        background: transparent;
-        color: var(--primary);
-        font: inherit;
-        font-weight: 700;
-        font-size: 16px;
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        cursor: pointer;
-        flex: none;
-      }
-      .co-exp:disabled {
-        opacity: 0.5;
-      }
-      .co-chips {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 16px;
-      }
-      .co-clear {
-        border: 0;
-        background: none;
-        color: var(--primary);
-        font: inherit;
-        font-weight: 700;
-        font-size: 15px;
-        cursor: pointer;
-        padding: 8px 12px;
-        white-space: nowrap;
-      }
       @media (max-width: 900px) {
         .co-split {
           grid-template-columns: 1fr;
@@ -660,36 +519,82 @@
           max-height: none;
           box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
         }
-        .co-top {
-          flex-direction: column;
-          align-items: stretch;
-        }
-        .co-pill {
-          flex-wrap: wrap;
-          border-radius: 24px;
-          padding: 10px 14px;
-          gap: 8px;
-        }
-        .co-s {
-          flex: 1 1 100%;
-        }
-        .co-f2 {
-          border-left: 0;
-          padding: 0 12px 0 0;
-        }
-        .co-go {
-          margin-left: auto;
-        }
-        .co-exp {
-          height: 48px;
-          justify-content: center;
-        }
       }
       @media (max-width: 560px) {
         .co-kv {
           grid-template-columns: 1fr;
         }
       }
+
+      /* Slim toolbar, filters popover, active chips */
+      .co-tb { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+      .co-s {
+        flex: 1 1 240px; max-width: 360px; min-width: 0; height: 40px; display: flex; align-items: center; gap: 8px;
+        padding: 0 14px; border-radius: 999px; background: var(--card); border: 1px solid var(--border); color: var(--muted);
+      }
+      .co-s svg { width: 16px; height: 16px; flex: none; }
+      .co-s input[type="search"] {
+        flex: 1; min-width: 0; width: auto; height: 36px; min-height: 0; padding: 0; margin: 0; border: 0;
+        outline: 0; box-shadow: none; background: none; font: inherit; font-size: 14px; color: var(--text);
+      }
+      .co-tbr { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+      .co-fw { position: relative; }
+      .co-btn {
+        height: 40px; padding: 0 18px; display: inline-flex; align-items: center; gap: 8px; width: auto;
+        border: 1.5px solid var(--primary); border-radius: 999px; background: var(--t-primary);
+        color: var(--primary); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap;
+      }
+      .co-btn svg { width: 16px; height: 16px; flex: none; }
+      .co-btn:hover { filter: brightness(0.97); }
+      .co-btn-p { background: var(--primary); color: var(--on-primary); }
+      .co-btn-p:hover { filter: brightness(1.08); }
+      .co-btn:disabled { opacity: 0.55; cursor: default; }
+      .co-badge {
+        min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--primary);
+        color: var(--on-primary); font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;
+      }
+      .co-badge[hidden] { display: none; }
+      .co-pop {
+        display: none; position: absolute; top: calc(100% + 8px); right: 0; z-index: 60; width: 380px;
+        max-width: calc(100vw - 32px); background: var(--card); border: 1px solid var(--border);
+        border-radius: 20px; padding: 16px; box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+      }
+      .co-pop.open { display: block; }
+      .co-pf1 { margin-bottom: 12px; min-width: 0; }
+      .co-pf1 label { display: block; font-size: 12.5px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+      .co-pf2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .co-pop .field, .co-pop select { width: 100%; }
+      .co-pact { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 4px; }
+      .co-link { border: 0; background: none; color: var(--primary); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; padding: 8px 10px; white-space: nowrap; }
+      .co-pact .co-link { color: var(--text); }
+      .co-apply {
+        height: 40px; padding: 0 22px; border: 0; border-radius: 999px; background: var(--primary);
+        color: var(--on-primary); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; width: auto;
+      }
+      .co-active { display: none; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+      .co-al { color: var(--muted); font-size: 13px; }
+      .co-ac {
+        display: inline-flex; align-items: center; gap: 2px; height: 32px; padding: 0 4px 0 12px; border-radius: 999px;
+        background: var(--card); border: 1px solid var(--border); font-size: 13px; font-weight: 600;
+      }
+      .co-ac button { border: 0; background: none; cursor: pointer; color: var(--muted); font-size: 16px; line-height: 1; padding: 4px 8px; }
+      .co-ac button:hover { color: var(--text); }
+      .co-chips { display: flex; align-items: center; margin-bottom: 12px; }
+      #coTabs.co-seg button { padding: 6px 14px; font-size: 13px; }
+      #coTabs.co-seg .n { font-size: 11px; padding: 0 6px; margin-left: 6px; }
+      @media (max-width: 560px) {
+        .co-s { max-width: none; flex-basis: 100%; }
+        .co-tbr { margin-left: 0; width: 100%; justify-content: flex-end; }
+      }
+      .co-tb-hd { flex: 1; margin: 0 12px 0 20px; flex-wrap: nowrap; min-width: 0; }
+      .co-tb-hd .co-s { flex: 1 1 200px; max-width: 320px; }
+      .co-tb-hd .co-tbr { margin-left: auto; }
+      .a-acts .co-tb { margin: 0; flex-wrap: nowrap; gap: 8px; }
+      .a-acts .co-s { flex: 0 1 240px; max-width: 240px; height: 40px; }
+      .a-acts .co-tbr { margin-left: 0; width: auto; }
+      @media (max-width: 900px) {
+      .a-acts .co-s { display: none; }
+}
     </style>
   </head>
   <body>
@@ -730,8 +635,10 @@
           '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
         var DL_SVG =
           '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></svg>';
+        var FILTER_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16"/><path d="M7 12h10"/><path d="M10 17h4"/></svg>';
         function ico(n) {
           if (n === "search") return SEARCH_SVG;
+          if (n === "filter") return FILTER_SVG;
           try {
             var h = GA.icon(n);
             if (h) return h;
@@ -818,21 +725,20 @@
 
         pg.innerHTML =
           '<div id="coStats"></div>' +
-          '<div class="co-top"><div class="co-pill">' +
-          '<label class="co-s">' +
-          ico("search") +
-          '<input type="search" id="coQ" placeholder="Search customer name" aria-label="Search customer name" autocomplete="off"></label>' +
-          '<div class="co-f2"><span class="co-fl">Method</span><select id="coMethod" aria-label="Payment method"><option value="">All methods</option><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank_transfer">Bank transfer</option></select></div>' +
-          '<div class="co-f2"><span class="co-fl">Employee</span><select id="coEmp" aria-label="Employee"><option value="">All employees</option></select></div>' +
-          '<div class="co-f2"><span class="co-fl">Date range</span><div class="co-dates"><input type="date" id="coFrom" aria-label="Start date"><i>→</i><input type="date" id="coTo" aria-label="End date"></div></div>' +
-          '<button class="co-go" id="coGo" type="button" aria-label="Search">' +
-          ico("search") +
-          "</button>" +
-          "</div>" +
-          '<button class="co-exp" id="coExport" type="button">' +
-          ico("download") +
-          " Export</button></div>" +
-          '<div class="co-chips"><div class="a-seg co-seg" id="coTabs"></div><button class="co-clear" id="coClear" type="button">Clear filters</button></div>' +
+          '<div class="co-tb" data-act>' +
+          '<label class="co-s">' + ico("search") + '<input type="search" id="coQ" placeholder="Search customer name" aria-label="Search customer name" autocomplete="off"></label>' +
+          '<div class="co-tbr"><div class="co-fw">' +
+          '<button class="co-btn" id="coFbtn" type="button" aria-haspopup="true" aria-expanded="false">' + ico("filter") + 'Filters<span class="co-badge" id="coFcount" hidden>0</span></button>' +
+          '<div class="co-pop" id="coPop" role="dialog" aria-label="Filters">' +
+          '<div class="co-pf1"><label for="coMethod">Payment method</label><div class="field"><select id="coMethod"><option value="">All methods</option><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank_transfer">Bank transfer</option></select></div></div>' +
+          '<div class="co-pf1"><label for="coEmp">Employee</label><div class="field"><select id="coEmp"><option value="">All employees</option></select></div></div>' +
+          '<div class="co-pf2"><div class="co-pf1"><label for="coFrom">From</label><div class="field"><input type="date" id="coFrom"></div></div>' +
+          '<div class="co-pf1"><label for="coTo">To</label><div class="field"><input type="date" id="coTo"></div></div></div>' +
+          '<div class="co-pact"><button class="co-link" id="coPClear" type="button">Clear</button><button class="co-apply" id="coApply" type="button">Apply filters</button></div>' +
+          '</div></div>' +
+          '<button class="co-btn co-btn-p" id="coExport" type="button">' + ico("download") + 'Export</button></div></div>' +
+          '<div class="co-active" id="coActive"></div>' +
+          '<div class="co-chips"><div class="a-seg co-seg" id="coTabs"></div></div>' +
           '<div class="card">' +
           '<div class="co-bulk" id="coBulk"><span id="coBulkTxt"></span><button class="btn btn-success" id="coBulkGo" type="button">Approve selected</button></div>' +
           '<div class="co-split"><div id="coList"><div class="a-empty">Loading collections…</div></div>' +
@@ -1546,65 +1452,81 @@
             load();
           }, 350);
         };
-        // Round search button and Enter key search straight away
-        $("coGo").onclick = function () {
-          clearTimeout(timer);
-          st.q = $("coQ").value.trim();
-          st.page = 1;
-          load();
+        function fmtD(v) {
+          var d = new Date(v + "T00:00:00");
+          return isNaN(d) ? v : d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+        }
+        function empName(id) {
+          var o = [].filter.call($("coEmp").options, function (x) { return x.value === id; })[0];
+          return o ? o.textContent : "Employee";
+        }
+        function drawActive() {
+          var chips = [];
+          if (st.method) chips.push(["method", "Method: " + (METHOD[st.method] || st.method)]);
+          if (st.collector) chips.push(["collector", "Employee: " + empName(st.collector)]);
+          if (st.from || st.to) chips.push(["date", st.from && st.to ? fmtD(st.from) + " – " + fmtD(st.to) : st.from ? "From " + fmtD(st.from) : "Until " + fmtD(st.to)]);
+          var n = chips.length;
+          $("coFcount").textContent = n;
+          $("coFcount").hidden = !n;
+          var box = $("coActive");
+          box.style.display = n ? "flex" : "none";
+          box.innerHTML = n
+            ? '<span class="co-al">Active filters</span>' +
+              chips.map(function (c) {
+                return '<span class="co-ac">' + esc(c[1]) + '<button type="button" data-rm="' + c[0] + '" aria-label="Remove filter">×</button></span>';
+              }).join("") +
+              '<button class="co-link" type="button" data-clearall>Clear all</button>'
+            : "";
+        }
+        function syncFields() {
+          $("coMethod").value = st.method;
+          $("coEmp").value = st.collector;
+          $("coFrom").value = st.from;
+          $("coTo").value = st.to;
+        }
+        function setPop(open) {
+          if (open) syncFields();
+          $("coPop").classList.toggle("open", open);
+          $("coFbtn").setAttribute("aria-expanded", open ? "true" : "false");
+        }
+        function applyFilters() { st.page = 1; drawActive(); load(); }
+        function clearFilters() {
+          st.method = st.collector = st.from = st.to = "";
+          syncFields();
+          applyFilters();
+        }
+        $("coFbtn").onclick = function (e) { e.stopPropagation(); setPop(!$("coPop").classList.contains("open")); };
+        $("coPop").addEventListener("click", function (e) { e.stopPropagation(); });
+        document.addEventListener("click", function () { setPop(false); });
+        document.addEventListener("keydown", function (e) { if (e.key === "Escape") setPop(false); });
+        $("coApply").onclick = function () {
+          st.method = $("coMethod").value;
+          st.collector = $("coEmp").value;
+          st.from = $("coFrom").value;
+          st.to = $("coTo").value;
+          setPop(false);
+          applyFilters();
         };
-        $("coQ").addEventListener("keydown", function (e) {
-          if (e.key === "Enter") $("coGo").click();
-        });
-        $("coMethod").onchange = function () {
-          st.method = this.value;
-          st.page = 1;
-          load();
+        $("coPClear").onclick = function () { setPop(false); clearFilters(); };
+        $("coActive").onclick = function (e) {
+          if (e.target.closest("[data-clearall]")) { clearFilters(); return; }
+          var r = e.target.closest("[data-rm]");
+          if (!r) return;
+          var k = r.getAttribute("data-rm");
+          if (k === "method") st.method = "";
+          else if (k === "collector") st.collector = "";
+          else st.from = st.to = "";
+          syncFields();
+          applyFilters();
         };
-        $("coEmp").onchange = function () {
-          st.collector = this.value;
-          st.page = 1;
-          load();
-        };
-        api("/api/accounts/collectors")
-          .then(function (j) {
-            $("coEmp").innerHTML =
-              '<option value="">All employees</option>' +
-              (j.collectors || [])
-                .map(function (c) {
-                  return (
-                    '<option value="' +
-                    esc(c.id) +
-                    '">' +
-                    esc(c.name) +
-                    "</option>"
-                  );
-                })
-                .join("");
-            $("coEmp").value = st.collector;
-          })
-          .catch(function () {});
-        $("coFrom").onchange = function () {
-          st.from = this.value;
-          st.page = 1;
-          load();
-        };
-        $("coTo").onchange = function () {
-          st.to = this.value;
-          st.page = 1;
-          load();
-        };
-        $("coClear").onclick = function () {
-          st.q = st.method = st.collector = st.from = st.to = "";
-          st.page = 1;
-          $("coQ").value =
-            $("coMethod").value =
-            $("coEmp").value =
-            $("coFrom").value =
-            $("coTo").value =
-              "";
-          load();
-        };
+        api("/api/accounts/collectors").then(function (j) {
+          $("coEmp").innerHTML = '<option value="">All employees</option>' + (j.collectors || []).map(function (c) {
+            return '<option value="' + esc(c.id) + '">' + esc(c.name) + "</option>";
+          }).join("");
+          $("coEmp").value = st.collector;
+          drawActive();
+        }).catch(function () {});
+        drawActive();
         $("coList").addEventListener("keydown", function (e) {
           if (
             (e.key === "Enter" || e.key === " ") &&
