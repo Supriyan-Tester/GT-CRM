@@ -150,16 +150,16 @@
   var currentCustomer="", invoices=[], pending=[];
   function dt(iso){var d=new Date(iso);return isNaN(d)?"":d.toLocaleString("en-IN",{day:"numeric",month:"short",year:"numeric",hour:"numeric",minute:"2-digit",timeZone:"Asia/Kolkata"});}
   var METHOD={cash:"Cash",upi:"UPI",bank_transfer:"Bank transfer"};
-  pg.innerHTML='<nav class="ac-crumb" aria-label="Breadcrumb"><a href="index.html">Home</a><span>›</span><span>Cash &amp; Accounts</span><span>›</span><b>Accounts &amp; Ledger</b></nav><div id="acStats"></div>'+
+  pg.innerHTML='<nav class="ac-crumb" aria-label="Breadcrumb"><a href="index.html">Home</a><span>›</span><span>Cash & Accounts</span><span>›</span><b>Accounts & Ledger</b></nav><div id="acStats"></div>'+
     '<section id="acLedger"><div class="card ac-card">'+
     '<div class="ac-bar"><input type="hidden" id="acCustomer"><div class="ac-who" id="acWho"></div></div>'+
-    '<div class="ac-note">'+GA.icon("info")+'<span>Approved payments reduce what the customer owes.</span></div>'+
+    
     '<div class="a-scroll ac-tw"><table class="a-table"><thead><tr><th>Invoice</th><th>Date</th><th>Source</th><th class="ac-r">Bill total</th><th class="ac-r">Opening due</th><th class="ac-r">Paid</th><th class="ac-r">Pending</th><th class="ac-r">Balance</th></tr></thead><tbody id="acInvoiceRows"><tr><td colspan="8"><div class="a-empty"><b>No customer selected</b>Search a customer above to see their invoices.</div></td></tr></tbody></table></div></div></section>'+
     '<section id="acPending" hidden><div class="card ac-card">'+
     ''+
     '<div class="ac-note">Check the money and the bill photo before approving. Approval cannot be undone.</div>'+
     '<div class="a-scroll"><table class="a-table"><thead><tr><th>Received</th><th>Customer</th><th>Collector</th><th>Method</th><th class="ac-r">Total</th><th>Status</th><th></th></tr></thead><tbody id="acPendingRows"><tr><td colspan="7"><div class="a-empty">Loading approvals...</div></td></tr></tbody></table></div></div></section>'+
-    '<div class="ac-modal" id="acOpenModal" role="dialog" aria-modal="true" aria-labelledby="acOpenTitle"><div class="ac-modal-card ac-imp-card"><div class="ac-imp-head"><span class="ac-imp-ico">'+GA.icon("upload")+'</span><div><div class="card-title" id="acOpenTitle">Import legacy opening invoice</div><p class="ac-muted">For old handwritten credit bills; records an opening receivable, not new sales revenue.</p></div><button class="ac-x" id="acOpenClose" type="button" aria-label="Close">'+GA.icon("close")+'</button></div><form id="acOpeningForm"><div class="ac-grid3"><div class="ac-field"><label for="acOpenCustomer">Customer <i>*</i></label><div class="ac-ico">'+GA.icon("user")+'<input type="hidden" id="acOpenCustomer"></div></div><div class="ac-field"><label for="acOpenNo">Invoice number <i>*</i></label><div class="ac-ico"><span class="ac-glyph">#</span><input id="acOpenNo" maxlength="80" placeholder="Enter invoice number" required></div></div><div class="ac-field"><label for="acOpenDate">Invoice date <i>*</i></label><div><input id="acOpenDate" type="date" required></div></div><div class="ac-field"><label for="acOpenOriginal">Original invoice amount (₹) <i>*</i></label><div class="ac-ico"><span class="ac-glyph">₹</span><input id="acOpenOriginal" type="number" min="0.01" step="0.01" placeholder="0.00" required></div></div><div class="ac-field"><label for="acOpenDue">Balance still to be paid (₹) <i>*</i></label><div class="ac-ico"><span class="ac-glyph">₹</span><input id="acOpenDue" type="number" min="0.01" step="0.01" placeholder="0.00" required></div><small class="ac-hint">Same as the original amount if nothing is paid yet.</small></div><div class="ac-field ac-wide"><label for="acOpenPhoto">Original bill photo <i>*</i></label><div class="ac-drop" id="acDrop">'+GA.icon("upload")+'<span><b>Choose file</b> or drag &amp; drop</span><small id="acDropName">JPG, PNG or WEBP (max 5 MB)</small><input id="acOpenPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" required></div></div></div>'+
+    '<div class="ac-modal" id="acOpenModal" role="dialog" aria-modal="true" aria-labelledby="acOpenTitle"><div class="ac-modal-card ac-imp-card"><div class="ac-imp-head"><span class="ac-imp-ico">'+GA.icon("upload")+'</span><div><div class="card-title" id="acOpenTitle">Import legacy opening invoice</div><p class="ac-muted">For old handwritten credit bills; records an opening receivable, not new sales revenue.</p></div><button class="ac-x" id="acOpenClose" type="button" aria-label="Close">'+GA.icon("close")+'</button></div><form id="acOpeningForm"><div class="ac-grid3"><div class="ac-field"><label for="acOpenCustomer">Customer <i>*</i></label><div class="ac-ico">'+GA.icon("user")+'<input type="hidden" id="acOpenCustomer"></div></div><div class="ac-field"><label for="acOpenNo">Invoice number <i>*</i></label><div class="ac-ico"><span class="ac-glyph">#</span><input id="acOpenNo" maxlength="80" placeholder="Enter invoice number" required></div></div><div class="ac-field"><label for="acOpenDate">Invoice date <i>*</i></label><div><input id="acOpenDate" type="date" required></div></div><div class="ac-field"><label for="acOpenOriginal">Original invoice amount (₹) <i>*</i></label><div class="ac-ico"><span class="ac-glyph">₹</span><input id="acOpenOriginal" type="number" min="0.01" step="0.01" placeholder="0.00" required></div></div><div class="ac-field"><label for="acOpenDue">Balance still to be paid (₹) <i>*</i></label><div class="ac-ico"><span class="ac-glyph">₹</span><input id="acOpenDue" type="number" min="0.01" step="0.01" placeholder="0.00" required></div><small class="ac-hint">Same as the original amount if nothing is paid yet.</small></div><div class="ac-field ac-wide"><label for="acOpenPhoto">Original bill photo <i>*</i></label><div class="ac-drop" id="acDrop">'+GA.icon("upload")+'<span><b>Choose file</b> or drag & drop</span><small id="acDropName">JPG, PNG or WEBP (max 5 MB)</small><input id="acOpenPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" required></div></div></div>'+
     '<div class="ac-actions"><button class="btn ac-btn" id="acOpenSubmit" type="submit">'+GA.icon("check")+'Save opening invoice</button><button class="btn btn-outline ac-btn" id="acOpenCancel" type="button">Cancel</button><span class="ac-chip" id="acOpenMsg"></span></div></form></div></div>'+
     '<div class="ac-modal" id="acEditModal" role="dialog" aria-modal="true" aria-labelledby="acEditTitle"><div class="ac-modal-card ac-imp-card"><div class="ac-imp-head"><span class="ac-imp-ico">'+GA.icon("edit")+'</span><div><div class="card-title" id="acEditTitle">Edit invoice</div><p class="ac-muted" id="acEditSub"></p></div><button class="ac-x" id="acEditClose" type="button" aria-label="Close">'+GA.icon("close")+'</button></div><form id="acEditForm"><div class="ac-grid3"><div class="ac-field"><label for="acEditNo">Invoice number <i>*</i></label><div><input id="acEditNo" maxlength="80" required></div></div><div class="ac-field"><label for="acEditDate">Invoice date <i>*</i></label><div><input id="acEditDate" type="date" required></div></div><div class="ac-field"><label for="acEditOriginal">Bill total (₹) <i>*</i></label><div><input id="acEditOriginal" type="number" min="0.01" step="0.01" required></div></div><div class="ac-field"><label for="acEditDue">Opening due (₹) <i>*</i></label><div><input id="acEditDue" type="number" min="0.01" step="0.01" required></div><small class="ac-hint" id="acEditHint"></small></div><div class="ac-field ac-wide"><label for="acEditPhoto">New bill photo (optional)</label><div><input id="acEditPhoto" type="file" accept="image/jpeg,image/png,image/webp"></div></div><div class="ac-field ac-wide"><label for="acEditReason">Reason for change <i>*</i></label><div><input id="acEditReason" maxlength="200" placeholder="Example: amount typed wrong" required></div></div></div>'+
     '<div class="ac-actions"><button class="btn ac-btn" id="acEditSubmit" type="submit">'+GA.icon("check")+'Save changes</button><button class="btn btn-outline ac-btn" id="acEditCancel" type="button">Cancel</button><span class="ac-chip" id="acEditMsg"></span></div></form></div></div>'+
@@ -236,10 +236,39 @@
     }
     $("acStats").innerHTML='<div class="a-stats ac-stats">'+tiles+'</div>';
   }
-  var canEdit=false;
+  var canEdit=false, allInvoices=[], globalStats=null;
+  function loadOverview(){
+    return request("/api/accounts/ledger-overview").then(function(d){
+      globalStats=d.stats||null;
+      allInvoices=d.invoices||[];
+      if(!currentCustomer)drawStats();
+    }).catch(function(){});
+  }
+  function drawStats(){
+    var tiles;
+    if(currentCustomer){
+      var tot=0,paid=0,due=0,open=0,adjT=0;
+      invoices.forEach(function(x){var ad=Number(x.discountAmount||0)+Number(x.returnAmount||0);adjT+=ad;tot+=Number(x.initial_outstanding!=null?x.initial_outstanding:x.original_amount||0)+ad;paid+=Number(x.approvedPaid||0);due+=Number(x.outstanding||0);if(Number(x.outstanding||0)>0)open++;});
+      var pc=function(v){return tot>0?Math.round(v/tot*100)+"% of total credit":"";};
+      tiles=GA.tile("s-p","receipt",money(tot),"Total due (opening)",invoices.length+(invoices.length===1?" invoice":" invoices")+(adjT>0?" · less "+money(adjT)+" discount/returns":""))+GA.tile("s-s","check-circle",money(paid),"Paid (approved)",paid>0?pc(paid):"No payments yet")+GA.tile("s-r","hourglass",money(due),"Outstanding",tot>0?pc(due):"Nothing owed")+GA.tile("s-i","clipboard-list",open,"Open invoices");
+    }else{
+      var st=globalStats||{totalInvoices:0,totalCollected:0,totalOutstanding:0,closedInvoices:0,openInvoices:0};
+      var totAll=Number(st.totalCollected||0)+Number(st.totalOutstanding||0);
+      var pctCol=totAll>0?Math.round((Number(st.totalCollected||0)/totAll)*100)+"% recovered":"Approved payments";
+      tiles=
+        GA.tile("s-p","users",customers.length.toLocaleString("en-IN"),"Customers in CRM")+
+        GA.tile("s-r","hourglass",money(st.totalOutstanding),"Total outstanding","Across "+st.openInvoices+" open "+(st.openInvoices===1?"invoice":"invoices"))+
+        GA.tile("s-s","check-circle",money(st.totalCollected),"Total collected",pctCol)+
+        GA.tile("s-i","receipt",st.totalInvoices.toLocaleString("en-IN"),"Total invoices",st.closedInvoices+" closed · "+st.openInvoices+" open")+
+        GA.tile("s-w","clipboard-list",st.openInvoices.toLocaleString("en-IN"),"Pending to close","Still has balance due")+
+        GA.tile("s-s","check-circle",st.closedInvoices.toLocaleString("en-IN"),"Closed invoices","Fully paid / settled");
+        
+    }
+    $("acStats").innerHTML='<div class="a-stats ac-stats">'+tiles+'</div>';
+  }
   function loadLedger(){
     currentCustomer=$("acCustomer").value;drawWho();if(currentCustomer){$("acOpenCustomer").value=currentCustomer;syncPickers();}
-    if(!currentCustomer){invoices=[];drawStats();$("acInvoiceRows").innerHTML='<tr><td colspan="8"><div class="a-empty"><b>No customer selected</b>Search a customer above to see their invoices.</div></td></tr>';return Promise.resolve();}
+    if(!currentCustomer){invoices=[];drawStats();$("acInvoiceRows").innerHTML='<tr><td colspan="8"><div class="a-empty"><b>No customer selected</b>Search a customer or invoice number above.</div></td></tr>';return Promise.resolve();}
     $("acInvoiceRows").innerHTML='<tr><td colspan="8"><div class="a-empty">Loading ledger...</div></td></tr>';
     return request("/api/accounts/customers/"+encodeURIComponent(currentCustomer)+"/invoices").then(function(d){invoices=d.invoices||[];canEdit=!!d.canEdit;renderInvoices();drawStats();}).catch(function(e){$("acInvoiceRows").innerHTML='<tr><td colspan="8"><div class="a-empty"><b>Could not load</b>'+esc(e.message)+'</div></td></tr>';});
   }
@@ -261,7 +290,7 @@
       var uploaded=await request("/api/accounts/evidence",{method:"POST",body:JSON.stringify({data:await readDataUrl(file)})});
       omsg("Saving opening invoice...");
       await request("/api/accounts/opening-invoices",{method:"POST",body:JSON.stringify({customerCode:$("acOpenCustomer").value,invoiceNo:$("acOpenNo").value,invoiceDate:$("acOpenDate").value,originalAmount:Number($("acOpenOriginal").value),outstandingAmount:Number($("acOpenDue").value),evidencePath:uploaded.evidencePath})});
-      toast("Opening invoice added to customer ledger.");var keep=$("acOpenCustomer").value;this.reset();$("acOpenDate").value=new Date().toISOString().slice(0,10);omsg("");closeImport();if(currentCustomer===keep)loadLedger();
+      toast("Opening invoice added to customer ledger.");var keep=$("acOpenCustomer").value;this.reset();$("acOpenDate").value=new Date().toISOString().slice(0,10);omsg("");closeImport();loadOverview();if(currentCustomer===keep)loadLedger();
     }catch(err){omsg(err.message,"err");}finally{btn.disabled=false;}
   };
   var editing=null;
@@ -285,7 +314,7 @@
     var reason=window.prompt("Delete invoice "+x.invoice_no+" ("+money(x.initial_outstanding)+")? This cannot be undone.\nEnter a reason:");
     if(reason===null)return;reason=reason.trim();if(reason.length<3){toast("Enter a reason (3+ characters).");return;}
     b.disabled=true;
-    request("/api/accounts/invoices/"+encodeURIComponent(x.id)+"/delete",{method:"POST",body:JSON.stringify({reason:reason})}).then(function(){toast("Invoice deleted.");loadLedger();}).catch(function(err){toast(err.message);b.disabled=false;});
+    request("/api/accounts/invoices/"+encodeURIComponent(x.id)+"/delete",{method:"POST",body:JSON.stringify({reason:reason})}).then(function(){toast("Invoice deleted.");loadOverview();loadLedger();}).catch(function(err){toast(err.message);b.disabled=false;});
   });
   $("acEditForm").onsubmit=async function(e){
     e.preventDefault();if(!editing)return;
@@ -298,7 +327,7 @@
       if(file){emsg("Uploading bill photo...");var up=await request("/api/accounts/evidence",{method:"POST",body:JSON.stringify({data:await readDataUrl(file)})});path=up.evidencePath;}
       emsg("Saving...");
       await request("/api/accounts/invoices/"+encodeURIComponent(editing.id)+"/edit",{method:"POST",body:JSON.stringify({invoiceNo:$("acEditNo").value,invoiceDate:$("acEditDate").value,originalAmount:orig,outstandingAmount:due,evidencePath:path,reason:$("acEditReason").value})});
-      toast("Invoice updated.");closeEdit();loadLedger();
+      toast("Invoice updated.");closeEdit();loadOverview();loadLedger();
     }catch(err){emsg(err.message,"err");}finally{btn.disabled=false;}
   };
   var adjusting=null,adjKind="discount",adjBusy=false;
@@ -340,7 +369,7 @@
     adjBusy=true;btn.disabled=true;amsg("Saving...");
     try{
       await request("/api/accounts/invoices/"+encodeURIComponent(adjusting.id)+"/adjust",{method:"POST",body:JSON.stringify({kind:kind,amount:amt,reason:$("acAdjReason").value})});
-      toast((kind==="discount"?"Discount":"Return credit")+" applied.");adjBusy=false;closeAdj();loadLedger();
+      toast((kind==="discount"?"Discount":"Return credit")+" applied.");adjBusy=false;closeAdj();loadOverview();loadLedger();
     }catch(err){amsg(err.message,"err");adjBusy=false;if(adjusting)adjDraw();}
   };
   $("acAdjList").addEventListener("click",function(e){
@@ -348,13 +377,12 @@
     var reason=window.prompt("Reverse this adjustment? The amount goes back onto the invoice.\nEnter a reason:");
     if(reason===null)return;reason=reason.trim();if(reason.length<3){amsg("Enter a reason (3+ characters).","err");return;}
     b.disabled=true;
-    request("/api/accounts/invoice-adjustments/"+encodeURIComponent(b.getAttribute("data-undo"))+"/reverse",{method:"POST",body:JSON.stringify({reason:reason})}).then(function(){toast("Adjustment reversed.");closeAdj();loadLedger();}).catch(function(err){amsg(err.message,"err");b.disabled=false;});
+    request("/api/accounts/invoice-adjustments/"+encodeURIComponent(b.getAttribute("data-undo"))+"/reverse",{method:"POST",body:JSON.stringify({reason:reason})}).then(function(){toast("Adjustment reversed.");closeAdj();loadOverview();loadLedger();}).catch(function(err){amsg(err.message,"err");b.disabled=false;});
   });
   function loadPending(){
     $("acPendingRows").innerHTML='<tr><td colspan="7"><div class="a-empty">Loading approvals...</div></td></tr>';
     return request("/api/accounts/collections/pending").then(function(d){pending=d.collections||[];$("acPendingCount").textContent=pending.length?String(pending.length):"";renderPending();drawStats();}).catch(function(e){$("acPendingRows").innerHTML='<tr><td colspan="7"><div class="a-empty"><b>Could not load</b>'+esc(e.message)+'</div></td></tr>';});
   }
-  // Quiet refresh: no "Loading..." flash, the list stays on screen while it updates.
   function quietPending(){
     return request("/api/accounts/collections/pending").then(function(d){pending=d.collections||[];$("acPendingCount").textContent=pending.length?String(pending.length):"";renderPending();drawStats();}).catch(function(){});
   }
@@ -377,10 +405,10 @@
       var go=this;go.disabled=true;
       request("/api/accounts/collections/"+encodeURIComponent(x.id)+"/reject",{method:"POST",body:JSON.stringify({reason:why})}).then(function(){toast("Collection rejected.");$("acDetailModal").classList.remove("open");pending=pending.filter(function(a){return a.id!==x.id;});$("acPendingCount").textContent=pending.length?String(pending.length):"";renderPending();drawStats();quietPending();}).catch(function(e){$("acRejErr").textContent=e.message;go.disabled=false;});
     };
-    $("acApprove").onclick=function(){if(!this.disabled){this.disabled=true;request("/api/accounts/collections/"+encodeURIComponent(x.id)+"/approve",{method:"POST",body:"{}"}).then(function(){toast("Collection approved and customer ledger updated.");$("acDetailModal").classList.remove("open");pending=pending.filter(function(a){return a.id!==x.id;});$("acPendingCount").textContent=pending.length?String(pending.length):"";renderPending();drawStats();quietPending();if(currentCustomer)loadLedger();}).catch(function(e){$("acApproveMsg").textContent=e.message;$("acApprove").disabled=false;});}};
+    $("acApprove").onclick=function(){if(!this.disabled){this.disabled=true;request("/api/accounts/collections/"+encodeURIComponent(x.id)+"/approve",{method:"POST",body:"{}"}).then(function(){toast("Collection approved and customer ledger updated.");$("acDetailModal").classList.remove("open");pending=pending.filter(function(a){return a.id!==x.id;});$("acPendingCount").textContent=pending.length?String(pending.length):"";renderPending();loadOverview();quietPending();if(currentCustomer)loadLedger();}).catch(function(e){$("acApproveMsg").textContent=e.message;$("acApprove").disabled=false;});}};
   }
   $("acCustomer").addEventListener("change",loadLedger);$("acSearch").addEventListener("input",renderInvoices);
-  $("acRefresh").onclick=function(){loadLedger();};
+  $("acRefresh").onclick=function(){loadOverview();loadLedger();};
   $("acPendingRows").addEventListener("click",function(e){var b=e.target.closest("[data-detail]");if(b)showDetails(b.getAttribute("data-detail"));});
   $("acModalClose").onclick=function(){$("acDetailModal").classList.remove("open");};
   $("acDetailModal").onclick=function(e){if(e.target===this)this.classList.remove("open");};
@@ -391,23 +419,45 @@
     $("acWho").innerHTML=c?'<span class="ac-muted">Viewing</span><b>'+esc(String(c.name||c.shopName||c.code))+'</b><span class="ac-muted">· '+esc(String(c.code||""))+'</span><button class="btn btn-outline ac-btn" id="acClear" type="button">Clear</button>':'';
     var cl=$("acClear");if(cl)cl.onclick=function(){$("acCustomer").value="";$("acSearch").value="";loadLedger();};
   }
-  // One search box for customers and invoices.
+  // One search box for customers and global invoices.
   (function(){
     var box=$("acSearch"),wrap=box.parentNode,list=$("acHsList"),items=[],act=-1;
     function open(b){wrap.classList.toggle("open",b);}
     function paint(){[].forEach.call(list.querySelectorAll("[data-n]"),function(el){var on=Number(el.getAttribute("data-n"))===act;el.classList.toggle("act",on);if(on&&el.scrollIntoView)el.scrollIntoView({block:"nearest"});});}
     function render(){
       var q=box.value.trim().toLowerCase(),html="";items=[];
-      var cs=customers.filter(function(c){return !q||(String(c.name||"")+" "+String(c.shopName||"")+" "+String(c.code||"")).toLowerCase().indexOf(q)>-1;}).slice(0,8);
-      var is=(currentCustomer&&q)?invoices.filter(function(x){return String(x.invoice_no||"").toLowerCase().indexOf(q)>-1;}).slice(0,6):[];
-      if(cs.length){html+='<div class="grp">Customers</div>';cs.forEach(function(c){html+='<div role="option" data-n="'+items.length+'">'+esc(String(c.name||c.shopName||c.code||""))+'<small>'+esc(String(c.code||""))+'</small></div>';items.push({k:"c",v:c});});}
-      if(is.length){html+='<div class="grp">Invoices in this ledger</div>';is.forEach(function(x){html+='<div role="option" data-n="'+items.length+'">#'+esc(String(x.invoice_no))+'<small>'+money(x.outstanding)+' outstanding</small></div>';items.push({k:"i",v:x});});}
-      if(!items.length)html='<div class="none">No matching customer'+(currentCustomer?" or invoice":"")+'</div>';
+      var cs=customers.filter(function(c){return !q||(String(c.name||"")+" "+String(c.shopName||"")+" "+String(c.code||"")).toLowerCase().indexOf(q)>-1;}).slice(0,6);
+      var localInv=(currentCustomer&&q)?invoices.filter(function(x){return String(x.invoice_no||"").toLowerCase().indexOf(q)>-1;}).slice(0,5):[];
+      var seenIds={};
+      localInv.forEach(function(x){seenIds[x.id]=true;});
+      var globalInv=q?allInvoices.filter(function(x){return !seenIds[x.id]&&String(x.invoice_no||"").toLowerCase().indexOf(q)>-1;}).slice(0,8):[];
+
+      if(cs.length){
+        html+='<div class="grp">Customers</div>';
+        cs.forEach(function(c){html+='<div role="option" data-n="'+items.length+'">'+esc(String(c.name||c.shopName||c.code||""))+'<small>'+esc(String(c.code||""))+'</small></div>';items.push({k:"c",v:c});});
+      }
+      if(localInv.length){
+        var curObj=customers.filter(function(c){return String(c.code)===currentCustomer;})[0];
+        var curLabel=curObj?(String(curObj.name||curObj.shopName||curObj.code)+" ("+curObj.code+")"):currentCustomer;
+        html+='<div class="grp">Invoices in this ledger</div>';
+        localInv.forEach(function(x){html+='<div role="option" data-n="'+items.length+'">#'+esc(String(x.invoice_no))+' · '+esc(curLabel)+'<small>'+money(x.outstanding)+' outstanding</small></div>';items.push({k:"i",v:x});});
+      }
+      if(globalInv.length){
+        html+='<div class="grp">Invoices (all customers)</div>';
+        globalInv.forEach(function(x){html+='<div role="option" data-n="'+items.length+'">#'+esc(String(x.invoice_no))+' · '+esc(String(x.customer_name_snapshot||""))+' ('+esc(String(x.customer_code||""))+')<small>'+money(x.outstanding)+' due</small></div>';items.push({k:"g",v:x});});
+      }
+      if(!items.length)html='<div class="none">No matching customer or invoice</div>';
       act=items.length?0:-1;list.innerHTML=html;paint();
     }
     function choose(n){var it=items[n];if(!it)return;
       if(it.k==="c"){$("acCustomer").value=String(it.v.code||"");box.value="";open(false);loadLedger();}
-      else{box.value=String(it.v.invoice_no);open(false);renderInvoices();}
+      else if(it.k==="i"){box.value=String(it.v.invoice_no);open(false);renderInvoices();}
+      else if(it.k==="g"){
+        $("acCustomer").value=String(it.v.customer_code||"");
+        box.value=String(it.v.invoice_no||"");
+        open(false);
+        loadLedger();
+      }
     }
     box.addEventListener("focus",function(){render();open(true);});
     box.addEventListener("input",function(){render();open(true);});
@@ -421,7 +471,7 @@
     list.addEventListener("mousedown",function(e){e.preventDefault();var it=e.target.closest("[data-n]");if(it)choose(Number(it.getAttribute("data-n")));});
     box.addEventListener("blur",function(){open(false);});
   })();
-  drawWho();drawStats();
+  drawWho();drawStats();loadOverview();
   if(/[?&]customer=/.test(location.search)){var pre=new URLSearchParams(location.search).get("customer");if(pre&&customers.some(function(c){return String(c.code)===pre;})){$("acCustomer").value=pre;syncPickers();loadLedger();}}
 })();
 </script>

@@ -18,6 +18,9 @@ function createAccountsRoutes(config) {
   const planInvoiceOwner = config.planInvoiceOwner || (() => null);
   const planStopFor = config.planStopFor || (() => null);
   const notifyAdmin = config.notifyAdmin || (() => {});
+  const logEvent = (session, text) => {
+    try { if (config.logEvents) config.logEvents(session, [{ type: "accounts", text }]); } catch (e) {}
+  };
   const inr = (n) => "\u20b9" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
   // Tells the office a payment was recorded (it then waits for approval).
   function notifyCollection(session, customer, total, methodLabel) {
@@ -25,6 +28,7 @@ function createAccountsRoutes(config) {
       const who = String(session.name || config.employeeName(session.id) || "Employee");
       const shop = String(customer.name || customer.shopName || "Customer");
       notifyAdmin("collection", "Payment collected: " + inr(total) + " (" + methodLabel + ") - " + shop, who + " collected " + inr(total) + " by " + methodLabel + " from " + shop + ". It is waiting for approval.", who);
+      logEvent(session, "Collected " + inr(total) + " (" + methodLabel + ") from " + shop);
     } catch (e) {}
   }
   const employeeExists = config.employeeExists || (() => false);
@@ -191,7 +195,12 @@ function createAccountsRoutes(config) {
               p_evidence_path: evidencePath,
               p_created_by: String(session.id).slice(0, 80),
             });
-          }).then((invoiceId) => { if (invoiceId !== null) send(res, 201, { ok: true, invoiceId }); })
+          }).then((invoiceId) => {
+            if (invoiceId !== null) {
+              logEvent(session, "Recorded delivery invoice #" + invoiceNo + " for " + (customer.name || customer.shopName || customerCode) + " (" + inr(amount) + ")");
+              send(res, 201, { ok: true, invoiceId });
+            }
+          })
             .catch((e) => fail(res, e));
         } catch (e) { send(res, 400, { error: e.message }); }
       }, 8 * 1024);
@@ -277,12 +286,89 @@ function createAccountsRoutes(config) {
     if (req.method === "GET" && (p === "/api/accounts/reports/outstanding" || p === "/api/accounts/reports/ageing")) {
       if (!canBill(session)) { send(res, 403, { error: "Billing permission required." }); return true; }
       Promise.all([
-        restAll("gm_accounts_invoices?select=id,customer_code,customer_name_snapshot,invoice_date,initial_outstanding&order=id"),
+        restAll("gm_accounts_invoices?select=id,customer_code,customer_name_snapshot,invoice_no,invoice_date,initial_outstanding&order=id"),
+        restAll("gm_accounts_collection_allocations?select=invoice_id,amount,collection_id&order=id"),
+        restAll("gm_accounts_collections?select=id,customer_code,approved_at,received_at&status=eq.approved&order=id"),
+      ]).then(([invoices, allocations, approved]) => {
+        const out = (p.endsWith("/ageing") ? buildAgeingReport : buildOutstandingReport)({ invoices, allocations, approvedCollectionIds: approved.map((x) => x.id) });
+        if (!p.endsWith("/ageing") && Array.isArray(out.rows)) {
+          const paidByInv = {};
+          const approvedIds = new Set(approved.map((x) => x.id));
+          for (const a of allocations) if (approvedIds.has(a.collection_id)) paidByInv[a.invoice_id] = (paidByInv[a.invoice_id] || 0) + Number(a.amount || 0);
+          const openNosByCust = {}, lastPaidByCust = {};
+          for (const inv of invoices) {
+            const due = Number(inv.initial_outstanding || 0) - (paidByInv[inv.id] || 0);
+            if (due > 0.004 && inv.invoice_no) (openNosByCust[inv.customer_code] = openNosByCust[inv.customer_code] || []).push("#" + inv.invoice_no);
+          }
+          for (const col of approved) {
+            const d = String(col.approved_at || col.received_at || "").slice(0, 10);
+            if (d && (!lastPaidByCust[col.customer_code] || d > lastPaidByCust[col.customer_code])) lastPaidByCust[col.customer_code] = d;
+          }
+          out.rows = out.rows.map((r) => ({ ...r, invoiceNos: openNosByCust[r.code] || [], lastPaidDate: lastPaidByCust[r.code] || "" }));
+        }
+        send(res, 200, { ok: true, generatedAt: new Date().toISOString(), ...out });
+      }).catch((e) => { console.error("Accounts outstanding report:", e.message); send(res, 502, { error: "Unable to load the outstanding report." }); });
+      return true;
+    }
+
+    if (req.method === "GET" && p === "/api/accounts/invoices/search") {
+      if (!canBill(session)) { send(res, 403, { error: "Billing permission required." }); return true; }
+      const q = String(url.searchParams.get("q") || "").replace(/[^A-Za-z0-9./_-]/g, "").trim().slice(0, 40);
+      if (!q) { send(res, 200, { ok: true, invoices: [] }); return true; }
+      rest("gm_accounts_invoices?select=id,customer_code,customer_name_snapshot,invoice_no,invoice_date,original_amount&invoice_no=ilike." + encodeURIComponent("*" + q + "*") + "&order=invoice_date.desc&limit=8")
+        .then((rows) => send(res, 200, { ok: true, invoices: rows }))
+        .catch((e) => { console.error("Accounts invoice search:", e.message); send(res, 502, { error: "Unable to search invoices." }); });
+      return true;
+    }
+
+    if (req.method === "GET" && p === "/api/accounts/ledger-overview") {
+      if (!canBill(session)) { send(res, 403, { error: "Billing permission required." }); return true; }
+      Promise.all([
+        restAll("gm_accounts_invoices?select=id,customer_code,customer_name_snapshot,invoice_no,invoice_date,original_amount,initial_outstanding&order=invoice_date.desc,id.desc"),
         restAll("gm_accounts_collection_allocations?select=invoice_id,amount,collection_id&order=id"),
         restAll("gm_accounts_collections?select=id&status=eq.approved&order=id"),
-      ]).then(([invoices, allocations, approved]) =>
-        send(res, 200, { ok: true, generatedAt: new Date().toISOString(), ...(p.endsWith("/ageing") ? buildAgeingReport : buildOutstandingReport)({ invoices, allocations, approvedCollectionIds: approved.map((x) => x.id) }) }))
-        .catch((e) => { console.error("Accounts outstanding report:", e.message); send(res, 502, { error: "Unable to load the outstanding report." }); });
+      ]).then(([invoices, allocations, approved]) => {
+        const approvedSet = new Set(approved.map((x) => x.id));
+        const paidByInv = {};
+        for (const a of allocations) {
+          if (approvedSet.has(a.collection_id)) {
+            paidByInv[a.invoice_id] = (paidByInv[a.invoice_id] || 0) + Number(a.amount || 0);
+          }
+        }
+        let totalOutstanding = 0, totalCollected = 0, closedCount = 0, openCount = 0;
+        const list = invoices.map((inv) => {
+          const initDue = inv.initial_outstanding != null ? Number(inv.initial_outstanding) : Number(inv.original_amount || 0);
+          const paid = Number((paidByInv[inv.id] || 0).toFixed(2));
+          const due = Number(Math.max(0, initDue - paid).toFixed(2));
+          totalCollected += paid;
+          totalOutstanding += due;
+          if (due > 0.004) openCount++;
+          else closedCount++;
+          return {
+            id: inv.id,
+            customer_code: inv.customer_code,
+            customer_name_snapshot: inv.customer_name_snapshot,
+            invoice_no: String(inv.invoice_no || ""),
+            invoice_date: inv.invoice_date || "",
+            original_amount: Number(inv.original_amount || 0),
+            outstanding: due,
+          };
+        });
+        send(res, 200, {
+          ok: true,
+          stats: {
+            totalInvoices: list.length,
+            totalCollected: Number(totalCollected.toFixed(2)),
+            totalOutstanding: Number(totalOutstanding.toFixed(2)),
+            closedInvoices: closedCount,
+            openInvoices: openCount,
+          },
+          invoices: list,
+        });
+      }).catch((e) => {
+        console.error("Accounts ledger overview:", e.message);
+        send(res, 502, { error: "Unable to load ledger overview." });
+      });
       return true;
     }
 
@@ -621,7 +707,10 @@ function createAccountsRoutes(config) {
             p_invoice_id: editId, p_invoice_no: valid.invoiceNo, p_invoice_date: valid.invoiceDate,
             p_original_amount: valid.originalAmount, p_outstanding_amount: valid.openingOutstanding,
             p_evidence_path: newPath, p_edited_by: String(session.id).slice(0, 80), p_reason: reason,
-          }).then((out) => { send(res, 200, { ok: true, result: out }); });
+          }).then((out) => {
+            logEvent(session, "Edited invoice #" + valid.invoiceNo + " (" + inv.customer_code + ") to " + inr(valid.originalAmount) + ", due " + inr(valid.openingOutstanding) + " — Reason: " + reason);
+            send(res, 200, { ok: true, result: out });
+          });
         }).catch((e) => { if (e && !e.status && /^(Upload|Enter|Choose|Original|Outstanding|A valid)/.test(e.message || "")) send(res, 400, { error: e.message }); else fail(res, e); });
       }, 16384);
       return true;
@@ -635,7 +724,10 @@ function createAccountsRoutes(config) {
         const reason = String((input && input.reason) || "").trim();
         if (reason.length < 3 || reason.length > 200) return send(res, 400, { error: "Enter a reason for the deletion (3 to 200 characters)." });
         rpc("gm_accounts_delete_invoice", { p_invoice_id: delId, p_deleted_by: String(session.id).slice(0, 80), p_reason: reason })
-          .then((out) => { send(res, 200, { ok: true, result: out }); })
+          .then((out) => {
+            logEvent(session, "Deleted invoice " + delId + " — Reason: " + reason);
+            send(res, 200, { ok: true, result: out });
+          })
           .catch((e) => { const m = dbMessage(e); if (m) send(res, 400, { error: m }); else fail(res, e); });
       }, 4096);
       return true;
@@ -653,7 +745,10 @@ function createAccountsRoutes(config) {
         if (!Number.isInteger(amount) || amount < 1 || amount > 100000000) return send(res, 400, { error: "Enter a whole-rupee amount, 1 or more." });
         if (reason.length < 3 || reason.length > 200) return send(res, 400, { error: "Enter a reason (3 to 200 characters)." });
         rpc("gm_accounts_adjust_invoice", { p_invoice_id: adjId, p_kind: kind, p_amount: amount, p_by: String(session.id).slice(0, 80), p_reason: reason })
-          .then((out) => { send(res, 200, { ok: true, result: out }); })
+          .then((out) => {
+            logEvent(session, "Applied " + kind + " of " + inr(amount) + " on invoice " + adjId + " — Reason: " + reason);
+            send(res, 200, { ok: true, result: out });
+          })
           .catch((e) => { const m = dbMessage(e); if (m) send(res, 400, { error: m }); else fail(res, e); });
       }, 4096);
       return true;
@@ -667,7 +762,10 @@ function createAccountsRoutes(config) {
         const reason = String((input && input.reason) || "").trim();
         if (reason.length < 3 || reason.length > 200) return send(res, 400, { error: "Enter a reason (3 to 200 characters)." });
         rpc("gm_accounts_reverse_invoice_adjustment", { p_adjustment_id: revId, p_by: String(session.id).slice(0, 80), p_reason: reason })
-          .then((out) => { send(res, 200, { ok: true, result: out }); })
+          .then((out) => {
+            logEvent(session, "Reversed invoice adjustment " + revId + " — Reason: " + reason);
+            send(res, 200, { ok: true, result: out });
+          })
           .catch((e) => { const m = dbMessage(e); if (m) send(res, 400, { error: m }); else fail(res, e); });
       }, 4096);
       return true;
@@ -694,16 +792,21 @@ function createAccountsRoutes(config) {
               return null;
             }
             return rpc("gm_accounts_create_opening_invoice", {
-            p_customer_code: valid.customerCode,
-            p_customer_name: String(customer.name || customer.shopName || "Customer").slice(0, 120),
-            p_invoice_no: valid.invoiceNo,
-            p_invoice_date: valid.invoiceDate,
-            p_original_amount: valid.originalAmount,
-            p_outstanding_amount: valid.openingOutstanding,
-            p_evidence_path: valid.evidencePath,
-            p_created_by: String(session.id).slice(0, 80),
+              p_customer_code: valid.customerCode,
+              p_customer_name: String(customer.name || customer.shopName || "Customer").slice(0, 120),
+              p_invoice_no: valid.invoiceNo,
+              p_invoice_date: valid.invoiceDate,
+              p_original_amount: valid.originalAmount,
+              p_outstanding_amount: valid.openingOutstanding,
+              p_evidence_path: valid.evidencePath,
+              p_created_by: String(session.id).slice(0, 80),
             });
-          }).then((invoiceId) => { if (invoiceId !== null) send(res, 201, { ok: true, invoiceId }); })
+          }).then((invoiceId) => {
+            if (invoiceId !== null) {
+              logEvent(session, "Added opening invoice #" + valid.invoiceNo + " for " + (customer.name || customer.shopName || valid.customerCode) + " (" + inr(valid.originalAmount) + ", due " + inr(valid.openingOutstanding) + ")");
+              send(res, 201, { ok: true, invoiceId });
+            }
+          })
             .catch((e) => fail(res, e));
         } catch (e) { send(res, 400, { error: e.message }); }
       }, 16384);
@@ -783,14 +886,14 @@ function createAccountsRoutes(config) {
               }
               const allocations = valid.allocations.map((a) => ({ invoiceId: a.invoiceId, amount: a.amount, evidencePath: a.evidencePath }));
               return rpc("gm_accounts_record_collection", {
-            p_request_key: valid.requestKey,
-            p_customer_code: valid.customerCode,
-            p_customer_name: String(customer.name || customer.shopName || "Customer").slice(0, 120),
-            p_collected_by: String(session.id).slice(0, 80),
-            p_collector_name: String(session.name || config.employeeName(session.id) || "Employee").slice(0, 120),
-            p_method: valid.method,
-            p_allocations: allocations,
-            p_note: valid.note,
+                p_request_key: valid.requestKey,
+                p_customer_code: valid.customerCode,
+                p_customer_name: String(customer.name || customer.shopName || "Customer").slice(0, 120),
+                p_collected_by: String(session.id).slice(0, 80),
+                p_collector_name: String(session.name || config.employeeName(session.id) || "Employee").slice(0, 120),
+                p_method: valid.method,
+                p_allocations: allocations,
+                p_note: valid.note,
               });
             }).then((result) => {
               notifyCollection(session, customer, valid.allocations.reduce((n, a) => n + Number(a.amount || 0), 0), { cash: "Cash", upi: "UPI", bank_transfer: "Bank" }[valid.method] || valid.method);
@@ -1140,7 +1243,10 @@ function createAccountsRoutes(config) {
       const id = p.split("/")[4];
       if (!/^[0-9a-f-]{36}$/i.test(id)) { send(res, 400, { error: "Invalid collection reference." }); return true; }
       rpc("gm_accounts_approve_collection", { p_collection_id: id, p_approved_by: String(session.id).slice(0, 80) })
-        .then((result) => send(res, 200, result))
+        .then((result) => {
+          logEvent(session, "Approved collection " + id);
+          send(res, 200, result);
+        })
         .catch((e) => fail(res, e));
       return true;
     }
@@ -1152,11 +1258,15 @@ function createAccountsRoutes(config) {
         const reason = !err && b && typeof b.reason === "string" ? b.reason.trim().slice(0, 300) : "";
         if (reason.length < 3) return send(res, 400, { error: "Enter a reason for rejecting this collection (at least 3 characters)." });
         rpc("gm_accounts_reject_collection", { p_collection_id: id, p_rejected_by: String(session.id).slice(0, 80), p_reason: reason })
-          .then((result) => send(res, 200, result))
+          .then((result) => {
+            logEvent(session, "Rejected collection " + id + " — Reason: " + reason);
+            send(res, 200, result);
+          })
           .catch((e) => fail(res, e));
       }, 2048);
       return true;
     }
+
     if (req.method === "POST" && /^\/api\/accounts\/collections\/[^/]+\/request-correction$/.test(p)) {
       if (!canBill(session)) { send(res, 403, { error: "Billing permission required." }); return true; }
       const id = p.split("/")[4];
@@ -1165,7 +1275,10 @@ function createAccountsRoutes(config) {
         const note = !err && b && typeof b.note === "string" ? b.note.trim().slice(0, 300) : "";
         if (note.length < 3) return send(res, 400, { error: "Tell the employee what to correct (at least 3 characters)." });
         rpc("gm_accounts_request_collection_correction", { p_collection_id: id, p_requested_by: String(session.id).slice(0, 80), p_note: note })
-          .then((result) => send(res, 200, result))
+          .then((result) => {
+            logEvent(session, "Requested correction on collection " + id + " — Note: " + note);
+            send(res, 200, result);
+          })
           .catch((e) => fail(res, e));
       }, 2048);
       return true;

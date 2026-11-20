@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en"><head><script src="../shared/loading.js"></script><script src="../assets/icons.js"></script><script src="../shared/sync.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Accounts Reports - General Traders</title><link rel="stylesheet" href="../shared/theme.css"><link rel="stylesheet" href="../shared/admin.css"><script src="../shared/theme.js"></script><style>
 .rp-lead{margin:0 0 14px;color:var(--muted);font-size:14px}
-.rp-range{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--muted);transition:opacity .2s}
-.rp-range.rp-off{opacity:.4}
+.rp-range{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--muted)}
+.rp-range.rp-off{display:none}
 .rp-tabs{display:flex;gap:6px;border-bottom:2px solid var(--border);margin:0 0 16px;overflow-x:auto;overflow-y:hidden}
 .rp-tabs button{display:inline-flex;align-items:center;gap:8px;border:0;background:none;color:var(--muted);font:inherit;font-size:14px;font-weight:600;padding:11px 20px;border-radius:12px 12px 0 0;cursor:pointer;white-space:nowrap}
 .rp-tabs button svg{width:18px;height:18px;flex:none}
@@ -97,12 +97,23 @@ var VIEWS={
   csv:function(d){return [["Customer","Customer code","0-15 days","16-30 days","31-60 days","61-90 days","Over 90 days","Total"]].concat(d.rows.map(function(r){return [r.name,r.code,(r.d15||0).toFixed(2),r.d30.toFixed(2),r.d60.toFixed(2),r.d90.toFixed(2),r.over90.toFixed(2),r.total.toFixed(2)]}))}},
  outstanding:{url:function(){return "/api/accounts/reports/outstanding"},
   html:function(d){
+   var custMap={};((GA.ops&&GA.ops.get&&GA.ops.get().customers)||[]).forEach(function(c){if(c&&c.code)custMap[String(c.code)]=c;});
    return top("Outstanding Report","Customers with unpaid invoices · as of "+dmy(d.asOf),d)+sums([["Total outstanding",money(d.total),"hourglass","s-r"],["Customers",String(d.customers),"users","s-p"],["Open invoices",String(d.invoices),"clipboard-list","s-i"],["Oldest invoice",d.rows.length?Math.max.apply(null,d.rows.map(function(r){return r.oldestDays}))+" days":"—","clock","s-a"]])+
-   table([{t:"Customer"},{t:"Open invoices",n:1},{t:"Oldest invoice"},{t:"Days",n:1},{t:"Outstanding",n:1}],d.rows.map(function(r){return '<tr><td>'+esc(r.name)+' <span style="color:var(--muted)">· '+esc(r.code)+'</span></td><td class="num">'+r.invoices+'</td><td>'+dmy(r.oldestInvoiceDate)+'</td><td class="num">'+r.oldestDays+'</td><td class="num"><b>'+money(r.outstanding)+'</b></td></tr>'}),'<tr class="rp-sub"><td>Total</td><td class="num">'+d.invoices+'</td><td></td><td></td><td class="num">'+money(d.total)+'</td></tr>')+
+   table([{t:"Customer"},{t:"Route / Area"},{t:"Phone"},{t:"Open invoices",n:1},{t:"Oldest invoice"},{t:"Days",n:1},{t:"Last paid"},{t:"Outstanding",n:1}],d.rows.map(function(r){
+     var c=custMap[String(r.code)]||{};
+     var area=c.area||c.route||c.town||"—";
+     var phone=c.phone||"—";
+     return '<tr><td><a href="accounts.html?customer='+encodeURIComponent(r.code)+'" style="color:inherit;text-decoration:none;font-weight:600">'+esc(r.name)+'</a> <span style="color:var(--muted)">· '+esc(r.code)+'</span></td><td>'+esc(area)+'</td><td>'+esc(phone)+'</td><td class="num">'+r.invoices+'</td><td>'+dmy(r.oldestInvoiceDate)+'</td><td class="num">'+r.oldestDays+'</td><td>'+(r.lastPaidDate?dmy(r.lastPaidDate):"—")+'</td><td class="num"><b>'+money(r.outstanding)+'</b></td></tr>';
+   }),'<tr class="rp-sub"><td colspan="3">Total</td><td class="num">'+d.invoices+'</td><td></td><td></td><td></td><td class="num">'+money(d.total)+'</td></tr>')+
    '<p class="rp-foot">Outstanding is what each invoice still owes after approved payments. Payments waiting for approval are not deducted. The date range above does not apply to this report.</p>'},
-  csv:function(d){return [["Customer","Customer code","Open invoices","Oldest invoice","Days since oldest","Outstanding"]].concat(d.rows.map(function(r){return [r.name,r.code,r.invoices,dmy(r.oldestInvoiceDate),r.oldestDays,r.outstanding.toFixed(2)]}))}}
+  csv:function(d){
+   var custMap={};((GA.ops&&GA.ops.get&&GA.ops.get().customers)||[]).forEach(function(c){if(c&&c.code)custMap[String(c.code)]=c;});
+   return [["Customer","Customer code","Route / Area","Phone","Open invoices","Oldest invoice","Days since oldest","Last paid","Outstanding"]].concat(d.rows.map(function(r){
+     var c=custMap[String(r.code)]||{};
+     return [r.name,r.code,c.area||c.route||c.town||"",c.phone||"",r.invoices,dmy(r.oldestInvoiceDate),r.oldestDays,r.lastPaidDate?dmy(r.lastPaidDate):"",r.outstanding.toFixed(2)];
+   }))}}
 };
-var token=0;function syncRange(){var r=document.querySelector(".rp-range");if(r)r.classList.toggle("rp-off",tab==="outstanding"||tab==="ageing")}
+var token=0;function syncRange(){var off=(tab==="outstanding"||tab==="ageing"),r=document.querySelector(".rp-range"),b=$("rpLoad");if(r)r.classList.toggle("rp-off",off);if(b)b.style.display=off?"none":"";}
 function show(){var v=VIEWS[tab];if(!cache[tab]){$("rpPaper").innerHTML='<div class="rp-empty">Press Show to load this report.</div>';setBusy(false);return}$("rpPaper").innerHTML=v.html(cache[tab]);setBusy(false)}
 function load(){var v=VIEWS[tab],my=++token;if(tab!=="outstanding"&&tab!=="ageing"&&$("rpFrom").value>$("rpTo").value){$("rpPaper").innerHTML='<div class="rp-empty">The From date must not be after the To date.</div>';return}
   $("rpPaper").innerHTML='<div class="rp-empty">Loading...</div>';setBusy(true);

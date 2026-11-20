@@ -2845,6 +2845,7 @@ function api(req, res, url) {
       db: stored,
       files: Files,
       notifyAdmin,
+      logEvents,
       send,
       body,
       customerList: () => (stored("gm_admin_v1") || {}).customers || [],
@@ -3098,12 +3099,15 @@ function api(req, res, url) {
             return send(res, 400, {
               error: "Add a return reason for every quantity not delivered.",
             });
+          const unitPrice = Number(item.price) || 0;
           resultItems.push({
             id: item.id,
             name: String(item.name || item.id).slice(0, 120),
             orderedQty: ordered,
             deliveredQty: delivered,
             returnedQty: returned,
+            unitPrice,
+            returnedAmount: Math.round(returned * unitPrice),
             returnReason: returned ? reason : "",
           });
         }
@@ -3120,6 +3124,21 @@ function api(req, res, url) {
         // Returned quantities enter a quarantine workflow; they are NOT available stock.
         const returnedLines = resultItems.filter((x) => x.returnedQty > 0);
         if (returnedLines.length) {
+          // Try to find the invoice number on today's delivery plan for this customer
+          let planInvNo = "";
+          const plans = (stored("gm_admin_v1") || {}).plans || {};
+          const dayPlans = plans[o.date] || plans[istDay()] || [];
+          for (const pl of Array.isArray(dayPlans) ? dayPlans : [dayPlans]) {
+            if (!pl || pl.status === "cancelled") continue;
+            for (const st of Array.isArray(pl.stops) ? pl.stops : []) {
+              if (st && String(st.code) === String(o.code) && st.inv) {
+                planInvNo = String(st.inv).trim();
+                break;
+              }
+            }
+            if (planInvNo) break;
+          }
+          const suggestedCredit = returnedLines.reduce((sum, x) => sum + (Number(x.returnedAmount) || 0), 0);
           const returnData = stored("gm_inventory_returns_v1");
           const returns = Array.isArray(returnData) ? returnData : [];
           const returnId =
@@ -3132,6 +3151,9 @@ function api(req, res, url) {
               id: returnId,
               orderId: o.id,
               orderCode: o.code || o.id,
+              customerCode: o.code || "",
+              invoiceNo: planInvNo,
+              suggestedCredit,
               shop: o.shop || "",
               workerId: s.id,
               workerName: wk.name,
@@ -3144,6 +3166,8 @@ function api(req, res, url) {
                 productId: x.id,
                 productName: x.name,
                 returnedQty: x.returnedQty,
+                unitPrice: x.unitPrice,
+                returnedAmount: x.returnedAmount,
                 returnReason: x.returnReason,
                 restockQty: 0,
                 companyQty: 0,
@@ -3348,26 +3372,74 @@ function api(req, res, url) {
               1000;
           }
         });
-        ret.items = nextItems;
-        ret.inspectedAt = Date.now();
-        ret.inspectedBy = actorOf(s).name;
-        ret.status = nextItems.some((x) => x.companyQty > 0)
-          ? "company_return_pending"
-          : "closed";
-        setItem("gm_admin_products_v1", JSON.stringify(products));
-        setItem("gm_inventory_returns_v1", JSON.stringify(returns));
-        logEvents(s, [
-          {
-            type: "inventory",
-            text:
-              "Inspected return " +
-              ret.id +
-              "; approved " +
-              nextItems.reduce((n, x) => n + x.restockQty, 0) +
-              " units to stock",
-          },
-        ]);
-        return send(res, 200, { ok: true, return: ret });
+        const creditAmount = Math.round(Number(b.creditAmount) || 0);
+        const targetInvoiceId = String(b.invoiceId || "").trim();
+        const creditReason = String(b.creditReason || ("Delivery return " + ret.id)).trim().slice(0, 200);
+
+        const finishInspect = () => {
+          ret.items = nextItems;
+          ret.inspectedAt = Date.now();
+          ret.inspectedBy = actorOf(s).name;
+          ret.status = nextItems.some((x) => x.companyQty > 0)
+            ? "company_return_pending"
+            : "closed";
+          setItem("gm_admin_products_v1", JSON.stringify(products));
+          setItem("gm_inventory_returns_v1", JSON.stringify(returns));
+          logEvents(s, [
+            {
+              type: "inventory",
+              text:
+                "Inspected return " +
+                ret.id +
+                "; approved " +
+                nextItems.reduce((n, x) => n + x.restockQty, 0) +
+                " units to stock" +
+                (ret.ledgerCreditApplied ? " & reduced ₹" + ret.ledgerCreditApplied + " in ledger" : ""),
+            },
+          ]);
+          return send(res, 200, { ok: true, return: ret });
+        };
+
+        if (creditAmount > 0) {
+          if (!/^[0-9a-f-]{36}$/i.test(targetInvoiceId))
+            return send(res, 400, { error: "Select the customer invoice to reduce for the return credit." });
+          const U = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+          const K = process.env.SUPABASE_SERVICE_KEY || "";
+          if (!U || !K)
+            return send(res, 503, { error: "Accounts database is not configured." });
+          return fetch(U + "/rest/v1/rpc/gm_accounts_adjust_invoice", {
+            method: "POST",
+            headers: { apikey: K, Authorization: "Bearer " + K, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              p_invoice_id: targetInvoiceId,
+              p_kind: "return",
+              p_amount: creditAmount,
+              p_by: String(s.id).slice(0, 80),
+              p_reason: creditReason,
+            }),
+          })
+            .then(async (r) => {
+              if (!r.ok) {
+                const msg = await r.text().catch(() => "");
+                let parsed = "";
+                try { const j = JSON.parse(msg); if (j && j.message) parsed = j.message; } catch (_) {}
+                throw new Error(parsed || "Could not apply return credit to customer ledger.");
+              }
+              ret.ledgerCreditApplied = creditAmount;
+              ret.ledgerInvoiceId = targetInvoiceId;
+              ret.ledgerInvoiceNo = String(b.invoiceNo || "");
+              logEvents(s, [
+                {
+                  type: "accounts",
+                  text: "Applied return credit of ₹" + creditAmount + " for " + (ret.shop || ret.orderCode) + (ret.ledgerInvoiceNo ? " (Invoice #" + ret.ledgerInvoiceNo + ")" : "") + " from " + ret.id,
+                },
+              ]);
+              finishInspect();
+            })
+            .catch((e) => send(res, 400, { error: e.message }));
+        }
+
+        return finishInspect();
       },
       8192,
     );
