@@ -21,7 +21,9 @@
     "sync:sales": "node tools/sync-sales.js",
     "sync:sales:check": "node tools/sync-sales.js --check",
     "sync:plans": "node tools/sync-plans.js",
-    "sync:plans:check": "node tools/sync-plans.js --check"
+    "sync:plans:check": "node tools/sync-plans.js --check",
+    "sync:attendance": "node tools/sync-attendance.js",
+    "sync:attendance:check": "node tools/sync-attendance.js --check"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",

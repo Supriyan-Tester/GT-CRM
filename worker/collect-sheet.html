@@ -997,7 +997,7 @@
           </div>
           <div class="blk" id="photoCard">
             <h3>
-              &#128247; Bill photo <span class="muted req">Required</span>
+              &#128247; Bill photo <span class="muted req">Needed only for Pay later</span>
             </h3>
             <div class="photos">
               <div class="ph" id="curPrev" style="display: none"></div>
@@ -1171,7 +1171,7 @@
             .split("/")
             .pop()
             .replace(/\.(jpg|png|webp)$/i, "");
-          return t ? "/api/accounts/evidence/" + t : "";
+          return t && t !== "no-photo" ? "/api/accounts/evidence/" + t : "";
         }
         function rawDataUrl(f) {
           return new Promise(function (ok, no) {
@@ -1211,6 +1211,21 @@
             };
             img.src = url;
           });
+        }
+        // Upload each bill photo in the background as soon as it is taken, so saving does not have to wait for it.
+        var UPL = new WeakMap();
+        function uploadPhoto(f) {
+          var p = UPL.get(f);
+          if (!p) {
+            p = dataUrl(f).then(function (d) {
+              return api("/api/accounts/evidence", { data: d });
+            });
+            UPL.set(f, p);
+            p.catch(function () {
+              UPL.delete(f); // try again when saving
+            });
+          }
+          return p;
         }
         function view(src) {
           $("#viewImg").src = src;
@@ -1464,13 +1479,9 @@
           $("#stay_" + id).textContent =
             "Stays on credit " + money(Math.max(0, out - v));
           var h = $("#hint_" + id);
-          h.textContent = !has
-            ? "No bill photo yet. Tap the camera."
-            : v > 0
-              ? ""
-              : "Enter the amount received.";
+          h.textContent = v > 0 ? "" : "Enter the amount received.";
           h.style.display = h.textContent ? "" : "none";
-          $('[data-ook="' + id + '"]').disabled = !(v > 0 && has);
+          $('[data-ook="' + id + '"]').disabled = !(v > 0);
           recalc();
         }
 
@@ -1618,6 +1629,7 @@
               var file = f.files[0];
               if (!file) return;
               S["of_" + id] = file;
+              uploadPhoto(file).catch(function () {});
               b.className = "cam done";
               b.innerHTML =
                 '<img src="' +
@@ -1651,12 +1663,12 @@
                 x = oldX(id),
                 v = oldAmount(id),
                 out = Number(x.outstanding);
-              if (!(v > 0) || !S["of_" + id]) return;
+              if (!(v > 0)) return;
               S.oldOk[id] = true;
               $("#smT_" + id).textContent =
                 "Invoice " + x.invoice_no + " \u00b7 " + money(v) + " received";
               $("#smS_" + id).textContent =
-                money(Math.max(0, out - v)) + " stays on credit \u00b7 1 photo";
+                money(Math.max(0, out - v)) + " stays on credit" + (S["of_" + id] ? " \u00b7 1 photo" : "");
               showMore(id, false);
               showSummary(id, true);
             };
@@ -1719,6 +1731,7 @@
           var f = this.files[0];
           if (!f) return;
           S.curFile = f;
+          uploadPhoto(f).catch(function () {});
           S.curPrev = URL.createObjectURL(f);
           var p = $("#curPrev");
           p.style.display = "";
@@ -1801,9 +1814,7 @@
                   throw fe("Add a photo of the bill.", "#photoCard");
                 if (S.curFile.size > 25 * 1024 * 1024)
                   throw fe("Each photo must be 25 MB or smaller.", "#photoCard");
-                var cu = await api("/api/accounts/evidence", {
-                  data: await dataUrl(S.curFile),
-                });
+                var cu = await uploadPhoto(S.curFile);
                 await api("/api/accounts/delivery-invoice", {
                   customerCode: CODE,
                   invoiceNo: INV,
@@ -1835,14 +1846,13 @@
           try {
             var allocations = [];
             if (curAmount() > 0) {
-              if (!S.curFile)
-                throw fe("Add a photo of the current bill.", "#photoCard");
-              if (S.curFile.size > 25 * 1024 * 1024)
-                throw fe("Each photo must be 25 MB or smaller.", "#photoCard");
-              var u = await api("/api/accounts/evidence", {
-                  data: await dataUrl(S.curFile),
-                }),
+              var u = { evidencePath: undefined },
                 id = S.cur.id;
+              if (S.curFile) {
+                if (S.curFile.size > 25 * 1024 * 1024)
+                  throw fe("Each photo must be 25 MB or smaller.", "#photoCard");
+                u = await uploadPhoto(S.curFile);
+              }
               if (id === "NEW") {
                 var ci = await api("/api/accounts/delivery-invoice", {
                   customerCode: CODE,
@@ -1862,19 +1872,15 @@
               var a = oldAmount(k),
                 f = S["of_" + k];
               if (!(a > 0)) continue;
-              if (!f)
-                throw fe(
-                  "Add a photo for every old credit bill you collect.",
-                  '[data-oadd="' + k + '"]',
-                );
-              if (f.size > 25 * 1024 * 1024)
-                throw fe(
-                  "Each photo must be 25 MB or smaller.",
-                  '[data-oadd="' + k + '"]',
-                );
-              var uo = await api("/api/accounts/evidence", {
-                data: await dataUrl(f),
-              });
+              var uo = { evidencePath: undefined };
+              if (f) {
+                if (f.size > 25 * 1024 * 1024)
+                  throw fe(
+                    "Each photo must be 25 MB or smaller.",
+                    '[data-oadd="' + k + '"]',
+                  );
+                uo = await uploadPhoto(f);
+              }
               allocations.push({
                 invoiceId: k,
                 amount: a,
@@ -1886,9 +1892,7 @@
                 throw fe("Add a photo of the bill.", "#photoCard");
               if (S.curFile.size > 25 * 1024 * 1024)
                 throw fe("Each photo must be 25 MB or smaller.", "#photoCard");
-              var cu2 = await api("/api/accounts/evidence", {
-                data: await dataUrl(S.curFile),
-              });
+              var cu2 = await uploadPhoto(S.curFile);
               await api("/api/accounts/delivery-invoice", {
                 customerCode: CODE,
                 invoiceNo: INV,

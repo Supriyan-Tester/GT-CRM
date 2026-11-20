@@ -50,7 +50,9 @@ bad({ payments: [{ method: "cash", amount: "abc" }, { method: "upi", amount: 250
 bad({ requestKey: "x".repeat(91), payments: [{ method: "cash", amount: 4500 }, { method: "upi", amount: 2500 }] }, /request reference/);
 bad({ requestKey: "", payments: [{ method: "cash", amount: 4500 }, { method: "upi", amount: 2500 }] }, /request reference/);
 bad({ allocations: [{ invoiceId: A, amount: 5001, evidencePath: EV(1) }], payments: [{ method: "cash", amount: 4500 }, { method: "upi", amount: 501 }] }, /exceed/);
-bad({ allocations: [{ invoiceId: A, amount: 100, evidencePath: "" }], payments: [{ method: "cash", amount: 50 }, { method: "upi", amount: 50 }] }, /bill-photo/);
+bad({ allocations: [{ invoiceId: A, amount: 100, evidencePath: "../x.jpg" }], payments: [{ method: "cash", amount: 50 }, { method: "upi", amount: 50 }] }, /bill-photo|not valid/);
+// a bill photo is optional when money is received: no photo is saved as the fixed "no photo" marker
+{ const { NO_PHOTO } = require("../backend/modules/accounts/accounts.domain"); const ok = validateSplitCollection({ customerCode: "C1", requestKey: "k1", allocations: [{ invoiceId: A, amount: 100, evidencePath: "" }], payments: [{ method: "cash", amount: 50 }, { method: "upi", amount: 50 }] }, { [A]: { customerCode: "C1", outstandingAmount: 100 } }); assert.strictEqual(ok.parts[0].allocations[0].evidencePath, NO_PHOTO); }
 bad({ allocations: [{ invoiceId: A, amount: 100, evidencePath: EV(1) }, { invoiceId: A, amount: 100, evidencePath: EV(1) }], payments: [{ method: "cash", amount: 100 }, { method: "upi", amount: 100 }] }, /only once/);
 
 // Route.
@@ -93,6 +95,12 @@ const body = (extra) => base({ payments: [{ method: "cash", amount: 4500 }, { me
   const sent = JSON.parse(rpcCalls()[0].opts.body);
   assert.strictEqual(sent.p_request_key, "visit-1");
   assert.strictEqual(sent.p_collected_by, "e1", "recorded under the signed-in employee");
+  // a bill photo is optional when money is received: the route saves the fixed "no photo" marker
+  const before = rpcCalls().length;
+  const np = await post(body({ allocations: [{ invoiceId: A, amount: 5000 }, { invoiceId: B, amount: 2000 }] }), sales);
+  assert.strictEqual(np.status, 201, "collection without photos is accepted");
+  const npSent = JSON.parse(rpcCalls()[before].opts.body);
+  assert(npSent.p_parts.every((x) => x.allocations.every((y) => y.evidencePath === "accounts/evidence/no-photo")), "saved with the no-photo marker");
   assert.deepStrictEqual(sent.p_parts, [
     { method: "cash", allocations: [{ invoiceId: A, amount: 4500, evidencePath: EV(1) }] },
     { method: "upi", allocations: [{ invoiceId: A, amount: 500, evidencePath: EV(1) }, { invoiceId: B, amount: 2000, evidencePath: EV(2) }] },

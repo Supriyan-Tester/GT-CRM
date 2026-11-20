@@ -1,7 +1,7 @@
 "use strict";
 
 const crypto = require("crypto");
-const { validateOpeningInvoice, validateCollection, buildStatement, buildCollectionReport, buildOutstandingReport, buildAgeingReport, buildHandoverReport, validateSplitCollection } = require("./accounts.domain");
+const { validateOpeningInvoice, validateCollection, buildStatement, buildCollectionReport, buildOutstandingReport, buildAgeingReport, buildHandoverReport, validateSplitCollection, NO_PHOTO } = require("./accounts.domain");
 
 function createAccountsRoutes(config) {
   const URL = String(config.url || "").replace(/\/+$/, "");
@@ -170,8 +170,9 @@ function createAccountsRoutes(config) {
           if (!stop) return send(res, 403, { error: "This invoice is not on your plan for today." });
           const amount = Math.round(Number(stop.amount)); // whole rupees: the bill is rounded off to the nearest rupee
           if (!(amount > 0)) return send(res, 400, { error: "This bill has no amount on the plan." });
-          const evidencePath = String(input.evidencePath || "").trim();
-          if (!/^accounts\/evidence\/[0-9a-f-]{36}\.(jpg|png|webp)$/i.test(evidencePath) || !files.has(evidencePath))
+          let evidencePath = String(input.evidencePath || "").trim();
+          if (!evidencePath) evidencePath = NO_PHOTO; // a photo is optional here; the screen asks for one only for pay-later bills
+          else if (!/^accounts\/evidence\/[0-9a-f-]{36}\.(jpg|png|webp)$/i.test(evidencePath) || !files.has(evidencePath))
             return send(res, 400, { error: "Upload the bill photo first." });
           const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
           rest("gm_accounts_invoices?select=id,customer_code,customer_name_snapshot&invoice_no=eq." + encodeURIComponent(invoiceNo) + "&limit=10").then((rows) => {
@@ -496,7 +497,7 @@ function createAccountsRoutes(config) {
           (grouped[row.collection_id] || (grouped[row.collection_id] = [])).push({
             invoiceNo: inv.invoice_no || "", invoiceDate: inv.invoice_date || "", invoiceAmount: Number(inv.original_amount || 0), amount: Number(row.amount || 0),
             outstanding: Number((Number(inv.initial_outstanding || 0) - (approvedPaid[row.invoice_id] || 0)).toFixed(2)),
-            evidenceUrl: "/api/accounts/evidence/" + (String(row.evidence_path).split("/").pop() || "").replace(/\.(jpg|png|webp)$/i, ""),
+            evidenceUrl: (row.evidence_path === NO_PHOTO ? null : "/api/accounts/evidence/" + (String(row.evidence_path).split("/").pop() || "").replace(/\.(jpg|png|webp)$/i, "")),
           });
         }
         const stats = await statsP;
@@ -531,7 +532,7 @@ function createAccountsRoutes(config) {
         for (const a of allocations)
           (grouped[a.collection_id] || (grouped[a.collection_id] = [])).push({
             invoiceNo: invMap[a.invoice_id] || "", amount: Number(a.amount || 0),
-            evidenceUrl: "/api/accounts/evidence/" + (String(a.evidence_path).split("/").pop() || "").replace(/\.(jpg|png|webp)$/i, ""),
+            evidenceUrl: (a.evidence_path === NO_PHOTO ? null : "/api/accounts/evidence/" + (String(a.evidence_path).split("/").pop() || "").replace(/\.(jpg|png|webp)$/i, "")),
           });
         send(res, 200, { ok: true, rows: list.map((x) => ({
           id: x.id, visitRef: x.visit_ref || "", customerCode: x.customer_code, customerName: x.customer_name_snapshot,
@@ -552,7 +553,7 @@ function createAccountsRoutes(config) {
           const invoiceRows = invoiceIds.length ? await rest("gm_accounts_invoices?select=id,invoice_no,invoice_date&id=in.(" + invoiceIds.join(",") + ")") : [];
           const invoiceMap = Object.fromEntries(invoiceRows.map((x) => [x.id, x]));
           const grouped = {};
-          for (const row of allocations) (grouped[row.collection_id] || (grouped[row.collection_id] = [])).push({ ...row, invoice: invoiceMap[row.invoice_id] || null, evidenceUrl: "/api/accounts/evidence/" + (String(row.evidence_path).split("/").pop() || "").replace(/\.(jpg|png|webp)$/i, "") });
+          for (const row of allocations) (grouped[row.collection_id] || (grouped[row.collection_id] = [])).push({ ...row, invoice: invoiceMap[row.invoice_id] || null, evidenceUrl: (row.evidence_path === NO_PHOTO ? null : "/api/accounts/evidence/" + (String(row.evidence_path).split("/").pop() || "").replace(/\.(jpg|png|webp)$/i, "")) });
           send(res, 200, { ok: true, collections: collections.map((x) => ({ ...x, allocations: grouped[x.id] || [] })) });
         })
         .catch((e) => { console.error("Accounts pending read:", e.message); send(res, 502, { error: "Unable to load pending collections." }); });
@@ -692,7 +693,7 @@ function createAccountsRoutes(config) {
               for (const inv of invoiceRows) balances[inv.id] = { customerCode: inv.customer_code, outstandingAmount: Number((Number(inv.initial_outstanding) - (paid[inv.id] || 0)).toFixed(2)) };
               const valid = validateSplitCollection(input, balances);
               for (const part of valid.parts) for (const allocation of part.allocations) {
-                if (!/^accounts\/evidence\/[0-9a-f-]{36}\.(jpg|png|webp)$/i.test(allocation.evidencePath) || !files || !files.has(allocation.evidencePath))
+                if (allocation.evidencePath !== NO_PHOTO && (!/^accounts\/evidence\/[0-9a-f-]{36}\.(jpg|png|webp)$/i.test(allocation.evidencePath) || !files || !files.has(allocation.evidencePath)))
                   throw new Error("Upload and verify a bill photo for every invoice allocation.");
               }
               return rpc("gm_accounts_record_split_collection", {
@@ -737,7 +738,7 @@ function createAccountsRoutes(config) {
               for (const inv of invoiceRows) balances[inv.id] = { customerCode: inv.customer_code, outstandingAmount: Number((Number(inv.initial_outstanding) - (paid[inv.id] || 0)).toFixed(2)) };
               valid = validateCollection(input, balances);
               for (const allocation of valid.allocations) {
-                if (!/^accounts\/evidence\/[0-9a-f-]{36}\.(jpg|png|webp)$/i.test(allocation.evidencePath) || !files || !files.has(allocation.evidencePath))
+                if (allocation.evidencePath !== NO_PHOTO && (!/^accounts\/evidence\/[0-9a-f-]{36}\.(jpg|png|webp)$/i.test(allocation.evidencePath) || !files || !files.has(allocation.evidencePath)))
                   throw new Error("Upload and verify a bill photo for every invoice allocation.");
               }
               const allocations = valid.allocations.map((a) => ({ invoiceId: a.invoiceId, amount: a.amount, evidencePath: a.evidencePath }));

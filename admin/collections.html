@@ -825,6 +825,7 @@
               .join(""),
             photos = x.invoices
               .map(function (v) {
+                if (!v.evidenceUrl) return "";
                 return (
                   '<div class="co-ph"><img loading="lazy" src="' + esc(v.evidenceUrl) + '" alt="Bill photo for ' + esc(v.invoiceNo) + '" data-zoom="' + esc(v.evidenceUrl) + '" style="cursor:zoom-in" title="Click to enlarge"><div class="co-pf"><b>Invoice ' + esc(v.invoiceNo) + '</b><a class="co-openbtn" href="' + esc(v.evidenceUrl) + '" target="_blank" rel="noopener">View</a></div></div>'
                 );

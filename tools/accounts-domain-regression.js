@@ -19,7 +19,9 @@ assert.strictEqual(collection.allocations.length, 2);
 assertBalanced(buildCollectionJournal(collection));
 assert.throws(() => validateCollection({ customerCode: "C001", method: "cash", allocations: [{ invoiceId: "inv-1", amount: 501, evidencePath: "accounts/bills/1.jpg" }] }, balances), /exceed/);
 assert.throws(() => validateCollection({ customerCode: "C001", method: "cash", allocations: [{ invoiceId: "inv-3", amount: 50, evidencePath: "accounts/bills/3.jpg" }] }, balances), /does not belong/);
-assert.throws(() => validateCollection({ customerCode: "C001", method: "upi", allocations: [{ invoiceId: "inv-1", amount: 10 }] }, balances), /evidence/);
+// a bill photo is optional when money is received: no photo is saved as the fixed "no photo" marker
+assert.strictEqual(validateCollection({ customerCode: "C001", method: "upi", requestKey: "req-9", allocations: [{ invoiceId: "inv-1", amount: 10 }] }, balances).allocations[0].evidencePath, require("../backend/modules/accounts/accounts.domain").NO_PHOTO);
+assert.throws(() => validateCollection({ customerCode: "C001", method: "upi", requestKey: "req-9", allocations: [{ invoiceId: "inv-1", amount: 10, evidencePath: "../x.jpg" }] }, balances), /not valid/);
 assert.throws(() => validateCollection({ customerCode: "C001", method: "cash", allocations: [{ invoiceId: "inv-1", amount: 10, evidencePath: "accounts/bills/1.jpg" }] }, balances), /request reference/);
 assert.throws(() => assertBalanced([{ accountCode: "CASH", debit: 100, credit: 0 }, { accountCode: "AR", debit: 0, credit: 99 }]), /not balanced/);
 assert.throws(() => assertBalanced([{ accountCode: "INVALID", debit: 100, credit: 100 }, { accountCode: "AR", debit: 0, credit: 0 }]), /either a debit or a credit/);

@@ -77,7 +77,7 @@ Sales.start("payments",function(me,hello,main){
       '<button type="button" class="cs-notebtn" id="csNoteBtn" aria-expanded="false"><span>Add a note<small>Optional</small></span><i aria-hidden="true">&#9662;</i></button>'+
       '<textarea class="cs-note" id="csNote" maxlength="250" placeholder="Reference or remarks" aria-label="Note" style="display:none"></textarea>'+
       '<div class="cs-total"><span>Total collected</span><b id="csTotal">₹0.00</b></div><div class="cs-err" id="csErr" role="status"></div>'+
-      '<button class="btn" id="csGo" type="button" disabled style="width:100%">Save collection</button><p class="cs-hint">Each bill needs its own photo. The collection waits for Billing/Admin approval; the shop\'s balance changes only after approval.</p></div>'+
+      '<button class="btn" id="csGo" type="button" disabled style="width:100%">Save collection</button><p class="cs-hint">A bill photo is optional. The collection waits for Billing/Admin approval; the shop\'s balance changes only after approval.</p></div>'+
     '</div><div id="csDone"></div>';
 
   function splitPayments(){var o=[];["cash","upi","bank_transfer"].forEach(function(m){var v=Number($("#sp_"+m).value);if(v>0)o.push({method:m,amount:v})});return o}
@@ -87,7 +87,7 @@ Sales.start("payments",function(me,hello,main){
     var n=0;Object.keys(S.sel).forEach(function(id){if(S.sel[id])n+=amtOf(id)});
     S.total=Math.round(n*100)/100;$("#csTotal").textContent=money(S.total);
     var ready=true;
-    Object.keys(S.sel).forEach(function(id){if(!S.sel[id])return;var h=$('[data-hint="'+id+'"]'),msg=!S.files[id]?"No bill photo yet. Tap the camera.":(amtOf(id)>0?"":"Enter the amount received.");if(h){h.textContent=msg;h.style.display=msg?"":"none"}if(msg)ready=false});
+    Object.keys(S.sel).forEach(function(id){if(!S.sel[id])return;var h=$('[data-hint="'+id+'"]'),msg=(amtOf(id)>0?"":"Enter the amount received.");if(h){h.textContent=msg;h.style.display=msg?"":"none"}if(msg)ready=false});
     var ok=S.total>0&&ready;
     $("#csOne").classList.toggle("on",!S.split);$("#csSplit").classList.toggle("on",S.split);$("#csOne").setAttribute("aria-pressed",String(!S.split));$("#csSplit").setAttribute("aria-pressed",String(S.split));
     $("#csSpBox").classList.toggle("open",S.split);$("#csTiles").style.display=S.split?"none":"grid";
@@ -123,6 +123,8 @@ Sales.start("payments",function(me,hello,main){
     document.querySelectorAll("[data-add]").forEach(function(b){var id=b.getAttribute("data-add"),f=$('[data-f="'+id+'"]');
       b.onclick=function(){f.click()};
       f.onchange=function(){var file=f.files[0];if(!file)return;S.files[id]=file;delete S.ev[id];dirty();
+        // upload the photo in the background right away, so saving does not have to wait for it
+        S.evp=S.evp||{};S.evp[id]={file:file,p:dataUrl(file).then(function(d){return Sales.api("/api/accounts/evidence",{data:d})})};S.evp[id].p.catch(function(){});
         var t=$('[data-th="'+id+'"]');t.style.display="";t.innerHTML='<img src="'+URL.createObjectURL(file)+'" alt="Bill photo"><button type="button" class="cs-x" aria-label="Remove photo">\u00d7</button>';
         b.classList.add("done");b.textContent="Retake photo";
         t.querySelector(".cs-x").onclick=function(){delete S.files[id];delete S.ev[id];f.value="";t.style.display="none";t.innerHTML="";b.classList.remove("done");b.textContent="Take bill photo";dirty();recalc()};
@@ -160,11 +162,14 @@ Sales.start("payments",function(me,hello,main){
       for(var id of Object.keys(S.sel)){
         if(!S.sel[id])continue;var a=amtOf(id),f=S.files[id];
         if(!(a>0))throw fe("Enter an amount for every bill you selected.",'[data-a="'+id+'"]');
-        if(!f)throw fe("Add a bill photo for every bill you collect.",'[data-add="'+id+'"]');
-        if(f.size>12*1024*1024)throw fe("That photo is too large. Take it again.",'[data-add="'+id+'"]');
+        if(f&&f.size>12*1024*1024)throw fe("That photo is too large. Take it again.",'[data-add="'+id+'"]');
         var ev=S.ev[id];
-        if(!ev||ev.file!==f){var u=await Sales.api("/api/accounts/evidence",{data:await dataUrl(f)});ev=S.ev[id]={file:f,path:u.evidencePath}}
-        allocations.push({invoiceId:id,amount:a,evidencePath:ev.path});
+        if(f&&(!ev||ev.file!==f)){
+          var pre=S.evp&&S.evp[id]&&S.evp[id].file===f?S.evp[id].p:null,u=null;
+          if(pre){try{u=await pre}catch(e){u=null}}
+          if(!u)u=await Sales.api("/api/accounts/evidence",{data:await dataUrl(f)});
+          ev=S.ev[id]={file:f,path:u.evidencePath}}
+        allocations.push({invoiceId:id,amount:a,evidencePath:f&&ev?ev.path:undefined});
       }
       if(!allocations.length)throw fe("Select a bill and enter the amount received.");
       if(!S.key)S.key=window.crypto&&crypto.randomUUID?crypto.randomUUID():"COL-"+Date.now()+"-"+Math.random().toString(36).slice(2);

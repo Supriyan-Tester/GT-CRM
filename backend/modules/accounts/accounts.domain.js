@@ -24,6 +24,9 @@ function normalizeInvoiceReference(value) {
   return ref;
 }
 
+// Saved instead of a photo path when the collector did not take a photo (allowed when money is received).
+const NO_PHOTO = "accounts/evidence/no-photo";
+
 function validateOpeningInvoice(input) {
   if (!input || typeof input !== "object") throw new Error("Opening invoice details are required.");
   const customerCode = String(input.customerCode || "").trim();
@@ -64,9 +67,11 @@ function validateCollection(input, invoiceBalances) {
     seen.add(invoiceId);
     const amountPaise = toPaise(row.amount, "Allocation amount");
     if (amountPaise <= 0) throw new Error("Each invoice allocation must be greater than zero.");
-    const evidencePath = String(row.evidencePath || "").trim();
-    if (!evidencePath || evidencePath.length > 240 || evidencePath.startsWith("/") || evidencePath.includes(".."))
-      throw new Error("Every invoice allocation requires its own bill-photo evidence.");
+    // A bill photo is optional when money is received. No photo is saved as the fixed "no photo" marker.
+    let evidencePath = String(row.evidencePath || "").trim();
+    if (!evidencePath) evidencePath = NO_PHOTO;
+    else if (evidencePath.length > 240 || evidencePath.startsWith("/") || evidencePath.includes(".."))
+      throw new Error("The bill-photo reference is not valid.");
     const invoice = invoiceBalances && invoiceBalances[invoiceId];
     if (!invoice || invoice.customerCode !== customerCode) throw new Error("An allocated invoice does not belong to this customer.");
     const duePaise = toPaise(invoice.outstandingAmount, "Invoice outstanding");
@@ -282,4 +287,4 @@ function validateSplitCollection(input, invoiceBalances) {
   return { customerCode: base.customerCode, requestKey, note: base.note, total: base.total, parts };
 }
 
-module.exports = { validateSplitCollection, buildHandoverReport, buildCollectionReport, buildOutstandingReport, buildAgeingReport, buildStatement, toPaise, fromPaise, validateOpeningInvoice, validateCollection, buildCollectionJournal, assertBalanced };
+module.exports = { NO_PHOTO, validateSplitCollection, buildHandoverReport, buildCollectionReport, buildOutstandingReport, buildAgeingReport, buildStatement, toPaise, fromPaise, validateOpeningInvoice, validateCollection, buildCollectionJournal, assertBalanced };

@@ -170,6 +170,12 @@ module.exports = function (cfg) {
     ? require("./backend/modules/plans/plans.sync").createPlansSync({ url: URL, key: KEY })
     : null;
 
+  // and for attendance, leaves and admin notifications (set GT_SYNC_ATTENDANCE=1)
+  const attOn = cloud && /^(1|true|on|yes)$/i.test(String(cfg.GT_SYNC_ATTENDANCE || env.GT_SYNC_ATTENDANCE || ""));
+  const attendanceSync = attOn
+    ? require("./backend/modules/attendance/attendance.sync").createAttendanceSync({ url: URL, key: KEY })
+    : null;
+
   // ---- saved data: table gm_kv (key, v, rev) ----
   const kv = {
     async loadAll() {
@@ -199,6 +205,10 @@ module.exports = function (cfg) {
         plansSync.prime(rows);
         plansSync.schedule(19000); // after employees and catalog, so drivers, vehicles, routes and shops can be matched
       }
+      if (attendanceSync) {
+        attendanceSync.prime(rows);
+        attendanceSync.schedule(24000); // after employees and catalog, so people and vehicles can be matched
+      }
       return rows;
     },
     async save(rows) {
@@ -210,6 +220,7 @@ module.exports = function (cfg) {
       if (catalogSync) catalogSync.onSave(rows);
       if (salesSync) salesSync.onSave(rows);
       if (plansSync) plansSync.onSave(rows);
+      if (attendanceSync) attendanceSync.onSave(rows);
     },
     async ping() {
       await rest("GET", "gm_kv?select=key&limit=1");
@@ -418,5 +429,5 @@ module.exports = function (cfg) {
     mimeOf,
   };
 
-  return { cloud, kv, files, employeeSync, catalogSync, salesSync, plansSync };
+  return { cloud, kv, files, employeeSync, catalogSync, salesSync, plansSync, attendanceSync };
 };
