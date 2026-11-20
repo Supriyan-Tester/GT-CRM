@@ -449,6 +449,30 @@ function createAccountsRoutes(config) {
       const dateOk = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || "") && !isNaN(new Date(v + "T00:00:00+05:30"));
       const from = dateOk(q.get("from")) ? q.get("from") : "", to = dateOk(q.get("to")) ? q.get("to") : "";
       const page = Math.max(1, Math.min(10000, parseInt(q.get("page"), 10) || 1)), size = 25;
+
+      // Pay later: bills a worker uploaded but took no payment for. They are invoices with a bill photo and no collection yet.
+      if (q.get("method") === "credit") {
+        const nameOfC = (id) => { if (!id) return ""; const n = config.employeeName(String(id)); return n && n !== "Employee" ? n : String(id); };
+        let cf = "&source_kind=eq.manual&evidence_path=neq." + encodeURIComponent(NO_PHOTO) + "&gm_accounts_collection_allocations=is.null";
+        if (search) cf += "&customer_name_snapshot=ilike." + encodeURIComponent("*" + search + "*");
+        if (from) cf += "&created_at=gte." + encodeURIComponent(new Date(from + "T00:00:00+05:30").toISOString());
+        if (to) cf += "&created_at=lt." + encodeURIComponent(new Date(new Date(to + "T00:00:00+05:30").getTime() + 24 * 3600e3).toISOString());
+        if (collector) cf += "&created_by=eq." + encodeURIComponent(collector);
+        if (status) { send(res, 200, { ok: true, page, pageSize: size, total: 0, stats: null, rows: [] }); return true; }
+        restPage("gm_accounts_invoices?select=id,customer_code,customer_name_snapshot,invoice_no,invoice_date,original_amount,evidence_path,created_by,created_at,gm_accounts_collection_allocations!left(id)" + cf + "&order=created_at.desc,id", (page - 1) * size, size).then((list) => {
+          send(res, 200, {
+            ok: true, page, pageSize: size, total: list.total, stats: null,
+            rows: list.rows.map((x) => ({
+              id: x.id, customer_code: x.customer_code, customer_name_snapshot: x.customer_name_snapshot,
+              collected_by: x.created_by, collector_name_snapshot: nameOfC(x.created_by), method: "credit",
+              total_amount: Number(x.original_amount || 0), note: "", status: "credit", received_at: x.created_at, visit_ref: null,
+              invoices: [{ invoiceNo: x.invoice_no, invoiceDate: x.invoice_date, invoiceAmount: Number(x.original_amount || 0), amount: 0, outstanding: Number(x.original_amount || 0),
+                evidenceUrl: "/api/accounts/evidence/" + (String(x.evidence_path).split("/").pop() || "").replace(/\.(jpg|png|webp)$/i, "") }],
+            })),
+          });
+        }).catch((e) => { console.error("Accounts credit read:", e.message); send(res, 502, { error: "Unable to load pay-later bills." }); });
+        return true;
+      }
       let filter = "";
       if (status) filter += "&status=eq." + status;
       if (method) filter += "&method=eq." + method;

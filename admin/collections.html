@@ -587,13 +587,14 @@
                 timeZone: "Asia/Kolkata",
               });
         }
-        var METHOD = { cash: "Cash", upi: "UPI", bank_transfer: "Bank transfer" };
+        var METHOD = { cash: "Cash", upi: "UPI", bank_transfer: "Bank transfer", credit: "Pay later" };
         var STATUS = {
           approved: ["b-success", "Approved"],
           pending_approval: ["b-accent", "Pending approval"],
           rejected: ["b-danger", "Rejected"],
           correction_requested: ["b-info", "Correction requested"],
           reversed: ["b-muted", "Reversed"],
+          credit: ["b-accent", "Pay later"],
         };
         var TABS = [
           ["", "All"],
@@ -653,7 +654,7 @@
           '<div class="card">' +
           '<div class="co-bar"><div class="a-seg co-seg" id="coTabs"></div></div>' +
           '<div class="co-bar"><div class="grow"><input type="search" id="coQ" placeholder="Search customer name" aria-label="Search customer name"></div>' +
-          '<div class="co-f"><select id="coMethod" aria-label="Payment method"><option value="">All methods</option><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank_transfer">Bank transfer</option></select></div>' +
+          '<div class="co-f"><select id="coMethod" aria-label="Payment method"><option value="">All methods</option><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank_transfer">Bank transfer</option><option value="credit">Credit (pay later)</option></select></div>' +
           '<div class="co-f"><input type="date" id="coFrom" aria-label="From date"></div><div class="co-f"><input type="date" id="coTo" aria-label="To date"></div>' +
           '<button class="btn btn-outline" id="coClear" type="button" style="width:auto;padding:0 16px">Clear</button>' +
           '<button class="btn btn-outline" id="coExport" type="button" style="width:auto;padding:0 16px">' + GA.icon("download") + " Export</button></div>" +
