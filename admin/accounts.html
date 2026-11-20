@@ -151,7 +151,6 @@
   function dt(iso){var d=new Date(iso);return isNaN(d)?"":d.toLocaleString("en-IN",{day:"numeric",month:"short",year:"numeric",hour:"numeric",minute:"2-digit",timeZone:"Asia/Kolkata"});}
   var METHOD={cash:"Cash",upi:"UPI",bank_transfer:"Bank transfer"};
   pg.innerHTML='<nav class="ac-crumb" aria-label="Breadcrumb"><a href="index.html">Home</a><span>›</span><span>Cash &amp; Accounts</span><span>›</span><b>Accounts &amp; Ledger</b></nav><div id="acStats"></div>'+
-    '<div class="ac-tabs" id="acTabs"><button type="button" class="on" data-tab="ledger">'+GA.icon("receipt")+'Ledger</button><button type="button" data-tab="pending">'+GA.icon("check-circle")+'Approvals<span class="n" id="acPendingCount"></span></button></div>'+
     '<section id="acLedger"><div class="card ac-card">'+
     '<div class="ac-bar"><input type="hidden" id="acCustomer"><div class="ac-who" id="acWho"></div></div>'+
     '<div class="ac-note">'+GA.icon("info")+'<span>Approved payments reduce what the customer owes.</span></div>'+
@@ -231,9 +230,9 @@
       var tot=0,paid=0,due=0,open=0,adjT=0;
       invoices.forEach(function(x){var ad=Number(x.discountAmount||0)+Number(x.returnAmount||0);adjT+=ad;tot+=Number(x.initial_outstanding!=null?x.initial_outstanding:x.original_amount||0)+ad;paid+=Number(x.approvedPaid||0);due+=Number(x.outstanding||0);if(Number(x.outstanding||0)>0)open++;});
       var pc=function(v){return tot>0?Math.round(v/tot*100)+"% of total credit":"";};
-      tiles=GA.tile("s-p","receipt",money(tot),"Total due (opening)",invoices.length+(invoices.length===1?" invoice":" invoices")+(adjT>0?" · less "+money(adjT)+" discount/returns":""))+GA.tile("s-s","check-circle",money(paid),"Paid (approved)",paid>0?pc(paid):"No payments yet")+GA.tile("s-r","hourglass",money(due),"Outstanding",tot>0?pc(due):"Nothing owed")+GA.tile("s-i","clipboard-list",open,"Open invoices",pending.length+(pending.length===1?" collection":" collections")+" waiting for approval");
+      tiles=GA.tile("s-p","receipt",money(tot),"Total due (opening)",invoices.length+(invoices.length===1?" invoice":" invoices")+(adjT>0?" · less "+money(adjT)+" discount/returns":""))+GA.tile("s-s","check-circle",money(paid),"Paid (approved)",paid>0?pc(paid):"No payments yet")+GA.tile("s-r","hourglass",money(due),"Outstanding",tot>0?pc(due):"Nothing owed")+GA.tile("s-i","clipboard-list",open,"Open invoices");
     }else{
-      tiles=GA.tile("s-p","users",customers.length.toLocaleString("en-IN"),"Customers in CRM")+GA.tile("s-a","clipboard-list",pending.length,"Waiting for approval","Open Approvals to review");
+      tiles=GA.tile("s-p","users",customers.length.toLocaleString("en-IN"),"Customers in CRM");
     }
     $("acStats").innerHTML='<div class="a-stats ac-stats">'+tiles+'</div>';
   }
@@ -381,7 +380,7 @@
     $("acApprove").onclick=function(){if(!this.disabled){this.disabled=true;request("/api/accounts/collections/"+encodeURIComponent(x.id)+"/approve",{method:"POST",body:"{}"}).then(function(){toast("Collection approved and customer ledger updated.");$("acDetailModal").classList.remove("open");pending=pending.filter(function(a){return a.id!==x.id;});$("acPendingCount").textContent=pending.length?String(pending.length):"";renderPending();drawStats();quietPending();if(currentCustomer)loadLedger();}).catch(function(e){$("acApproveMsg").textContent=e.message;$("acApprove").disabled=false;});}};
   }
   $("acCustomer").addEventListener("change",loadLedger);$("acSearch").addEventListener("input",renderInvoices);
-  $("acRefresh").onclick=function(){loadLedger();loadPending();};
+  $("acRefresh").onclick=function(){loadLedger();};
   $("acPendingRows").addEventListener("click",function(e){var b=e.target.closest("[data-detail]");if(b)showDetails(b.getAttribute("data-detail"));});
   $("acModalClose").onclick=function(){$("acDetailModal").classList.remove("open");};
   $("acDetailModal").onclick=function(e){if(e.target===this)this.classList.remove("open");};
@@ -422,9 +421,7 @@
     list.addEventListener("mousedown",function(e){e.preventDefault();var it=e.target.closest("[data-n]");if(it)choose(Number(it.getAttribute("data-n")));});
     box.addEventListener("blur",function(){open(false);});
   })();
-  drawWho();drawStats();loadPending();
-  // The dashboard's "Collection approvals" link can open straight on the approvals tab (#approvals).
-  if(location.hash==="#approvals"){var apTab=document.querySelector('#acTabs button[data-tab="pending"]');if(apTab)apTab.click();}
+  drawWho();drawStats();
   if(/[?&]customer=/.test(location.search)){var pre=new URLSearchParams(location.search).get("customer");if(pre&&customers.some(function(c){return String(c.code)===pre;})){$("acCustomer").value=pre;syncPickers();loadLedger();}}
 })();
 </script>
