@@ -437,6 +437,22 @@ function createAccountsRoutes(config) {
       return true;
     }
 
+    // People who have collected money or uploaded pay-later bills: feeds the employee filter on Collections.
+    if (req.method === "GET" && p === "/api/accounts/collectors") {
+      if (!canBill(session)) { send(res, 403, { error: "Billing permission required." }); return true; }
+      Promise.all([
+        restAll("gm_accounts_collections?select=collected_by,collector_name_snapshot&order=collected_by"),
+        restAll("gm_accounts_invoices?select=created_by&source_kind=eq.manual&order=created_by"),
+      ]).then(([cols, invs]) => {
+        const map = {};
+        for (const r of cols) if (r.collected_by) map[r.collected_by] = r.collector_name_snapshot || r.collected_by;
+        for (const r of invs) if (r.created_by && !map[r.created_by]) { const n = config.employeeName(String(r.created_by)); map[r.created_by] = n && n !== "Employee" ? n : String(r.created_by); }
+        const list = Object.keys(map).map((id) => ({ id, name: map[id] })).filter((x) => /^[A-Za-z0-9_.-]{1,60}$/.test(x.id)).sort((x, y) => x.name.localeCompare(y.name));
+        send(res, 200, { ok: true, collectors: list });
+      }).catch((e) => { console.error("Accounts collectors read:", e.message); send(res, 502, { error: "Unable to load employees." }); });
+      return true;
+    }
+
     if (req.method === "GET" && p === "/api/accounts/collections") {
       if (!canBill(session)) { send(res, 403, { error: "Billing permission required." }); return true; }
       const STATUSES = ["pending_approval", "approved", "rejected", "reversed", "correction_requested"], METHODS = ["cash", "upi", "bank_transfer"];

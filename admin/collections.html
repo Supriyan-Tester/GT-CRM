@@ -602,6 +602,7 @@
           ["approved", "Approved"],
           ["rejected", "Rejected"],
           ["correction_requested", "Correction"],
+          ["credit", "Pay later"],
         ];
         var params = new URLSearchParams(location.search);
         var st = {
@@ -612,6 +613,7 @@
             : "",
           q: "",
           method: "",
+          collector: "",
           from: "",
           to: "",
           page: 1,
@@ -653,11 +655,12 @@
           '<div id="coStats"></div>' +
           '<div class="card">' +
           '<div class="co-bar"><div class="a-seg co-seg" id="coTabs"></div></div>' +
-          '<div class="co-bar"><div class="grow"><input type="search" id="coQ" placeholder="Search customer name" aria-label="Search customer name"></div>' +
-          '<div class="co-f"><select id="coMethod" aria-label="Payment method"><option value="">All methods</option><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank_transfer">Bank transfer</option><option value="credit">Credit (pay later)</option></select></div>' +
-          '<div class="co-f"><input type="date" id="coFrom" aria-label="From date"></div><div class="co-f"><input type="date" id="coTo" aria-label="To date"></div>' +
-          '<button class="btn btn-outline" id="coClear" type="button" style="width:auto;padding:0 16px">Clear</button>' +
-          '<button class="btn btn-outline" id="coExport" type="button" style="width:auto;padding:0 16px">' + GA.icon("download") + " Export</button></div>" +
+          '<div class="field a-f" data-act style="width:200px;height:38px"><input type="search" id="coQ" placeholder="Search customer name" aria-label="Search customer name" autocomplete="off"></div>' +
+          '<div class="field a-f" data-act style="width:150px;height:38px"><select id="coMethod" aria-label="Payment method"><option value="">All methods</option><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank_transfer">Bank transfer</option></select></div>' +
+          '<div class="field a-f" data-act style="width:160px;height:38px"><select id="coEmp" aria-label="Employee"><option value="">All employees</option></select></div>' +
+          '<div class="field a-f" data-act style="width:150px;height:38px"><input type="date" id="coFrom" aria-label="From date"></div><div class="field a-f" data-act style="width:150px;height:38px"><input type="date" id="coTo" aria-label="To date"></div>' +
+          '<button class="btn btn-secondary a-btn" id="coClear" data-act type="button">Clear</button>' +
+          '<button class="btn btn-secondary a-btn" id="coExport" data-act type="button">' + GA.icon("download") + " Export</button>" +
           '<div class="co-bulk" id="coBulk"><span id="coBulkTxt"></span><button class="btn btn-success" id="coBulkGo" type="button">Approve selected</button></div>' +
           '<div class="co-split"><div id="coList"><div class="a-empty">Loading collections…</div></div>' +
           '<aside class="co-pane" id="coModal" aria-live="polite"><div class="co-card" id="coCard"><div class="co-empty-pane"><b>Pick a collection</b><br>Click one on the left to see its details here.</div></div></aside></div></div>' +
@@ -761,9 +764,13 @@
         }
         function filterQuery(page) {
           var qs = new URLSearchParams();
-          if (st.status) qs.set("status", st.status);
+          if (st.status === "credit") qs.set("method", "credit");
+          else {
+            if (st.status) qs.set("status", st.status);
+            if (st.method) qs.set("method", st.method);
+          }
+          if (st.collector) qs.set("collector", st.collector);
           if (st.q) qs.set("q", st.q);
-          if (st.method) qs.set("method", st.method);
           if (st.from) qs.set("from", st.from);
           if (st.to) qs.set("to", st.to);
           qs.set("page", page);
@@ -1123,6 +1130,17 @@
           st.page = 1;
           load();
         };
+        $("coEmp").onchange = function () {
+          st.collector = this.value;
+          st.page = 1;
+          load();
+        };
+        api("/api/accounts/collectors").then(function (j) {
+          $("coEmp").innerHTML = '<option value="">All employees</option>' + (j.collectors || []).map(function (c) {
+            return '<option value="' + esc(c.id) + '">' + esc(c.name) + "</option>";
+          }).join("");
+          $("coEmp").value = st.collector;
+        }).catch(function () {});
         $("coFrom").onchange = function () {
           st.from = this.value;
           st.page = 1;
@@ -1134,9 +1152,9 @@
           load();
         };
         $("coClear").onclick = function () {
-          st.q = st.method = st.from = st.to = "";
+          st.q = st.method = st.collector = st.from = st.to = "";
           st.page = 1;
-          $("coQ").value = $("coMethod").value = $("coFrom").value = $("coTo").value = "";
+          $("coQ").value = $("coMethod").value = $("coEmp").value = $("coFrom").value = $("coTo").value = "";
           load();
         };
         $("coList").addEventListener("keydown", function (e) {
