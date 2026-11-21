@@ -66,7 +66,7 @@ const fakeFetch = async (url) => {
   calls.push(url);
   const table = new URL(url).pathname.split("/").pop();
   const rows = table === "gm_accounts_cash_movements" ? movements : table === "gm_accounts_invoices" ? invoices : table === "gm_accounts_collection_allocations" ? allocations
-    : url.includes("select=id&status=eq.approved") ? [{ id: "ok1" }, { id: "ok2" }] : collections.filter((c) => c.status === "approved");
+    : url.includes("&status=eq.approved&order=id") ? [{ id: "ok1", customer_code: "C1", approved_at: "2026-10-10T00:00:00Z" }, { id: "ok2", customer_code: "C1", approved_at: "2026-10-12T00:00:00Z" }] : collections.filter((c) => c.status === "approved");
   return { ok: true, status: 200, headers: { get: () => null }, json: async () => rows, text: async () => "" };
 };
 const send = (res, code, value) => { res.status = code; res.payload = value; res.done && res.done(); };

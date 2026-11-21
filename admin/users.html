@@ -206,7 +206,7 @@
             st.page++;
             draw();
           };
-        [].forEach.call(pg.querySelectorAll("[data-edit]"), function (b) {
+        [].forEach.call(pg.querySelectorAll(".us-ib[data-edit]"), function (b) {
           b.onclick = function () {
             US.openForm({ id: b.dataset.edit, done: load });
           };
