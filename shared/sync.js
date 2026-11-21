@@ -103,7 +103,9 @@ window.GMImg = {
   }
   var DATA_KEY =
     /^(gm_admin_|gm_sales_|gm_crm_data_v5|gm_pins_v1|gm_pintasks_v1|gm_depot_v1|gm_wself_|gm_crew_|gm_loc_|gm_locreq_|gm_view_worker|gm_logged_in)/;
-  var rev = 0,
+  var REV_KEY = "gmq_rev",
+    KREV_KEY = "gmq_krev",
+    rev = Number(rawGet.call(ls, REV_KEY)) || 0,
     pending = {},
     written = {},
     // Screen preferences kept only in this browser; the server does not accept them, so never send them.
@@ -123,7 +125,7 @@ window.GMImg = {
   // someone else has saved a newer one in between, so an old open tab or phone can no longer wipe out newer work.
   var PROT =
       /^(gm_admin_v1|gm_admin_workers_v1|gm_admin_wprofile_v1|gm_pintasks_v1|gm_depot_v1|gm_admin_account_v1|gm_admin_products_v1|gm_admin_vehicles_v1|gm_admin_vfuel_v1|gm_admin_vehsync_v1|gm_admin_vservice_v1|gm_admin_ledger_v1|gm_admin_business_v1|gm_admin_settings_v1|gm_admin_attedit_v1)$/,
-    krev = {},
+    krev = (function () { try { return JSON.parse(rawGet.call(ls, KREV_KEY)) || {}; } catch (e) { return {}; } })(),
     readRev = {},
     baseVal = {}, // the value of a shared record as last confirmed by the server; used to merge a late save instead of failing
     hydrated = false, // true once the first server read has finished (until then the page does not know any revision numbers)
@@ -131,7 +133,10 @@ window.GMImg = {
   // A revision number may only move forward. A slow, older server answer must never pull it back (that caused false 'stale' errors).
   function setRev(k, r) {
     if (typeof r !== "number") return;
-    if (typeof krev[k] !== "number" || r > krev[k]) krev[k] = r;
+    if (typeof krev[k] !== "number" || r > krev[k]) {
+      krev[k] = r;
+      try { rawSet.call(ls, KREV_KEY, JSON.stringify(krev)); } catch (e) {}
+    }
   }
   // The version to send with a save: what the page last read, or else the newest the browser knows.
   function baseFor(k) {
@@ -658,6 +663,10 @@ window.GMImg = {
         if (DATA_KEY.test(k)) rawRem.call(ls, k);
       });
       rawRem.call(ls, DIRTY);
+      rawRem.call(ls, REV_KEY);
+      rawRem.call(ls, KREV_KEY);
+      krev = {};
+      rev = 0;
       pending = {};
       written = {};
     },
@@ -674,6 +683,7 @@ window.GMImg = {
         })
         .then(function (j) {
           rev = j.rev || 0;
+          try { rawSet.call(ls, REV_KEY, String(rev)); } catch (e) {}
           hydrate(j.items || {}, false);
           return true;
         })
@@ -683,7 +693,9 @@ window.GMImg = {
 
   // The local cache remains available immediately so existing page scripts can render.
   // The server refresh runs without blocking the browser's main thread.
-  window.GMSync.ready = isLogin ? Promise.resolve(false) : fetch(API + "/state?since=0", {
+  // Only fetch full state (?since=0) if localStorage has never synced before; otherwise fetch incremental changes!
+  var initialSince = rev > 0 ? rev : 0;
+  window.GMSync.ready = isLogin ? Promise.resolve(false) : fetch(API + "/state?since=" + initialSince, {
     cache: "no-store",
     credentials: "same-origin"
   })
@@ -697,7 +709,8 @@ window.GMImg = {
     })
     .then(function (r) {
       rev = r.rev || 0;
-      hydrate(r.items || {}, true);
+      try { rawSet.call(ls, REV_KEY, String(rev)); } catch (e) {}
+      hydrate(r.items || {}, initialSince === 0);
       hydrated = true;
       return true;
     })
@@ -719,6 +732,7 @@ window.GMImg = {
       })
       .then(function (r) {
         rev = r.rev;
+        try { rawSet.call(ls, REV_KEY, String(rev)); } catch (e) {}
         if (apply(r.items, t0)) {
           try {
             window.dispatchEvent(new Event("gm-sync"));
@@ -727,7 +741,7 @@ window.GMImg = {
       })
       .catch(function () {});
   }
-  setInterval(poll, 4000);
+  setInterval(poll, 15000);
   document.addEventListener("visibilitychange", function () {
     if (!document.hidden) poll();
   });

@@ -4946,19 +4946,28 @@ function api(req, res, url) {
       });
   };
   const sendFile = (f, ext, cache) =>
-    Files.get(f)
-      .then((d) => {
-        if (!d) {
-          res.writeHead(404);
+    Files.signedUrl(f, 3600)
+      .then((url) => {
+        if (url) {
+          res.writeHead(302, {
+            Location: url,
+            "Cache-Control": "private, max-age=3000",
+          });
           return res.end();
         }
-        res.writeHead(200, {
-          "Content-Type": ext === "jpg" ? "image/jpeg" : VMIME[ext],
-          "Cache-Control": cache,
-          "X-Content-Type-Options": "nosniff",
-          "Content-Disposition": "inline",
+        return Files.get(f).then((d) => {
+          if (!d) {
+            res.writeHead(404);
+            return res.end();
+          }
+          res.writeHead(200, {
+            "Content-Type": ext === "jpg" ? "image/jpeg" : VMIME[ext],
+            "Cache-Control": cache,
+            "X-Content-Type-Options": "nosniff",
+            "Content-Disposition": "inline",
+          });
+          res.end(d);
         });
-        res.end(d);
       })
       .catch(fail);
   const validFileSignature = (buf, mime) => {
@@ -5339,7 +5348,7 @@ function serveStatic(req, res, url) {
         '"';
       const hdr = {
         "Content-Type": MIME[ext],
-        "Cache-Control": "no-cache",
+        "Cache-Control": ext === ".html" ? "no-cache" : "public, max-age=86400",
         ETag: tag,
         Vary: "Accept-Encoding",
       };

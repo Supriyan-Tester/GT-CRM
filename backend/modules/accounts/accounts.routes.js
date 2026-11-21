@@ -229,6 +229,11 @@ function createAccountsRoutes(config) {
           }
           if (invoices.length && (canBill(session) || invoices.some((x) => canAccessCustomer(session, x.customer_code)))) allowed = true;
           if (allowed) {
+            const signed = files.signedUrl ? await files.signedUrl(evidencePath, 3600) : null;
+            if (signed) {
+              res.writeHead(302, { Location: signed, "Cache-Control": "private, max-age=3000" });
+              return res.end();
+            }
             const bytes = await files.get(evidencePath);
             if (!bytes) return send(res, 404, { error: "Evidence file is missing." });
             return sendEvidence(res, bytes, ext.toLowerCase());
@@ -349,8 +354,6 @@ function createAccountsRoutes(config) {
             customer_code: inv.customer_code,
             customer_name_snapshot: inv.customer_name_snapshot,
             invoice_no: String(inv.invoice_no || ""),
-            invoice_date: inv.invoice_date || "",
-            original_amount: Number(inv.original_amount || 0),
             outstanding: due,
           };
         });

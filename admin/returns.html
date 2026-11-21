@@ -118,12 +118,35 @@
         font-size: 12px;
         color: var(--muted);
       }
+      .ret-ledger {
+        border: 1px solid var(--primary);
+        background: var(--t-primary);
+        border-radius: 12px;
+        padding: 12px;
+        display: grid;
+        gap: 10px;
+      }
+      .ret-ledger-title {
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--primary);
+      }
+      .ret-ledger-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr 1.2fr;
+        gap: 8px;
+      }
+      @media (max-width: 700px) {
+        .ret-ledger-grid {
+          grid-template-columns: 1fr;
+        }
+      }
       @media (max-width: 600px) {
         .ret-grid {
           grid-template-columns: 1fr 1fr;
         }
         .ret-grid label:last-child {
-          grid-column: 1/-1;
+          grid-column: 1 / -1;
         }
       }
     </style>
@@ -133,247 +156,408 @@
     <script src="../shared/admin.js"></script>
     <script>
       GA.guard();
+
       (function () {
-        var root = GA.mount("returns.html", "Returns & reconciliation"),
-          rows = [],
-          all = [];
-        root.innerHTML =
-          '<div class="ret-wrap"><div><div class="ret-title">Returned stock inspection</div><div class="ret-intro">Delivery returns stay quarantined until inspected. Only the reusable quantity you approve is added to available stock.</div><div class="ret-actions" style="align-items:center;margin-top:10px"><label class="ret-field" style="display:flex;gap:8px;align-items:center">Date <input type="date" id="retDate" style="width:auto"></label><button class="ret-btn" id="retClear" type="button">Open returns</button></div></div><div id="retList"><div class="ret-empty">Loading return records…</div></div></div>';
-        var esc =
-          GA.esc ||
-          function (v) {
-            return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) {
-              return {
-                "&": "&amp;",
-                "<": "&lt;",
-                ">": "&gt;",
-                '"': "&quot;",
-                "'": "&#39;",
-              }[c];
-            });
-          };
+        const root = GA.mount("returns.html", "Returns & reconciliation");
+        let rows = [];
+        let all = [];
+        let invCache = {};
+
+        root.innerHTML = `
+          <div class="ret-wrap">
+            <div>
+              <div class="ret-title">Returned stock inspection</div>
+              <div class="ret-intro">
+                Delivery returns stay quarantined until inspected. Approved reusable quantities return to stock, and confirmed return amounts deduct directly from the customer's ledger.
+              </div>
+              <div class="ret-actions" style="align-items:center;margin-top:10px">
+                <label class="ret-field" style="display:flex;gap:8px;align-items:center">
+                  Date <input type="date" id="retDate" style="width:auto">
+                </label>
+                <button class="ret-btn" id="retClear" type="button">Open returns</button>
+              </div>
+            </div>
+            <div id="retList"><div class="ret-empty">Loading return records…</div></div>
+          </div>
+        `;
+
+        function esc(value) {
+          if (GA.esc) return GA.esc(value);
+          const div = document.createElement("div");
+          div.textContent = value == null ? "" : String(value);
+          return div.innerHTML;
+        }
+
+        function money(value) {
+          return (
+            "₹" +
+            Number(value || 0).toLocaleString("en-IN", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })
+          );
+        }
+
         function api(path, method, data) {
           return fetch(path, {
             method: method || "GET",
             credentials: "same-origin",
             headers: data ? { "Content-Type": "application/json" } : undefined,
             body: data ? JSON.stringify(data) : undefined,
-          }).then(function (r) {
-            return r.json().then(function (x) {
-              if (!r.ok) throw Error(x.error || "Request failed");
-              return x;
+          }).then(function (res) {
+            return res.json().then(function (json) {
+              if (!res.ok) throw new Error(json.error || "Request failed");
+              return json;
             });
           });
         }
+
+        function loadCustomerInvoices(code) {
+          if (!code) return Promise.resolve([]);
+          if (invCache[code]) return Promise.resolve(invCache[code]);
+
+          return api("/api/accounts/customers/" + encodeURIComponent(code) + "/invoices")
+            .then(function (data) {
+              invCache[code] = (data.invoices || []).filter(function (inv) {
+                return Number(inv.availableToCollect || 0) > 0;
+              });
+              return invCache[code];
+            })
+            .catch(function () {
+              return [];
+            });
+        }
+
+        function renderItem(item, inspected) {
+          const priceNote = item.unitPrice
+            ? " × " + money(item.unitPrice) + " = " + money(item.returnedAmount || item.returnedQty * item.unitPrice)
+            : "";
+
+          if (!inspected) {
+            return `
+              <div class="ret-item" data-product="${esc(item.productId)}">
+                <div>
+                  <b>${esc(item.productName)}</b>
+                  <div class="ret-meta">Returned: ${esc(item.returnedQty)}${priceNote} · Reason: ${esc(item.returnReason)}</div>
+                </div>
+                <div class="ret-grid">
+                  <label>Reusable / add to stock
+                    <input class="restock" type="number" min="0" max="${Number(item.returnedQty)}" step="0.001" value="0">
+                  </label>
+                  <label>Return to company
+                    <input class="company" type="number" min="0" max="${Number(item.returnedQty)}" step="0.001" value="0">
+                  </label>
+                  <label>Damaged / reject
+                    <input class="damaged" type="number" min="0" max="${Number(item.returnedQty)}" step="0.001" value="${Number(item.returnedQty)}">
+                  </label>
+                </div>
+                <div class="ret-field">
+                  <label>Company / supplier (required when company qty is above 0)
+                    <input class="company-name" placeholder="Company name">
+                  </label>
+                </div>
+                <div class="ret-field">
+                  <label>Inspection note
+                    <input class="inspection-note" placeholder="Condition, packaging, expiry, etc.">
+                  </label>
+                </div>
+              </div>
+            `;
+          }
+
+          if (!(item.companyQty > 0)) {
+            return `
+              <div class="ret-item" data-product="${esc(item.productId)}">
+                <div>
+                  <b>${esc(item.productName)}</b>
+                  <div class="ret-meta">Returned: ${esc(item.returnedQty)}${priceNote} · Reason: ${esc(item.returnReason)}</div>
+                </div>
+                <div class="ret-warning">No supplier return allocated for this item.</div>
+              </div>
+            `;
+          }
+
+          const refValue = item.dispatchRef || item.acknowledgementRef || item.companyResponseRef || "";
+          const amtValue = item.companyAmount == null ? "" : Number(item.companyAmount);
+          const qtyValue = item.replacementReceivedQty == null ? "" : Number(item.replacementReceivedQty);
+
+          let replacementHtml = "";
+          if (item.replacementStockPending) {
+            replacementHtml = `
+              <div class="ret-meta">Replacement received: ${esc(item.replacementReceivedQty)} · Stock is still pending inspection</div>
+              <div class="ret-grid">
+                <label>Accept into stock
+                  <input class="replacement-accepted" type="number" min="0" max="${Number(item.replacementReceivedQty)}" step="0.001" value="${Number(item.replacementReceivedQty)}">
+                </label>
+                <label>Damaged / reject
+                  <input class="replacement-damaged" type="number" min="0" max="${Number(item.replacementReceivedQty)}" step="0.001" value="0">
+                </label>
+              </div>
+              <button class="ret-btn primary replacement-inspect" type="button">Inspect replacement & update stock</button>
+            `;
+          } else if (item.replacementInspectedAt) {
+            replacementHtml = `
+              <div class="ret-meta">
+                Replacement inspected · Accepted: ${esc(item.replacementStockAcceptedQty)} · Damaged: ${esc(item.replacementDamagedQty)}
+              </div>
+            `;
+          }
+
+          return `
+            <div class="ret-item" data-product="${esc(item.productId)}">
+              <div>
+                <b>${esc(item.productName)}</b>
+                <div class="ret-meta">Returned: ${esc(item.returnedQty)}${priceNote} · Reason: ${esc(item.returnReason)}</div>
+              </div>
+              <div class="ret-meta">
+                Reusable: ${esc(item.restockQty)} · Company: ${esc(item.companyQty)} · Damaged: ${esc(item.damagedQty)}
+              </div>
+              <div class="ret-field">
+                <label>Company reconciliation</label>
+                <select class="company-status">
+                  <option value="awaiting_dispatch" ${item.companyStatus === "awaiting_dispatch" ? "selected" : ""}>Awaiting dispatch</option>
+                  <option value="dispatched" ${item.companyStatus === "dispatched" ? "selected" : ""}>Dispatched</option>
+                  <option value="acknowledged" ${item.companyStatus === "acknowledged" ? "selected" : ""}>Acknowledged</option>
+                  <option value="replacement_received" ${item.companyStatus === "replacement_received" ? "selected" : ""}>Replacement received</option>
+                  <option value="credit_note_issued" ${item.companyStatus === "credit_note_issued" ? "selected" : ""}>Credit note issued</option>
+                  <option value="refund_received" ${item.companyStatus === "refund_received" ? "selected" : ""}>Refund received</option>
+                  <option value="rejected_by_company" ${item.companyStatus === "rejected_by_company" ? "selected" : ""}>Rejected by company</option>
+                </select>
+              </div>
+              <div class="ret-grid">
+                <label>Dispatch / response reference
+                  <input class="company-ref" value="${esc(refValue)}" placeholder="Reference number">
+                </label>
+                <label>Credit / refund amount
+                  <input class="company-amount" type="number" min="0" step="0.01" value="${amtValue}" placeholder="0.00">
+                </label>
+                <label>Replacement qty received
+                  <input class="company-qty" type="number" min="0" step="0.001" value="${qtyValue}" placeholder="0">
+                </label>
+              </div>
+              <div class="ret-field">
+                <label>Company note
+                  <input class="company-note" value="${esc(item.companyResponseNote || "")}" placeholder="Acknowledgement or response details">
+                </label>
+              </div>
+              <button class="ret-btn company-save" type="button">Save company update</button>
+              ${replacementHtml}
+            </div>
+          `;
+        }
+
         function render() {
-          var el = document.getElementById("retList");
+          const el = document.getElementById("retList");
           if (!rows.length) {
-            el.innerHTML =
-              '<div class="ret-empty">' +
-              (document.getElementById("retDate").value
+            const hasDate = Boolean(document.getElementById("retDate").value);
+            el.innerHTML = `<div class="ret-empty">${
+              hasDate
                 ? "No returns on this date."
-                : "No returns are waiting for inspection or company reconciliation.") +
-              "</div>";
+                : "No returns are waiting for inspection or company reconciliation."
+            }</div>`;
             return;
           }
+
           el.innerHTML = rows
             .slice()
             .reverse()
             .map(function (r) {
-              var inspected = !!r.inspectedAt;
-              return (
-                '<section class="ret-card" data-ret="' +
-                esc(r.id) +
-                '"><div class="ret-top"><div><div class="ret-title">' +
-                esc(r.id) +
-                " · " +
-                esc(r.orderCode) +
-                '</div><div class="ret-meta">' +
-                esc(r.shop || "Customer not listed") +
-                " · " +
-                esc(r.workerName) +
-                " · " +
-                new Date(r.createdAt).toLocaleString() +
-                '</div></div><span class="ret-pill">' +
-                esc((r.status || "pending_inspection").replace(/_/g, " ")) +
-                '</span></div><div class="ret-items">' +
-                r.items
-                  .map(function (i) {
-                    return (
-                      '<div class="ret-item" data-product="' +
-                      esc(i.productId) +
-                      '"><div><b>' +
-                      esc(i.productName) +
-                      '</b><div class="ret-meta">Returned: ' +
-                      esc(i.returnedQty) +
-                      " · Reason: " +
-                      esc(i.returnReason) +
-                      "</div></div>" +
-                      (inspected
-                        ? i.companyQty > 0
-                          ? '<div class="ret-meta">Reusable: ' +
-                            esc(i.restockQty) +
-                            " · Company: " +
-                            esc(i.companyQty) +
-                            " · Damaged: " +
-                            esc(i.damagedQty) +
-                            '</div><div class="ret-field"><label>Company reconciliation</label><select class="company-status"><option value="awaiting_dispatch" ' +
-                            (i.companyStatus === "awaiting_dispatch"
-                              ? "selected"
-                              : "") +
-                            '>Awaiting dispatch</option><option value="dispatched" ' +
-                            (i.companyStatus === "dispatched"
-                              ? "selected"
-                              : "") +
-                            '>Dispatched</option><option value="acknowledged" ' +
-                            (i.companyStatus === "acknowledged"
-                              ? "selected"
-                              : "") +
-                            '>Acknowledged</option><option value="replacement_received" ' +
-                            (i.companyStatus === "replacement_received"
-                              ? "selected"
-                              : "") +
-                            '>Replacement received</option><option value="credit_note_issued" ' +
-                            (i.companyStatus === "credit_note_issued"
-                              ? "selected"
-                              : "") +
-                            '>Credit note issued</option><option value="refund_received" ' +
-                            (i.companyStatus === "refund_received"
-                              ? "selected"
-                              : "") +
-                            '>Refund received</option><option value="rejected_by_company" ' +
-                            (i.companyStatus === "rejected_by_company"
-                              ? "selected"
-                              : "") +
-                            '>Rejected by company</option></select></div><div class="ret-grid"><label>Dispatch / response reference<input class="company-ref" value="' +
-                            esc(
-                              i.dispatchRef ||
-                                i.acknowledgementRef ||
-                                i.companyResponseRef ||
-                                "",
-                            ) +
-                            '" placeholder="Reference number"></label><label>Credit / refund amount<input class="company-amount" type="number" min="0" step="0.01" value="' +
-                            (i.companyAmount == null
-                              ? ""
-                              : Number(i.companyAmount)) +
-                            '" placeholder="0.00"></label><label>Replacement qty received<input class="company-qty" type="number" min="0" step="0.001" value="' +
-                            (i.replacementReceivedQty == null
-                              ? ""
-                              : Number(i.replacementReceivedQty)) +
-                            '" placeholder="0"></label></div><div class="ret-field"><label>Company note<input class="company-note" value="' +
-                            esc(i.companyResponseNote || "") +
-                            '" placeholder="Acknowledgement or response details"></label></div><button class="ret-btn company-save" type="button">Save company update</button>' +
-                            (i.replacementStockPending
-                              ? '<div class="ret-meta">Replacement received: ' +
-                                esc(i.replacementReceivedQty) +
-                                ' · Stock is still pending inspection</div><div class="ret-grid"><label>Accept into stock<input class="replacement-accepted" type="number" min="0" max="' +
-                                Number(i.replacementReceivedQty) +
-                                '" step="0.001" value="' +
-                                Number(i.replacementReceivedQty) +
-                                '"></label><label>Damaged / reject<input class="replacement-damaged" type="number" min="0" max="' +
-                                Number(i.replacementReceivedQty) +
-                                '" step="0.001" value="0"></label></div><button class="ret-btn primary replacement-inspect" type="button">Inspect replacement & update stock</button>'
-                              : i.replacementInspectedAt
-                                ? '<div class="ret-meta">Replacement inspected · Accepted: ' +
-                                  esc(i.replacementStockAcceptedQty) +
-                                  " · Damaged: " +
-                                  esc(i.replacementDamagedQty) +
-                                  "</div>"
-                                : "")
-                          : '<div class="ret-warning">No supplier return allocated for this item.</div>'
-                        : '<div class="ret-grid"><label>Reusable / add to stock<input class="restock" type="number" min="0" max="' +
-                          Number(i.returnedQty) +
-                          '" step="0.001" value="0"></label><label>Return to company<input class="company" type="number" min="0" max="' +
-                          Number(i.returnedQty) +
-                          '" step="0.001" value="0"></label><label>Damaged / reject<input class="damaged" type="number" min="0" max="' +
-                          Number(i.returnedQty) +
-                          '" step="0.001" value="' +
-                          Number(i.returnedQty) +
-                          '"></label></div><div class="ret-field"><label>Company / supplier (required when company qty is above 0)<input class="company-name" placeholder="Company name"></label></div><div class="ret-field"><label>Inspection note<input class="inspection-note" placeholder="Condition, packaging, expiry, etc."></label></div>') +
-                      "</div>"
+              const inspected = Boolean(r.inspectedAt);
+              const custCode = r.customerCode || r.orderCode || "";
+              const openInvs = invCache[custCode] || [];
+              const defaultAmt =
+                r.suggestedCredit != null
+                  ? Math.round(Number(r.suggestedCredit))
+                  : Math.round(
+                      r.items.reduce(function (sum, i) {
+                        return sum + (Number(i.returnedAmount) || 0);
+                      }, 0)
                     );
-                  })
-                  .join("") +
-                "</div>" +
-                (inspected
-                  ? ""
-                  : '<div class="ret-warning">The three quantities must total exactly ' +
-                    r.items.reduce(function (n, i) {
-                      return n + Number(i.returnedQty);
-                    }, 0) +
-                    ' units for this return.</div><div class="ret-actions"><button class="ret-btn primary inspect" type="button">Save inspection & apply stock</button></div>') +
-                "</section>"
-              );
+
+              let invOptions = '<option value="">No open invoice found in Accounts</option>';
+              if (openInvs.length) {
+                invOptions =
+                  '<option value="">-- Select open invoice --</option>' +
+                  openInvs
+                    .map(function (inv) {
+                      const isMatch =
+                        r.invoiceNo &&
+                        String(inv.invoice_no).toLowerCase() === String(r.invoiceNo).toLowerCase();
+                      const maxDue = Math.floor(Number(inv.availableToCollect || 0));
+                      return `<option value="${esc(inv.id)}" data-invno="${esc(inv.invoice_no)}" data-max="${maxDue}" ${
+                        isMatch ? "selected" : ""
+                      }>#${esc(inv.invoice_no)} · Due ${money(inv.availableToCollect)}</option>`;
+                    })
+                    .join("");
+              }
+
+              const totalUnits = r.items.reduce(function (sum, i) {
+                return sum + Number(i.returnedQty);
+              }, 0);
+
+              let footerHtml = "";
+              if (inspected) {
+                if (r.ledgerCreditApplied) {
+                  const invLabel = r.ledgerInvoiceNo ? " (Invoice #" + esc(r.ledgerInvoiceNo) + ")" : "";
+                  footerHtml = `<div class="ret-meta" style="color:var(--primary);font-weight:700">✓ Return credit of ${money(
+                    r.ledgerCreditApplied
+                  )} deducted from customer ledger${invLabel}.</div>`;
+                }
+              } else {
+                footerHtml = `
+                  <div class="ret-ledger">
+                    <div class="ret-ledger-title">Confirm Return Credit for Customer Ledger (Optional)</div>
+                    <div class="ret-ledger-grid">
+                      <label class="ret-field">Customer invoice to reduce
+                        <select class="ledger-inv">${invOptions}</select>
+                      </label>
+                      <label class="ret-field">Confirmed return credit (₹)
+                        <input class="ledger-amt" type="number" min="0" step="1" value="${defaultAmt}" placeholder="0">
+                      </label>
+                      <label class="ret-field">Ledger note
+                        <input class="ledger-reason" value="Delivery return ${esc(r.id)}" maxlength="200">
+                      </label>
+                    </div>
+                    <div class="ret-warning">
+                      If an invoice is selected and credit amount is greater than ₹0, approving this return will automatically deduct that amount from the customer's ledger balance.
+                    </div>
+                  </div>
+                  <div class="ret-warning">
+                    The three quantities must total exactly ${totalUnits} units for this return.
+                  </div>
+                  <div class="ret-actions">
+                    <button class="ret-btn primary inspect" type="button">Approve return, update stock & ledger</button>
+                  </div>
+                `;
+              }
+
+              return `
+                <section class="ret-card" data-ret="${esc(r.id)}">
+                  <div class="ret-top">
+                    <div>
+                      <div class="ret-title">${esc(r.id)} · ${esc(r.orderCode)}</div>
+                      <div class="ret-meta">${esc(r.shop || "Customer not listed")} · ${esc(r.workerName)} · ${new Date(
+                r.createdAt
+              ).toLocaleString()}</div>
+                    </div>
+                    <span class="ret-pill">${esc((r.status || "pending_inspection").replace(/_/g, " "))}</span>
+                  </div>
+                  <div class="ret-items">
+                    ${r.items
+                      .map(function (item) {
+                        return renderItem(item, inspected);
+                      })
+                      .join("")}
+                  </div>
+                  ${footerHtml}
+                </section>
+              `;
             })
             .join("");
         }
-        function ld(t) {
-          var d = new Date(t);
+
+        function localDateStr(ts) {
+          const d = new Date(ts);
           return (
             d.getFullYear() +
             "-" +
-            ("0" + (d.getMonth() + 1)).slice(-2) +
+            String(d.getMonth() + 1).padStart(2, "0") +
             "-" +
-            ("0" + d.getDate()).slice(-2)
+            String(d.getDate()).padStart(2, "0")
           );
         }
+
         function apply() {
-          var d = document.getElementById("retDate").value;
-          rows = d
+          const dateVal = document.getElementById("retDate").value;
+          rows = dateVal
             ? all.filter(function (r) {
-                return ld(r.createdAt) === d;
+                return localDateStr(r.createdAt) === dateVal;
               })
             : all.filter(function (r) {
-                return (
-                  r.status !== "closed" &&
-                  r.status !== "reconciliation_complete"
-                );
+                return r.status !== "closed" && r.status !== "reconciliation_complete";
               });
-          render();
+
+          const customerCodes = Array.from(
+            new Set(
+              rows
+                .filter(function (r) {
+                  return !r.inspectedAt;
+                })
+                .map(function (r) {
+                  return r.customerCode || r.orderCode;
+                })
+                .filter(Boolean)
+            )
+          );
+
+          Promise.all(customerCodes.map(loadCustomerInvoices)).then(render);
         }
-        document.getElementById("retDate").addEventListener("change", apply);
-        document
-          .getElementById("retClear")
-          .addEventListener("click", function () {
-            document.getElementById("retDate").value = "";
-            apply();
-          });
+
         function load() {
+          invCache = {};
           api("/api/inventory/returns")
-            .then(function (x) {
-              all = x.returns || [];
+            .then(function (data) {
+              all = data.returns || [];
               apply();
             })
-            .catch(function (e) {
-              document.getElementById("retList").innerHTML =
-                '<div class="ret-empty">' + esc(e.message) + "</div>";
+            .catch(function (err) {
+              document.getElementById("retList").innerHTML = `<div class="ret-empty">${esc(err.message)}</div>`;
             });
         }
+
+        document.getElementById("retDate").addEventListener("change", apply);
+        document.getElementById("retClear").addEventListener("click", function () {
+          document.getElementById("retDate").value = "";
+          apply();
+        });
+
         root.addEventListener("click", function (e) {
-          var card = e.target.closest("[data-ret]");
+          const card = e.target.closest("[data-ret]");
           if (!card) return;
-          var ret = rows.find(function (x) {
+          const ret = rows.find(function (x) {
             return x.id === card.dataset.ret;
           });
           if (!ret) return;
+
           if (e.target.classList.contains("inspect")) {
-            var items = Array.prototype.map.call(
-              card.querySelectorAll("[data-product]"),
-              function (el) {
-                return {
-                  productId: el.dataset.product,
-                  restockQty: Number(el.querySelector(".restock").value),
-                  companyQty: Number(el.querySelector(".company").value),
-                  damagedQty: Number(el.querySelector(".damaged").value),
-                  companyName: el.querySelector(".company-name").value,
-                  inspectionNote: el.querySelector(".inspection-note").value,
-                };
-              },
-            );
+            const items = Array.from(card.querySelectorAll("[data-product]")).map(function (el) {
+              return {
+                productId: el.dataset.product,
+                restockQty: Number(el.querySelector(".restock").value),
+                companyQty: Number(el.querySelector(".company").value),
+                damagedQty: Number(el.querySelector(".damaged").value),
+                companyName: el.querySelector(".company-name").value,
+                inspectionNote: el.querySelector(".inspection-note").value,
+              };
+            });
+
+            const invSel = card.querySelector(".ledger-inv");
+            const amtInp = card.querySelector(".ledger-amt");
+            const rsnInp = card.querySelector(".ledger-reason");
+
+            const invoiceId = invSel ? invSel.value : "";
+            const creditAmount = amtInp ? Number(amtInp.value) || 0 : 0;
+            const creditReason = rsnInp ? rsnInp.value : "";
+            const selectedOpt = invSel && invSel.selectedOptions && invSel.selectedOptions[0];
+            const invoiceNo = selectedOpt ? selectedOpt.getAttribute("data-invno") || "" : "";
+
+            if (creditAmount > 0 && !invoiceId) {
+              alert(
+                "Select a customer invoice to apply the ₹" +
+                  creditAmount +
+                  " return credit, or set the credit amount to 0."
+              );
+              return;
+            }
+
             e.target.disabled = true;
             api("/api/inventory/returns/inspect", "POST", {
               returnId: ret.id,
               items: items,
+              invoiceId: invoiceId,
+              invoiceNo: invoiceNo,
+              creditAmount: creditAmount,
+              creditReason: creditReason,
             })
               .then(load)
               .catch(function (err) {
@@ -381,12 +565,12 @@
                 e.target.disabled = false;
               });
           }
+
           if (e.target.classList.contains("replacement-inspect")) {
-            var el = e.target.closest("[data-product]"),
-              accepted = Number(
-                el.querySelector(".replacement-accepted").value,
-              ),
-              damaged = Number(el.querySelector(".replacement-damaged").value);
+            const el = e.target.closest("[data-product]");
+            const accepted = Number(el.querySelector(".replacement-accepted").value);
+            const damaged = Number(el.querySelector(".replacement-damaged").value);
+
             e.target.disabled = true;
             api("/api/inventory/returns/replacement-inspect", "POST", {
               returnId: ret.id,
@@ -400,21 +584,22 @@
                 e.target.disabled = false;
               });
           }
+
           if (e.target.classList.contains("company-save")) {
-            var el = e.target.closest("[data-product]"),
-              status = el.querySelector(".company-status").value;
-            var data = {
+            const el = e.target.closest("[data-product]");
+            const payload = {
               returnId: ret.id,
               productId: el.dataset.product,
-              companyStatus: status,
+              companyStatus: el.querySelector(".company-status").value,
               dispatchRef: el.querySelector(".company-ref").value,
               reference: el.querySelector(".company-ref").value,
               amount: el.querySelector(".company-amount").value,
               receivedQty: el.querySelector(".company-qty").value,
               note: el.querySelector(".company-note").value,
             };
+
             e.target.disabled = true;
-            api("/api/inventory/returns/company", "POST", data)
+            api("/api/inventory/returns/company", "POST", payload)
               .then(load)
               .catch(function (err) {
                 alert(err.message);
@@ -422,6 +607,7 @@
               });
           }
         });
+
         load();
       })();
     </script>

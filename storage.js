@@ -119,6 +119,15 @@ module.exports = function (cfg) {
       for (const k of keys) await b2Client().send(new S3.DeleteObjectCommand({ Bucket: B2_BUCKET, Key: k }));
       known.delete(p);
     },
+    async signedUrl(p, expiresSec) {
+      try {
+        const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+        const k = known.get(p) || toKey(p);
+        return await getSignedUrl(b2Client(), new S3.GetObjectCommand({ Bucket: B2_BUCKET, Key: k }), { expiresIn: expiresSec || 3600 });
+      } catch (e) {
+        return null;
+      }
+    },
   };
   const H = (extra) =>
     Object.assign({ apikey: KEY, Authorization: "Bearer " + KEY }, extra || {});
@@ -320,6 +329,16 @@ module.exports = function (cfg) {
       if (!r.ok && r.status !== 404 && r.status !== 400)
         throw new Error("Supabase storage delete " + r.status);
     },
+    async signedUrl(p, expiresSec) {
+      const r = await fetch(URL + "/storage/v1/object/sign/" + BUCKET + "/" + p, {
+        method: "POST",
+        headers: H({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ expiresIn: expiresSec || 3600 }),
+      });
+      if (!r.ok) return null;
+      const d = await r.json().catch(() => null);
+      return d && d.signedURL ? URL + "/storage/v1" + d.signedURL : null;
+    },
   };
   // Where files live: B2 if set up, else the Supabase bucket if Supabase is set up, else this computer's disk.
   const remote = useB2 ? b2Backend : cloud ? supaBackend : null;
@@ -426,6 +445,7 @@ module.exports = function (cfg) {
       });
       return out;
     },
+    signedUrl: (p, sec) => (remote && remote.signedUrl ? remote.signedUrl(p, sec) : Promise.resolve(null)),
     mimeOf,
   };
 
