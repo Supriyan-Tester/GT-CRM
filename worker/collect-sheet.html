@@ -1479,9 +1479,15 @@
           $("#stay_" + id).textContent =
             "Stays on credit " + money(Math.max(0, out - v));
           var h = $("#hint_" + id);
-          h.textContent = v > 0 ? "" : "Enter the amount received.";
+          h.textContent =
+            v > 0
+              ? has
+                ? ""
+                : "Add the bill photo to continue."
+              : "Enter the amount received.";
           h.style.display = h.textContent ? "" : "none";
-          $('[data-ook="' + id + '"]').disabled = !(v > 0);
+          // OK needs both an amount and a bill photo.
+          $('[data-ook="' + id + '"]').disabled = !(v > 0 && has);
           recalc();
         }
 
@@ -1663,7 +1669,7 @@
                 x = oldX(id),
                 v = oldAmount(id),
                 out = Number(x.outstanding);
-              if (!(v > 0)) return;
+              if (!(v > 0) || !S["of_" + id]) return;
               S.oldOk[id] = true;
               $("#smT_" + id).textContent =
                 "Invoice " + x.invoice_no + " \u00b7 " + money(v) + " received";
@@ -1872,6 +1878,13 @@
               var a = oldAmount(k),
                 f = S["of_" + k];
               if (!(a > 0)) continue;
+              if (!f)
+                throw fe(
+                  "Add the bill photo for invoice " +
+                    (oldX(k) ? oldX(k).invoice_no : "") +
+                    ".",
+                  '[data-oadd="' + k + '"]',
+                );
               var uo = { evidencePath: undefined };
               if (f) {
                 if (f.size > 25 * 1024 * 1024)
