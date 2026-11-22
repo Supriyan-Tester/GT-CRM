@@ -25,19 +25,65 @@
     .ac-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
     .ac-head .card-title{margin:0}
     .ac-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .ac-edit{border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:8px;width:28px;height:28px;padding:0;margin-left:6px;vertical-align:middle;cursor:pointer;display:inline-grid;place-items:center}.ac-edit:hover{color:var(--text);border-color:var(--primary)}.ac-edit svg{width:14px;height:14px}.ac-del:hover{color:#dc2626;border-color:#dc2626}.ac-adj{display:block;font-size:11px;font-weight:500;color:var(--muted);white-space:nowrap}.ac-adj-card{max-width:620px}.ac-adj-row{display:grid;grid-template-columns:5fr 7fr;gap:12px}.ac-adj-link{border:0;background:none;color:var(--primary);font:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:0;margin-left:6px}.ac-adj-card .ac-field{margin-bottom:12px}.ac-adj-sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:4px 0 14px}.ac-adj-sum>div{border:1px solid var(--border);border-radius:12px;padding:10px 12px}.ac-adj-sum small{display:block;font-size:11px;color:var(--muted);margin-bottom:2px}.ac-adj-sum b{font-size:16px}.ac-adj-full{border:1px dashed var(--border);border-radius:12px;padding:16px;text-align:center;color:var(--muted);margin-bottom:12px;font-size:13px}.ac-adj-full b{display:block;color:var(--text);font-size:15px;margin-bottom:4px}.ac-seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ac-seg button{height:42px;padding:0 12px;border-radius:var(--radius-btn);border:1px solid var(--border);background:transparent;color:var(--muted);font:inherit;font-weight:700;cursor:pointer}.ac-seg button.on{background:var(--primary);border-color:var(--primary);color:#fff}.ac-adj-amt{display:flex;gap:8px;align-items:center}.ac-adj-amt>span{font-weight:700;color:var(--muted)}.ac-adj-amt input{flex:1;min-width:0}@media(max-width:520px){.ac-adj-row{grid-template-columns:1fr}.ac-adj-sum{grid-template-columns:1fr 1fr}.ac-adj-sum>div:last-child{grid-column:1/-1}}
+    .ac-adj{display:block;font-size:11px;font-weight:500;color:var(--muted);white-space:nowrap}
+    .ac-adj-card{max-width:620px}
+    .ac-adj-row{display:grid;grid-template-columns:5fr 7fr;gap:12px}
+    .ac-adj-link{border:0;background:none;color:var(--primary);font:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:0;margin-left:6px}
+    .ac-adj-card .ac-field{margin-bottom:12px}
+    .ac-adj-sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:4px 0 14px}
+    .ac-adj-sum>div{border:1px solid var(--border);border-radius:12px;padding:10px 12px}
+    .ac-adj-sum small{display:block;font-size:11px;color:var(--muted);margin-bottom:2px}
+    .ac-adj-sum b{font-size:16px}
+    .ac-adj-full{border:1px dashed var(--border);border-radius:12px;padding:16px;text-align:center;color:var(--muted);margin-bottom:12px;font-size:13px}
+    .ac-adj-full b{display:block;color:var(--text);font-size:15px;margin-bottom:4px}
+    .ac-seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .ac-seg button{height:42px;padding:0 12px;border-radius:var(--radius-btn);border:1px solid var(--border);background:transparent;color:var(--muted);font:inherit;font-weight:700;cursor:pointer}
+    .ac-seg button.on{background:var(--primary);border-color:var(--primary);color:#fff}
+    .ac-adj-card .ac-seg3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+    .ac-adj-card .ac-seg3 button{height:40px;padding:0 12px;border-radius:var(--radius-btn);border:1px solid var(--border);background:var(--card);color:var(--muted);font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s}
+    .ac-adj-card .ac-seg3 button:hover{border-color:var(--primary);color:var(--text)}
+    .ac-adj-card .ac-seg3 button.on{background:var(--primary);border-color:var(--primary);color:#fff}
+    .ac-adj-amt{display:flex;gap:8px;align-items:center}
+    .ac-adj-amt>span{font-weight:700;color:var(--muted)}
+    .ac-adj-amt input{flex:1;min-width:0}
     .ac-field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px}
-    .ac-field input[type=file]{height:auto;padding:9px 12px}
+    .ac-field input[type=file]{height:auto;min-height:44px;padding:7px 10px;border:1.5px dashed var(--border);border-radius:var(--radius-btn);background:var(--bg);color:var(--muted);font-size:13px;cursor:pointer;transition:border-color .15s,background .15s}
+    .ac-field input[type=file]:hover{border-color:var(--primary);background:var(--t-primary)}
+    .ac-field input[type=file]::file-selector-button{margin-right:10px;padding:6px 13px;border:1px solid var(--primary);border-radius:8px;background:var(--t-primary);color:var(--primary);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:all .15s}
+    .ac-field input[type=file]::file-selector-button:hover{background:var(--primary);color:#fff}
     .ac-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
     td.ac-r,th.ac-r{text-align:right;font-variant-numeric:tabular-nums}
     td.ac-due{font-weight:700}
     td.ac-due.owing{color:var(--danger)}
-    .ac-bill{display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:5px 12px;border:1px solid var(--primary);border-radius:999px;font-size:12px;line-height:1.2;text-decoration:none;white-space:nowrap;vertical-align:middle;transition:background .15s,color .15s}
-    .ac-bill svg{width:14px;height:14px;display:block}
-    .ac-bill:hover{background:var(--primary);color:#fff}
+
+    /* Three-dot row action menu at far right edge */
+    td.ac-act-col,th.ac-act-col{width:46px;padding-right:14px;text-align:right;white-space:nowrap}
+    .a-table .ac-dot-btn{display:inline-grid;place-items:center;width:32px;height:32px;padding:0;margin-left:auto;flex:none;border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--muted);font:inherit;font-size:17px;font-weight:700;line-height:1;cursor:pointer;transition:all .15s}
+    .a-table .ac-dot-btn:hover,.a-table .ac-dot-btn[aria-expanded="true"]{border-color:var(--primary);color:var(--primary);background:var(--t-primary)}
+    .ac-menu{display:none;position:fixed;z-index:160;min-width:204px;max-width:calc(100vw - 24px);padding:6px;border:1px solid var(--border);border-radius:12px;background:var(--card);color:var(--text);box-shadow:0 14px 34px rgba(15,23,42,.22)}
+    .ac-menu.open{display:grid;gap:2px}
+    .ac-menu button,.ac-menu a{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:9px 12px;border:0;border-radius:8px;background:transparent;color:var(--text);font:inherit;font-size:13.5px;font-weight:600;text-align:left;text-decoration:none;cursor:pointer;box-sizing:border-box}
+    .ac-menu button:hover,.ac-menu a:hover{background:var(--t-primary);color:var(--primary)}
+    .ac-menu .ac-m-col{color:var(--success)}
+    .ac-menu .ac-m-col:hover{background:var(--t-success);color:var(--success)}
+    .ac-menu .ac-m-del{color:var(--danger)}
+    .ac-menu .ac-m-del:hover{background:var(--t-danger);color:var(--danger)}
+    .ac-menu .ac-m-cnt{font-size:11px;padding:1px 7px;border-radius:999px;background:var(--t-primary);color:var(--primary);font-weight:700}
+
+    .ac-hist-row td{background:var(--bg);padding:10px 14px;border-bottom:1px solid var(--border)}
+    .ac-hist-box{display:grid;gap:6px;width:100%}
+    .ac-hist-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:2px}
+    .ac-hist-item{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:8px 12px;font-size:13px}
+    .ac-hist-left{display:flex;align-items:flex-start;gap:9px;min-width:0;flex:1 1 220px}
+    .ac-hist-dot{width:8px;height:8px;border-radius:50%;flex:none;margin-top:6px;background:var(--muted)}
+    .ac-hist-dot.paid{background:var(--success)}
+    .ac-hist-dot.pend{background:var(--accent)}
+    .ac-hist-dot.adj{background:var(--info)}
+    .ac-hist-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto;text-align:right;font-variant-numeric:tabular-nums}
+
     .ac-modal{position:fixed;inset:0;z-index:120;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(15,23,42,.55)}
     .ac-modal.open{display:flex}
-    .ac-modal-card{background:var(--card);color:var(--text);border-radius:16px;width:100%;max-width:640px;max-height:calc(100vh - 32px);overflow-y:auto;padding:20px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+    .ac-modal-card{background:var(--card);color:var(--text);border-radius:16px;width:100%;max-width:640px;max-height:calc(100vh - 32px);overflow-y:auto;padding:20px;box-shadow:0 20px 50px rgba(0,0,0,.35);box-sizing:border-box}
     .ac-modal-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
     .ac-modal-head h3{margin:0}
     .ac-alloc{border:1px solid var(--border);border-radius:12px;padding:12px;margin:10px 0}
@@ -51,20 +97,17 @@
     .ac-sum .big{font-size:20px}
     .ac-ah{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
     .ac-alloc a{display:inline-block;margin-top:4px;font-size:13px}
-    @media(max-width:480px){.ac-sum{grid-template-columns:1fr}}
     .ac-chk{display:flex;gap:10px;align-items:flex-start;margin:14px 0;font-size:14px;cursor:pointer}
     .ac-chk input{margin-top:3px;width:18px;height:18px;flex:none}
     .ac-acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
     .ac-acts[hidden],.ac-rej[hidden]{display:none}
     .ac-rej{margin-top:10px}
     .ac-rej label{display:block;margin-bottom:6px;font-size:14px}
-    .ac-rej textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);font:inherit;font-size:14px;resize:vertical}
+    .ac-rej textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);font:inherit;font-size:14px;resize:vertical;box-sizing:border-box}
     .ac-rej textarea.bad{border-color:#dc2626}
     .ac-rejerr{color:#dc2626;font-size:12.5px;min-height:18px;margin:4px 0 8px}
-    .ac-more{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
-    @media(max-width:700px){.ac-grid2{grid-template-columns:1fr}}
 
-    .ac-crumb{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin:0 0 14px}
+    .ac-crumb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:0 0 14px}
     .ac-crumb a{color:var(--muted);text-decoration:none}.ac-crumb a:hover{color:var(--primary)}
     .ac-crumb b{color:var(--text);font-weight:600}
     .s-r{background:var(--t-danger)}
@@ -72,15 +115,6 @@
     .a-main .ac-stats .s-r .a-sub{color:var(--danger)}
     .a-main .ac-stats .s-s .a-sub{color:var(--success)}
     .a-main .ac-stats .s-i .a-sub{color:var(--info)}
-    .ac-tabs{display:flex;gap:6px;border-bottom:2px solid var(--border);margin:0 0 16px;overflow-x:auto;overflow-y:hidden}
-    .ac-tabs button{display:inline-flex;align-items:center;gap:8px;border:0;background:none;color:var(--muted);font:inherit;font-size:14px;font-weight:600;padding:11px 18px;border-radius:12px 12px 0 0;cursor:pointer;white-space:nowrap}
-    .ac-tabs button svg{width:18px;height:18px;flex:none}
-    .ac-tabs button:hover{color:var(--primary);background:var(--t-primary)}
-    .ac-tabs button.on{background:var(--primary);color:var(--on-primary)}
-    .ac-tabs .n{background:var(--accent);color:#fff;border-radius:999px;padding:1px 8px;font-size:11px}
-    .ac-tabs .n:empty{display:none}
-    .ac-lbl{font-size:14px;font-weight:600;color:var(--muted)}
-    .ac-gap{flex:1 1 0}
     .ac-btn svg{width:17px;height:17px;margin-right:7px;vertical-align:-3px}
     .ac-ico{position:relative}
     .ac-ico>svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--muted);pointer-events:none}
@@ -92,7 +126,6 @@
     .ac-note svg{width:20px;height:20px;flex:none;color:var(--info);margin-top:1px}
     .ac-tw{border:1px solid var(--border);border-radius:12px}
     .ac-card .a-table thead th{background:var(--t-primary);color:var(--muted);font-size:11.5px;letter-spacing:.05em;text-transform:uppercase}
-    .ac-bill{color:var(--primary);font-weight:600}
     .ac-imp-card{max-width:760px;padding:22px}
     .ac-imp-card .ac-grid3{grid-template-columns:repeat(2,minmax(0,1fr))}
     .ac-x{margin-left:auto;align-self:flex-start;display:grid;place-items:center;width:36px;height:36px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--muted);cursor:pointer;flex:none}
@@ -118,7 +151,8 @@
     .ac-chip.ok{background:var(--t-success);color:var(--success)}
     .ac-chip.ok::before{content:"✓";margin-right:6px}
     .ac-chip.err{background:var(--t-danger);color:var(--danger)}
-    /* Searchable customer picker */
+
+    /* Searchable customer picker & top header search */
     .ac-pick-list{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:140;display:none;max-height:220px;overflow-y:auto;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.2);padding:4px}
     .ac-pick.open .ac-pick-list{display:block}
     .ac-pick-list div{padding:9px 12px;border-radius:8px;font-size:14px;cursor:pointer}
@@ -127,15 +161,39 @@
     .ac-pick-list div.none{color:var(--muted);cursor:default}
     .ac-pick-list div.none:hover{background:none;color:var(--muted)}
     .ac-hs{position:relative;width:300px;max-width:100%;flex:0 1 300px}
-    .ac-hs input{height:42px;width:100%;border:1px solid var(--border);border-radius:var(--radius-btn);background:var(--card);color:var(--text);padding:0 12px 0 40px;font:inherit;box-sizing:border-box}
+    .ac-hs input{height:40px;width:100%;border:1px solid var(--border);border-radius:var(--radius-btn);background:var(--card);color:var(--text);padding:0 12px 0 38px;font:inherit;box-sizing:border-box}
     .ac-hs .ac-pick-list{left:auto;right:0;width:380px;max-width:90vw}
     .ac-hs.open .ac-pick-list{display:block}
-    @media(max-width:700px){.ac-hs .ac-pick-list{left:0;right:0;width:auto;max-width:none}}
     .ac-pick-list div.grp{padding:8px 12px 3px;font-size:11.5px;font-weight:700;color:var(--muted);cursor:default}
     .ac-pick-list div.grp:hover{background:none;color:var(--muted)}
-    .ac-who{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px;min-height:42px}
-    @media(max-width:1100px){.ac-grid3{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media(max-width:700px){.ac-grid3,.ac-imp-card .ac-grid3{grid-template-columns:1fr}.ac-bar .ac-sel,.ac-bar .ac-find{flex:1 1 100%}.ac-gap{display:none}.ac-tabs button{padding:10px 12px}}
+    .ac-who{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;font-size:14px;min-height:30px;width:100%}
+    .ac-who:empty{display:none}
+    .ac-clear-btn{width:auto !important;flex:none;margin-left:auto;height:28px;min-height:28px;padding:0 11px;font-size:12px;border-radius:7px}
+
+    /* Tablet & Mobile styles */
+    @media(max-width:1100px){
+      .ac-grid3{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .ac-hs{width:210px;flex:0 1 210px}
+    }
+    @media(max-width:700px){
+      .ac-grid2,.ac-grid3,.ac-imp-card .ac-grid3,.ac-adj-row{grid-template-columns:1fr}
+      .ac-bar .ac-sel,.ac-bar .ac-find{flex:1 1 100%}
+      .ac-adj-sum{grid-template-columns:1fr 1fr}
+      .ac-adj-sum>div:last-child{grid-column:1/-1}
+      .ac-adj-card .ac-seg3{grid-template-columns:1fr}
+      .ac-sum{grid-template-columns:1fr}
+      .ac-modal{padding:10px;align-items:flex-end}
+      .ac-modal-card,.ac-imp-card,.ac-adj-card{max-width:100%;max-height:calc(100vh - 20px);padding:16px;border-radius:14px}
+      .ac-actions .ac-btn{flex:1 1 auto;justify-content:center}
+      .ac-hs{display:none}
+      .a-acts .ac-btn{padding-left:10px;padding-right:10px;font-size:12.5px}
+      .a-acts .ac-btn svg{margin-right:4px}
+      .ac-hist-row td{padding:8px}
+      .ac-hist-right{margin-left:0;justify-content:flex-start;text-align:left;width:100%}
+      .ac-act-col{width:auto;padding-right:0}
+      .a-table .ac-dot-btn{width:36px;height:36px}
+      .ac-menu button,.ac-menu a{padding:11px 14px;font-size:14px}
+    }
   </style>
 </head>
 <body>
@@ -147,18 +205,18 @@
   var pg=GA.mount("accounts.html","Accounts & Ledger"), O=GA.ops, S=O.get();
   var $=function(id){return document.getElementById(id)};
   var esc=GA.esc, money=function(v){return "₹"+Number(v||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})};
-  var currentCustomer="", invoices=[], pending=[];
+  var isSuper=!!(GA.session()&&GA.session().super);
+  var currentCustomer="", invoices=[], pending=[], expandedInv={}, openMenuInvId=null;
   function dt(iso){var d=new Date(iso);return isNaN(d)?"":d.toLocaleString("en-IN",{day:"numeric",month:"short",year:"numeric",hour:"numeric",minute:"2-digit",timeZone:"Asia/Kolkata"});}
   var METHOD={cash:"Cash",upi:"UPI",bank_transfer:"Bank transfer"};
   pg.innerHTML='<nav class="ac-crumb" aria-label="Breadcrumb"><a href="index.html">Home</a><span>›</span><span>Cash & Accounts</span><span>›</span><b>Accounts & Ledger</b></nav><div id="acStats"></div>'+
     '<section id="acLedger"><div class="card ac-card">'+
     '<div class="ac-bar"><input type="hidden" id="acCustomer"><div class="ac-who" id="acWho"></div></div>'+
-    
-    '<div class="a-scroll ac-tw"><table class="a-table"><thead><tr><th>Invoice</th><th>Date</th><th>Source</th><th class="ac-r">Bill total</th><th class="ac-r">Opening due</th><th class="ac-r">Paid</th><th class="ac-r">Pending</th><th class="ac-r">Balance</th></tr></thead><tbody id="acInvoiceRows"><tr><td colspan="8"><div class="a-empty"><b>No customer selected</b>Search a customer above to see their invoices.</div></td></tr></tbody></table></div></div></section>'+
+    '<div class="a-scroll ac-tw"><table class="a-table"><thead><tr><th>Invoice</th><th>Date</th><th>Source</th><th class="ac-r">Bill total</th><th class="ac-r">Opening due</th><th class="ac-r">Paid</th><th class="ac-r">Pending</th><th class="ac-r">Balance</th><th class="ac-r ac-act-col" aria-label="Actions"></th></tr></thead><tbody id="acInvoiceRows"><tr><td colspan="9"><div class="a-empty"><b>No customer selected</b>Search a customer above to see their invoices.</div></td></tr></tbody></table></div></div></section>'+
     '<section id="acPending" hidden><div class="card ac-card">'+
-    ''+
     '<div class="ac-note">Check the money and the bill photo before approving. Approval cannot be undone.</div>'+
     '<div class="a-scroll"><table class="a-table"><thead><tr><th>Received</th><th>Customer</th><th>Collector</th><th>Method</th><th class="ac-r">Total</th><th>Status</th><th></th></tr></thead><tbody id="acPendingRows"><tr><td colspan="7"><div class="a-empty">Loading approvals...</div></td></tr></tbody></table></div></div></section>'+
+    '<div class="ac-menu" id="acRowMenu" role="menu"></div>'+
     '<div class="ac-modal" id="acOpenModal" role="dialog" aria-modal="true" aria-labelledby="acOpenTitle"><div class="ac-modal-card ac-imp-card"><div class="ac-imp-head"><span class="ac-imp-ico">'+GA.icon("upload")+'</span><div><div class="card-title" id="acOpenTitle">Import legacy opening invoice</div><p class="ac-muted">For old handwritten credit bills; records an opening receivable, not new sales revenue.</p></div><button class="ac-x" id="acOpenClose" type="button" aria-label="Close">'+GA.icon("close")+'</button></div><form id="acOpeningForm"><div class="ac-grid3"><div class="ac-field"><label for="acOpenCustomer">Customer <i>*</i></label><div class="ac-ico">'+GA.icon("user")+'<input type="hidden" id="acOpenCustomer"></div></div><div class="ac-field"><label for="acOpenNo">Invoice number <i>*</i></label><div class="ac-ico"><span class="ac-glyph">#</span><input id="acOpenNo" maxlength="80" placeholder="Enter invoice number" required></div></div><div class="ac-field"><label for="acOpenDate">Invoice date <i>*</i></label><div><input id="acOpenDate" type="date" required></div></div><div class="ac-field"><label for="acOpenOriginal">Original invoice amount (₹) <i>*</i></label><div class="ac-ico"><span class="ac-glyph">₹</span><input id="acOpenOriginal" type="number" min="0.01" step="0.01" placeholder="0.00" required></div></div><div class="ac-field"><label for="acOpenDue">Balance still to be paid (₹) <i>*</i></label><div class="ac-ico"><span class="ac-glyph">₹</span><input id="acOpenDue" type="number" min="0.01" step="0.01" placeholder="0.00" required></div><small class="ac-hint">Same as the original amount if nothing is paid yet.</small></div><div class="ac-field ac-wide"><label for="acOpenPhoto">Original bill photo <i>*</i></label><div class="ac-drop" id="acDrop">'+GA.icon("upload")+'<span><b>Choose file</b> or drag & drop</span><small id="acDropName">JPG, PNG or WEBP (max 5 MB)</small><input id="acOpenPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" required></div></div></div>'+
     '<div class="ac-actions"><button class="btn ac-btn" id="acOpenSubmit" type="submit">'+GA.icon("check")+'Save opening invoice</button><button class="btn btn-outline ac-btn" id="acOpenCancel" type="button">Cancel</button><span class="ac-chip" id="acOpenMsg"></span></div></form></div></div>'+
     '<div class="ac-modal" id="acEditModal" role="dialog" aria-modal="true" aria-labelledby="acEditTitle"><div class="ac-modal-card ac-imp-card"><div class="ac-imp-head"><span class="ac-imp-ico">'+GA.icon("edit")+'</span><div><div class="card-title" id="acEditTitle">Edit invoice</div><p class="ac-muted" id="acEditSub"></p></div><button class="ac-x" id="acEditClose" type="button" aria-label="Close">'+GA.icon("close")+'</button></div><form id="acEditForm"><div class="ac-grid3"><div class="ac-field"><label for="acEditNo">Invoice number <i>*</i></label><div><input id="acEditNo" maxlength="80" required></div></div><div class="ac-field"><label for="acEditDate">Invoice date <i>*</i></label><div><input id="acEditDate" type="date" required></div></div><div class="ac-field"><label for="acEditOriginal">Bill total (₹) <i>*</i></label><div><input id="acEditOriginal" type="number" min="0.01" step="0.01" required></div></div><div class="ac-field"><label for="acEditDue">Opening due (₹) <i>*</i></label><div><input id="acEditDue" type="number" min="0.01" step="0.01" required></div><small class="ac-hint" id="acEditHint"></small></div><div class="ac-field ac-wide"><label for="acEditPhoto">New bill photo (optional)</label><div><input id="acEditPhoto" type="file" accept="image/jpeg,image/png,image/webp"></div></div><div class="ac-field ac-wide"><label for="acEditReason">Reason for change <i>*</i></label><div><input id="acEditReason" maxlength="200" placeholder="Example: amount typed wrong" required></div></div></div>'+
@@ -170,12 +228,19 @@
     '<div class="ac-adj-row"><div class="ac-field"><label for="acAdjAmount">Amount <i>*</i> <button type="button" class="ac-adj-link" id="acAdjAll">Full balance</button></label><div class="ac-adj-amt"><span>₹</span><input id="acAdjAmount" type="number" inputmode="numeric" min="1" step="1" required></div></div>'+
     '<div class="ac-field"><label for="acAdjReason">Reason <i>*</i></label><div><input id="acAdjReason" maxlength="200" required></div></div></div></div><div id="acAdjList"></div>'+
     '<div class="ac-actions"><button class="btn ac-btn" id="acAdjSubmit" type="submit">'+GA.icon("check")+'Apply</button><button class="btn btn-outline ac-btn" id="acAdjCancel" type="button">Cancel</button><span class="ac-chip" id="acAdjMsg"></span></div></form></div></div>'+
+    '<div class="ac-modal" id="acColModal" role="dialog" aria-modal="true" aria-labelledby="acColTitle"><div class="ac-modal-card ac-imp-card ac-adj-card"><div class="ac-imp-head"><span class="ac-imp-ico">'+GA.icon("coin")+'</span><div><div class="card-title" id="acColTitle">Record collection</div><p class="ac-muted" id="acColSub"></p></div><button class="ac-x" id="acColClose" type="button" aria-label="Close">'+GA.icon("close")+'</button></div>'+
+    '<form id="acColForm"><div class="ac-adj-sum"><div><small>Balance due</small><b id="acColDue"></b></div><div><small>Available to collect</small><b id="acColMax"></b></div><div><small>Balance after</small><b id="acColNew"></b></div></div>'+
+    '<div class="ac-field"><label>Payment method</label><div class="ac-seg3" id="acColSeg"><button type="button" data-m="cash" class="on">Cash</button><button type="button" data-m="upi">UPI</button><button type="button" data-m="bank_transfer">Bank transfer</button></div></div>'+
+    '<div class="ac-adj-row"><div class="ac-field"><label for="acColAmount">Amount collected <i>*</i> <button type="button" class="ac-adj-link" id="acColAll">Full balance</button></label><div class="ac-adj-amt"><span>₹</span><input id="acColAmount" type="number" min="0.01" step="0.01" required></div></div>'+
+    '<div class="ac-field"><label for="acColNote">Note (optional)</label><div><input id="acColNote" maxlength="200" placeholder="Example: Paid at office"></div></div></div>'+
+    '<div class="ac-field"><label for="acColPhoto">Bill / receipt photo (optional)</label><div><input id="acColPhoto" type="file" accept="image/jpeg,image/png,image/webp"></div></div>'+
+    '<label class="ac-chk" style="margin:10px 0"><input id="acColAuto" type="checkbox" checked><span>Approve immediately and update customer ledger</span></label>'+
+    '<div class="ac-actions"><button class="btn ac-btn" id="acColSubmit" type="submit">'+GA.icon("check")+'Save collection</button><button class="btn btn-outline ac-btn" id="acColCancel" type="button">Cancel</button><span class="ac-chip" id="acColMsg"></span></div></form></div></div>'+
     '<div class="ac-modal" id="acDetailModal" role="dialog" aria-modal="true"><div class="ac-modal-card"><div class="ac-modal-head"><h3>Collection details</h3><button class="btn btn-outline ac-btn" id="acModalClose" type="button">Close</button></div><div id="acDetailBody"></div></div></div>';
   var actsBox=$("aActs");if(actsBox)actsBox.innerHTML='<div class="ac-hs ac-ico">'+GA.icon("search")+'<input id="acSearch" type="search" autocomplete="off" placeholder="Search customer or invoice..." aria-label="Search customer or invoice"><div class="ac-pick-list" id="acHsList" role="listbox"></div></div><button class="btn btn-outline ac-btn" id="acStatement" type="button">'+GA.icon("document")+'Statement</button><button class="btn btn-outline ac-btn" id="acRefresh" type="button">'+GA.icon("refresh")+'Refresh</button><button class="btn" id="acAddInvoice" type="button">'+GA.icon("plus")+'Add invoice</button>';
   var customers=(S.customers||[]).filter(function(c){return c&&!c.inactive;});
   $("acStatement").onclick=function(){location.href="statement.html"+($("acCustomer").value?"?customer="+encodeURIComponent($("acCustomer").value):"");};
 
-  // Searchable customer picker: wraps a <select> (a hidden field keeps the real value) with a type-to-filter box.
   var pickers=[];
   function makePicker(sel){
     var wrap=sel.parentNode, inp=document.createElement("input"), list=document.createElement("div"), act=-1, shown=[];
@@ -224,18 +289,6 @@
   ["dragleave","drop"].forEach(function(ev){$("acDrop").addEventListener(ev,function(){$("acDrop").classList.remove("over");});});
   function toast(msg){var t=document.createElement("div");t.className="a-toast";t.innerHTML="<div><b>"+esc(msg)+"</b></div>";document.body.appendChild(t);setTimeout(function(){t.classList.add("out")},2600);setTimeout(function(){t.remove()},3200);}
   function request(url,opts){return fetch(url,Object.assign({credentials:"same-origin",headers:{"Content-Type":"application/json"}},opts||{})).then(function(r){return r.json().catch(function(){return {};}).then(function(d){if(!r.ok)throw new Error(d.error||"Request failed");return d;});});}
-  function drawStats(){
-    var tiles;
-    if(currentCustomer){
-      var tot=0,paid=0,due=0,open=0,adjT=0;
-      invoices.forEach(function(x){var ad=Number(x.discountAmount||0)+Number(x.returnAmount||0);adjT+=ad;tot+=Number(x.initial_outstanding!=null?x.initial_outstanding:x.original_amount||0)+ad;paid+=Number(x.approvedPaid||0);due+=Number(x.outstanding||0);if(Number(x.outstanding||0)>0)open++;});
-      var pc=function(v){return tot>0?Math.round(v/tot*100)+"% of total credit":"";};
-      tiles=GA.tile("s-p","receipt",money(tot),"Total due (opening)",invoices.length+(invoices.length===1?" invoice":" invoices")+(adjT>0?" · less "+money(adjT)+" discount/returns":""))+GA.tile("s-s","check-circle",money(paid),"Paid (approved)",paid>0?pc(paid):"No payments yet")+GA.tile("s-r","hourglass",money(due),"Outstanding",tot>0?pc(due):"Nothing owed")+GA.tile("s-i","clipboard-list",open,"Open invoices");
-    }else{
-      tiles=GA.tile("s-p","users",customers.length.toLocaleString("en-IN"),"Customers in CRM");
-    }
-    $("acStats").innerHTML='<div class="a-stats ac-stats">'+tiles+'</div>';
-  }
   var canEdit=false, allInvoices=[], globalStats=null;
   function loadOverview(){
     return request("/api/accounts/ledger-overview").then(function(d){
@@ -262,19 +315,155 @@
         GA.tile("s-i","receipt",st.totalInvoices.toLocaleString("en-IN"),"Total invoices",st.closedInvoices+" closed · "+st.openInvoices+" open")+
         GA.tile("s-w","clipboard-list",st.openInvoices.toLocaleString("en-IN"),"Pending to close","Still has balance due")+
         GA.tile("s-s","check-circle",st.closedInvoices.toLocaleString("en-IN"),"Closed invoices","Fully paid / settled");
-        
     }
     $("acStats").innerHTML='<div class="a-stats ac-stats">'+tiles+'</div>';
   }
+  function closeRowMenu(){
+    openMenuInvId=null;
+    var m=$("acRowMenu");
+    if(m){m.classList.remove("open");m.innerHTML="";}
+    [].forEach.call(document.querySelectorAll(".ac-dot-btn"),function(b){b.setAttribute("aria-expanded","false");});
+  }
   function loadLedger(){
-    currentCustomer=$("acCustomer").value;drawWho();if(currentCustomer){$("acOpenCustomer").value=currentCustomer;syncPickers();}
-    if(!currentCustomer){invoices=[];drawStats();$("acInvoiceRows").innerHTML='<tr><td colspan="8"><div class="a-empty"><b>No customer selected</b>Search a customer or invoice number above.</div></td></tr>';return Promise.resolve();}
-    $("acInvoiceRows").innerHTML='<tr><td colspan="8"><div class="a-empty">Loading ledger...</div></td></tr>';
-    return request("/api/accounts/customers/"+encodeURIComponent(currentCustomer)+"/invoices").then(function(d){invoices=d.invoices||[];canEdit=!!d.canEdit;renderInvoices();drawStats();}).catch(function(e){$("acInvoiceRows").innerHTML='<tr><td colspan="8"><div class="a-empty"><b>Could not load</b>'+esc(e.message)+'</div></td></tr>';});
+    closeRowMenu();
+    currentCustomer=$("acCustomer").value;expandedInv={};drawWho();if(currentCustomer){$("acOpenCustomer").value=currentCustomer;syncPickers();}
+    if(!currentCustomer){invoices=[];drawStats();$("acInvoiceRows").innerHTML='<tr><td colspan="9"><div class="a-empty"><b>No customer selected</b>Search a customer or invoice number above.</div></td></tr>';return Promise.resolve();}
+    $("acInvoiceRows").innerHTML='<tr><td colspan="9"><div class="a-empty">Loading ledger...</div></td></tr>';
+    return request("/api/accounts/customers/"+encodeURIComponent(currentCustomer)+"/invoices").then(function(d){invoices=d.invoices||[];canEdit=!!d.canEdit;renderInvoices();drawStats();}).catch(function(e){$("acInvoiceRows").innerHTML='<tr><td colspan="9"><div class="a-empty"><b>Could not load</b>'+esc(e.message)+'</div></td></tr>';});
+  }
+  function buildInvoiceHistoryHtml(x){
+    var events=[];
+    var origAmt=Number(x.original_amount||0);
+    var initDue=x.initial_outstanding!=null?Number(x.initial_outstanding):origAmt;
+    var adjs=Array.isArray(x.adjustments)?x.adjustments:[];
+    var adjsTotal=adjs.reduce(function(s,a){return s+Number(a.amount||0);},0);
+    var startingDue=initDue+adjsTotal;
+    events.push({
+      t:x.created_at||x.invoice_date||"",
+      dot:"",
+      title:(x.source_kind==="opening"?"Opening balance added":"CRM invoice recorded"),
+      sub:"Bill date: "+esc(x.invoice_date||"—")+(startingDue!==origAmt?" · Bill total "+money(origAmt):""),
+      amount:money(startingDue),
+      badge:'<span class="badge b-muted">Billed</span>'
+    });
+    adjs.forEach(function(a){
+      var label=a.kind==="discount"?"Discount applied":"Return credit applied";
+      events.push({
+        t:a.at||"",
+        dot:"adj",
+        title:label+(a.reason?" — "+esc(a.reason):""),
+        sub:(a.by?"By "+esc(a.by):"")+(a.at?" · "+esc(dt(a.at)):""),
+        amount:"− "+money(a.amount),
+        badge:'<span class="badge b-info">'+(a.kind==="discount"?"Discount":"Return")+'</span>'
+      });
+    });
+    var eds=Array.isArray(x.edits)?x.edits:[];
+    eds.forEach(function(ed){
+      var b=ed.before||ed.old_values||ed, a=ed.after||ed.new_values||ed, diffs=[];
+      var oldNo=b.invoice_no!=null?b.invoice_no:ed.old_invoice_no;
+      var newNo=a.invoice_no!=null?a.invoice_no:ed.new_invoice_no;
+      if(oldNo!=null&&newNo!=null&&String(oldNo)!==String(newNo))diffs.push("Invoice #: "+esc(oldNo)+" → "+esc(newNo));
+
+      var oldDt=b.invoice_date!=null?b.invoice_date:ed.old_invoice_date;
+      var newDt=a.invoice_date!=null?a.invoice_date:ed.new_invoice_date;
+      if(oldDt!=null&&newDt!=null&&String(oldDt)!==String(newDt))diffs.push("Date: "+esc(oldDt)+" → "+esc(newDt));
+
+      var oldOrig=b.original_amount!=null?b.original_amount:ed.old_original_amount;
+      var newOrig=a.original_amount!=null?a.original_amount:ed.new_original_amount;
+      if(oldOrig!=null&&newOrig!=null&&Number(oldOrig)!==Number(newOrig))diffs.push("Bill total: "+money(oldOrig)+" → "+money(newOrig));
+
+      var oldDue=b.initial_outstanding!=null?b.initial_outstanding:ed.old_initial_outstanding;
+      var newDue=a.initial_outstanding!=null?a.initial_outstanding:ed.new_initial_outstanding;
+      if(oldDue!=null&&newDue!=null&&Number(oldDue)!==Number(newDue))diffs.push("Opening due: "+money(oldDue)+" → "+money(newDue));
+
+      var oldPhoto=b.evidence_path!=null?b.evidence_path:ed.old_evidence_path;
+      var newPhoto=a.evidence_path!=null?a.evidence_path:ed.new_evidence_path;
+      if(oldPhoto!=null&&newPhoto!=null&&String(oldPhoto)!==String(newPhoto))diffs.push("Bill photo updated");
+
+      var subParts=[];
+      if(ed.reason)subParts.push("Reason: "+esc(ed.reason));
+      if(ed.by)subParts.push("Edited by "+esc(ed.by));
+      if(ed.at)subParts.push(esc(dt(ed.at)));
+
+      events.push({
+        t:ed.at||"",
+        dot:"adj",
+        title:"Invoice edited",
+        sub:subParts.join(" · "),
+        amount:diffs.join(" · "),
+        badge:'<span class="badge b-info">Edited</span>'
+      });
+    });
+    var pays=Array.isArray(x.payments)?x.payments:[];
+    pays.forEach(function(p){
+      var isApproved=p.status==="approved";
+      events.push({
+        t:p.at||"",
+        dot:isApproved?"paid":"pend",
+        title:"Payment via "+esc(METHOD[p.method]||p.method||"Payment"),
+        sub:(p.by?"Collected by "+esc(p.by):"")+(p.at?" · "+esc(dt(p.at)):""),
+        amount:"− "+money(p.amount),
+        badge:isApproved?'<span class="badge b-success">Approved</span>':'<span class="badge b-accent">Pending approval</span>'
+      });
+    });
+    events.sort(function(a,b){return String(a.t).localeCompare(String(b.t));});
+    return '<div class="ac-hist-box"><div class="ac-hist-title">Invoice #'+esc(x.invoice_no)+' activity history</div>'+
+      events.map(function(ev){
+        return '<div class="ac-hist-item"><div class="ac-hist-left"><span class="ac-hist-dot '+ev.dot+'"></span><div><b>'+ev.title+'</b><br><small class="ac-muted">'+ev.sub+'</small></div></div><div class="ac-hist-right">'+ev.badge+(ev.amount?'<b>'+ev.amount+'</b>':'')+'</div></div>';
+      }).join("")+
+      '</div>';
+  }
+  function openRowMenuFor(invId, btn){
+    var x=invoices.filter(function(i){return String(i.id)===String(invId);})[0];
+    if(!x)return;
+    var menu=$("acRowMenu");
+    if(openMenuInvId===String(invId)){closeRowMenu();return;}
+    closeRowMenu();
+    openMenuInvId=String(invId);
+    btn.setAttribute("aria-expanded","true");
+
+    var evCount=(Array.isArray(x.payments)?x.payments.length:0)+(Array.isArray(x.adjustments)?x.adjustments.length:0)+(Array.isArray(x.edits)?x.edits.length:0);
+    var canCollectNow=isSuper&&Number(x.availableToCollect||0)>0.004;
+    var hasBill=!!(x.evidence_path&&!/no-photo$/.test(String(x.evidence_path)));
+    var billUrl=hasBill?"/api/accounts/evidence/"+esc(String(x.evidence_path).split("/").pop().replace(/\.(jpg|png|webp)$/i,"")):"";
+
+    var items=[];
+    items.push('<button type="button" role="menuitem" data-m-hist="'+esc(x.id)+'"><span>'+(expandedInv[x.id]?"Hide history":"History")+'</span>'+(evCount?'<span class="ac-m-cnt">'+evCount+'</span>':'')+'</button>');
+    if(canCollectNow){
+      items.push('<button type="button" role="menuitem" class="ac-m-col" data-m-collect="'+esc(x.id)+'"><span>Collect</span></button>');
+    }
+    if(hasBill){
+      items.push('<a role="menuitem" href="'+billUrl+'" target="_blank" rel="noopener"><span>View bill</span></a>');
+    }
+    if(canEdit){
+      items.push('<button type="button" role="menuitem" data-m-edit="'+esc(x.id)+'"><span>Edit</span></button>');
+      items.push('<button type="button" role="menuitem" data-m-adj="'+esc(x.id)+'"><span>Discount / return</span></button>');
+      if(x.source_kind==="opening"){
+        items.push('<button type="button" role="menuitem" class="ac-m-del" data-m-del="'+esc(x.id)+'"><span>Delete</span></button>');
+      }
+    }
+
+    menu.innerHTML=items.join("");
+    menu.classList.add("open");
+    var r=btn.getBoundingClientRect();
+    var mw=menu.offsetWidth||204, mh=menu.offsetHeight||190;
+    var left=Math.min(window.innerWidth-mw-16,Math.max(12,r.right-mw));
+    var top=(r.bottom+6+mh>window.innerHeight)?Math.max(12,r.top-mh-6):(r.bottom+6);
+    menu.style.left=left+"px";
+    menu.style.top=top+"px";
   }
   function renderInvoices(){
+    closeRowMenu();
     var q=$("acSearch").value.trim().toLowerCase(), rows=invoices.filter(function(x){return String(x.invoice_no||"").toLowerCase().includes(q);});
-    $("acInvoiceRows").innerHTML=rows.length?rows.map(function(x){var owing=Number(x.outstanding||0)>0;return '<tr><td data-label="Invoice"><b>'+esc(x.invoice_no)+'</b>'+(x.evidence_path&&!/no-photo$/.test(String(x.evidence_path))?' <a class="ac-bill" href="/api/accounts/evidence/'+esc(String(x.evidence_path).split("/").pop().replace(/\.(jpg|png|webp)$/i,""))+'" target="_blank" rel="noopener" title="View bill photo" aria-label="View bill for invoice '+esc(x.invoice_no)+'">'+GA.icon("eye")+'<span>View bill</span></a>':'')+(canEdit?' <button type="button" class="ac-edit" data-edit="'+esc(x.id)+'" title="Edit invoice" aria-label="Edit invoice '+esc(x.invoice_no)+'">'+GA.icon("edit")+'</button> <button type="button" class="ac-edit" data-adj="'+esc(x.id)+'" title="Discount / return credit" aria-label="Discount or return credit for invoice '+esc(x.invoice_no)+'">'+GA.icon("receipt")+'</button>'+(x.source_kind==="opening"?' <button type="button" class="ac-edit ac-del" data-del="'+esc(x.id)+'" title="Delete invoice" aria-label="Delete invoice '+esc(x.invoice_no)+'">'+GA.icon("trash")+'</button>':''):'')+'</td><td data-label="Date">'+esc(x.invoice_date||"—")+'</td><td data-label="Source"><span class="badge '+(x.source_kind==="opening"?"b-info":"b-muted")+'">'+esc(x.source_kind==="opening"?"Opening balance":"CRM invoice")+'</span></td><td data-label="Bill total" class="ac-r">'+money(x.original_amount)+'</td><td data-label="Opening due" class="ac-r"'+(x.source_kind==="opening"&&x.initial_outstanding!=null&&Number(x.initial_outstanding)!==Number(x.original_amount)?' title="Original bill '+money(x.original_amount)+'"':'')+'>'+money((x.initial_outstanding!=null?Number(x.initial_outstanding):Number(x.original_amount))+Number(x.discountAmount||0)+Number(x.returnAmount||0))+(x.discountAmount>0?'<small class="ac-adj">− Discount '+money(x.discountAmount)+'</small>':'')+(x.returnAmount>0?'<small class="ac-adj">− Returns '+money(x.returnAmount)+'</small>':'')+'</td><td data-label="Paid" class="ac-r">'+money(x.approvedPaid)+'</td><td data-label="Pending" class="ac-r">'+money(x.pendingAmount)+'</td><td data-label="Outstanding" class="ac-r ac-due'+(owing?" owing":"")+'">'+money(x.outstanding)+'</td></tr>';}).join(""):'<tr><td colspan="8"><div class="a-empty"><b>No matching invoices</b></div></td></tr>';
+    $("acInvoiceRows").innerHTML=rows.length?rows.map(function(x){
+      var owing=Number(x.outstanding||0)>0;
+      var isOpen=!!expandedInv[x.id];
+      var mainRow='<tr><td data-label="Invoice"><b>'+esc(x.invoice_no)+'</b></td>'+
+        '<td data-label="Date">'+esc(x.invoice_date||"—")+'</td><td data-label="Source"><span class="badge '+(x.source_kind==="opening"?"b-info":"b-muted")+'">'+esc(x.source_kind==="opening"?"Opening balance":"CRM invoice")+'</span></td><td data-label="Bill total" class="ac-r">'+money(x.original_amount)+'</td><td data-label="Opening due" class="ac-r"'+(x.source_kind==="opening"&&x.initial_outstanding!=null&&Number(x.initial_outstanding)!==Number(x.original_amount)?' title="Original bill '+money(x.original_amount)+'"':'')+'>'+money((x.initial_outstanding!=null?Number(x.initial_outstanding):Number(x.original_amount))+Number(x.discountAmount||0)+Number(x.returnAmount||0))+(x.discountAmount>0?'<small class="ac-adj">− Discount '+money(x.discountAmount)+'</small>':'')+(x.returnAmount>0?'<small class="ac-adj">− Returns '+money(x.returnAmount)+'</small>':'')+'</td><td data-label="Paid" class="ac-r">'+money(x.approvedPaid)+'</td><td data-label="Pending" class="ac-r">'+money(x.pendingAmount)+'</td><td data-label="Outstanding" class="ac-r ac-due'+(owing?" owing":"")+'">'+money(x.outstanding)+'</td>'+
+        '<td data-label="Actions" class="ac-r ac-act-col"><button type="button" class="ac-dot-btn" data-menu="'+esc(x.id)+'" title="Invoice actions" aria-label="Actions for invoice '+esc(x.invoice_no)+'" aria-haspopup="menu" aria-expanded="false">⋮</button></td></tr>';
+      var histRow=isOpen?'<tr class="ac-hist-row"><td colspan="9">'+buildInvoiceHistoryHtml(x)+'</td></tr>':'';
+      return mainRow+histRow;
+    }).join(""):'<tr><td colspan="9"><div class="a-empty"><b>No matching invoices</b></div></td></tr>';
   }
   function readDataUrl(file){return new Promise(function(resolve,reject){var r=new FileReader();r.onload=function(){resolve(r.result);};r.onerror=reject;r.readAsDataURL(file);});}
   function openImport(){if(currentCustomer){$("acOpenCustomer").value=currentCustomer;syncPickers();}omsg("");$("acOpenModal").classList.add("open");setTimeout(function(){$("acOpenCustomer").value?$("acOpenNo").focus():$("acOpenCustomer").parentNode.querySelector("input").focus();},50);}
@@ -298,24 +487,72 @@
   function closeEdit(){$("acEditModal").classList.remove("open");editing=null;}
   $("acEditClose").onclick=closeEdit;$("acEditCancel").onclick=closeEdit;
   document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!$("acEditSubmit").disabled)closeEdit();});
-  $("acInvoiceRows").addEventListener("click",function(e){
-    var b=e.target.closest("[data-edit]");if(!b)return;
-    var x=invoices.filter(function(i){return String(i.id)===b.getAttribute("data-edit");})[0];if(!x)return;editing=x;
+
+  function startEditInvoice(id){
+    var x=invoices.filter(function(i){return String(i.id)===String(id);})[0];if(!x)return;editing=x;
     $("acEditNo").value=x.invoice_no;$("acEditDate").value=x.invoice_date;$("acEditOriginal").value=Number(x.original_amount);$("acEditDue").value=Number(x.initial_outstanding);$("acEditPhoto").value="";$("acEditReason").value="";
     var held=Number(x.approvedPaid||0)+Number(x.pendingAmount||0);
     $("acEditSub").textContent="Collected or waiting for approval: "+money(held);
     $("acEditHint").textContent=held>0?"Cannot be less than "+money(held)+" (payments already recorded).":"";
     emsg("");$("acEditModal").classList.add("open");setTimeout(function(){$("acEditNo").focus();},50);
-  });
-  $("acInvoiceRows").addEventListener("click",function(e){
-    var b=e.target.closest("[data-del]");if(!b)return;
-    var x=invoices.filter(function(i){return String(i.id)===b.getAttribute("data-del");})[0];if(!x)return;
+  }
+  function startDeleteInvoice(id){
+    var x=invoices.filter(function(i){return String(i.id)===String(id);})[0];if(!x)return;
     if(Number(x.approvedPaid||0)+Number(x.pendingAmount||0)>0){toast("Invoice "+x.invoice_no+" has payments. Reject them first.");return;}
     var reason=window.prompt("Delete invoice "+x.invoice_no+" ("+money(x.initial_outstanding)+")? This cannot be undone.\nEnter a reason:");
     if(reason===null)return;reason=reason.trim();if(reason.length<3){toast("Enter a reason (3+ characters).");return;}
-    b.disabled=true;
-    request("/api/accounts/invoices/"+encodeURIComponent(x.id)+"/delete",{method:"POST",body:JSON.stringify({reason:reason})}).then(function(){toast("Invoice deleted.");loadOverview();loadLedger();}).catch(function(err){toast(err.message);b.disabled=false;});
+    request("/api/accounts/invoices/"+encodeURIComponent(x.id)+"/delete",{method:"POST",body:JSON.stringify({reason:reason})}).then(function(){toast("Invoice deleted.");loadOverview();loadLedger();}).catch(function(err){toast(err.message);});
+  }
+  function startAdjustInvoice(id){
+    var x=invoices.filter(function(i){return String(i.id)===String(id);})[0];if(!x)return;adjusting=x;adjKind="discount";
+    $("acAdjAmount").value="";$("acAdjReason").value="";$("acAdjSub").textContent="Invoice "+x.invoice_no;
+    adjDraw();drawAdjList();amsg("");$("acAdjModal").classList.add("open");setTimeout(function(){if(adjMax()>0)$("acAdjAmount").focus();},50);
+  }
+  function startCollectInvoice(id){
+    var x=invoices.filter(function(i){return String(i.id)===String(id);})[0];if(!x)return;
+    collecting=x;colMethod="cash";
+    $("acColSub").textContent="Invoice #"+x.invoice_no+" · "+currentCustomer;
+    $("acColAmount").value=Number(x.availableToCollect||0).toFixed(2);
+    $("acColNote").value="";$("acColPhoto").value="";$("acColAuto").checked=true;
+    cmsg("");colDraw();$("acColModal").classList.add("open");
+    setTimeout(function(){$("acColAmount").focus();$("acColAmount").select();},50);
+  }
+
+  $("acInvoiceRows").addEventListener("click",function(e){
+    var dot=e.target.closest("[data-menu]");
+    if(dot){
+      e.stopPropagation();
+      openRowMenuFor(dot.getAttribute("data-menu"),dot);
+    }
   });
+  $("acRowMenu").addEventListener("click",function(e){
+    var mHist=e.target.closest("[data-m-hist]");
+    if(mHist){
+      var hid=mHist.getAttribute("data-m-hist");
+      closeRowMenu();
+      if(expandedInv[hid])delete expandedInv[hid];
+      else expandedInv[hid]=true;
+      renderInvoices();
+      return;
+    }
+    var mCol=e.target.closest("[data-m-collect]");
+    if(mCol){var cid=mCol.getAttribute("data-m-collect");closeRowMenu();startCollectInvoice(cid);return;}
+    var mEdit=e.target.closest("[data-m-edit]");
+    if(mEdit){var eid=mEdit.getAttribute("data-m-edit");closeRowMenu();startEditInvoice(eid);return;}
+    var mAdj=e.target.closest("[data-m-adj]");
+    if(mAdj){var aid=mAdj.getAttribute("data-m-adj");closeRowMenu();startAdjustInvoice(aid);return;}
+    var mDel=e.target.closest("[data-m-del]");
+    if(mDel){var did=mDel.getAttribute("data-m-del");closeRowMenu();startDeleteInvoice(did);return;}
+  });
+  document.addEventListener("click",function(e){
+    if(!e.target.closest("#acRowMenu")&&!e.target.closest("[data-menu]"))closeRowMenu();
+  });
+  document.addEventListener("keydown",function(e){
+    if(e.key==="Escape"&&openMenuInvId){e.stopPropagation();closeRowMenu();}
+  });
+  window.addEventListener("scroll",function(){if(openMenuInvId)closeRowMenu();},true);
+  window.addEventListener("resize",function(){if(openMenuInvId)closeRowMenu();});
+
   $("acEditForm").onsubmit=async function(e){
     e.preventDefault();if(!editing)return;
     var btn=$("acEditSubmit"),file=$("acEditPhoto").files[0],orig=Number($("acEditOriginal").value),due=Number($("acEditDue").value);
@@ -350,17 +587,11 @@
   }
   function drawAdjList(){
     var list=(adjusting&&adjusting.adjustments)||[];
-    $("acAdjList").innerHTML=list.length?'<div class="ac-muted" style="margin:6px 0;font-size:12px;font-weight:600">Applied so far</div>'+list.map(function(a){return '<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin-bottom:6px;font-size:13px"><span><b>'+(a.kind==="discount"?"Discount ":"Return credit ")+rs(a.amount)+'</b><br><small class="ac-muted">'+esc(a.reason)+' · '+esc(a.by)+' · '+esc(String(a.at||"").slice(0,10))+'</small></span><button type="button" class="btn btn-outline ac-btn" data-undo="'+esc(a.id)+'">Reverse</button></div>';}).join(""):"";
+    $("acAdjList").innerHTML=list.length?'<div class="ac-muted" style="margin:6px 0;font-size:12px;font-weight:600">Applied so far</div>'+list.map(function(a){return '<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin-bottom:6px;font-size:13px"><span><b>'+(a.kind==="discount"?"Discount ":"Return credit ")+rs(a.amount)+'</b><br><small class="ac-muted">'+esc(a.reason)+' · '+esc(a.by)+' · '+esc(String(a.at||"").slice(0,10))+'</small></span><button type="button" class="btn btn-outline ac-btn" data-undo="'+esc(a.id)+'">Reverse</button></div>';}).join(""):"";
   }
   $("acAdjSeg").addEventListener("click",function(e){var k=e.target.closest("[data-kind]");if(!k)return;adjKind=k.getAttribute("data-kind");adjDraw();});
   $("acAdjAmount").addEventListener("input",adjDraw);
   $("acAdjAll").onclick=function(){$("acAdjAmount").value=adjMax()||"";adjDraw();};
-  $("acInvoiceRows").addEventListener("click",function(e){
-    var b=e.target.closest("[data-adj]");if(!b)return;
-    var x=invoices.filter(function(i){return String(i.id)===b.getAttribute("data-adj");})[0];if(!x)return;adjusting=x;adjKind="discount";
-    $("acAdjAmount").value="";$("acAdjReason").value="";$("acAdjSub").textContent="Invoice "+x.invoice_no;
-    adjDraw();drawAdjList();amsg("");$("acAdjModal").classList.add("open");setTimeout(function(){if(adjMax()>0)$("acAdjAmount").focus();},50);
-  });
   $("acAdjForm").onsubmit=async function(e){
     e.preventDefault();if(!adjusting||adjBusy)return;
     var btn=$("acAdjSubmit"),amt=Number($("acAdjAmount").value),max=adjMax(),kind=adjKind;
@@ -379,6 +610,50 @@
     b.disabled=true;
     request("/api/accounts/invoice-adjustments/"+encodeURIComponent(b.getAttribute("data-undo"))+"/reverse",{method:"POST",body:JSON.stringify({reason:reason})}).then(function(){toast("Adjustment reversed.");closeAdj();loadOverview();loadLedger();}).catch(function(err){amsg(err.message,"err");b.disabled=false;});
   });
+
+  // ---- Super Admin direct collection entry ----
+  var collecting=null, colMethod="cash", colBusy=false;
+  function cmsg(t,k){var m=$("acColMsg");m.textContent=t;m.className="ac-chip"+(k?" "+k:"");}
+  function closeCol(){$("acColModal").classList.remove("open");collecting=null;}
+  $("acColClose").onclick=closeCol;$("acColCancel").onclick=closeCol;
+  document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!colBusy)closeCol();});
+  function colDraw(){
+    if(!collecting)return;
+    var max=Number(collecting.availableToCollect||0), owe=Number(collecting.outstanding||0), amt=Number($("acColAmount").value)||0;
+    $("acColDue").textContent=money(owe);$("acColMax").textContent=money(max);
+    $("acColNew").textContent=money(Math.max(0,owe-(amt>0&&amt<=max?amt:0)));
+    Array.prototype.forEach.call($("acColSeg").children,function(b){b.className=b.getAttribute("data-m")===colMethod?"on":"";});
+    $("acColAmount").max=max;$("acColAmount").placeholder="Up to "+max.toFixed(2);
+  }
+  $("acColSeg").addEventListener("click",function(e){var b=e.target.closest("[data-m]");if(!b)return;colMethod=b.getAttribute("data-m");colDraw();});
+  $("acColAmount").addEventListener("input",colDraw);
+  $("acColAll").onclick=function(){if(collecting){$("acColAmount").value=Number(collecting.availableToCollect||0).toFixed(2);colDraw();}};
+  $("acColForm").onsubmit=async function(e){
+    e.preventDefault();if(!collecting||colBusy)return;
+    var btn=$("acColSubmit"), amt=Number($("acColAmount").value), max=Number(collecting.availableToCollect||0);
+    if(!Number.isFinite(amt)||amt<=0){cmsg("Enter a valid amount above 0.","err");return;}
+    if(amt>max+0.004){cmsg("Amount cannot exceed "+money(max)+".","err");return;}
+    var file=$("acColPhoto").files[0];
+    if(file&&file.size>5*1024*1024){cmsg("Photo must be 5 MB or smaller.","err");return;}
+    colBusy=true;btn.disabled=true;
+    try{
+      var evidencePath="no-photo";
+      if(file){cmsg("Uploading photo...");var up=await request("/api/accounts/evidence",{method:"POST",body:JSON.stringify({data:await readDataUrl(file)})});evidencePath=up.evidencePath;}
+      cmsg("Saving collection...");
+      var reqKey="adm-col-"+Date.now()+"-"+Math.random().toString(36).slice(2,10);
+      await request("/api/accounts/collections",{method:"POST",body:JSON.stringify({
+        requestKey:reqKey,
+        customerCode:currentCustomer,
+        method:colMethod,
+        note:$("acColNote").value.trim(),
+        autoApprove:$("acColAuto").checked,
+        allocations:[{invoiceId:collecting.id,amount:Number(amt.toFixed(2)),evidencePath:evidencePath}]
+      })});
+      toast($("acColAuto").checked?"Collection recorded and approved.":"Collection recorded (pending approval).");
+      colBusy=false;closeCol();loadOverview();loadLedger();
+    }catch(err){cmsg(err.message,"err");colBusy=false;}finally{btn.disabled=false;}
+  };
+
   function loadPending(){
     $("acPendingRows").innerHTML='<tr><td colspan="7"><div class="a-empty">Loading approvals...</div></td></tr>';
     return request("/api/accounts/collections/pending").then(function(d){pending=d.collections||[];$("acPendingCount").textContent=pending.length?String(pending.length):"";renderPending();drawStats();}).catch(function(e){$("acPendingRows").innerHTML='<tr><td colspan="7"><div class="a-empty"><b>Could not load</b>'+esc(e.message)+'</div></td></tr>';});
@@ -416,10 +691,9 @@
   document.querySelectorAll("#acTabs button").forEach(function(b){b.onclick=function(){document.querySelectorAll("#acTabs button").forEach(function(x){x.classList.toggle("on",x===b);});$("acLedger").hidden=b.dataset.tab!=="ledger";$("acPending").hidden=b.dataset.tab!=="pending";if(b.dataset.tab==="pending")loadPending();};});
   function drawWho(){
     var c=null;if($("acCustomer").value)customers.some(function(x){if(String(x.code)===$("acCustomer").value){c=x;return true;}return false;});
-    $("acWho").innerHTML=c?'<span class="ac-muted">Viewing</span><b>'+esc(String(c.name||c.shopName||c.code))+'</b><span class="ac-muted">· '+esc(String(c.code||""))+'</span><button class="btn btn-outline ac-btn" id="acClear" type="button">Clear</button>':'';
+    $("acWho").innerHTML=c?'<span class="ac-muted">Viewing</span><b>'+esc(String(c.name||c.shopName||c.code))+'</b><span class="ac-muted">· '+esc(String(c.code||""))+'</span><button class="btn btn-outline ac-clear-btn" id="acClear" type="button">Clear</button>':'';
     var cl=$("acClear");if(cl)cl.onclick=function(){$("acCustomer").value="";$("acSearch").value="";loadLedger();};
   }
-  // One search box for customers and global invoices.
   (function(){
     var box=$("acSearch"),wrap=box.parentNode,list=$("acHsList"),items=[],act=-1;
     function open(b){wrap.classList.toggle("open",b);}

@@ -315,12 +315,12 @@
         display: flex;
         gap: 10px;
         align-items: flex-start;
-        margin: 14px 0;
-        font-size: 14px;
+        margin: 12px 0;
+        font-size: 13.5px;
         cursor: pointer;
       }
       .co-chk input {
-        margin-top: 3px;
+        margin-top: 2px;
         width: 18px;
         height: 18px;
         flex: none;
@@ -336,12 +336,56 @@
         padding-left: 18px;
         padding-right: 18px;
       }
-      .co-reject {
+
+      /* Streamlined action switcher & panels */
+      .co-actbox {
         margin-top: 14px;
         padding-top: 14px;
         border-top: 1px solid var(--border);
       }
-      .co-reject textarea {
+      .co-modes {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        padding: 4px;
+        border-radius: 12px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        margin-bottom: 12px;
+      }
+      .co-modes button {
+        height: 36px;
+        border: 0;
+        border-radius: 9px;
+        background: transparent;
+        color: var(--muted);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .co-modes button.on {
+        background: var(--card);
+        color: var(--text);
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+      }
+      .co-modes button[data-mode="approve"].on {
+        color: var(--success, #16a34a);
+      }
+      .co-modes button[data-mode="reject"].on {
+        color: var(--danger, #dc2626);
+      }
+      .co-modes button[data-mode="correct"].on {
+        color: var(--primary);
+      }
+      .co-mpane {
+        display: none;
+      }
+      .co-mpane.on {
+        display: block;
+      }
+      .co-mpane textarea {
         width: 100%;
         min-height: 70px;
         border: 1px solid var(--border);
@@ -351,12 +395,14 @@
         padding: 10px 12px;
         font: inherit;
         resize: vertical;
-        margin: 8px 0;
+        margin: 6px 0 8px;
+        box-sizing: border-box;
       }
       .co-err {
         color: var(--danger);
         font-size: 13px;
         min-height: 18px;
+        margin-top: 6px;
       }
       .co-zoom {
         z-index: 140;
@@ -524,6 +570,9 @@
         .co-kv {
           grid-template-columns: 1fr;
         }
+        .co-modes {
+          grid-template-columns: 1fr;
+        }
       }
 
       /* Slim toolbar, filters popover, active chips */
@@ -563,7 +612,24 @@
       .co-pf1 { margin-bottom: 12px; min-width: 0; }
       .co-pf1 label { display: block; font-size: 12.5px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
       .co-pf2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-      .co-pop .field, .co-pop select { width: 100%; }
+      .co-pop .field, .co-pop select, .co-pop input[type="date"] {
+        width: 100%;
+        height: 40px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--card);
+        color: var(--text);
+        padding: 0 12px;
+        font: inherit;
+        font-size: 13.5px;
+        box-sizing: border-box;
+      }
+      .co-pop .field select, .co-pop .field input[type="date"] {
+        border: 0; background: transparent; height: 38px; padding: 0 4px; outline: none; cursor: pointer;
+      }
+      .co-pop .field { display: flex; align-items: center; padding: 0 8px; }
+      .co-dd .gt-dd-menu { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 70; max-height: 210px; }
+      .co-dd .gt-dd-trigger { min-height: 40px; }
       .co-pact { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 4px; }
       .co-link { border: 0; background: none; color: var(--primary); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; padding: 8px 10px; white-space: nowrap; }
       .co-pact .co-link { color: var(--text); }
@@ -593,8 +659,13 @@
       .a-acts .co-s { flex: 0 1 240px; max-width: 240px; height: 40px; }
       .a-acts .co-tbr { margin-left: 0; width: auto; }
       @media (max-width: 900px) {
-      .a-acts .co-s { display: none; }
-}
+        .a-acts .co-s { display: none; }
+      }
+      .ac-col-btn{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:4px 10px;border:1px solid var(--success);border-radius:999px;background:var(--t-success);color:var(--success);font:inherit;font-size:11.5px;font-weight:700;line-height:1.2;cursor:pointer;white-space:nowrap;vertical-align:middle;transition:all .15s}
+      .ac-col-btn:hover{background:var(--success);color:#fff}
+      .ac-seg3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+      .ac-seg3 button{height:40px;padding:0 10px;border-radius:var(--radius-btn);border:1px solid var(--border);background:transparent;color:var(--muted);font:inherit;font-weight:700;cursor:pointer}
+      .ac-seg3 button.on{background:var(--primary);border-color:var(--primary);color:#fff}
     </style>
   </head>
   <body>
@@ -730,10 +801,10 @@
           '<div class="co-tbr"><div class="co-fw">' +
           '<button class="co-btn" id="coFbtn" type="button" aria-haspopup="true" aria-expanded="false">' + ico("filter") + 'Filters<span class="co-badge" id="coFcount" hidden>0</span></button>' +
           '<div class="co-pop" id="coPop" role="dialog" aria-label="Filters">' +
-          '<div class="co-pf1"><label for="coMethod">Payment method</label><div class="field"><select id="coMethod"><option value="">All methods</option><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank_transfer">Bank transfer</option></select></div></div>' +
-          '<div class="co-pf1"><label for="coEmp">Employee</label><div class="field"><select id="coEmp"><option value="">All employees</option></select></div></div>' +
-          '<div class="co-pf2"><div class="co-pf1"><label for="coFrom">From</label><div class="field"><input type="date" id="coFrom"></div></div>' +
-          '<div class="co-pf1"><label for="coTo">To</label><div class="field"><input type="date" id="coTo"></div></div></div>' +
+          '<div class="co-pf1"><label for="coMethod">Payment method</label><div class="co-fdd"><select id="coMethod" data-gt-dropdown-ready="1"><option value="">All methods</option><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank_transfer">Bank transfer</option></select></div></div>' +
+          '<div class="co-pf1"><label for="coEmp">Employee</label><div class="co-fdd"><select id="coEmp" data-gt-dropdown-ready="1"><option value="">All employees</option></select></div></div>' +
+          '<div class="co-pf2"><div class="co-pf1"><label for="coFrom">From</label><div class="field"><input type="date" id="coFrom" data-gtp="1" data-gt-calendar-ready="1"></div></div>' +
+          '<div class="co-pf1"><label for="coTo">To</label><div class="field"><input type="date" id="coTo" data-gtp="1" data-gt-calendar-ready="1"></div></div></div>' +
           '<div class="co-pact"><button class="co-link" id="coPClear" type="button">Clear</button><button class="co-apply" id="coApply" type="button">Apply filters</button></div>' +
           '</div></div>' +
           '<button class="co-btn co-btn-p" id="coExport" type="button">' + ico("download") + 'Export</button></div></div>' +
@@ -769,7 +840,6 @@
             );
           }).join("");
         }
-        // Make the list and the details panel use all the free height under the filters
         function coFit() {
           var sp = document.querySelector(".co-split");
           if (!sp) return;
@@ -990,8 +1060,24 @@
             });
         }
 
-        // ----- Details, approve and reject -----
-        function openDetail(x) {
+        function setReviewMode(mode) {
+          [].forEach.call(
+            document.querySelectorAll("#coModes button[data-mode]"),
+            function (b) {
+              b.classList.toggle("on", b.getAttribute("data-mode") === mode);
+            },
+          );
+          ["approve", "reject", "correct"].forEach(function (m) {
+            var p = $("coPane_" + m);
+            if (p) p.classList.toggle("on", m === mode);
+          });
+          if ($("coErr")) $("coErr").textContent = "";
+          if (mode === "reject" && $("coReason")) $("coReason").focus();
+          if (mode === "correct" && $("coNote")) $("coNote").focus();
+        }
+
+        // ----- Details, approve, reject and request correction -----
+        function openDetail(x, initialMode) {
           var pending = x.status === "pending_approval",
             s = STATUS[x.status] || ["b-muted", esc(x.status)],
             inv = x.invoices
@@ -1104,8 +1190,8 @@
                 '<div class="co-next"><small>Next</small><ul>' +
                 "<li>" +
                 esc(x.collector_name_snapshot) +
-                " records a new collection with the fix.</li>" +
-                "<li>This one stays on record.</li></ul></div></div>"
+                " can open this collection and resubmit the corrected bill.</li>" +
+                "<li>Customer balance stays unchanged until approved.</li></ul></div></div>"
               : "") +
             (x.visit_ref
               ? '<div class="co-note" id="coSplitInfo">Split visit: this customer paid in more than one way. Loading the other parts...</div>'
@@ -1117,16 +1203,29 @@
             (photos || '<span class="ad-note">No photos.</span>') +
             "</div>" +
             (pending
-              ? '<div class="co-note">Approving reduces the customer’s outstanding and cannot be undone here. Check the bill photos and the cash or bank money first.</div>' +
-                '<label class="co-chk"><input type="checkbox" id="coChecked"><span>I have checked the bill photos and the money received.</span></label>' +
+              ? '<div class="co-actbox">' +
+                '<div class="co-modes" id="coModes" role="tablist" aria-label="Review action">' +
+                '<button type="button" role="tab" data-mode="approve" class="on">Approve</button>' +
+                '<button type="button" role="tab" data-mode="reject">Reject</button>' +
+                '<button type="button" role="tab" data-mode="correct">Request correction</button>' +
+                "</div>" +
+                '<div class="co-mpane on" id="coPane_approve">' +
+                '<div class="ad-note" style="color:var(--muted);font-size:12.5px">Approving updates the customer’s balance right away and cannot be undone here.</div>' +
+                '<label class="co-chk"><input type="checkbox" id="coChecked"><span>I verified the amount, payment method, and bill photo.</span></label>' +
                 '<div class="co-acts"><button class="btn btn-success" id="coApprove" type="button" disabled>Approve collection</button></div>' +
-                '<div class="co-reject"><b>Reject this collection</b><div class="ad-note" style="color:var(--muted);font-size:12px">The customer’s outstanding stays as it is. The employee will see it as rejected.</div>' +
+                "</div>" +
+                '<div class="co-mpane" id="coPane_reject">' +
+                '<div class="ad-note" style="color:var(--muted);font-size:12.5px">Customer balance stays unchanged and the employee sees this as rejected.</div>' +
                 '<textarea id="coReason" maxlength="300" placeholder="Reason for rejecting (required)"></textarea>' +
-                '<div class="co-acts"><button class="btn btn-danger" id="coReject" type="button">Reject collection</button></div></div>' +
-                '<div class="co-reject"><b>Ask for a correction</b><div class="ad-note" style="color:var(--muted);font-size:12px">Use this when the details are wrong (invoice, amount or bill photo). The customer’s outstanding stays as it is, and the employee records the collection again.</div>' +
+                '<div class="co-acts"><button class="btn btn-danger" id="coReject" type="button">Reject collection</button></div>' +
+                "</div>" +
+                '<div class="co-mpane" id="coPane_correct">' +
+                '<div class="ad-note" style="color:var(--muted);font-size:12.5px">Sends this back to the employee to fix the invoice, amount, or bill photo.</div>' +
                 '<textarea id="coNote" maxlength="300" placeholder="What should the employee correct? (required)"></textarea>' +
-                '<div class="co-acts"><button class="btn btn-outline" id="coCorrect" type="button">Request correction</button></div></div>' +
-                '<div class="co-err" id="coErr" role="alert"></div>'
+                '<div class="co-acts"><button class="btn btn-outline" id="coCorrect" type="button">Request correction</button></div>' +
+                "</div>" +
+                '<div class="co-err" id="coErr" role="alert"></div>' +
+                "</div>"
               : "");
           $("coModal").classList.add("open");
           selId = x.id;
@@ -1167,6 +1266,11 @@
               });
           }
           if (pending) {
+            $("coModes").onclick = function (e) {
+              var b = e.target.closest("button[data-mode]");
+              if (!b) return;
+              setReviewMode(b.getAttribute("data-mode"));
+            };
             $("coChecked").onchange = function () {
               $("coApprove").disabled = !this.checked || busy;
             };
@@ -1198,6 +1302,7 @@
                 "Correction requested.",
               );
             };
+            if (initialMode) setReviewMode(initialMode);
           }
         }
         function selected() {
@@ -1219,7 +1324,6 @@
           $("coBulkTxt").textContent =
             sel.length + " selected \u00B7 " + money(sum);
         }
-        // Show an approval on screen straight away (row and tiles), then confirm with the server in the background.
         function localApprove(x) {
           if (!data) return;
           var s = data.stats || (data.stats = {});
@@ -1373,7 +1477,6 @@
             '<div class="co-empty-pane"><b>Pick a collection</b><br>Click one on the left to see its details here.</div>';
           markSel();
         }
-        // After approving or rejecting, open the next one waiting, so you can keep going.
         function pickNext(at) {
           if (!data || (st.status !== "pending_approval" && st.status !== ""))
             return;
@@ -1483,23 +1586,49 @@
           $("coEmp").value = st.collector;
           $("coFrom").value = st.from;
           $("coTo").value = st.to;
+          ["coMethod", "coEmp"].forEach(function (id) {
+            var el = $(id);
+            if (el) el.dispatchEvent(new Event("change", { bubbles: true }));
+          });
         }
         function setPop(open) {
           if (open) syncFields();
+          if (!open) closeAllDd();
           $("coPop").classList.toggle("open", open);
           $("coFbtn").setAttribute("aria-expanded", open ? "true" : "false");
         }
-        function applyFilters() { st.page = 1; drawActive(); load(); }
+        function applyFilters() {
+          st.page = 1;
+          drawActive();
+          load(true);
+        }
         function clearFilters() {
           st.method = st.collector = st.from = st.to = "";
           syncFields();
           applyFilters();
         }
-        $("coFbtn").onclick = function (e) { e.stopPropagation(); setPop(!$("coPop").classList.contains("open")); };
-        $("coPop").addEventListener("click", function (e) { e.stopPropagation(); });
-        document.addEventListener("click", function () { setPop(false); });
-        document.addEventListener("keydown", function (e) { if (e.key === "Escape") setPop(false); });
-        $("coApply").onclick = function () {
+        $("coFbtn").onclick = function (e) {
+          e.stopPropagation();
+          setPop(!$("coPop").classList.contains("open"));
+        };
+        $("coPop").addEventListener("click", function (e) {
+          e.stopPropagation();
+          if (!e.target.closest || !e.target.closest(".co-dd")) closeAllDd();
+        });
+        document.addEventListener("click", function (e) {
+          var t = e.target;
+          if (!t || !t.isConnected) return;
+          if (t.closest(".co-fw, .gt-dd-menu, .gt-dd, .gtp-pop, .gtp-back, .gt-calendar-popup, .gt-cal-pop")) return;
+          setPop(false);
+        });
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape") {
+            if (closeAllDd()) return;
+            setPop(false);
+          }
+        });
+        $("coApply").onclick = function (e) {
+          e.preventDefault();
           st.method = $("coMethod").value;
           st.collector = $("coEmp").value;
           st.from = $("coFrom").value;
@@ -1507,9 +1636,16 @@
           setPop(false);
           applyFilters();
         };
-        $("coPClear").onclick = function () { setPop(false); clearFilters(); };
+        $("coPClear").onclick = function (e) {
+          e.preventDefault();
+          setPop(false);
+          clearFilters();
+        };
         $("coActive").onclick = function (e) {
-          if (e.target.closest("[data-clearall]")) { clearFilters(); return; }
+          if (e.target.closest("[data-clearall]")) {
+            clearFilters();
+            return;
+          }
           var r = e.target.closest("[data-rm]");
           if (!r) return;
           var k = r.getAttribute("data-rm");
@@ -1519,13 +1655,88 @@
           syncFields();
           applyFilters();
         };
-        api("/api/accounts/collectors").then(function (j) {
-          $("coEmp").innerHTML = '<option value="">All employees</option>' + (j.collectors || []).map(function (c) {
-            return '<option value="' + esc(c.id) + '">' + esc(c.name) + "</option>";
-          }).join("");
-          $("coEmp").value = st.collector;
-          drawActive();
-        }).catch(function () {});
+        var ddAll = [];
+        function closeAllDd() {
+          var any = false;
+          ddAll.forEach(function (d) {
+            if (d.isOpen()) any = true;
+            d.setOpen(false);
+          });
+          return any;
+        }
+        function ddBuild(sel) {
+          var wrap = sel.parentNode;
+          wrap.classList.add("gt-dd", "co-dd");
+          sel.style.display = "none";
+          var trg = document.createElement("button");
+          trg.type = "button";
+          trg.className = "gt-dd-trigger";
+          trg.setAttribute("aria-haspopup", "listbox");
+          trg.setAttribute("aria-expanded", "false");
+          trg.innerHTML = '<span class="gt-dd-label"></span><span class="gt-dd-chevron" aria-hidden="true"></span>';
+          var menu = document.createElement("div");
+          menu.className = "gt-dd-menu";
+          menu.setAttribute("role", "listbox");
+          wrap.appendChild(trg);
+          wrap.appendChild(menu);
+          function paint() {
+            var cur = sel.options[sel.selectedIndex];
+            trg.firstChild.textContent = cur ? cur.textContent : "";
+            menu.innerHTML = [].map.call(sel.options, function (o, i) {
+              return '<button type="button" class="gt-dd-option' + (i === sel.selectedIndex ? " selected" : "") +
+                '" role="option" data-i="' + i + '"><span>' + esc(o.textContent) + '</span><span class="gt-dd-check" aria-hidden="true">\u2713</span></button>';
+            }).join("");
+          }
+          function setOpen(o) {
+            wrap.classList.toggle("open", o);
+            menu.classList.toggle("open", o);
+            trg.setAttribute("aria-expanded", o ? "true" : "false");
+          }
+          trg.onclick = function (e) {
+            e.preventDefault();
+            var o = !menu.classList.contains("open");
+            closeAllDd();
+            setOpen(o);
+            var cur = menu.querySelector(".selected");
+            if (o && cur) cur.scrollIntoView({ block: "nearest" });
+          };
+          menu.onclick = function (e) {
+            var b = e.target.closest(".gt-dd-option");
+            if (!b) return;
+            sel.selectedIndex = Number(b.getAttribute("data-i"));
+            paint();
+            setOpen(false);
+          };
+          sel.addEventListener("change", paint);
+          new MutationObserver(paint).observe(sel, { childList: true });
+          paint();
+          ddAll.push({
+            setOpen: setOpen,
+            isOpen: function () { return menu.classList.contains("open"); },
+          });
+        }
+        ddBuild($("coMethod"));
+        ddBuild($("coEmp"));
+        api("/api/accounts/collectors")
+          .then(function (j) {
+            var list = j.collectors || [];
+            $("coEmp").innerHTML =
+              '<option value="">All employees</option>' +
+              list
+                .map(function (c) {
+                  return (
+                    '<option value="' +
+                    esc(c.id || c.name) +
+                    '">' +
+                    esc(c.name) +
+                    "</option>"
+                  );
+                })
+                .join("");
+            $("coEmp").value = st.collector;
+            drawActive();
+          })
+          .catch(function () {});
         drawActive();
         $("coList").addEventListener("keydown", function (e) {
           if (
@@ -1563,8 +1774,7 @@
           }
           var no = e.target.closest("[data-no]");
           if (no) {
-            openDetail(data.rows[Number(no.getAttribute("data-no"))]);
-            if ($("coReason")) $("coReason").focus();
+            openDetail(data.rows[Number(no.getAttribute("data-no"))], "reject");
             return;
           }
           var o = e.target.closest("[data-open]");
@@ -1591,7 +1801,6 @@
             approveMany(sel);
         };
         $("coExport").onclick = exportCsv;
-        // Tap a bill photo in the details pop-up: it opens bigger in a pop-up here, not in a new tab.
         $("coCard").addEventListener("click", function (e) {
           var z = e.target.closest("[data-zoom]");
           if (!z) return;

@@ -405,15 +405,23 @@ function createAccountsRoutes(config) {
       let customerCode;
       try { customerCode = decodeURIComponent(invoiceMatch[1]); } catch (_) { send(res, 400, { error: "Invalid customer code." }); return true; }
       if (!customerCode || customerCode.length > 80 || !customerLookup(customerCode) || !canAccessCustomer(session, customerCode)) { send(res, 404, { error: "Customer not found." }); return true; }
-      rest("gm_accounts_invoices?select=id,customer_code,customer_name_snapshot,invoice_no,invoice_date,source_kind,original_amount,initial_outstanding,evidence_path,created_at,gm_accounts_invoice_adjustments(id,kind,amount,reason,created_by,created_at,reversed_at),gm_accounts_collection_allocations(invoice_id,amount,collection_id,gm_accounts_collections(status,method,received_at,collector_name_snapshot))&customer_code=eq." + encodeURIComponent(customerCode) + "&order=invoice_date.desc,created_at.desc")
+      rest("gm_accounts_invoices?select=id,customer_code,customer_name_snapshot,invoice_no,invoice_date,source_kind,original_amount,initial_outstanding,evidence_path,created_at,gm_accounts_invoice_edits(*),gm_accounts_invoice_adjustments(id,kind,amount,reason,created_by,created_at,reversed_at),gm_accounts_collection_allocations(invoice_id,amount,collection_id,gm_accounts_collections(status,method,received_at,collector_name_snapshot))&customer_code=eq." + encodeURIComponent(customerCode) + "&order=invoice_date.desc,created_at.desc")
         .then(async (rows) => {
-          // One database call: invoices with their payment allocations and each payment's status.
+          // One database call: invoices with their payment allocations, edits, and adjustments.
           const approved = {}, pending = {};
           const paymentsBy = {};
+          const nameOf = (id) => { if (!id) return ""; const n = config.employeeName(String(id)); return n && n !== "Employee" ? n : String(id); };
           const invoices = rows.map((r) => {
-            const { gm_accounts_collection_allocations: al, gm_accounts_invoice_adjustments: adj, ...inv } = r;
+            const { gm_accounts_collection_allocations: al, gm_accounts_invoice_adjustments: adj, gm_accounts_invoice_edits: eds, ...inv } = r;
+            inv.edits = (eds || [])
+              .sort((x, y) => String(x.edited_at || x.created_at || "").localeCompare(String(y.edited_at || y.created_at || "")))
+              .map((x) => Object.assign({}, x, {
+                by: nameOf(x.edited_by || x.created_by || ""),
+                at: x.edited_at || x.created_at || null,
+                reason: String(x.reason || "").slice(0, 200),
+              }));
             const live = (adj || []).filter((x) => !x.reversed_at).sort((x, y) => String(x.created_at).localeCompare(String(y.created_at)));
-            inv.adjustments = live.map((x) => ({ id: x.id, kind: x.kind, amount: Number(x.amount), reason: String(x.reason || "").slice(0, 200), by: String(x.created_by || "").slice(0, 80), at: x.created_at }));
+            inv.adjustments = live.map((x) => ({ id: x.id, kind: x.kind, amount: Number(x.amount), reason: String(x.reason || "").slice(0, 200), by: nameOf(x.created_by), at: x.created_at }));
             inv.discountAmount = Number(live.filter((x) => x.kind === "discount").reduce((t, x) => t + Number(x.amount || 0), 0).toFixed(2));
             inv.returnAmount = Number(live.filter((x) => x.kind === "return").reduce((t, x) => t + Number(x.amount || 0), 0).toFixed(2));
             for (const a of al || []) {
@@ -534,9 +542,14 @@ function createAccountsRoutes(config) {
         restAll("gm_accounts_invoices?select=created_by&source_kind=eq.manual&order=created_by"),
       ]).then(([cols, invs]) => {
         const map = {};
-        for (const r of cols) if (r.collected_by) map[r.collected_by] = r.collector_name_snapshot || r.collected_by;
-        for (const r of invs) if (r.created_by && !map[r.created_by]) { const n = config.employeeName(String(r.created_by)); map[r.created_by] = n && n !== "Employee" ? n : String(r.created_by); }
-        const list = Object.keys(map).map((id) => ({ id, name: map[id] })).filter((x) => /^[A-Za-z0-9_.-]{1,60}$/.test(x.id)).sort((x, y) => x.name.localeCompare(y.name));
+        const labelFor = (id, snap) => {
+          const n = config.employeeName(String(id));
+          if (n && n !== "Employee") return n;
+          return String(snap || id || "").trim();
+        };
+        for (const r of cols) if (r.collected_by) map[String(r.collected_by)] = labelFor(r.collected_by, r.collector_name_snapshot);
+        for (const r of invs) if (r.created_by && !map[String(r.created_by)]) map[String(r.created_by)] = labelFor(r.created_by, "");
+        const list = Object.keys(map).map((id) => ({ id, name: map[id] || id })).sort((x, y) => x.name.localeCompare(y.name));
         send(res, 200, { ok: true, collectors: list });
       }).catch((e) => { console.error("Accounts collectors read:", e.message); send(res, 502, { error: "Unable to load employees." }); });
       return true;
@@ -548,7 +561,7 @@ function createAccountsRoutes(config) {
       const q = url.searchParams;
       const status = STATUSES.includes(q.get("status")) ? q.get("status") : "";
       const method = METHODS.includes(q.get("method")) ? q.get("method") : "";
-      const collector = /^[A-Za-z0-9_.-]{1,60}$/.test(q.get("collector") || "") ? q.get("collector") : "";
+      const collector = String(q.get("collector") || "").replace(/[^A-Za-z0-9 _.:-]/g, "").trim().slice(0, 80);
       const visit = /^[A-Za-z0-9:_-]{1,90}$/.test(q.get("visit") || "") ? q.get("visit") : "";
       const search = String(q.get("q") || "").replace(/[^A-Za-z0-9 .&'-]/g, " ").trim().slice(0, 60);
       const dateOk = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || "") && !isNaN(new Date(v + "T00:00:00+05:30"));
@@ -582,7 +595,14 @@ function createAccountsRoutes(config) {
       if (status) filter += "&status=eq." + status;
       if (method) filter += "&method=eq." + method;
       if (visit) filter += "&visit_ref=eq." + encodeURIComponent(visit);
-      if (collector) filter += "&collected_by=eq." + encodeURIComponent(collector);
+      if (collector) {
+        const empLabel = config.employeeName(collector);
+        if (empLabel && empLabel !== "Employee") {
+          filter += "&or=(collected_by.eq." + encodeURIComponent(collector) + ",collector_name_snapshot.ilike." + encodeURIComponent("*" + empLabel + "*") + ")";
+        } else {
+          filter += "&or=(collected_by.eq." + encodeURIComponent(collector) + ",collector_name_snapshot.ilike." + encodeURIComponent("*" + collector + "*") + ")";
+        }
+      }
       if (search) filter += "&customer_name_snapshot=ilike." + encodeURIComponent("*" + search + "*");
       if (from) filter += "&received_at=gte." + encodeURIComponent(new Date(from + "T00:00:00+05:30").toISOString());
       if (to) filter += "&received_at=lt." + encodeURIComponent(new Date(new Date(to + "T00:00:00+05:30").getTime() + 24 * 3600e3).toISOString());
@@ -861,7 +881,7 @@ function createAccountsRoutes(config) {
     }
 
     if (req.method === "POST" && p === "/api/accounts/collections") {
-      if (!canCollect(session)) { send(res, 403, { error: "Sales or Delivery collection permission required." }); return true; }
+      if (!canCollect(session) && !session.super) { send(res, 403, { error: "Sales or Delivery collection permission required." }); return true; }
       body(req, (err, input) => {
         if (err) return send(res, 400, { error: "Invalid request body." });
         try {
@@ -898,8 +918,15 @@ function createAccountsRoutes(config) {
                 p_allocations: allocations,
                 p_note: valid.note,
               });
-            }).then((result) => {
+            }).then(async (result) => {
               notifyCollection(session, customer, valid.allocations.reduce((n, a) => n + Number(a.amount || 0), 0), { cash: "Cash", upi: "UPI", bank_transfer: "Bank" }[valid.method] || valid.method);
+              if (input && input.autoApprove && session.super && canBill(session)) {
+                const colId = result && (result.collection_id || result.collectionId || result.id);
+                if (colId) {
+                  await rpc("gm_accounts_approve_collection", { p_collection_id: colId, p_approved_by: String(session.id).slice(0, 80) });
+                  logEvent(session, "Approved collection " + colId + " (Super Admin direct entry)");
+                }
+              }
               send(res, 201, result);
             })
             .catch((e) => fail(res, e));
