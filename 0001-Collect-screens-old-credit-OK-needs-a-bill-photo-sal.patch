@@ -1,0 +1,309 @@
+From b9aa687530bdd6d32359745ceb1e293da02fba2b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 22 Nov 2026 16:13:26 +0000
+Subject: [PATCH] Collect screens: old-credit OK needs a bill photo; sales uses
+ the delivery app's old-credit layout
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01CFetM84mxxsBmVoUDFJHvU
+---
+ sales/collect-sheet.html  | 209 ++++++++++++++++++++++++--------------
+ worker/collect-sheet.html |  19 +++-
+ 2 files changed, 147 insertions(+), 81 deletions(-)
+
+diff --git a/sales/collect-sheet.html b/sales/collect-sheet.html
+index 3afde1c..3f453d0 100644
+--- a/sales/collect-sheet.html
++++ b/sales/collect-sheet.html
+@@ -46,7 +46,38 @@
+     .cs-done{text-align:center;display:grid;gap:12px;justify-items:center}
+     .cs-tick{width:62px;height:62px;border-radius:50%;background:#16a34a;color:#fff;font-size:32px;display:grid;place-items:center}
+     .cs-sum{width:100%;border:1px solid var(--border);border-radius:12px;padding:2px 12px;text-align:left}.cs-sum div{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--border);font-size:14px}.cs-sum div:first-child{border-top:0}
+-  </style>
++  /* Old-credit bill card: same layout as the delivery app's collect screen */
++.oc{background:#fff8ec;color:#3b2a0a;border:1px solid #f59e0b;border-radius:14px;padding:12px;display:grid;gap:10px}
++.oc-ch{display:flex;align-items:center;gap:10px;cursor:pointer;justify-content:space-between}
++.oc-ch:after{content:"\25BE";color:#8a6d3b;transition:transform .15s}.oc.open>.oc-ch:after{transform:rotate(180deg)}
++.oc-ch>div:nth-child(2){flex:1}.oc-ico{font-size:22px}.oc small{display:block;color:#7a6a4a;font-size:12px}.oc-tot{color:#d97706;font-size:16px}
++.oc>.oc-cb{display:none}.oc.open>.oc-cb{display:grid;gap:10px}
++.oc-row{display:grid;grid-template-columns:56px 1fr auto;gap:10px;align-items:center;border-top:1px solid rgba(217,119,6,.25);padding-top:10px}
++.oc-th{width:56px;height:56px;border-radius:10px;background:#fff;border:1px solid #e5d9c3;display:grid;place-items:center;font-size:10px;color:#6b7280;text-align:center;cursor:pointer;overflow:hidden}
++.oc-th img{width:100%;height:100%;object-fit:cover}
++.oc-row b{font-size:14px}.oc-row small{font-size:12px}
++.oc-due{display:inline-block;background:rgba(220,38,38,.1);color:#dc2626;font-weight:700;font-size:12px;border-radius:8px;padding:2px 8px;margin-top:3px}
++.oc-late{display:inline-block;background:#dc2626;color:#fff;font-weight:700;font-size:11px;border-radius:8px;padding:2px 7px;margin-left:4px}
++.oc-btn{border:1px solid #f59e0b;background:#fff;color:#d97706;border-radius:10px;padding:8px 14px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
++.oc-btn.on{background:#0b7a55;color:#fff;border-color:#0b7a55}
++.oc-more{grid-column:1/-1;display:none;gap:12px}.oc-more.open{display:grid}
++.oc-amt{display:grid;grid-template-columns:minmax(0,1fr) 52px;gap:8px;align-items:center}
++.oc-in{display:flex;align-items:center;gap:8px;height:52px;padding:0 12px;border:1px solid #e5d9c3;border-radius:12px;background:#fff;color:#1f2937;font-size:20px;font-weight:700}
++.oc-in span{color:#6b7280}.oc-in input{flex:1;min-width:0;width:100%;min-height:0;height:100%;border:0;padding:0;background:transparent;color:inherit;font:inherit;outline:0}
++.oc-cam{position:relative;width:52px;height:52px;border-radius:12px;border:1.5px dashed #c9b88f;background:#fff;font-size:22px;cursor:pointer;padding:0;display:grid;place-items:center;overflow:hidden}
++.oc-cam img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.oc-cam.done{border:1px solid #0b7a55}
++.oc-cam.done:after{content:"\2713";position:absolute;top:0;right:0;width:18px;height:18px;border-radius:0 0 0 8px;background:#0b7a55;color:#fff;font-size:11px;font-weight:900;display:grid;place-items:center}
++.oc-pbar{height:8px;border-radius:99px;background:rgba(0,0,0,.08);overflow:hidden}.oc-pbar i{display:block;height:100%;width:0;background:#0b7a55;transition:width .15s}
++.oc-rc{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:#6b5a3a}
++.oc-more .cs-warn,.oc-more .cs-hint{margin:0;font-size:13px;font-weight:700;color:#b45309}
++.oc-okrow{display:flex;justify-content:flex-end;gap:8px}.oc-okrow .oc-btn{height:34px;padding:0 18px;font-size:14px}
++.oc-okrow .oc-ok{background:#0b7a55;color:#fff;border-color:#0b7a55}.oc-okrow .oc-ok:disabled{opacity:.4;cursor:not-allowed}
++.oc-sm{grid-column:1/-1;display:none;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;background:#e4f5ee;border:1px solid #10b981;border-radius:14px;padding:10px 12px;color:#10231b}.oc-sm.open{display:grid}
++.oc-sm .t{width:28px;height:28px;border-radius:50%;background:#0b7a55;color:#fff;display:grid;place-items:center;font-size:15px;font-weight:900}
++.oc-sm p{margin:0;font-size:14px;font-weight:700}.oc-sm small{font-size:12px;color:#4b5f55}
++.oc-ed{border:0;background:none;color:#2563eb;font:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:4px}
++#ocView{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:99}#ocView img{max-width:94%;max-height:90%;border-radius:8px}
++</style>
+ </head><body><div id="app"></div><script src="../assets/icons.js"></script><script src="sales.js"></script><script src="../shared/dropdown.js"></script>
+ <script>
+ Sales.start("payments",function(me,hello,main){
+@@ -82,7 +113,7 @@ Sales.start("payments",function(me,hello,main){
+       '<textarea class="cs-note" id="csNote" maxlength="250" placeholder="Reference or remarks" aria-label="Note" style="display:none"></textarea>'+
+       '<div class="cs-total"><span>Total collected</span><b id="csTotal">₹0.00</b></div><div class="cs-err" id="csErr" role="status"></div>'+
+       '<button class="btn" id="csGo" type="button" disabled style="width:100%">Save collection</button><p class="cs-hint">A bill photo is optional (uploaded in background when signal allows). The collection waits for Billing/Admin approval; the shop\'s balance changes only after approval.</p></div>'+
+-    '</div><div id="csDone"></div>';
++    '</div><div id="csDone"></div><div id="ocView"><img id="ocImg" alt="Bill photo"></div>';
+ 
+   if(PRE_METHOD&&SPN[PRE_METHOD]){
+     S.method=PRE_METHOD;
+@@ -112,7 +143,8 @@ Sales.start("payments",function(me,hello,main){
+     var ready=true;
+     Object.keys(S.sel).forEach(function(id){
+       if(!S.sel[id])return;
+-      var h=$('[data-hint="'+id+'"]'),msg=(amtOf(id)>0?"":"Enter the amount received.");
++      var h=$('[data-hint="'+id+'"]'),msg=(amtOf(id)>0?(S.files[id]?"":"Add the bill photo to continue."):"Enter the amount received.");
++var okb=$('[data-ook="'+id+'"]');if(okb)okb.disabled=!(amtOf(id)>0&&S.files[id]);
+       if(h){
+         if(msg){h.textContent=msg;h.style.display="";h.className="cs-warn";}
+         else if(!S.evState[id]){h.style.display="none";}
+@@ -131,80 +163,100 @@ Sales.start("payments",function(me,hello,main){
+     }
+     $("#csGo").disabled=!ok||S.busy;
+   }
+-  function selectBill(id,presetAmt){
+-    var b=$('[data-t="'+id+'"]');if(!b||S.sel[id])return;
+-    S.sel[id]=true;dirty();b.className="cs-pick on";b.textContent="Selected";b.setAttribute("aria-pressed","true");
+-    $("#more_"+id).className="cs-more open";
+-    var inp=$('[data-a="'+id+'"]');
+-    if(inp&&presetAmt>0){
+-      var max=Number(inp.max)||presetAmt;
+-      inp.value=Math.min(max,presetAmt).toFixed(2);
+-    }
+-  }
+-  function drawBills(){
+-    var due=S.bills.reduce(function(a,x){return a+Number(x.outstanding||0)},0);
+-    if(!S.bills.length){$("#csBills").innerHTML='<h3>Unpaid bills</h3><div class="cs-hint">✓ This shop has no unpaid bill to collect.</div>';return}
+-    var n=S.bills.length,now=new Date();
+-    $("#csBills").innerHTML='<div class="cs-hero"><span>Total outstanding</span><b>'+money(due)+'</b><small>'+n+' unpaid bill'+(n===1?"":"s")+'</small></div>'+
+-      S.bills.map(function(x){
+-        var av=Number(x.availableToCollect),id=esc(x.id),pa=Number(x.pendingAmount)>0,
+-            m=/^(\d{4})-(\d{2})-(\d{2})/.exec(x.invoice_date||""),age=m?Math.floor((now-new Date(+m[1],+m[2]-1,+m[3]))/864e5):0,late=age>30;
+-        return '<div class="cs-bill'+(late?" late":"")+'"><div class="top"><div><b>Invoice '+esc(x.invoice_no)+'</b><small>'+dmy(x.invoice_date)+'</small></div><div class="amt">'+money(x.outstanding)+'</div>'+
+-          (late?'<div class="tags"><span class="cs-tag red">'+age+' days overdue</span></div>':"")+(x.payments?'<div class="hist">'+hist(x)+'</div>':"")+
+-          '<div class="act">'+(av>0?'<button type="button" class="cs-pick" data-t="'+id+'">Collect</button>':'<span class="cs-hint">Collected</span>')+'</div></div>'+
+-          (av>0?'<div class="cs-more" id="more_'+id+'"><div class="cs-amt"><input data-a="'+id+'" type="number" min="0.01" max="'+av.toFixed(2)+'" step="0.01" inputmode="decimal" placeholder="Amount (max '+av.toFixed(2)+')"><button type="button" class="cs-pick" data-full="'+id+'">Full amount</button></div>'+
+-            '<div class="cs-photo"><button type="button" class="cs-pick cs-cam" data-add="'+id+'">Take bill photo</button><div class="cs-thumb" data-th="'+id+'" style="display:none"></div><input type="file" data-f="'+id+'" accept="image/jpeg,image/png,image/webp" capture="environment" style="display:none"></div><div class="cs-hint" data-hint="'+id+'" style="display:none"></div></div>':"")+'</div>';
+-      }).join("");
+-    document.querySelectorAll("[data-t]").forEach(function(b){b.onclick=function(){
+-      var id=b.getAttribute("data-t"),on=!S.sel[id];S.sel[id]=on;dirty();b.className="cs-pick"+(on?" on":"");b.textContent=on?"Selected":"Collect";b.setAttribute("aria-pressed",String(on));
+-      $("#more_"+id).className="cs-more"+(on?" open":"");recalc()}});
+-    document.querySelectorAll("[data-full]").forEach(function(b){b.onclick=function(){var id=b.getAttribute("data-full"),i=$('[data-a="'+id+'"]');i.value=Number(i.max).toFixed(2);dirty();recalc()}});
+-    document.querySelectorAll("[data-a]").forEach(function(i){i.oninput=function(){
+-      var m=/^(-?\d*\.\d{2})\d+$/.exec(i.value);if(m)i.value=m[1];if(Number(i.value)>Number(i.max))i.value=Number(i.max).toFixed(2);dirty();recalc()}});
+-    document.querySelectorAll("[data-add]").forEach(function(b){var id=b.getAttribute("data-add"),f=$('[data-f="'+id+'"]');
+-      b.onclick=function(){f.click()};
+-      f.onchange=function(){var file=f.files[0];if(!file)return;
+-        if(file.size>12*1024*1024){
+-          delete S.files[id];delete S.ev[id];delete S.evp[id];f.value="";
+-          setPhotoStatus(id,"err","That photo is too large. Take it again.");
+-          recalc();return;
+-        }
+-        S.files[id]=file;delete S.ev[id];dirty();
+-        var t=$('[data-th="'+id+'"]');t.style.display="";t.innerHTML='<img src="'+URL.createObjectURL(file)+'" alt="Bill photo"><button type="button" class="cs-x" aria-label="Remove photo">\u00d7</button>';
+-        b.classList.add("done");b.textContent="Retake photo";
+-        setPhotoStatus(id,"uploading","Compressing & uploading photo in background...");
+-        var upPromise=dataUrl(file).then(function(d){return Sales.api("/api/accounts/evidence",{data:d})});
+-        S.evp[id]={file:file,p:upPromise};
+-        upPromise.then(function(u){
+-          if(S.files[id]!==file)return;
+-          if(u&&u.evidencePath){
+-            S.ev[id]={file:file,path:u.evidencePath};
+-            setPhotoStatus(id,"done","✓ Bill photo uploaded");
+-          }else{
+-            setPhotoStatus(id,"","Photo queued (will save with collection if network allows)");
+-          }
+-          recalc();
+-        }).catch(function(){
+-          if(S.files[id]!==file)return;
+-          setPhotoStatus(id,"","Low/no signal — collection can still be saved");
+-          recalc();
+-        });
+-        t.querySelector(".cs-x").onclick=function(){
+-          delete S.files[id];delete S.ev[id];delete S.evp[id];delete S.evState[id];
+-          f.value="";t.style.display="none";t.innerHTML="";
+-          b.classList.remove("done");b.textContent="Take bill photo";
+-          setPhotoStatus(id,"","");
+-          dirty();recalc();
+-        };
+-        recalc();
+-      };
+-    });
+-    if(PRE_INV||PRE_AMT>0){
+-      var target=S.bills.filter(function(b){return Number(b.availableToCollect)>0&&(PRE_INV?String(b.invoice_no)===PRE_INV||String(b.id)===PRE_INV:true);})[0]||S.bills.filter(function(b){return Number(b.availableToCollect)>0;})[0];
+-      if(target)selectBill(String(target.id),PRE_AMT);
+-    }
+-  }
+-  function load(){
++  function evUrl(p){var t=String(p||"").split("/").pop().replace(/\.(jpg|png|webp)$/i,"");return t&&t!=="no-photo"?"/api/accounts/evidence/"+t:""}
++function billX(id){return S.bills.filter(function(x){return String(x.id)===String(id)})[0]}
++function showMore(id,open){$("#more_"+id).className="oc-more"+(open?" open":"")}
++function showSum(id,open){$("#sm_"+id).className="oc-sm"+(open?" open":"")}
++function ocUpdate(id){
++var x=billX(id),inp=$('[data-a="'+id+'"]');if(!x||!inp)return;
++var av=Number(x.availableToCollect),out=Number(x.outstanding),v=Number(inp.value)||0;
++if(v>av){inp.value=av.toFixed(2);v=av}
++$("#bar_"+id).style.width=(out>0?Math.min(100,v/out*100):0)+"%";
++$("#rcv_"+id).textContent="Received "+money(v);
++$("#stay_"+id).textContent="Stays on credit "+money(Math.max(0,out-v));
++recalc();
++}
++function selectBill(id,presetAmt){
++var b=$('[data-t="'+id+'"]');if(!b||S.sel[id])return;
++S.sel[id]=true;dirty();b.className="oc-btn on";b.textContent="Selected";b.setAttribute("aria-pressed","true");
++showMore(id,true);
++var inp=$('[data-a="'+id+'"]');
++if(inp&&presetAmt>0){var max=Number(inp.max)||presetAmt;inp.value=Math.min(max,presetAmt).toFixed(2)}
++ocUpdate(id);
++}
++function drawBills(){
++var due=S.bills.reduce(function(a,x){return a+Number(x.outstanding||0)},0);
++if(!S.bills.length){$("#csBills").innerHTML='<h3>Unpaid bills</h3><div class="cs-hint">✓ This shop has no unpaid bill to collect.</div>';return}
++var n=S.bills.length,now=new Date();
++$("#csBills").innerHTML='<div class="oc open"><div class="oc-ch" id="ocTg"><div class="oc-ico">🗂</div><div><b>Old Credit</b><small>'+n+(n>1?" bills":" bill")+' · Outstanding</small></div><b class="oc-tot">'+money(due)+'</b></div><div class="oc-cb">'+
++S.bills.map(function(x){
++var u=evUrl(x.evidence_path),av=Number(x.availableToCollect),id=esc(x.id),
++m=/^(\d{4})-(\d{2})-(\d{2})/.exec(x.invoice_date||""),age=m?Math.floor((now-new Date(+m[1],+m[2]-1,+m[3]))/864e5):0;
++return '<div class="oc-row"><div class="oc-th" data-v="'+esc(u)+'">'+(u?'<img src="'+esc(u)+'" alt="Bill" onerror="this.parentNode.textContent=\'No photo\'">':"No photo")+'</div>'+
++'<div><b>Invoice No. '+esc(x.invoice_no)+'</b><small class="muted" style="display:block">📅 '+dmy(x.invoice_date)+'</small><span class="oc-due">Due: '+money(x.outstanding)+'</span>'+(age>30?'<span class="oc-late">'+age+' days overdue</span>':"")+
++(Number(x.pendingAmount)>0?'<small class="muted" style="display:block">'+money(x.pendingAmount)+' waiting for approval</small>':"")+'</div>'+
++(av>0?'<button type="button" class="oc-btn" data-t="'+id+'" aria-pressed="false">Collect</button>':'<span class="muted">Collected</span>')+
++(av>0?'<div class="oc-more" id="more_'+id+'"><div class="oc-amt"><div class="oc-in"><span>₹</span><input data-a="'+id+'" type="number" min="0" max="'+av.toFixed(2)+'" step="0.01" inputmode="decimal" placeholder="0.00" aria-label="Amount received"></div>'+
++'<button type="button" class="oc-cam" data-add="'+id+'" aria-label="Add bill photo">📷</button></div>'+
++'<div class="oc-pbar"><i id="bar_'+id+'"></i></div><div class="oc-rc"><span id="rcv_'+id+'">Received '+money(0)+'</span><span id="stay_'+id+'">Stays on credit '+money(x.outstanding)+'</span></div>'+
++'<p class="cs-warn" data-hint="'+id+'">No bill photo yet. Tap the camera.</p>'+
++'<div class="oc-okrow"><button type="button" class="oc-btn" data-ocancel="'+id+'">Cancel</button><button type="button" class="oc-btn oc-ok" data-ook="'+id+'" disabled>OK</button></div>'+
++'<input type="file" data-f="'+id+'" accept="image/jpeg,image/png,image/webp" capture="environment" style="display:none"></div>'+
++'<div class="oc-sm" id="sm_'+id+'"><div class="t">✓</div><div><p id="smT_'+id+'"></p><small id="smS_'+id+'"></small></div><button type="button" class="oc-ed" data-oedit="'+id+'">Edit</button></div>':"")+'</div>';
++}).join("")+'</div></div>';
++$("#ocTg").onclick=function(){this.parentNode.classList.toggle("open")};
++document.querySelectorAll("[data-v]").forEach(function(t){t.onclick=function(){var u=t.getAttribute("data-v");if(u){$("#ocImg").src=u;$("#ocView").style.display="flex"}}});
++$("#ocView").onclick=function(){this.style.display="none"};
++document.querySelectorAll("[data-t]").forEach(function(b){b.onclick=function(){
++var id=b.getAttribute("data-t"),on=!S.sel[id];S.sel[id]=on;dirty();b.className="oc-btn"+(on?" on":"");b.textContent=on?"Selected":"Collect";b.setAttribute("aria-pressed",String(on));
++showMore(id,on);showSum(id,false);if(on)ocUpdate(id);else recalc()}});
++document.querySelectorAll("[data-a]").forEach(function(i){i.oninput=function(){
++var m=/^(-?\d*\.\d{2})\d+$/.exec(i.value);if(m)i.value=m[1];dirty();ocUpdate(i.getAttribute("data-a"))}});
++document.querySelectorAll("[data-add]").forEach(function(b){var id=b.getAttribute("data-add"),f=$('[data-f="'+id+'"]');
++b.onclick=function(){f.click()};
++f.onchange=function(){var file=f.files[0];if(!file)return;
++if(file.size>12*1024*1024){
++delete S.files[id];delete S.ev[id];delete S.evp[id];f.value="";b.className="oc-cam";b.textContent="📷";
++setPhotoStatus(id,"err","That photo is too large. Take it again.");
++recalc();return;
++}
++S.files[id]=file;delete S.ev[id];dirty();
++b.className="oc-cam done";b.innerHTML='<img src="'+URL.createObjectURL(file)+'" alt="Bill photo">';
++setPhotoStatus(id,"uploading","Compressing & uploading photo in background...");
++var upPromise=dataUrl(file).then(function(d){return Sales.api("/api/accounts/evidence",{data:d})});
++S.evp[id]={file:file,p:upPromise};
++upPromise.then(function(u){
++if(S.files[id]!==file)return;
++if(u&&u.evidencePath){S.ev[id]={file:file,path:u.evidencePath};setPhotoStatus(id,"done","✓ Bill photo uploaded")}
++else{setPhotoStatus(id,"","Photo queued (will save with collection if network allows)")}
++recalc();
++}).catch(function(){
++if(S.files[id]!==file)return;
++setPhotoStatus(id,"","Low/no signal — collection can still be saved");
++recalc();
++});
++recalc();
++};
++});
++document.querySelectorAll("[data-ocancel]").forEach(function(b){b.onclick=function(){
++var id=b.getAttribute("data-ocancel"),t=$('[data-t="'+id+'"]'),cam=$('[data-add="'+id+'"]');
++S.sel[id]=false;delete S.files[id];delete S.ev[id];delete S.evp[id];delete S.evState[id];dirty();
++$('[data-a="'+id+'"]').value="";$('[data-f="'+id+'"]').value="";cam.className="oc-cam";cam.textContent="📷";
++t.className="oc-btn";t.textContent="Collect";t.setAttribute("aria-pressed","false");showMore(id,false);showSum(id,false);ocUpdate(id)}});
++document.querySelectorAll("[data-ook]").forEach(function(b){b.onclick=function(){
++var id=b.getAttribute("data-ook"),x=billX(id),v=amtOf(id);
++if(!(v>0)||!S.files[id])return;
++$("#smT_"+id).textContent="Invoice "+x.invoice_no+" · "+money(v)+" received";
++$("#smS_"+id).textContent=money(Math.max(0,Number(x.outstanding)-v))+" stays on credit · 1 photo";
++showMore(id,false);showSum(id,true)}});
++document.querySelectorAll("[data-oedit]").forEach(function(b){b.onclick=function(){
++var id=b.getAttribute("data-oedit");showSum(id,false);showMore(id,true)}});
++if(PRE_INV||PRE_AMT>0){
++var target=S.bills.filter(function(b){return Number(b.availableToCollect)>0&&(PRE_INV?String(b.invoice_no)===PRE_INV||String(b.id)===PRE_INV:true);})[0]||S.bills.filter(function(b){return Number(b.availableToCollect)>0;})[0];
++if(target)selectBill(String(target.id),PRE_AMT);
++}
++}
++function load(){
+     Sales.data().then(function(d){
+       var c=(d.customers||[]).filter(function(x){return String(x.code)===CODE})[0]||{code:CODE,name:CODE};S.shop=c;
+       $("#csShop").innerHTML='<b>'+esc(c.name||c.shopName||CODE)+'</b><small>'+esc([c.code,c.area].filter(Boolean).join(" · "))+'</small>'+(c.phone?'<small>☎ '+esc(c.phone)+'</small>':"");
+@@ -236,7 +288,8 @@ Sales.start("payments",function(me,hello,main){
+       for(var id of Object.keys(S.sel)){
+         if(!S.sel[id])continue;var a=amtOf(id),f=S.files[id];
+         if(!(a>0))throw fe("Enter an amount for every bill you selected.",'[data-a="'+id+'"]');
+-        if(f&&f.size>12*1024*1024)throw fe("That photo is too large. Take it again.",'[data-add="'+id+'"]');
++        if(!f)throw fe("Add the bill photo for every selected bill.",'[data-add="'+id+'"]');
++if(f.size>12*1024*1024)throw fe("That photo is too large. Take it again.",'[data-add="'+id+'"]');
+         var ev=S.ev[id];
+         if(f&&(!ev||ev.file!==f)){
+           var pre=S.evp&&S.evp[id]&&S.evp[id].file===f?S.evp[id].p:null,u=null;
+diff --git a/worker/collect-sheet.html b/worker/collect-sheet.html
+index ad5efeb..586eea4 100644
+--- a/worker/collect-sheet.html
++++ b/worker/collect-sheet.html
+@@ -1479,9 +1479,15 @@
+           $("#stay_" + id).textContent =
+             "Stays on credit " + money(Math.max(0, out - v));
+           var h = $("#hint_" + id);
+-          h.textContent = v > 0 ? "" : "Enter the amount received.";
++          h.textContent =
++            v > 0
++              ? has
++                ? ""
++                : "Add the bill photo to continue."
++              : "Enter the amount received.";
+           h.style.display = h.textContent ? "" : "none";
+-          $('[data-ook="' + id + '"]').disabled = !(v > 0);
++          // OK needs both an amount and a bill photo.
++          $('[data-ook="' + id + '"]').disabled = !(v > 0 && has);
+           recalc();
+         }
+ 
+@@ -1663,7 +1669,7 @@
+                 x = oldX(id),
+                 v = oldAmount(id),
+                 out = Number(x.outstanding);
+-              if (!(v > 0)) return;
++              if (!(v > 0) || !S["of_" + id]) return;
+               S.oldOk[id] = true;
+               $("#smT_" + id).textContent =
+                 "Invoice " + x.invoice_no + " \u00b7 " + money(v) + " received";
+@@ -1872,6 +1878,13 @@
+               var a = oldAmount(k),
+                 f = S["of_" + k];
+               if (!(a > 0)) continue;
++              if (!f)
++                throw fe(
++                  "Add the bill photo for invoice " +
++                    (oldX(k) ? oldX(k).invoice_no : "") +
++                    ".",
++                  '[data-oadd="' + k + '"]',
++                );
+               var uo = { evidencePath: undefined };
+               if (f) {
+                 if (f.size > 25 * 1024 * 1024)
+-- 
+2.43.0
+

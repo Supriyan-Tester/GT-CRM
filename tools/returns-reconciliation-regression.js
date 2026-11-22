@@ -224,13 +224,39 @@ let child;
       returnId: returnRecord.id, items: [{ productId:"PROD-01", restockQty:0, companyQty:0, damagedQty:0, companyName:"" }]
     });
     assert.strictEqual(invalidSplit.status, 400, "inspection rejects disposition quantities that do not equal returned quantity");
+    // Credit is confirmed per product: a changed amount needs a reason, and a credit needs an invoice to post against.
+    const suggestedCredit = Number(returnRecord.items[0].returnedAmount) || 0;
+    const noReasonChange = await request("POST", "/api/inventory/returns/inspect", admin, {
+      returnId: returnRecord.id, items: [{ productId:"PROD-01", restockQty:1, companyQty:1, damagedQty:1, companyName:"Synthetic Supplier", creditAmount: suggestedCredit + 5 }]
+    });
+    assert.strictEqual(noReasonChange.status, 400, "changing the credit amount without a reason is rejected");
+    const creditNoInvoice = await request("POST", "/api/inventory/returns/inspect", admin, {
+      returnId: returnRecord.id, items: [{ productId:"PROD-01", restockQty:1, companyQty:1, damagedQty:1, companyName:"Synthetic Supplier", creditAmount: suggestedCredit + 5, creditReason:"Goodwill" }]
+    });
+    assert.strictEqual(creditNoInvoice.status, 400, "a credit above zero needs an invoice to post against");
+    const stillPending = JSON.parse((await request("GET", "/api/inventory/returns", admin)).body).returns[0];
+    assert(!stillPending.inspectedAt && !stillPending.ledgerCreditPending, "a rejected approval leaves the return untouched");
     const inspected = await request("POST", "/api/inventory/returns/inspect", admin, {
-      returnId: returnRecord.id, items: [{ productId:"PROD-01", restockQty:1, companyQty:1, damagedQty:1, companyName:"Synthetic Supplier" }]
+      returnId: returnRecord.id, items: [{ productId:"PROD-01", restockQty:1, companyQty:1, damagedQty:1, companyName:"Synthetic Supplier", creditAmount: 0, creditReason:"Synthetic test: no ledger credit" }]
     });
     assert.strictEqual(inspected.status, 200, "Admin can inspect and allocate returned quantity to supplier return");
     const stateAfterInspection = JSON.parse((await request("GET", "/api/state", admin)).body);
     const stockAfterInspection = JSON.parse(stateAfterInspection.items["gm_admin_products_v1"].v).find(x => x.id === "PROD-01").stock;
     assert.strictEqual(stockAfterInspection, 6, "only the one reusable unit is added; supplier-return and damaged units stay out of available stock");
+    // Route/bill-screen returns reach the same quarantine queue with the worker's door deduction as a provisional credit.
+    const routeBody = { shopCode:"C-ROUTE", shopName:"Route Shop", billNo:"INV-R1", lines:[{ productCode:"PROD-01", productName:"Synthetic Product", quantity:2, deductionAmount:150, reason:"Damaged pack" }] };
+    const routeDenied = await request("POST", "/api/worker/route-returns", admin, routeBody);
+    assert.strictEqual(routeDenied.status, 403, "only a delivery worker can submit route returns");
+    const routeOk = await request("POST", "/api/worker/route-returns", delivery, routeBody);
+    assert.strictEqual(routeOk.status, 200, "delivery worker can submit route returns");
+    const routeRetry = await request("POST", "/api/worker/route-returns", delivery, routeBody);
+    assert.strictEqual(JSON.parse(routeRetry.body).alreadyApplied, true, "route return retry does not create a second record");
+    const routeNoReason = await request("POST", "/api/worker/route-returns", delivery, { ...routeBody, billNo:"INV-R2", lines:[{ ...routeBody.lines[0], reason:"" }] });
+    assert.strictEqual(routeNoReason.status, 400, "route return needs a reason");
+    const routeRecords = JSON.parse((await request("GET", "/api/inventory/returns", admin)).body).returns.filter(r => r.source === "route");
+    assert.strictEqual(routeRecords.length, 1, "exactly one route return record exists");
+    assert.strictEqual(routeRecords[0].status, "pending_inspection", "route return starts in quarantine");
+    assert.strictEqual(routeRecords[0].items[0].provisionalCredit, 150, "worker's door deduction is stored as provisional credit");
     const doubleInspect = await request("POST", "/api/inventory/returns/inspect", admin, {
       returnId: returnRecord.id, items: [{ productId:"PROD-01", restockQty:1, companyQty:0, damagedQty:0 }]
     });

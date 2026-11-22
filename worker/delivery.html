@@ -2954,6 +2954,50 @@
           searchInput.focus();
         });
 
+      // Send the returns to the office's returns queue (quarantine + Super Admin check).
+      // If the phone is offline the request is kept and retried the next time this screen opens.
+      var RQ_KEY = "gm_route_returns_queue";
+      function rqRead() {
+        try {
+          return JSON.parse(localStorage.getItem(RQ_KEY) || "[]");
+        } catch (e) {
+          return [];
+        }
+      }
+      function rqWrite(q) {
+        try {
+          localStorage.setItem(RQ_KEY, JSON.stringify(q));
+        } catch (e) {}
+      }
+      function rqFlush() {
+        var q = rqRead();
+        if (!q.length) return;
+        var next = q[0];
+        fetch("/api/worker/route-returns", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(next),
+        })
+          .then(function (r) {
+            // 4xx means the office rejected the data itself: drop it so it cannot block the queue. 5xx / offline: keep and retry.
+            if (r.ok || (r.status >= 400 && r.status < 500 && r.status !== 401 && r.status !== 408 && r.status !== 429)) {
+              var cur = rqRead();
+              cur.shift();
+              rqWrite(cur);
+              if (cur.length) rqFlush();
+            }
+          })
+          .catch(function () {});
+      }
+      function sendRouteReturns(payload) {
+        var q = rqRead();
+        q.push(payload);
+        rqWrite(q);
+        rqFlush();
+      }
+      rqFlush();
+
       // Submit Returns & Finish (everything added so far, plus the item on screen if it is complete)
       saveBtn.addEventListener("click", function () {
         if (currentSelectedProduct && chosenReason) lines.push(mkLine());
@@ -2966,6 +3010,21 @@
         lines.forEach(function (x) {
           x.time = tm;
           GM.addReturn(x);
+        });
+        sendRouteReturns({
+          shopCode: shop.code || shop.customerCode || "",
+          shopName: shop.name,
+          billNo: shop.billNo,
+          lines: lines.map(function (x) {
+            return {
+              productCode: x.productCode,
+              productName: x.productName,
+              quantity: x.quantity,
+              deductionAmount: x.deductionAmount,
+              reason: x.reason,
+              notOnBill: x.notOnBill,
+            };
+          }),
         });
 
         GMVisit.done(shop, "delivered");

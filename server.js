@@ -3189,6 +3189,100 @@ function api(req, res, url) {
     );
   }
 
+  // ---- Route/bill screen: the worker sends returns taken at the shop into the same quarantine queue ----
+  // The amount the worker deducted at the door is stored as a PROVISIONAL credit; the Super Admin confirms it later.
+  if (p === "/api/worker/route-returns" && req.method === "POST") {
+    if (s.role !== "worker")
+      return send(res, 403, { error: "Delivery worker access required." });
+    const wk = (workerData().workers || []).find((x) => x && x.id === s.id);
+    if (!wk || wk.active === false || empPanel(empRoleOf(s.id)) !== "worker")
+      return send(res, 403, {
+        error: "Active delivery worker account required.",
+      });
+    return body(
+      req,
+      (err, b) => {
+        if (err || !b || !Array.isArray(b.lines) || !b.lines.length || b.lines.length > 60)
+          return send(res, 400, { error: "Add at least one returned item." });
+        const clean = (v, n) => String(v == null ? "" : v).trim().slice(0, n);
+        const billNo = clean(b.billNo, 60);
+        const shopCode = clean(b.shopCode, 60);
+        if (!billNo && !shopCode)
+          return send(res, 400, { error: "Shop or bill number is required." });
+        const byProduct = new Map();
+        for (const ln of b.lines) {
+          const qty = Math.round(Number(ln && ln.quantity) * 1000) / 1000;
+          const amt = Math.round(Number(ln && ln.deductionAmount) * 100) / 100;
+          const name = clean(ln && ln.productName, 120);
+          const reason = clean(ln && ln.reason, 160);
+          if (!name || !Number.isFinite(qty) || qty <= 0 || qty > 100000)
+            return send(res, 400, { error: "Each return needs a product and a quantity." });
+          if (!Number.isFinite(amt) || amt < 0 || amt > 10000000)
+            return send(res, 400, { error: "Enter a valid deduction amount." });
+          if (!reason)
+            return send(res, 400, { error: "Add a return reason for every item." });
+          const pid =
+            clean(ln.productCode, 60) ||
+            "NAME-" + name.toUpperCase().replace(/[^A-Z0-9]+/g, "-").slice(0, 60);
+          const cur = byProduct.get(pid);
+          if (cur) {
+            cur.returnedQty = Math.round((cur.returnedQty + qty) * 1000) / 1000;
+            cur.returnedAmount = Math.round((cur.returnedAmount + amt) * 100) / 100;
+            if (cur.returnReason.indexOf(reason) < 0)
+              cur.returnReason = (cur.returnReason + "; " + reason).slice(0, 160);
+          } else
+            byProduct.set(pid, {
+              productId: pid,
+              productName: name,
+              returnedQty: qty,
+              unitPrice: Math.round((amt / qty) * 100) / 100,
+              returnedAmount: amt,
+              provisionalCredit: amt,
+              returnReason: reason,
+              notOnBill: !!ln.notOnBill,
+              restockQty: 0,
+              companyQty: 0,
+              damagedQty: 0,
+              companyStatus: "not_applicable",
+            });
+        }
+        const returnId =
+          "RET-RT-" +
+          istDay() +
+          "-" +
+          (billNo || shopCode).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 40);
+        const returnData = stored("gm_inventory_returns_v1");
+        const returns = Array.isArray(returnData) ? returnData : [];
+        // The same shop visit can only create one return record (safe if the phone retries).
+        if (returns.some((r) => r && r.id === returnId))
+          return send(res, 200, { ok: true, alreadyApplied: true, returnId });
+        const items = Array.from(byProduct.values());
+        returns.push({
+          id: returnId,
+          source: "route",
+          orderId: "",
+          orderCode: shopCode || billNo,
+          customerCode: shopCode,
+          invoiceNo: billNo,
+          suggestedCredit: items.reduce((n, x) => n + x.provisionalCredit, 0),
+          shop: clean(b.shopName, 120),
+          workerId: s.id,
+          workerName: wk.name,
+          createdAt: Date.now(),
+          status: "pending_inspection",
+          note: clean(b.note, 300),
+          items,
+        });
+        setItem("gm_inventory_returns_v1", JSON.stringify(returns));
+        logEvents(s, [
+          { type: "order", text: "Recorded route return " + returnId },
+        ]);
+        return send(res, 200, { ok: true, returnId });
+      },
+      16384,
+    );
+  }
+
   // ---- Office assigns an order to an active delivery-app employee ----
   if (p === "/api/salesadmin/assign-delivery" && req.method === "POST") {
     const ac = acctOf(s);
@@ -3269,8 +3363,9 @@ function api(req, res, url) {
   }
   if (p === "/api/inventory/returns/inspect" && req.method === "POST") {
     const ac = acctOf(s);
-    if (s.role !== "admin" || !(isFull(ac) || hasAny(ac, ["inventory"])))
-      return send(res, 403, { error: "Inventory permission required." });
+    // Only the Super Admin checks returned goods and confirms the customer credit.
+    if (s.role !== "admin" || !isSuper(ac))
+      return send(res, 403, { error: "Only the Super Admin can inspect returns and confirm credit." });
     return body(
       req,
       (err, b) => {
@@ -3325,6 +3420,34 @@ function api(req, res, url) {
               error:
                 "Reusable, company-return and damaged quantities must add up exactly to the returned quantity.",
             });
+          const suggested =
+            Math.round(
+              (Number(
+                item.provisionalCredit != null
+                  ? item.provisionalCredit
+                  : item.returnedAmount,
+              ) || 0) * 100,
+            ) / 100;
+          const credit =
+            row.creditAmount === undefined || row.creditAmount === ""
+              ? suggested
+              : Math.round(Number(row.creditAmount) * 100) / 100;
+          const creditReasonText = String(row.creditReason || "")
+            .trim()
+            .slice(0, 160);
+          if (!Number.isFinite(credit) || credit < 0)
+            return send(res, 400, {
+              error: "Enter a valid credit amount for " + item.productName + ".",
+            });
+          if (Math.abs(credit - suggested) > 0.009 && !creditReasonText)
+            return send(res, 400, {
+              error:
+                "Enter a reason for changing the credit on " +
+                item.productName +
+                " (worker deducted ₹" +
+                suggested +
+                ").",
+            });
           if (company > 0 && !String(row.companyName || "").trim())
             return send(res, 400, {
               error: "Enter the company/supplier for items being returned.",
@@ -3346,6 +3469,9 @@ function api(req, res, url) {
             });
           nextItems.push({
             ...item,
+            creditSuggested: suggested,
+            creditAmount: credit,
+            creditReason: creditReasonText,
             restockQty: restock,
             companyQty: company,
             damagedQty: damaged,
@@ -3363,27 +3489,50 @@ function api(req, res, url) {
                 : "not_applicable",
           });
         }
-        // All validation completes before any stock mutation; each return can be applied only once.
-        nextItems.forEach((item) => {
-          if (item.restockQty > 0) {
-            const product = products.find((x) => x && x.id === item.productId);
-            product.stock =
-              Math.round((Number(product.stock) + item.restockQty) * 1000) /
-              1000;
-          }
-        });
-        const creditAmount = Math.round(Number(b.creditAmount) || 0);
+        // All validation is done above. Nothing is written until here; each return can be applied only once.
+        if (ret.ledgerCreditPending)
+          return send(res, 409, {
+            error:
+              "A ledger credit for this return was started but not confirmed. Check this customer's invoice adjustments in Accounts before trying again.",
+          });
+        const creditAmount =
+          Math.round(nextItems.reduce((n, x) => n + x.creditAmount, 0) * 100) /
+          100;
         const targetInvoiceId = String(b.invoiceId || "").trim();
-        const creditReason = String(b.creditReason || ("Delivery return " + ret.id)).trim().slice(0, 200);
+        const creditReason = (
+          "Delivery return " +
+          ret.id +
+          ": " +
+          nextItems
+            .filter((x) => x.creditAmount > 0)
+            .map((x) => x.productName + " ₹" + x.creditAmount)
+            .join("; ")
+        ).slice(0, 200);
 
         const finishInspect = () => {
+          // Stock is applied only now, on the freshest product list, after the credit (if any) succeeded.
+          const productNow = stored("gm_admin_products_v1");
+          const productsNow = Array.isArray(productNow) ? productNow : [];
+          nextItems.forEach((item) => {
+            if (item.restockQty > 0) {
+              const product = productsNow.find(
+                (x) => x && x.id === item.productId,
+              );
+              if (product)
+                product.stock =
+                  Math.round((Number(product.stock) + item.restockQty) * 1000) /
+                  1000;
+            }
+          });
+          delete ret.ledgerCreditPending;
           ret.items = nextItems;
+          ret.creditConfirmedTotal = creditAmount;
           ret.inspectedAt = Date.now();
           ret.inspectedBy = actorOf(s).name;
           ret.status = nextItems.some((x) => x.companyQty > 0)
             ? "company_return_pending"
             : "closed";
-          setItem("gm_admin_products_v1", JSON.stringify(products));
+          setItem("gm_admin_products_v1", JSON.stringify(productsNow));
           setItem("gm_inventory_returns_v1", JSON.stringify(returns));
           logEvents(s, [
             {
@@ -3394,7 +3543,9 @@ function api(req, res, url) {
                 "; approved " +
                 nextItems.reduce((n, x) => n + x.restockQty, 0) +
                 " units to stock" +
-                (ret.ledgerCreditApplied ? " & reduced ₹" + ret.ledgerCreditApplied + " in ledger" : ""),
+                (ret.ledgerCreditApplied
+                  ? " & credited ₹" + ret.ledgerCreditApplied + " in ledger"
+                  : ""),
             },
           ]);
           return send(res, 200, { ok: true, return: ret });
@@ -3402,14 +3553,30 @@ function api(req, res, url) {
 
         if (creditAmount > 0) {
           if (!/^[0-9a-f-]{36}$/i.test(targetInvoiceId))
-            return send(res, 400, { error: "Select the customer invoice to reduce for the return credit." });
+            return send(res, 400, {
+              error:
+                "Select the customer invoice to reduce for the return credit.",
+            });
           const U = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
           const K = process.env.SUPABASE_SERVICE_KEY || "";
           if (!U || !K)
-            return send(res, 503, { error: "Accounts database is not configured." });
+            return send(res, 503, {
+              error: "Accounts database is not configured.",
+            });
+          // Mark the credit as in progress BEFORE calling Accounts, so a retry can never post it twice.
+          ret.ledgerCreditPending = {
+            amount: creditAmount,
+            invoiceId: targetInvoiceId,
+            at: Date.now(),
+          };
+          setItem("gm_inventory_returns_v1", JSON.stringify(returns));
           return fetch(U + "/rest/v1/rpc/gm_accounts_adjust_invoice", {
             method: "POST",
-            headers: { apikey: K, Authorization: "Bearer " + K, "Content-Type": "application/json" },
+            headers: {
+              apikey: K,
+              Authorization: "Bearer " + K,
+              "Content-Type": "application/json",
+            },
             body: JSON.stringify({
               p_invoice_id: targetInvoiceId,
               p_kind: "return",
@@ -3420,10 +3587,20 @@ function api(req, res, url) {
           })
             .then(async (r) => {
               if (!r.ok) {
+                // The credit was refused, so nothing was posted: safe to clear the marker.
+                delete ret.ledgerCreditPending;
+                setItem("gm_inventory_returns_v1", JSON.stringify(returns));
                 const msg = await r.text().catch(() => "");
                 let parsed = "";
-                try { const j = JSON.parse(msg); if (j && j.message) parsed = j.message; } catch (_) {}
-                throw new Error(parsed || "Could not apply return credit to customer ledger.");
+                try {
+                  const j = JSON.parse(msg);
+                  if (j && j.message) parsed = j.message;
+                } catch (_) {}
+                return send(res, 400, {
+                  error:
+                    parsed ||
+                    "Could not apply return credit to customer ledger.",
+                });
               }
               ret.ledgerCreditApplied = creditAmount;
               ret.ledgerInvoiceId = targetInvoiceId;
@@ -3431,12 +3608,27 @@ function api(req, res, url) {
               logEvents(s, [
                 {
                   type: "accounts",
-                  text: "Applied return credit of ₹" + creditAmount + " for " + (ret.shop || ret.orderCode) + (ret.ledgerInvoiceNo ? " (Invoice #" + ret.ledgerInvoiceNo + ")" : "") + " from " + ret.id,
+                  text:
+                    "Applied return credit of ₹" +
+                    creditAmount +
+                    " for " +
+                    (ret.shop || ret.orderCode) +
+                    (ret.ledgerInvoiceNo
+                      ? " (Invoice #" + ret.ledgerInvoiceNo + ")"
+                      : "") +
+                    " from " +
+                    ret.id,
                 },
               ]);
-              finishInspect();
+              return finishInspect();
             })
-            .catch((e) => send(res, 400, { error: e.message }));
+            .catch(() => {
+              // Network failure: we cannot know whether Accounts posted it, so leave the marker for a manual check.
+              return send(res, 502, {
+                error:
+                  "Could not confirm the credit with Accounts. Check the customer's invoice adjustments before trying again.",
+              });
+            });
         }
 
         return finishInspect();
@@ -3543,9 +3735,10 @@ function api(req, res, url) {
         ret.status = (ret.items || []).some(
           (x) =>
             x.companyQty > 0 &&
-            ["awaiting_dispatch", "dispatched", "acknowledged"].includes(
+            (["awaiting_dispatch", "dispatched", "acknowledged"].includes(
               x.companyStatus,
-            ),
+            ) ||
+              x.replacementStockPending === true),
         )
           ? "company_return_pending"
           : "reconciliation_complete";
@@ -3571,8 +3764,8 @@ function api(req, res, url) {
     req.method === "POST"
   ) {
     const ac = acctOf(s);
-    if (s.role !== "admin" || !(isFull(ac) || hasAny(ac, ["inventory"])))
-      return send(res, 403, { error: "Inventory permission required." });
+    if (s.role !== "admin" || !isSuper(ac))
+      return send(res, 403, { error: "Only the Super Admin can inspect replacements." });
     return body(
       req,
       (err, b) => {
@@ -3638,6 +3831,16 @@ function api(req, res, url) {
         item.replacementStockPending = false;
         item.replacementInspectedAt = Date.now();
         item.replacementInspectedBy = actorOf(s).name;
+        ret.status = (ret.items || []).some(
+          (x) =>
+            x.companyQty > 0 &&
+            (["awaiting_dispatch", "dispatched", "acknowledged"].includes(
+              x.companyStatus,
+            ) ||
+              x.replacementStockPending === true),
+        )
+          ? "company_return_pending"
+          : "reconciliation_complete";
         setItem("gm_admin_products_v1", JSON.stringify(products));
         setItem("gm_inventory_returns_v1", JSON.stringify(returns));
         logEvents(s, [

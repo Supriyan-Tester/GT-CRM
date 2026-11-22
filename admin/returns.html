@@ -136,6 +136,25 @@
         grid-template-columns: 1.2fr 1fr 1.2fr;
         gap: 8px;
       }
+      .ret-credit {
+        border-top: 1px dashed var(--border);
+        padding-top: 10px;
+        display: grid;
+        gap: 8px;
+      }
+      .ret-credit-row {
+        display: grid;
+        grid-template-columns: 1fr 1.6fr;
+        gap: 8px;
+      }
+      .ret-diff {
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .ret-total {
+        font-size: 14px;
+        font-weight: 800;
+      }
       @media (max-width: 700px) {
         .ret-ledger-grid {
           grid-template-columns: 1fr;
@@ -162,13 +181,15 @@
         let rows = [];
         let all = [];
         let invCache = {};
+        const sess = (GA.session && GA.session()) || {};
+        const isSuper = sess.super === true;
 
         root.innerHTML = `
           <div class="ret-wrap">
             <div>
               <div class="ret-title">Returned stock inspection</div>
               <div class="ret-intro">
-                Delivery returns stay quarantined until inspected. Approved reusable quantities return to stock, and confirmed return amounts deduct directly from the customer's ledger.
+                Delivery returns stay quarantined until the Super Admin checks them. Good units return to stock, and the credit you confirm for each product is deducted from the customer's invoice.
               </div>
               <div class="ret-actions" style="align-items:center;margin-top:10px">
                 <label class="ret-field" style="display:flex;gap:8px;align-items:center">
@@ -229,9 +250,31 @@
         }
 
         function renderItem(item, inspected) {
+          const suggested =
+            Math.round(
+              (Number(item.provisionalCredit != null ? item.provisionalCredit : item.returnedAmount) || 0) * 100
+            ) / 100;
+          const confirmedNote =
+            inspected && item.creditAmount != null
+              ? ` · Credit: ${money(item.creditAmount)}` +
+                (Math.abs(Number(item.creditAmount) - suggested) > 0.009
+                  ? ` (worker deducted ${money(suggested)}${item.creditReason ? ", " + esc(item.creditReason) : ""})`
+                  : "")
+              : "";
           const priceNote = item.unitPrice
             ? " × " + money(item.unitPrice) + " = " + money(item.returnedAmount || item.returnedQty * item.unitPrice)
             : "";
+
+          if (!inspected && !isSuper) {
+            return `
+              <div class="ret-item" data-product="${esc(item.productId)}">
+                <div>
+                  <b>${esc(item.productName)}</b>
+                  <div class="ret-meta">Returned: ${esc(item.returnedQty)}${priceNote} · Reason: ${esc(item.returnReason)} · Worker deducted ${money(suggested)}</div>
+                </div>
+              </div>
+            `;
+          }
 
           if (!inspected) {
             return `
@@ -261,6 +304,18 @@
                     <input class="inspection-note" placeholder="Condition, packaging, expiry, etc.">
                   </label>
                 </div>
+                <div class="ret-credit">
+                  <div class="ret-meta">Worker deducted at the door: <b>${money(suggested)}</b></div>
+                  <div class="ret-credit-row">
+                    <label class="ret-field">Confirmed credit (₹)
+                      <input class="credit-amt" type="number" min="0" step="0.01" value="${suggested}" data-suggested="${suggested}">
+                    </label>
+                    <label class="ret-field">Reason (needed if changed)
+                      <input class="credit-reason" maxlength="160" placeholder="e.g. heavily damaged, 40% credit">
+                    </label>
+                  </div>
+                  <div class="ret-diff"></div>
+                </div>
               </div>
             `;
           }
@@ -270,7 +325,7 @@
               <div class="ret-item" data-product="${esc(item.productId)}">
                 <div>
                   <b>${esc(item.productName)}</b>
-                  <div class="ret-meta">Returned: ${esc(item.returnedQty)}${priceNote} · Reason: ${esc(item.returnReason)}</div>
+                  <div class="ret-meta">Returned: ${esc(item.returnedQty)}${priceNote} · Reason: ${esc(item.returnReason)}${confirmedNote}</div>
                 </div>
                 <div class="ret-warning">No supplier return allocated for this item.</div>
               </div>
@@ -293,7 +348,11 @@
                   <input class="replacement-damaged" type="number" min="0" max="${Number(item.replacementReceivedQty)}" step="0.001" value="0">
                 </label>
               </div>
-              <button class="ret-btn primary replacement-inspect" type="button">Inspect replacement & update stock</button>
+              ${
+                isSuper
+                  ? '<button class="ret-btn primary replacement-inspect" type="button">Inspect replacement & update stock</button>'
+                  : '<div class="ret-warning">Only the Super Admin can inspect the replacement.</div>'
+              }
             `;
           } else if (item.replacementInspectedAt) {
             replacementHtml = `
@@ -310,7 +369,7 @@
                 <div class="ret-meta">Returned: ${esc(item.returnedQty)}${priceNote} · Reason: ${esc(item.returnReason)}</div>
               </div>
               <div class="ret-meta">
-                Reusable: ${esc(item.restockQty)} · Company: ${esc(item.companyQty)} · Damaged: ${esc(item.damagedQty)}
+                Reusable: ${esc(item.restockQty)} · Company: ${esc(item.companyQty)} · Damaged: ${esc(item.damagedQty)}${confirmedNote}
               </div>
               <div class="ret-field">
                 <label>Company reconciliation</label>
@@ -365,14 +424,14 @@
               const inspected = Boolean(r.inspectedAt);
               const custCode = r.customerCode || r.orderCode || "";
               const openInvs = invCache[custCode] || [];
-              const defaultAmt =
-                r.suggestedCredit != null
-                  ? Math.round(Number(r.suggestedCredit))
-                  : Math.round(
-                      r.items.reduce(function (sum, i) {
-                        return sum + (Number(i.returnedAmount) || 0);
-                      }, 0)
-                    );
+              const defaultAmt = Math.round(
+                r.items.reduce(function (sum, i) {
+                  return (
+                    sum +
+                    (Number(i.provisionalCredit != null ? i.provisionalCredit : i.returnedAmount) || 0)
+                  );
+                }, 0) * 100
+              ) / 100;
 
               let invOptions = '<option value="">No open invoice found in Accounts</option>';
               if (openInvs.length) {
@@ -404,31 +463,30 @@
                   )} deducted from customer ledger${invLabel}.</div>`;
                 }
               } else {
-                footerHtml = `
+                footerHtml = isSuper
+                  ? `
                   <div class="ret-ledger">
-                    <div class="ret-ledger-title">Confirm Return Credit for Customer Ledger (Optional)</div>
+                    <div class="ret-ledger-title">Customer ledger credit</div>
                     <div class="ret-ledger-grid">
                       <label class="ret-field">Customer invoice to reduce
                         <select class="ledger-inv">${invOptions}</select>
                       </label>
-                      <label class="ret-field">Confirmed return credit (₹)
-                        <input class="ledger-amt" type="number" min="0" step="1" value="${defaultAmt}" placeholder="0">
-                      </label>
-                      <label class="ret-field">Ledger note
-                        <input class="ledger-reason" value="Delivery return ${esc(r.id)}" maxlength="200">
-                      </label>
+                      <div class="ret-field">Total credit to post
+                        <div class="ret-total ledger-total">${money(defaultAmt)}</div>
+                      </div>
                     </div>
                     <div class="ret-warning">
-                      If an invoice is selected and credit amount is greater than ₹0, approving this return will automatically deduct that amount from the customer's ledger balance.
+                      The total of the confirmed credits above is deducted from the selected invoice when you approve. It cannot be edited afterwards, only reversed in Accounts. A credit cannot be more than what is still due on the invoice.
                     </div>
                   </div>
                   <div class="ret-warning">
-                    The three quantities must total exactly ${totalUnits} units for this return.
+                    The three quantities must total exactly ${totalUnits} units for each product.
                   </div>
                   <div class="ret-actions">
                     <button class="ret-btn primary inspect" type="button">Approve return, update stock & ledger</button>
                   </div>
-                `;
+                `
+                  : `<div class="ret-warning">Waiting for the Super Admin to check the goods and confirm the credit.</div>`;
               }
 
               return `
@@ -474,7 +532,10 @@
                 return localDateStr(r.createdAt) === dateVal;
               })
             : all.filter(function (r) {
-                return r.status !== "closed" && r.status !== "reconciliation_complete";
+                const replacementWaiting = (r.items || []).some(function (i) {
+                  return i.replacementStockPending;
+                });
+                return replacementWaiting || (r.status !== "closed" && r.status !== "reconciliation_complete");
               });
 
           const customerCodes = Array.from(
@@ -511,6 +572,25 @@
           apply();
         });
 
+        root.addEventListener("input", function (e) {
+          if (!e.target.classList.contains("credit-amt")) return;
+          const sug = Number(e.target.dataset.suggested) || 0;
+          const diff = Math.round(((Number(e.target.value) || 0) - sug) * 100) / 100;
+          const note = e.target.closest(".ret-credit").querySelector(".ret-diff");
+          note.textContent =
+            Math.abs(diff) < 0.01
+              ? ""
+              : diff < 0
+                ? "₹" + Math.abs(diff) + " LESS than the worker deducted: this stays due from the customer."
+                : "₹" + diff + " MORE than the worker deducted: it can only be posted up to what is still due on the invoice.";
+          note.style.color = diff < 0 ? "var(--danger, #c0392b)" : "var(--primary)";
+          const card = e.target.closest("[data-ret]");
+          const total = Array.from(card.querySelectorAll(".credit-amt")).reduce(function (n, i) {
+            return n + (Number(i.value) || 0);
+          }, 0);
+          card.querySelector(".ledger-total").textContent = money(total);
+        });
+
         root.addEventListener("click", function (e) {
           const card = e.target.closest("[data-ret]");
           if (!card) return;
@@ -528,27 +608,35 @@
                 damagedQty: Number(el.querySelector(".damaged").value),
                 companyName: el.querySelector(".company-name").value,
                 inspectionNote: el.querySelector(".inspection-note").value,
+                creditAmount: Number(el.querySelector(".credit-amt").value) || 0,
+                creditReason: el.querySelector(".credit-reason").value,
               };
             });
 
             const invSel = card.querySelector(".ledger-inv");
-            const amtInp = card.querySelector(".ledger-amt");
-            const rsnInp = card.querySelector(".ledger-reason");
-
             const invoiceId = invSel ? invSel.value : "";
-            const creditAmount = amtInp ? Number(amtInp.value) || 0 : 0;
-            const creditReason = rsnInp ? rsnInp.value : "";
+            const creditAmount = items.reduce(function (n, i) {
+              return n + i.creditAmount;
+            }, 0);
             const selectedOpt = invSel && invSel.selectedOptions && invSel.selectedOptions[0];
             const invoiceNo = selectedOpt ? selectedOpt.getAttribute("data-invno") || "" : "";
 
             if (creditAmount > 0 && !invoiceId) {
               alert(
-                "Select a customer invoice to apply the ₹" +
-                  creditAmount +
-                  " return credit, or set the credit amount to 0."
+                "Select a customer invoice to apply the total credit of " +
+                  money(creditAmount) +
+                  ", or set the credits to 0."
               );
               return;
             }
+            if (
+              !confirm(
+                "Approve this return?\n\nCustomer credit to post: " +
+                  money(creditAmount) +
+                  "\nThis cannot be edited afterwards."
+              )
+            )
+              return;
 
             e.target.disabled = true;
             api("/api/inventory/returns/inspect", "POST", {
@@ -556,8 +644,6 @@
               items: items,
               invoiceId: invoiceId,
               invoiceNo: invoiceNo,
-              creditAmount: creditAmount,
-              creditReason: creditReason,
             })
               .then(load)
               .catch(function (err) {
