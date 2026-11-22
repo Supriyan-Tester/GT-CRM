@@ -522,6 +522,61 @@ window.GMImg = {
     return rawGet.apply(this, arguments);
   };
 
+  // Never let an older server snapshot wipe out a worker's active punch-in or completed shop deliveries on this phone.
+  function mergeWorkerBlob(localRaw, serverRaw) {
+    try {
+      var loc = JSON.parse(localRaw), srv = JSON.parse(serverRaw);
+      if (!isObj(loc) || !isObj(srv)) return serverRaw;
+      var changed = false;
+      // 1. Preserve any attendanceLog entries present locally that are missing on server
+      if (isObj(loc.attendanceLog)) {
+        if (!isObj(srv.attendanceLog)) srv.attendanceLog = {};
+        Object.keys(loc.attendanceLog).forEach(function (m) {
+          if (!isObj(loc.attendanceLog[m])) return;
+          if (!isObj(srv.attendanceLog[m])) srv.attendanceLog[m] = {};
+          Object.keys(loc.attendanceLog[m]).forEach(function (d) {
+            var le = loc.attendanceLog[m][d], se = srv.attendanceLog[m][d];
+            if (isObj(le) && (!isObj(se) || (le.outTime && le.outTime !== "-" && (!se.outTime || se.outTime === "-")))) {
+              srv.attendanceLog[m][d] = le;
+              changed = true;
+            }
+          });
+        });
+      }
+      // 2. Preserve local punch-in / route unlock state if server is still un-punched for the same date
+      if (loc.punchedIn && !srv.punchedIn && (!srv.date || loc.date === srv.date)) {
+        srv.punchedIn = loc.punchedIn;
+        if (loc.punchInTime) srv.punchInTime = loc.punchInTime;
+        if (loc.routeUnlocked) srv.routeUnlocked = loc.routeUnlocked;
+        if (loc.startKm != null) srv.startKm = loc.startKm;
+        if (loc.vehicle) srv.vehicle = loc.vehicle;
+        changed = true;
+      }
+      // 3. Never revert a shop already marked delivered/completed on this phone back to "pending"
+      if (Array.isArray(loc.shops) && Array.isArray(srv.shops)) {
+        var locByKey = {};
+        loc.shops.forEach(function (s, idx) {
+          if (!s) return;
+          var key = (s.inv || s.code || "") + "|" + idx;
+          locByKey[key] = s;
+        });
+        srv.shops = srv.shops.map(function (s, idx) {
+          if (!s) return s;
+          var key = (s.inv || s.code || "") + "|" + idx;
+          var lsItem = locByKey[key];
+          if (lsItem && lsItem.status && lsItem.status !== "pending" && (!s.status || s.status === "pending")) {
+            changed = true;
+            return lsItem;
+          }
+          return s;
+        });
+      }
+      return changed ? JSON.stringify(srv) : serverRaw;
+    } catch (e) {
+      return serverRaw;
+    }
+  }
+
   function applyOne(lk, sk, items) {
     if (PROT.test(lk)) setRev(lk, items[sk].rev);
     var v = items[sk].v,
@@ -532,9 +587,18 @@ window.GMImg = {
         rawRem.call(ls, lk);
         return true;
       }
-    } else if (cur !== v) {
-      rawSet.call(ls, lk, v);
-      return true;
+    } else {
+      if (isWorker && lk === BLOB && typeof cur === "string" && typeof v === "string") {
+        var merged = mergeWorkerBlob(cur, v);
+        if (merged !== v) {
+          v = merged;
+          push(sk, v); // re-sync the preserved local progress back up to the server
+        }
+      }
+      if (cur !== v) {
+        rawSet.call(ls, lk, v);
+        return true;
+      }
     }
     return false;
   }
@@ -610,8 +674,7 @@ window.GMImg = {
         if (dirtyMap()[NS + id]) {
           push(NS + id, cur);
         } else if (mine && mine.v !== null && cur !== mine.v) {
-          rawSet.call(ls, BLOB, mine.v);
-          changed = true;
+          if (applyOne(BLOB, NS + id, items)) changed = true;
         } else if (!mine) {
           push(NS + id, cur);
         }
