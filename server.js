@@ -2972,6 +2972,9 @@ function api(req, res, url) {
         session.role === "admin" && hasAny(acctOf(session), ["billing"]),
       canEditInvoice: (session) =>
         session.role === "admin" && isFull(acctOf(session)),
+      // The session object has no "super" flag (only the /api/me answer does), so look the account up.
+      isSuperAdmin: (session) =>
+        session.role === "admin" && isSuper(acctOf(session)),
       canCollect: (session) =>
         (session.role === "admin" && hasAny(acctOf(session), ["billing"])) ||
         (session.role === "sales" && hasAny(acctOf(session), ["sales"])) ||

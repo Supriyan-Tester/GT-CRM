@@ -641,7 +641,7 @@
       if(file){cmsg("Uploading photo...");var up=await request("/api/accounts/evidence",{method:"POST",body:JSON.stringify({data:await readDataUrl(file)})});evidencePath=up.evidencePath;}
       cmsg("Saving collection...");
       var reqKey="adm-col-"+Date.now()+"-"+Math.random().toString(36).slice(2,10);
-      await request("/api/accounts/collections",{method:"POST",body:JSON.stringify({
+      var saved=await request("/api/accounts/collections",{method:"POST",body:JSON.stringify({
         requestKey:reqKey,
         customerCode:currentCustomer,
         method:colMethod,
@@ -649,7 +649,9 @@
         autoApprove:$("acColAuto").checked,
         allocations:[{invoiceId:collecting.id,amount:Number(amt.toFixed(2)),evidencePath:evidencePath}]
       })});
-      toast($("acColAuto").checked?"Collection recorded and approved.":"Collection recorded (pending approval).");
+      if(saved&&saved.autoApproved)toast("Collection recorded and approved.");
+      else if($("acColAuto").checked)toast("Collection recorded but NOT approved: "+((saved&&saved.approveError)||"it is waiting in Pending approval.")+" It is in Pending approval.");
+      else toast("Collection recorded (pending approval).");
       colBusy=false;closeCol();loadOverview();loadLedger();
     }catch(err){cmsg(err.message,"err");colBusy=false;}finally{btn.disabled=false;}
   };

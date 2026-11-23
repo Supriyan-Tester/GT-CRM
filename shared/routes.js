@@ -171,32 +171,51 @@
     }
     return out;
   }
+  // Search helpers: lower case, punctuation ignored ("Sri-Ram" = "sri ram"), words matched in any order.
+  function norm(t) {
+    return String(t == null ? "" : t)
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim();
+  }
+  function words(t) {
+    var n = norm(t);
+    return n ? n.split(" ") : [];
+  }
   // The shops shown on screen: search + display sort. Display sorting never changes the saved visiting order.
   function viewItems() {
     var k = ver + "|" + cur + "|" + q + "|" + sortBy;
     if (memo.k === k) return memo.v;
     var L = baseItems(),
-      needle = q.toLowerCase(),
-      digits = q.replace(/\D/g, "");
-    if (q)
+      toks = words(q),
+      digits = q.replace(/\D/g, ""),
+      onlyNum = /^[\d\s+\-()]+$/.test(q);
+    if (toks.length)
       L = L.filter(function (x) {
         var c = x.c,
-          hay = (
-            c.name +
-            " " +
-            x.code +
-            " " +
-            (c.address || "") +
-            " " +
-            (c.place || "") +
-            " " +
-            (c.phone || "") +
-            " " +
-            (c.phone2 || "") +
-            (cur === ALL ? " " + x.r.name : "")
-          ).toLowerCase();
-        if (hay.indexOf(needle) > -1) return true;
+          hay = norm(
+            [
+              c.name,
+              c.alias,
+              x.code,
+              c.area,
+              c.address,
+              c.place,
+              c.phone,
+              c.phone2,
+              cur === ALL ? x.r.name : "",
+            ].join(" "),
+          );
+        // every word typed must be found somewhere (any order), so "ram anna nagar" or "nagar ram" both work
+        if (
+          toks.every(function (t) {
+            return hay.indexOf(t) > -1;
+          })
+        )
+          return true;
+        // phone numbers typed with spaces, dashes or +91
         return (
+          onlyNum &&
           digits.length >= 3 &&
           (String(c.phone || "") + String(c.phone2 || ""))
             .replace(/\D/g, "")
@@ -525,7 +544,7 @@
     '<div class="card rt-head" id="rtHead"></div>' +
     '<div class="a-stats rt-stats noprint" id="rtStats" aria-label="Route summary"></div>' +
     '<div class="card rt-main" id="rtMain">' +
-    '<div class="field a-f noprint" id="rtQBox" data-act style="width:190px;height:38px"><input type="search" id="rtQ" placeholder="Search shop..." aria-label="Search shop name, code or phone" autocomplete="off"></div>' +
+    '<div class="field a-f noprint" id="rtQBox" data-act style="width:min(210px,100%);height:40px"><input type="search" id="rtQ" placeholder="Search shop..." aria-label="Search shop name, code or phone" autocomplete="off"></div>' +
     '<div class="rt-tools noprint" id="rtTools">' +
     '<div class="field a-f rt-sort"><select id="rtSort" aria-label="Sort shops"><option value="order">Sort: Visiting order</option><option value="az">Sort: A to Z</option><option value="za">Sort: Z to A</option><option value="new">Sort: Newest added</option><option value="old">Sort: Oldest added</option></select></div>' +
     '<span class="rt-hint" id="rtHint"></span></div>' +
@@ -793,8 +812,17 @@
       if ($("rtStats")) $("rtStats").innerHTML = "";
       return;
     }
-    GA.clearActs();
-    if (qb) $("aActs").appendChild(qb);
+    // Keep the search box where it is while the header is redrawn: taking it out of the page and putting it back
+    // (what clearActs does) made the browser drop the cursor after every letter typed.
+    var slot = $("aActs");
+    if (qb && slot && qb.parentNode === slot) {
+      Array.prototype.slice.call(slot.children).forEach(function (n) {
+        if (n !== qb) slot.removeChild(n);
+      });
+    } else {
+      GA.clearActs();
+      if (qb) $("aActs").appendChild(qb);
+    }
     h.innerHTML =
       '<div class="rt-top"><div style="flex:1;min-width:200px"><h2>' +
       (all ? "All routes" : esc(r ? r.name : "")) +
@@ -2265,16 +2293,15 @@
         : "Create route";
     }
     function draw() {
-      var f = $("aQ").value.trim().toLowerCase();
+      var ft = words($("aQ").value);
       var all = S.customers.filter(function (c) {
-        return (
-          !c.inactive &&
-          (!f ||
-            [c.name, c.code, c.area, c.phone]
-              .join(" ")
-              .toLowerCase()
-              .indexOf(f) > -1)
+        if (c.inactive) return false;
+        var hay = norm(
+          [c.name, c.alias, c.code, c.area, c.address, c.place, c.phone, c.phone2].join(" "),
         );
+        return ft.every(function (t) {
+          return hay.indexOf(t) > -1;
+        });
       });
       shown = all.slice(0, 60);
       $("aList").innerHTML =

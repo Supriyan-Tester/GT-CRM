@@ -875,9 +875,7 @@
       "</div><div>" +
       card("map-pin", "Map", "Stored shop pin", "", loc) +
       "</div></div></div>" +
-      '<div class="gdt-p" data-p="payments" hidden>' +
-      empty("Payment records are not stored for customers yet.") +
-      "</div>" +
+      '<div class="gdt-p" data-p="payments" hidden><div id="gdtPay"><div class="gdt-empty">Loading payments\u2026</div></div></div>' +
       '<div class="gdt-p" data-p="history" hidden>' +
       card("clock", "History &amp; Activity", "Visits and updates", "", act) +
       "</div>" +
@@ -887,7 +885,124 @@
       '<div class="gdt-p" data-p="attachments" hidden>' +
       empty("Customer attachments are not stored yet.") +
       "</div>";
+    /* Payments tab: this customer's collections, read from the accounts system (same data as Admin > Collections). */
+    var payState = { page: 0, rows: [], total: 0, busy: false, loaded: false };
+    var PAY_ST = {
+      approved: "Approved",
+      pending_approval: "Pending approval",
+      rejected: "Rejected",
+      reversed: "Reversed",
+      correction_requested: "Correction asked",
+    };
+    var PAY_M = { cash: "Cash", upi: "UPI", bank_transfer: "Bank transfer" };
+    function rs(n) {
+      return (
+        "\u20B9" +
+        Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })
+      );
+    }
+    function payDraw(err) {
+      var box = G("gdtPay");
+      if (!box) return;
+      if (err) {
+        box.innerHTML = '<div class="gdt-empty">' + E(err) + "</div>";
+        return;
+      }
+      if (!payState.rows.length) {
+        box.innerHTML =
+          '<div class="gdt-empty">No payments collected from this customer yet.</div>';
+        return;
+      }
+      var ok = 0,
+        wait = 0;
+      payState.rows.forEach(function (x) {
+        if (x.status === "approved") ok += Number(x.total_amount) || 0;
+        else if (x.status === "pending_approval" || x.status === "correction_requested")
+          wait += Number(x.total_amount) || 0;
+      });
+      box.innerHTML =
+        '<div style="display:flex;gap:18px;flex-wrap:wrap;margin:0 0 12px"><div><small>Approved</small><div><b>' +
+        rs(ok) +
+        '</b></div></div><div><small>Waiting for approval</small><div><b>' +
+        rs(wait) +
+        '</b></div></div><div><small>Payments</small><div><b>' +
+        payState.total +
+        "</b></div></div></div>" +
+        '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="text-align:left;color:var(--muted)"><th style="padding:8px 6px">Date</th><th style="padding:8px 6px">Invoices</th><th style="padding:8px 6px">Method</th><th style="padding:8px 6px;text-align:right">Amount</th><th style="padding:8px 6px">Status</th><th style="padding:8px 6px">Collected by</th></tr></thead><tbody>' +
+        payState.rows
+          .map(function (x) {
+            var d = new Date(x.received_at),
+              ds = isNaN(d)
+                ? ""
+                : d.toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                    timeZone: "Asia/Kolkata",
+                  });
+            return (
+              '<tr style="border-top:1px solid var(--border)"><td style="padding:8px 6px;white-space:nowrap">' +
+              E(ds) +
+              '</td><td style="padding:8px 6px">' +
+              E(
+                (x.invoices || [])
+                  .map(function (v) {
+                    return v.invoiceNo;
+                  })
+                  .filter(Boolean)
+                  .join(", ") || "-",
+              ) +
+              '</td><td style="padding:8px 6px">' +
+              E(PAY_M[x.method] || x.method || "") +
+              '</td><td style="padding:8px 6px;text-align:right"><b>' +
+              rs(x.total_amount) +
+              '</b></td><td style="padding:8px 6px">' +
+              E(PAY_ST[x.status] || x.status || "") +
+              '</td><td style="padding:8px 6px">' +
+              E(x.collector_name_snapshot || x.collected_by || "") +
+              "</td></tr>"
+            );
+          })
+          .join("") +
+        "</tbody></table></div>" +
+        (payState.rows.length < payState.total
+          ? '<div style="margin-top:12px"><button type="button" class="btn btn-secondary a-btn" id="gdtPayMore">Show more</button></div>'
+          : "");
+      if (G("gdtPayMore")) G("gdtPayMore").onclick = payLoad;
+    }
+    function payLoad() {
+      if (payState.busy) return;
+      payState.busy = true;
+      var pg = payState.page + 1;
+      fetch(
+        "/api/accounts/collections?nostats=1&code=" +
+          encodeURIComponent(c.code) +
+          "&page=" +
+          pg,
+        { credentials: "same-origin", cache: "no-store" },
+      )
+        .then(function (r) {
+          if (r.status === 403)
+            throw new Error("You need the Billing permission to see payments.");
+          if (!r.ok) throw new Error("Could not load payments. Try again.");
+          return r.json();
+        })
+        .then(function (j) {
+          payState.page = pg;
+          payState.total = j.total || 0;
+          payState.rows = payState.rows.concat(j.rows || []);
+          payState.loaded = true;
+          payDraw();
+        })
+        .catch(function (e) {
+          payDraw(e.message || "Could not load payments.");
+        })
+        .then(function () {
+          payState.busy = false;
+        });
+    }
     function tab(t) {
+      if (t === "payments" && !payState.loaded && !payState.busy) payLoad();
       body.querySelectorAll(".gdt-tabs button").forEach(function (x) {
         x.classList.toggle("on", x.getAttribute("data-t") === t);
       });

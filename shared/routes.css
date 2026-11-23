@@ -1780,3 +1780,20 @@ body.rt-dnd * {
   height: 40px !important;
   border-radius: 10px !important;
 }
+
+/* Shop search box: wide enough for a name + area, and the clear (x) never sits on top of the text */
+#rtQBox {
+  max-width: 100%;
+}
+#rtQBox #rtQ {
+  text-overflow: ellipsis;
+  padding-right: 6px;
+}
+@media (max-width: 700px) {
+  #rtQBox {
+    width: 100% !important;
+  }
+  #rtQBox #rtQ {
+    font-size: 16px;
+  }
+}

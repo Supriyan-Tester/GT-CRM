@@ -15,6 +15,7 @@ function createAccountsRoutes(config) {
   const canBill = config.canBill;
   const canCollect = config.canCollect;
   const canEditInvoice = config.canEditInvoice || (() => false);
+  const isSuperAdmin = config.isSuperAdmin || (() => false);
   const planInvoiceOwner = config.planInvoiceOwner || (() => null);
   const planStopFor = config.planStopFor || (() => null);
   const notifyAdmin = config.notifyAdmin || (() => {});
@@ -603,6 +604,9 @@ function createAccountsRoutes(config) {
           filter += "&or=(collected_by.eq." + encodeURIComponent(collector) + ",collector_name_snapshot.ilike." + encodeURIComponent("*" + collector + "*") + ")";
         }
       }
+      // One customer's payments (the Payments tab on the Customers page)
+      const custCode = String(q.get("code") || "").replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 40);
+      if (custCode) filter += "&customer_code=eq." + encodeURIComponent(custCode);
       if (search) filter += "&customer_name_snapshot=ilike." + encodeURIComponent("*" + search + "*");
       if (from) filter += "&received_at=gte." + encodeURIComponent(new Date(from + "T00:00:00+05:30").toISOString());
       if (to) filter += "&received_at=lt." + encodeURIComponent(new Date(new Date(to + "T00:00:00+05:30").getTime() + 24 * 3600e3).toISOString());
@@ -881,7 +885,7 @@ function createAccountsRoutes(config) {
     }
 
     if (req.method === "POST" && p === "/api/accounts/collections") {
-      if (!canCollect(session) && !session.super) { send(res, 403, { error: "Sales or Delivery collection permission required." }); return true; }
+      if (!canCollect(session) && !isSuperAdmin(session)) { send(res, 403, { error: "Sales or Delivery collection permission required." }); return true; }
       body(req, (err, input) => {
         if (err) return send(res, 400, { error: "Invalid request body." });
         try {
@@ -920,14 +924,22 @@ function createAccountsRoutes(config) {
               });
             }).then(async (result) => {
               notifyCollection(session, customer, valid.allocations.reduce((n, a) => n + Number(a.amount || 0), 0), { cash: "Cash", upi: "UPI", bank_transfer: "Bank" }[valid.method] || valid.method);
-              if (input && input.autoApprove && session.super && canBill(session)) {
-                const colId = result && (result.collection_id || result.collectionId || result.id);
-                if (colId) {
-                  await rpc("gm_accounts_approve_collection", { p_collection_id: colId, p_approved_by: String(session.id).slice(0, 80) });
-                  logEvent(session, "Approved collection " + colId + " (Super Admin direct entry)");
+              let autoApproved = false, approveError = "";
+              if (input && input.autoApprove) {
+                if (!(isSuperAdmin(session) && canBill(session))) approveError = "Only a Super Admin with Billing permission can approve a collection straight away.";
+                else {
+                  const colId = result && (result.collection_id || result.collectionId || result.id);
+                  if (colId) {
+                    // The collection is already saved; if approving fails it stays in Pending approval and the page is told why.
+                    try {
+                      await rpc("gm_accounts_approve_collection", { p_collection_id: colId, p_approved_by: String(session.id).slice(0, 80) });
+                      autoApproved = true;
+                      logEvent(session, "Approved collection " + colId + " (Super Admin direct entry)");
+                    } catch (e) { approveError = String((e && e.message) || "Could not approve").slice(0, 200); }
+                  }
                 }
               }
-              send(res, 201, result);
+              send(res, 201, Object.assign({}, result, { autoApproved, approveError }));
             })
             .catch((e) => fail(res, e));
         } catch (e) { send(res, 400, { error: e.message }); }

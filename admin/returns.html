@@ -6,7 +6,7 @@
     <script src="../shared/sync.js"></script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Returns & Reconciliation - General Traders</title>
+    <title>Returns - General Traders</title>
     <link rel="stylesheet" href="../shared/theme.css" />
     <link rel="stylesheet" href="../shared/admin.css" />
     <script src="../shared/theme.js"></script>
@@ -14,11 +14,45 @@
       .ret-wrap {
         display: grid;
         gap: 14px;
+        max-width: 1100px;
       }
       .ret-intro {
         color: var(--muted);
         font-size: 13px;
-        margin-top: 4px;
+      }
+      .ret-bar {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .ret-bar .ret-count {
+        margin-left: auto;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .ret-bar label {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .ret-bar input[type="date"] {
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--text);
+        border-radius: 9px;
+        padding: 8px 10px;
+        font: inherit;
+        font-size: 13px;
+      }
+      .ret-banner {
+        font-size: 13px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: var(--soft);
+        color: var(--muted);
       }
       .ret-card {
         background: var(--card);
@@ -26,7 +60,7 @@
         border-radius: 16px;
         padding: 16px;
         display: grid;
-        gap: 12px;
+        gap: 14px;
       }
       .ret-top {
         display: flex;
@@ -41,15 +75,25 @@
       .ret-meta {
         font-size: 12px;
         color: var(--muted);
-        margin-top: 4px;
+        margin-top: 3px;
+        line-height: 1.5;
       }
       .ret-pill {
         font-size: 11px;
-        padding: 5px 9px;
+        font-weight: 700;
+        padding: 5px 10px;
         border-radius: 20px;
         background: var(--soft);
         color: var(--muted);
         white-space: nowrap;
+      }
+      .ret-pill.wait {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .ret-pill.done {
+        background: var(--t-primary);
+        color: var(--primary);
       }
       .ret-items {
         display: grid;
@@ -58,28 +102,47 @@
       .ret-item {
         border: 1px solid var(--border);
         border-radius: 12px;
-        padding: 12px;
+        padding: 14px;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: minmax(180px, 0.8fr) minmax(0, 2fr);
+        align-items: start;
+      }
+      .ret-item > .ret-info b {
+        display: block;
+      }
+      .ret-form {
         display: grid;
         gap: 10px;
+        min-width: 0;
       }
-      .ret-grid {
+      .ret-row {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 8px;
       }
-      .ret-grid label,
-      .ret-field {
+      .ret-row.two {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .ret-row.four {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+      .ret-f {
         font-size: 11px;
         color: var(--muted);
         display: grid;
         gap: 5px;
+        min-width: 0;
+        align-content: start;
       }
-      .ret-grid input,
-      .ret-field input,
-      .ret-field select,
-      .ret-field textarea {
+      .ret-f[hidden] {
+        display: none;
+      }
+      .ret-f input,
+      .ret-f select {
         width: 100%;
         min-width: 0;
+        box-sizing: border-box;
         border: 1px solid var(--border);
         background: var(--bg);
         color: var(--text);
@@ -88,19 +151,44 @@
         font: inherit;
         font-size: 13px;
       }
+      .ret-f input:focus,
+      .ret-f select:focus {
+        outline: 2px solid var(--primary);
+        outline-offset: -1px;
+      }
+      .ret-left {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--primary);
+      }
+      .ret-left.bad,
+      .ret-diff.bad {
+        color: var(--danger);
+      }
+      .ret-diff {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--primary);
+      }
       .ret-actions {
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
+        align-items: center;
       }
       .ret-btn {
         border: 1px solid var(--border);
         background: var(--card);
         color: var(--text);
-        padding: 9px 13px;
+        padding: 9px 14px;
         border-radius: 9px;
         font-weight: 700;
+        font-size: 13px;
         cursor: pointer;
+      }
+      .ret-btn:disabled {
+        opacity: 0.6;
+        cursor: default;
       }
       .ret-btn.primary {
         background: var(--primary);
@@ -114,7 +202,7 @@
         border: 1px dashed var(--border);
         border-radius: 14px;
       }
-      .ret-warning {
+      .ret-hint {
         font-size: 12px;
         color: var(--muted);
       }
@@ -122,7 +210,7 @@
         border: 1px solid var(--primary);
         background: var(--t-primary);
         border-radius: 12px;
-        padding: 12px;
+        padding: 14px;
         display: grid;
         gap: 10px;
       }
@@ -133,39 +221,53 @@
       }
       .ret-ledger-grid {
         display: grid;
-        grid-template-columns: 1.2fr 1fr 1.2fr;
-        gap: 8px;
-      }
-      .ret-credit {
-        border-top: 1px dashed var(--border);
-        padding-top: 10px;
-        display: grid;
-        gap: 8px;
-      }
-      .ret-credit-row {
-        display: grid;
-        grid-template-columns: 1fr 1.6fr;
-        gap: 8px;
-      }
-      .ret-diff {
-        font-size: 12px;
-        font-weight: 700;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+        gap: 10px;
+        align-items: end;
       }
       .ret-total {
-        font-size: 14px;
+        font-size: 18px;
         font-weight: 800;
+        color: var(--text);
       }
-      @media (max-width: 700px) {
-        .ret-ledger-grid {
+      .ret-note {
+        font-size: 13px;
+        font-weight: 600;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .ret-note[hidden] {
+        display: none;
+      }
+      .ret-done {
+        color: var(--primary);
+        font-weight: 700;
+        font-size: 13px;
+      }
+      @media (max-width: 800px) {
+        .ret-item {
           grid-template-columns: 1fr;
+        }
+        .ret-row.four {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
       @media (max-width: 600px) {
-        .ret-grid {
-          grid-template-columns: 1fr 1fr;
+        .ret-row.two,
+        .ret-ledger-grid {
+          grid-template-columns: 1fr;
         }
-        .ret-grid label:last-child {
-          grid-column: 1 / -1;
+        .ret-card {
+          padding: 12px;
+        }
+        .ret-bar .ret-count {
+          margin-left: 0;
+          width: 100%;
+        }
+        .ret-actions .ret-btn {
+          width: 100%;
         }
       }
     </style>
@@ -177,28 +279,24 @@
       GA.guard();
 
       (function () {
-        const root = GA.mount("returns.html", "Returns & reconciliation");
+        const root = GA.mount("returns.html", "Returns");
         let rows = [];
         let all = [];
         let invCache = {};
+        let loadN = 0;
         const sess = (GA.session && GA.session()) || {};
         const isSuper = sess.super === true;
 
         root.innerHTML = `
           <div class="ret-wrap">
-            <div>
-              <div class="ret-title">Returned stock inspection</div>
-              <div class="ret-intro">
-                Delivery returns stay quarantined until the Super Admin checks them. Good units return to stock, and the credit you confirm for each product is deducted from the customer's invoice.
-              </div>
-              <div class="ret-actions" style="align-items:center;margin-top:10px">
-                <label class="ret-field" style="display:flex;gap:8px;align-items:center">
-                  Date <input type="date" id="retDate" style="width:auto">
-                </label>
-                <button class="ret-btn" id="retClear" type="button">Open returns</button>
-              </div>
+            <p class="ret-intro">Check the goods that came back, put good units back in stock and confirm the credit for the customer's invoice.</p>
+            ${isSuper ? "" : '<div class="ret-banner">Only the Super Admin can approve returns. You can view them here.</div>'}
+            <div class="ret-bar">
+              <label>Date <input type="date" id="retDate"></label>
+              <button class="ret-btn" id="retClear" type="button">Show open returns</button>
+              <span class="ret-count" id="retCount"></span>
             </div>
-            <div id="retList"><div class="ret-empty">Loading return records…</div></div>
+            <div id="retList"><div class="ret-empty">Loading…</div></div>
           </div>
         `;
 
@@ -219,6 +317,10 @@
           );
         }
 
+        function r2(n) {
+          return Math.round((Number(n) || 0) * 100) / 100;
+        }
+
         function api(path, method, data) {
           return fetch(path, {
             method: method || "GET",
@@ -233,10 +335,18 @@
           });
         }
 
+        // One message line per card, instead of browser pop-ups.
+        function say(card, msg) {
+          const n = card && card.querySelector(".ret-note");
+          if (!n) return;
+          n.textContent = msg || "";
+          n.hidden = !msg;
+          if (msg) n.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }
+
         function loadCustomerInvoices(code) {
           if (!code) return Promise.resolve([]);
           if (invCache[code]) return Promise.resolve(invCache[code]);
-
           return api("/api/accounts/customers/" + encodeURIComponent(code) + "/invoices")
             .then(function (data) {
               invCache[code] = (data.invoices || []).filter(function (inv) {
@@ -249,269 +359,240 @@
             });
         }
 
-        function renderItem(item, inspected) {
-          const suggested =
-            Math.round(
-              (Number(item.provisionalCredit != null ? item.provisionalCredit : item.returnedAmount) || 0) * 100
-            ) / 100;
-          const confirmedNote =
-            inspected && item.creditAmount != null
-              ? ` · Credit: ${money(item.creditAmount)}` +
-                (Math.abs(Number(item.creditAmount) - suggested) > 0.009
-                  ? ` (worker deducted ${money(suggested)}${item.creditReason ? ", " + esc(item.creditReason) : ""})`
-                  : "")
-              : "";
-          const priceNote = item.unitPrice
-            ? " × " + money(item.unitPrice) + " = " + money(item.returnedAmount || item.returnedQty * item.unitPrice)
-            : "";
+        function suggestedOf(item) {
+          return r2(item.provisionalCredit != null ? item.provisionalCredit : item.returnedAmount);
+        }
 
+        function infoHtml(item, extra) {
+          const price = item.unitPrice
+            ? ` × ${money(item.unitPrice)} = ${money(item.returnedAmount || item.returnedQty * item.unitPrice)}`
+            : "";
+          return `
+            <div class="ret-info">
+              <b>${esc(item.productName)}</b>
+              <div class="ret-meta">Returned ${esc(item.returnedQty)}${price}${item.returnReason ? " · " + esc(item.returnReason) : ""}</div>
+              ${extra || ""}
+            </div>`;
+        }
+
+        function renderItem(item, inspected) {
+          const suggested = suggestedOf(item);
+          const qty = Number(item.returnedQty) || 0;
+
+          // Waiting for inspection, viewer is not the Super Admin
           if (!inspected && !isSuper) {
-            return `
-              <div class="ret-item" data-product="${esc(item.productId)}">
-                <div>
-                  <b>${esc(item.productName)}</b>
-                  <div class="ret-meta">Returned: ${esc(item.returnedQty)}${priceNote} · Reason: ${esc(item.returnReason)} · Worker deducted ${money(suggested)}</div>
-                </div>
-              </div>
-            `;
+            return `<div class="ret-item" data-product="${esc(item.productId)}">${infoHtml(item)}<div class="ret-meta">Worker deducted ${money(suggested)}</div></div>`;
           }
 
+          // Waiting for inspection, Super Admin
           if (!inspected) {
             return `
-              <div class="ret-item" data-product="${esc(item.productId)}">
-                <div>
-                  <b>${esc(item.productName)}</b>
-                  <div class="ret-meta">Returned: ${esc(item.returnedQty)}${priceNote} · Reason: ${esc(item.returnReason)}</div>
-                </div>
-                <div class="ret-grid">
-                  <label>Reusable / add to stock
-                    <input class="restock" type="number" min="0" max="${Number(item.returnedQty)}" step="0.001" value="0">
-                  </label>
-                  <label>Return to company
-                    <input class="company" type="number" min="0" max="${Number(item.returnedQty)}" step="0.001" value="0">
-                  </label>
-                  <label>Damaged / reject
-                    <input class="damaged" type="number" min="0" max="${Number(item.returnedQty)}" step="0.001" value="${Number(item.returnedQty)}">
-                  </label>
-                </div>
-                <div class="ret-field">
-                  <label>Company / supplier (required when company qty is above 0)
-                    <input class="company-name" placeholder="Company name">
-                  </label>
-                </div>
-                <div class="ret-field">
-                  <label>Inspection note
-                    <input class="inspection-note" placeholder="Condition, packaging, expiry, etc.">
-                  </label>
-                </div>
-                <div class="ret-credit">
-                  <div class="ret-meta">Worker deducted at the door: <b>${money(suggested)}</b></div>
-                  <div class="ret-credit-row">
-                    <label class="ret-field">Confirmed credit (₹)
-                      <input class="credit-amt" type="number" min="0" step="0.01" value="${suggested}" data-suggested="${suggested}">
+              <div class="ret-item" data-product="${esc(item.productId)}" data-qty="${qty}" data-suggested="${suggested}">
+                ${infoHtml(item)}
+                <div class="ret-form">
+                  <div class="ret-row">
+                    <label class="ret-f">Good (back to stock)
+                      <input class="restock" type="number" min="0" max="${qty}" step="0.001" value="0">
                     </label>
-                    <label class="ret-field">Reason (needed if changed)
-                      <input class="credit-reason" maxlength="160" placeholder="e.g. heavily damaged, 40% credit">
+                    <label class="ret-f">To supplier
+                      <input class="company" type="number" min="0" max="${qty}" step="0.001" value="0">
+                    </label>
+                    <label class="ret-f">Damaged
+                      <input class="damaged" type="number" min="0" max="${qty}" step="0.001" value="${qty}">
+                    </label>
+                  </div>
+                  <div class="ret-left">All ${qty} units assigned</div>
+                  <div class="ret-row two">
+                    <label class="ret-f supplier-box" hidden>Supplier name
+                      <input class="company-name" placeholder="Required">
+                    </label>
+                    <label class="ret-f">Inspection note (optional)
+                      <input class="inspection-note" placeholder="Condition, packing, expiry…">
+                    </label>
+                  </div>
+                  <div class="ret-row two">
+                    <label class="ret-f">Credit to give (₹) · worker deducted ${money(suggested)}
+                      <input class="credit-amt" type="number" min="0" step="0.01" value="${suggested}">
+                    </label>
+                    <label class="ret-f">Reason (if credit is different)
+                      <input class="credit-reason" maxlength="160" placeholder="e.g. 40% credit, heavily damaged">
                     </label>
                   </div>
                   <div class="ret-diff"></div>
                 </div>
-              </div>
-            `;
+              </div>`;
           }
 
+          const summary =
+            `Good ${esc(item.restockQty)} · Supplier ${esc(item.companyQty)} · Damaged ${esc(item.damagedQty)}` +
+            (item.creditAmount != null
+              ? ` · Credit ${money(item.creditAmount)}` +
+                (Math.abs(Number(item.creditAmount) - suggested) > 0.009
+                  ? ` (worker deducted ${money(suggested)}${item.creditReason ? ", " + esc(item.creditReason) : ""})`
+                  : "")
+              : "");
+
+          // Inspected, nothing went to a supplier
           if (!(item.companyQty > 0)) {
-            return `
-              <div class="ret-item" data-product="${esc(item.productId)}">
-                <div>
-                  <b>${esc(item.productName)}</b>
-                  <div class="ret-meta">Returned: ${esc(item.returnedQty)}${priceNote} · Reason: ${esc(item.returnReason)}${confirmedNote}</div>
-                </div>
-                <div class="ret-warning">No supplier return allocated for this item.</div>
-              </div>
-            `;
+            return `<div class="ret-item" data-product="${esc(item.productId)}">${infoHtml(item)}<div class="ret-meta">${summary}</div></div>`;
           }
 
           const refValue = item.dispatchRef || item.acknowledgementRef || item.companyResponseRef || "";
           const amtValue = item.companyAmount == null ? "" : Number(item.companyAmount);
           const qtyValue = item.replacementReceivedQty == null ? "" : Number(item.replacementReceivedQty);
+          const opt = function (v, label) {
+            return `<option value="${v}" ${item.companyStatus === v ? "selected" : ""}>${label}</option>`;
+          };
 
           let replacementHtml = "";
           if (item.replacementStockPending) {
             replacementHtml = `
-              <div class="ret-meta">Replacement received: ${esc(item.replacementReceivedQty)} · Stock is still pending inspection</div>
-              <div class="ret-grid">
-                <label>Accept into stock
+              <div class="ret-hint">Replacement received: ${esc(item.replacementReceivedQty)}. Check it before it goes into stock.</div>
+              <div class="ret-row two">
+                <label class="ret-f">Accept into stock
                   <input class="replacement-accepted" type="number" min="0" max="${Number(item.replacementReceivedQty)}" step="0.001" value="${Number(item.replacementReceivedQty)}">
                 </label>
-                <label>Damaged / reject
+                <label class="ret-f">Damaged
                   <input class="replacement-damaged" type="number" min="0" max="${Number(item.replacementReceivedQty)}" step="0.001" value="0">
                 </label>
               </div>
               ${
                 isSuper
-                  ? '<button class="ret-btn primary replacement-inspect" type="button">Inspect replacement & update stock</button>'
-                  : '<div class="ret-warning">Only the Super Admin can inspect the replacement.</div>'
-              }
-            `;
+                  ? '<div class="ret-actions"><button class="ret-btn primary replacement-inspect" type="button">Accept replacement</button></div>'
+                  : ""
+              }`;
           } else if (item.replacementInspectedAt) {
-            replacementHtml = `
-              <div class="ret-meta">
-                Replacement inspected · Accepted: ${esc(item.replacementStockAcceptedQty)} · Damaged: ${esc(item.replacementDamagedQty)}
-              </div>
-            `;
+            replacementHtml = `<div class="ret-meta">Replacement checked: ${esc(item.replacementStockAcceptedQty)} accepted, ${esc(item.replacementDamagedQty)} damaged.</div>`;
           }
 
           return `
             <div class="ret-item" data-product="${esc(item.productId)}">
-              <div>
-                <b>${esc(item.productName)}</b>
-                <div class="ret-meta">Returned: ${esc(item.returnedQty)}${priceNote} · Reason: ${esc(item.returnReason)}</div>
-              </div>
-              <div class="ret-meta">
-                Reusable: ${esc(item.restockQty)} · Company: ${esc(item.companyQty)} · Damaged: ${esc(item.damagedQty)}${confirmedNote}
-              </div>
-              <div class="ret-field">
-                <label>Company reconciliation</label>
-                <select class="company-status">
-                  <option value="awaiting_dispatch" ${item.companyStatus === "awaiting_dispatch" ? "selected" : ""}>Awaiting dispatch</option>
-                  <option value="dispatched" ${item.companyStatus === "dispatched" ? "selected" : ""}>Dispatched</option>
-                  <option value="acknowledged" ${item.companyStatus === "acknowledged" ? "selected" : ""}>Acknowledged</option>
-                  <option value="replacement_received" ${item.companyStatus === "replacement_received" ? "selected" : ""}>Replacement received</option>
-                  <option value="credit_note_issued" ${item.companyStatus === "credit_note_issued" ? "selected" : ""}>Credit note issued</option>
-                  <option value="refund_received" ${item.companyStatus === "refund_received" ? "selected" : ""}>Refund received</option>
-                  <option value="rejected_by_company" ${item.companyStatus === "rejected_by_company" ? "selected" : ""}>Rejected by company</option>
-                </select>
-              </div>
-              <div class="ret-grid">
-                <label>Dispatch / response reference
-                  <input class="company-ref" value="${esc(refValue)}" placeholder="Reference number">
+              ${infoHtml(item, `<div class="ret-meta">${summary}</div>`)}
+              <div class="ret-form">
+                <div class="ret-row four">
+                  <label class="ret-f">Supplier status
+                    <select class="company-status">
+                      ${opt("awaiting_dispatch", "Awaiting dispatch")}
+                      ${opt("dispatched", "Dispatched")}
+                      ${opt("acknowledged", "Acknowledged")}
+                      ${opt("replacement_received", "Replacement received")}
+                      ${opt("credit_note_issued", "Credit note issued")}
+                      ${opt("refund_received", "Refund received")}
+                      ${opt("rejected_by_company", "Rejected")}
+                    </select>
+                  </label>
+                  <label class="ret-f">Reference
+                    <input class="company-ref" value="${esc(refValue)}" placeholder="Ref. number">
+                  </label>
+                  <label class="ret-f">Credit / refund (₹)
+                    <input class="company-amount" type="number" min="0" step="0.01" value="${amtValue}" placeholder="0.00">
+                  </label>
+                  <label class="ret-f">Replacement qty
+                    <input class="company-qty" type="number" min="0" step="0.001" value="${qtyValue}" placeholder="0">
+                  </label>
+                </div>
+                <label class="ret-f">Note
+                  <input class="company-note" value="${esc(item.companyResponseNote || "")}" placeholder="What the supplier said">
                 </label>
-                <label>Credit / refund amount
-                  <input class="company-amount" type="number" min="0" step="0.01" value="${amtValue}" placeholder="0.00">
-                </label>
-                <label>Replacement qty received
-                  <input class="company-qty" type="number" min="0" step="0.001" value="${qtyValue}" placeholder="0">
-                </label>
+                <div class="ret-actions"><button class="ret-btn company-save" type="button">Save</button></div>
+                ${replacementHtml}
               </div>
-              <div class="ret-field">
-                <label>Company note
-                  <input class="company-note" value="${esc(item.companyResponseNote || "")}" placeholder="Acknowledgement or response details">
+            </div>`;
+        }
+
+        function footerFor(r, inspected, invOptions, defaultAmt) {
+          if (inspected) {
+            if (!r.ledgerCreditApplied) return "";
+            const invLabel = r.ledgerInvoiceNo ? " from invoice #" + esc(r.ledgerInvoiceNo) : "";
+            return `<div class="ret-done">✓ ${money(r.ledgerCreditApplied)} credited${invLabel}.</div>`;
+          }
+          if (!isSuper) return "";
+          return `
+            <div class="ret-ledger">
+              <div class="ret-ledger-title">Credit to the customer</div>
+              <div class="ret-ledger-grid">
+                <label class="ret-f">Invoice to reduce
+                  <select class="ledger-inv">${invOptions}</select>
                 </label>
+                <div class="ret-f">Total credit
+                  <div class="ret-total ledger-total">${money(defaultAmt)}</div>
+                </div>
               </div>
-              <button class="ret-btn company-save" type="button">Save company update</button>
-              ${replacementHtml}
+              <div class="ret-hint">Taken off the chosen invoice (up to what is still due). It can't be edited later, only reversed in Accounts.</div>
             </div>
-          `;
+            <div class="ret-actions">
+              <button class="ret-btn primary inspect" type="button">Approve return</button>
+            </div>`;
         }
 
         function render() {
           const el = document.getElementById("retList");
+          document.getElementById("retCount").textContent = rows.length
+            ? rows.length + (rows.length === 1 ? " return" : " returns")
+            : "";
           if (!rows.length) {
             const hasDate = Boolean(document.getElementById("retDate").value);
             el.innerHTML = `<div class="ret-empty">${
-              hasDate
-                ? "No returns on this date."
-                : "No returns are waiting for inspection or company reconciliation."
+              hasDate ? "No returns on this date." : "No open returns. Everything has been checked."
             }</div>`;
             return;
           }
 
-          el.innerHTML = rows
-            .slice()
-            .reverse()
-            .map(function (r) {
-              const inspected = Boolean(r.inspectedAt);
-              const custCode = r.customerCode || r.orderCode || "";
-              const openInvs = invCache[custCode] || [];
-              const defaultAmt = Math.round(
-                r.items.reduce(function (sum, i) {
-                  return (
-                    sum +
-                    (Number(i.provisionalCredit != null ? i.provisionalCredit : i.returnedAmount) || 0)
-                  );
-                }, 0) * 100
-              ) / 100;
+          el.innerHTML =
+            '<div class="ret-wrap">' +
+            rows
+              .slice()
+              .reverse()
+              .map(function (r) {
+                const inspected = Boolean(r.inspectedAt);
+                const custCode = r.customerCode || r.orderCode || "";
+                const openInvs = invCache[custCode] || [];
+                const defaultAmt = r2(
+                  r.items.reduce(function (sum, i) {
+                    return sum + suggestedOf(i);
+                  }, 0)
+                );
 
-              let invOptions = '<option value="">No open invoice found in Accounts</option>';
-              if (openInvs.length) {
-                invOptions =
-                  '<option value="">-- Select open invoice --</option>' +
-                  openInvs
-                    .map(function (inv) {
-                      const isMatch =
-                        r.invoiceNo &&
-                        String(inv.invoice_no).toLowerCase() === String(r.invoiceNo).toLowerCase();
-                      const maxDue = Math.floor(Number(inv.availableToCollect || 0));
-                      return `<option value="${esc(inv.id)}" data-invno="${esc(inv.invoice_no)}" data-max="${maxDue}" ${
-                        isMatch ? "selected" : ""
-                      }>#${esc(inv.invoice_no)} · Due ${money(inv.availableToCollect)}</option>`;
-                    })
-                    .join("");
-              }
-
-              const totalUnits = r.items.reduce(function (sum, i) {
-                return sum + Number(i.returnedQty);
-              }, 0);
-
-              let footerHtml = "";
-              if (inspected) {
-                if (r.ledgerCreditApplied) {
-                  const invLabel = r.ledgerInvoiceNo ? " (Invoice #" + esc(r.ledgerInvoiceNo) + ")" : "";
-                  footerHtml = `<div class="ret-meta" style="color:var(--primary);font-weight:700">✓ Return credit of ${money(
-                    r.ledgerCreditApplied
-                  )} deducted from customer ledger${invLabel}.</div>`;
-                }
-              } else {
-                footerHtml = isSuper
-                  ? `
-                  <div class="ret-ledger">
-                    <div class="ret-ledger-title">Customer ledger credit</div>
-                    <div class="ret-ledger-grid">
-                      <label class="ret-field">Customer invoice to reduce
-                        <select class="ledger-inv">${invOptions}</select>
-                      </label>
-                      <div class="ret-field">Total credit to post
-                        <div class="ret-total ledger-total">${money(defaultAmt)}</div>
-                      </div>
-                    </div>
-                    <div class="ret-warning">
-                      The total of the confirmed credits above is deducted from the selected invoice when you approve. It cannot be edited afterwards, only reversed in Accounts. A credit cannot be more than what is still due on the invoice.
-                    </div>
-                  </div>
-                  <div class="ret-warning">
-                    The three quantities must total exactly ${totalUnits} units for each product.
-                  </div>
-                  <div class="ret-actions">
-                    <button class="ret-btn primary inspect" type="button">Approve return, update stock & ledger</button>
-                  </div>
-                `
-                  : `<div class="ret-warning">Waiting for the Super Admin to check the goods and confirm the credit.</div>`;
-              }
-
-              return `
-                <section class="ret-card" data-ret="${esc(r.id)}">
-                  <div class="ret-top">
-                    <div>
-                      <div class="ret-title">${esc(r.id)} · ${esc(r.orderCode)}</div>
-                      <div class="ret-meta">${esc(r.shop || "Customer not listed")} · ${esc(r.workerName)} · ${new Date(
-                r.createdAt
-              ).toLocaleString()}</div>
-                    </div>
-                    <span class="ret-pill">${esc((r.status || "pending_inspection").replace(/_/g, " "))}</span>
-                  </div>
-                  <div class="ret-items">
-                    ${r.items
-                      .map(function (item) {
-                        return renderItem(item, inspected);
+                let invOptions = '<option value="">No open invoice found</option>';
+                if (openInvs.length) {
+                  invOptions =
+                    '<option value="">Choose an invoice</option>' +
+                    openInvs
+                      .map(function (inv) {
+                        const isMatch =
+                          r.invoiceNo && String(inv.invoice_no).toLowerCase() === String(r.invoiceNo).toLowerCase();
+                        const maxDue = Math.floor(Number(inv.availableToCollect || 0));
+                        return `<option value="${esc(inv.id)}" data-invno="${esc(inv.invoice_no)}" data-max="${maxDue}" ${
+                          isMatch ? "selected" : ""
+                        }>#${esc(inv.invoice_no)} · due ${money(inv.availableToCollect)}</option>`;
                       })
-                      .join("")}
-                  </div>
-                  ${footerHtml}
-                </section>
-              `;
-            })
-            .join("");
+                      .join("");
+                }
+
+                const status = String(r.status || "pending_inspection");
+                const pillCls = !inspected ? "wait" : status === "closed" || status === "reconciliation_complete" ? "done" : "";
+                const pillTxt = !inspected
+                  ? "Needs checking"
+                  : status === "closed" || status === "reconciliation_complete"
+                    ? "Closed"
+                    : "With supplier";
+
+                return `
+                  <section class="ret-card" data-ret="${esc(r.id)}">
+                    <div class="ret-top">
+                      <div>
+                        <div class="ret-title">${esc(r.shop || "Customer not listed")}</div>
+                        <div class="ret-meta">${esc(r.id)} · ${esc(r.orderCode)} · ${esc(r.workerName)} · ${esc(new Date(r.createdAt).toLocaleString("en-IN"))}</div>
+                      </div>
+                      <span class="ret-pill ${pillCls}">${pillTxt}</span>
+                    </div>
+                    <div class="ret-items">${r.items.map((item) => renderItem(item, inspected)).join("")}</div>
+                    <div class="ret-note" role="alert" hidden></div>
+                    ${footerFor(r, inspected, invOptions, defaultAmt)}
+                  </section>`;
+              })
+              .join("") +
+            "</div>";
         }
 
         function localDateStr(ts) {
@@ -551,7 +632,11 @@
             )
           );
 
-          Promise.all(customerCodes.map(loadCustomerInvoices)).then(render);
+          // Ignore an answer that arrives after a newer request (quick date changes).
+          const n = ++loadN;
+          Promise.all(customerCodes.map(loadCustomerInvoices)).then(function () {
+            if (n === loadN) render();
+          });
         }
 
         function load() {
@@ -572,73 +657,119 @@
           apply();
         });
 
+        // Live checks while the Super Admin fills a product in.
         root.addEventListener("input", function (e) {
-          if (!e.target.classList.contains("credit-amt")) return;
-          const sug = Number(e.target.dataset.suggested) || 0;
-          const diff = Math.round(((Number(e.target.value) || 0) - sug) * 100) / 100;
-          const note = e.target.closest(".ret-credit").querySelector(".ret-diff");
-          note.textContent =
-            Math.abs(diff) < 0.01
-              ? ""
-              : diff < 0
-                ? "₹" + Math.abs(diff) + " LESS than the worker deducted: this stays due from the customer."
-                : "₹" + diff + " MORE than the worker deducted: it can only be posted up to what is still due on the invoice.";
-          note.style.color = diff < 0 ? "var(--danger, #c0392b)" : "var(--primary)";
-          const card = e.target.closest("[data-ret]");
-          const total = Array.from(card.querySelectorAll(".credit-amt")).reduce(function (n, i) {
-            return n + (Number(i.value) || 0);
-          }, 0);
-          card.querySelector(".ledger-total").textContent = money(total);
+          const t = e.target;
+          const item = t.closest && t.closest(".ret-item[data-qty]");
+          if (!item) return;
+          const card = t.closest("[data-ret]");
+
+          if (t.matches(".restock, .company, .damaged")) {
+            const qty = Number(item.dataset.qty) || 0;
+            const sum =
+              (Number(item.querySelector(".restock").value) || 0) +
+              (Number(item.querySelector(".company").value) || 0) +
+              (Number(item.querySelector(".damaged").value) || 0);
+            const left = Math.round((qty - sum) * 1000) / 1000;
+            const out = item.querySelector(".ret-left");
+            out.textContent =
+              Math.abs(left) < 0.0005
+                ? "All " + qty + " units assigned"
+                : left > 0
+                  ? left + (left === 1 ? " unit" : " units") + " still to assign"
+                  : Math.abs(left) + (Math.abs(left) === 1 ? " unit" : " units") + " too many";
+            out.classList.toggle("bad", Math.abs(left) >= 0.0005);
+            item.querySelector(".supplier-box").hidden = !((Number(item.querySelector(".company").value) || 0) > 0);
+          }
+
+          if (t.matches(".credit-amt")) {
+            const sug = Number(item.dataset.suggested) || 0;
+            const diff = r2((Number(t.value) || 0) - sug);
+            const note = item.querySelector(".ret-diff");
+            note.textContent =
+              Math.abs(diff) < 0.01
+                ? ""
+                : diff < 0
+                  ? money(Math.abs(diff)) + " less than the worker deducted. The customer still owes this."
+                  : money(diff) + " more than the worker deducted. Only what is still due on the invoice can be credited.";
+            note.classList.toggle("bad", diff < 0);
+            const total = Array.from(card.querySelectorAll(".credit-amt")).reduce(function (n, i) {
+              return n + (Number(i.value) || 0);
+            }, 0);
+            card.querySelector(".ledger-total").textContent = money(total);
+          }
+          say(card, "");
         });
 
         root.addEventListener("click", function (e) {
+          const btn = e.target.closest && e.target.closest("button");
           const card = e.target.closest("[data-ret]");
-          if (!card) return;
+          if (!btn || !card) return;
           const ret = rows.find(function (x) {
             return x.id === card.dataset.ret;
           });
           if (!ret) return;
 
-          if (e.target.classList.contains("inspect")) {
-            const items = Array.from(card.querySelectorAll("[data-product]")).map(function (el) {
-              return {
+          const fail = function (err) {
+            say(card, err.message || "Something went wrong. Try again.");
+            btn.disabled = false;
+          };
+
+          if (btn.classList.contains("inspect")) {
+            const els = Array.from(card.querySelectorAll(".ret-item[data-qty]"));
+            const items = [];
+            for (const el of els) {
+              const name = (el.querySelector(".ret-info b") || {}).textContent || "this product";
+              const qty = Number(el.dataset.qty) || 0;
+              const sug = Number(el.dataset.suggested) || 0;
+              const it = {
                 productId: el.dataset.product,
-                restockQty: Number(el.querySelector(".restock").value),
-                companyQty: Number(el.querySelector(".company").value),
-                damagedQty: Number(el.querySelector(".damaged").value),
-                companyName: el.querySelector(".company-name").value,
+                restockQty: Number(el.querySelector(".restock").value) || 0,
+                companyQty: Number(el.querySelector(".company").value) || 0,
+                damagedQty: Number(el.querySelector(".damaged").value) || 0,
+                companyName: el.querySelector(".company-name").value.trim(),
                 inspectionNote: el.querySelector(".inspection-note").value,
                 creditAmount: Number(el.querySelector(".credit-amt").value) || 0,
-                creditReason: el.querySelector(".credit-reason").value,
+                creditReason: el.querySelector(".credit-reason").value.trim(),
               };
-            });
+              if (Math.abs(it.restockQty + it.companyQty + it.damagedQty - qty) > 0.0005) {
+                say(card, name + ": good + supplier + damaged must add up to " + qty + ".");
+                return;
+              }
+              if (it.companyQty > 0 && !it.companyName) {
+                say(card, name + ": enter the supplier name.");
+                return;
+              }
+              if (Math.abs(it.creditAmount - sug) > 0.009 && !it.creditReason) {
+                say(card, name + ": add a reason, the credit is different from what the worker deducted.");
+                return;
+              }
+              items.push(it);
+            }
 
             const invSel = card.querySelector(".ledger-inv");
             const invoiceId = invSel ? invSel.value : "";
-            const creditAmount = items.reduce(function (n, i) {
-              return n + i.creditAmount;
-            }, 0);
+            const creditAmount = r2(
+              items.reduce(function (n, i) {
+                return n + i.creditAmount;
+              }, 0)
+            );
             const selectedOpt = invSel && invSel.selectedOptions && invSel.selectedOptions[0];
             const invoiceNo = selectedOpt ? selectedOpt.getAttribute("data-invno") || "" : "";
 
             if (creditAmount > 0 && !invoiceId) {
-              alert(
-                "Select a customer invoice to apply the total credit of " +
-                  money(creditAmount) +
-                  ", or set the credits to 0."
-              );
+              say(card, "Choose the invoice to credit " + money(creditAmount) + ", or set the credits to 0.");
               return;
             }
             if (
               !confirm(
-                "Approve this return?\n\nCustomer credit to post: " +
-                  money(creditAmount) +
-                  "\nThis cannot be edited afterwards."
+                "Approve this return?\n\nCredit to the customer: " + money(creditAmount) + "\nThis can't be edited afterwards."
               )
             )
               return;
 
-            e.target.disabled = true;
+            btn.disabled = true;
+            say(card, "");
             api("/api/inventory/returns/inspect", "POST", {
               returnId: ret.id,
               items: items,
@@ -646,34 +777,26 @@
               invoiceNo: invoiceNo,
             })
               .then(load)
-              .catch(function (err) {
-                alert(err.message);
-                e.target.disabled = false;
-              });
+              .catch(fail);
           }
 
-          if (e.target.classList.contains("replacement-inspect")) {
-            const el = e.target.closest("[data-product]");
-            const accepted = Number(el.querySelector(".replacement-accepted").value);
-            const damaged = Number(el.querySelector(".replacement-damaged").value);
-
-            e.target.disabled = true;
+          if (btn.classList.contains("replacement-inspect")) {
+            const el = btn.closest("[data-product]");
+            btn.disabled = true;
             api("/api/inventory/returns/replacement-inspect", "POST", {
               returnId: ret.id,
               productId: el.dataset.product,
-              acceptedQty: accepted,
-              damagedQty: damaged,
+              acceptedQty: Number(el.querySelector(".replacement-accepted").value),
+              damagedQty: Number(el.querySelector(".replacement-damaged").value),
             })
               .then(load)
-              .catch(function (err) {
-                alert(err.message);
-                e.target.disabled = false;
-              });
+              .catch(fail);
           }
 
-          if (e.target.classList.contains("company-save")) {
-            const el = e.target.closest("[data-product]");
-            const payload = {
+          if (btn.classList.contains("company-save")) {
+            const el = btn.closest("[data-product]");
+            btn.disabled = true;
+            api("/api/inventory/returns/company", "POST", {
               returnId: ret.id,
               productId: el.dataset.product,
               companyStatus: el.querySelector(".company-status").value,
@@ -682,15 +805,9 @@
               amount: el.querySelector(".company-amount").value,
               receivedQty: el.querySelector(".company-qty").value,
               note: el.querySelector(".company-note").value,
-            };
-
-            e.target.disabled = true;
-            api("/api/inventory/returns/company", "POST", payload)
+            })
               .then(load)
-              .catch(function (err) {
-                alert(err.message);
-                e.target.disabled = false;
-              });
+              .catch(fail);
           }
         });
 

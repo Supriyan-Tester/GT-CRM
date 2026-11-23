@@ -1268,7 +1268,7 @@
           rate: i.tax != null ? Number(i.tax) || 0 : Number(p.tax) || 0,
         };
       }
-      // GST on top of the price: line GST = amount (after its share of any discount) x rate.
+      // GST on top of the price: line GST = amount x rate. Any discount is taken off the GST-inclusive total.
       // Same state (first 2 digits of both GSTINs) = CGST + SGST, different state = IGST.
       function calc(o, cu) {
         var sub = 0;
@@ -1277,7 +1277,7 @@
         });
         sub = r2(sub);
         var disc = Math.min(sub, Number(o.discount) || 0),
-          f = sub ? (sub - disc) / sub : 1,
+          f = 1, // the discount is taken AFTER GST (same as the Sales app), so GST is on the full amounts
           lines = o._items.map(function (i) {
             var t = taxInfo(i),
               amt = r2(i.amount),
@@ -1309,13 +1309,13 @@
           lines: lines,
           sub: sub,
           disc: r2(disc),
-          taxable: r2(sub - disc),
+          taxable: sub,
           gst: gst,
           inter: inter,
           cgst: inter ? 0 : half,
           sgst: inter ? 0 : r2(gst - half),
           rate: rl.length === 1 ? Number(rl[0]) : null, // the one rate, when every line has the same
-          grand: r2(sub - disc + gst),
+          grand: r2(sub + gst - disc),
         };
       }
       // CGST / SGST (or IGST) rows for the totals box
@@ -1471,14 +1471,12 @@
           '</tbody></table></div><div class="of-tot"><div><span>Subtotal</span><span>' +
           money(cc.sub) +
           "</span></div>" +
+          gstRows(cc) +
           (cc.disc
-            ? "<div><span>Discount</span><span>- " +
+            ? "<div><span>Discount (after GST)</span><span>- " +
               money(cc.disc) +
-              "</span></div><div><span>Taxable value</span><span>" +
-              money(cc.taxable) +
               "</span></div>"
             : "") +
-          gstRows(cc) +
           '<div class="g"><span>Total amount (incl. GST)</span><span>' +
           money(cc.grand) +
           "</span></div></div></div>" +
@@ -2560,18 +2558,14 @@
           '"><span>Subtotal</span><span>' +
           money(cc.sub) +
           "</span></div>" +
+          gstRows(cc).replace(/<div>/g, '<div style="' + tr + '">') +
           (cc.disc
             ? '<div style="' +
               tr +
-              '"><span>Discount</span><span>- ' +
+              '"><span>Discount (after GST)</span><span>- ' +
               money(cc.disc) +
-              '</span></div><div style="' +
-              tr +
-              '"><span>Taxable value</span><span>' +
-              money(cc.taxable) +
               "</span></div>"
             : "") +
-          gstRows(cc).replace(/<div>/g, '<div style="' + tr + '">') +
           '<div style="' +
           tr +
           'border-top:2px solid #000;margin-top:4px;padding-top:6px;font-size:18px"><b>Total</b><b>' +
@@ -2671,7 +2665,7 @@
                       })
                       .join("") +
                     '<tr style="background:#f6f6f6">' + '<td colspan="5" style="' + cell + 'text-align:right"><b>Order total</b></td>' +
-                    td(money(cc.sub - cc.disc), "right") + td(money(cc.gst), "right") + td(money(cc.grand), "right", 1) + "</tr>" +
+                    td(money(cc.sub), "right") + td(money(cc.gst), "right") + td(money(cc.grand), "right", 1) + "</tr>" +
                     "</tbody></table>" +
                     (o.notes ? '<div style="font-size:11px;margin-top:2px">Notes: ' + esc(o.notes) + "</div>" : "") +
                     "</div>"
