@@ -60,7 +60,7 @@ let child;
     assert(workerHomePage.includes('href="orders.html"'), "Delivery home links to assigned orders");
     assert(adminOrdersPage.includes("/api/salesadmin/assign-delivery") && adminOrdersPage.includes("Delivery Assignment"), "Admin order details exposes delivery assignment");
     assert(adminOrdersPage.includes("Delivery Result"), "Admin order details displays delivery result");
-    assert(returnsPage.includes("/api/inventory/returns/inspect") && returnsPage.includes("Company reconciliation"), "Admin returns page supports inspection and company reconciliation");
+    assert(returnsPage.includes("/api/inventory/returns/inspect") && returnsPage.includes("/api/inventory/returns/company"), "Admin returns page supports inspection and company reconciliation");
     assert(adminShell.includes('["returns.html", "Returns"'), "Returns page is linked in the admin navigation");
     fs.mkdirSync(app, { recursive: true });
     for (const file of ["server.js", "storage.js", "activity.js", "backup-integrity.js"]) {

@@ -22,9 +22,10 @@ check("conflicted keys are blocked from automatic retries",
   /function send\(k, force\)[\s\S]*?isConflict\(k\)/.test(sync));
 check("conflicted records are not automatically replayed after reload",
   /var entry = queued\[k\];\s*if \(entry && entry\.conflict\) return/.test(sync));
+const conflictBlock = (sync.match(/else if \(r\.status === 409\) \{[\s\S]*?\n          \} else gmEmit\("gm-sync-failed", k\);/) || [""])[0];
 check("stale 409 handling preserves the local marker instead of clearing it",
-  /if \(r\.status === 409\)[\s\S]*?markConflict\(k, readRev\[k\], j && j\.rev\)/.test(sync) &&
-  !/if \(r\.status === 409\)[\s\S]*?markClean\(k\)/.test(sync));
+  /markConflict\(k, readRev\[k\], j && j\.rev\)/.test(conflictBlock) &&
+  !/markClean\(k\)/.test(conflictBlock));
 check("server hydration continues to skip locally dirty/conflicted records",
   /k in savedDirty/.test(sync));
 check("user can export conflicted local records",
