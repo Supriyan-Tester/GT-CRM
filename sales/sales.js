@@ -583,6 +583,35 @@
     });
   };
 
+  /* Shown instead of a toast when the server refuses a punch-in because yesterday was never punched out. */
+  S.isOpenSessionError = function (e) {
+    return /previous attendance session|forgot to punch out/i.test((e && e.message) || "");
+  };
+  S.forgotPunchOutDialog = function () {
+    if (document.getElementById("fpoBg")) return;
+    var st = document.createElement("style");
+    st.textContent =
+      ".fpo-bg{position:fixed;inset:0;z-index:2000;background:rgba(2,6,12,.7);display:flex;align-items:center;justify-content:center;padding:18px}" +
+      ".fpo-box{background:var(--card);color:var(--text);width:100%;max-width:360px;border-radius:20px;padding:26px 22px 20px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.4)}" +
+      ".fpo-ic{width:60px;height:60px;border-radius:50%;margin:0 auto 14px;display:grid;place-items:center;background:#fef2f2;color:#dc2626;font-size:30px;font-weight:700}" +
+      ".fpo-box h2{font-size:18px;margin-bottom:8px}.fpo-box p{font-size:14px;color:var(--muted);line-height:1.55;margin-bottom:18px}" +
+      ".fpo-box .btn{width:100%;justify-content:center}";
+    document.head.appendChild(st);
+    var bg = document.createElement("div");
+    bg.id = "fpoBg";
+    bg.className = "fpo-bg";
+    bg.innerHTML =
+      '<div class="fpo-box" role="alertdialog" aria-modal="true" aria-labelledby="fpoT"><div class="fpo-ic">!</div>' +
+      '<h2 id="fpoT">You forgot to punch out yesterday</h2>' +
+      "<p>Please contact the admin to punch in.</p>" +
+      '<button type="button" class="btn teal" id="fpoOk">OK</button></div>';
+    document.body.appendChild(bg);
+    document.getElementById("fpoOk").onclick = function () {
+      bg.remove();
+      st.remove();
+    };
+  };
+
   /* Punch-in popup. Until Sales has punched in today, a popup covers the whole panel (no close button) so nothing else can be
      used. Only Punch In (or Logout) works. If attendance cannot be read, nothing is blocked here: the server still refuses orders. */
   function punchPopup() {
@@ -626,7 +655,8 @@
         .catch(function (e) {
           go.disabled = false;
           go.textContent = "Punch In";
-          S.toast(e.message || "Could not punch in. Try again.", true);
+          if (S.isOpenSessionError(e)) S.forgotPunchOutDialog();
+          else S.toast(e.message || "Could not punch in. Try again.", true);
         });
     };
   }

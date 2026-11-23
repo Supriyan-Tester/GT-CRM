@@ -71,7 +71,7 @@ function handleSalesAttendanceRoute(deps) {
         if (existing) return send(res, 409, { error: existing.outAt ? "Attendance is already completed for today." : "You have already punched in." });
         const previousOpenDate = findPunchOutDate(mine, now);
         if (previousOpenDate && previousOpenDate !== date)
-          return send(res, 409, { error: "Please punch out of your previous attendance session before punching in again." });
+          return send(res, 409, { error: "You forgot to punch out yesterday. Please contact the admin to punch in." });
         const time = attendanceTime(now), settings = stored("gm_admin_settings_v1") || {};
         const late = clockMins(time) > clockMins(/^\d{1,2}:\d{2}$/.test(settings.lateAfter || "") ? settings.lateAfter : "08:30");
         const entry = {

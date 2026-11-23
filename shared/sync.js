@@ -491,6 +491,11 @@ window.GMImg = {
     }
   }
   function push(k, v) {
+    // A worker's whole record is never deleted from the phone (a missing local copy must not erase the server's attendance).
+    if (v === null && k.indexOf(NS) === 0) {
+      markClean(k);
+      return;
+    }
     pending[k] = v;
     written[k] = Date.now();
     markDirty(k);
@@ -675,7 +680,9 @@ window.GMImg = {
           push(NS + id, cur);
         } else if (mine && mine.v !== null && cur !== mine.v) {
           if (applyOne(BLOB, NS + id, items)) changed = true;
-        } else if (!mine) {
+        } else if (!mine && initial) {
+          // Only a FULL server read can say the server has no record yet. An incremental read (since=N) leaves out
+          // anything unchanged, so "missing" there means nothing and must not trigger a save.
           push(NS + id, cur);
         }
       }
@@ -695,7 +702,13 @@ window.GMImg = {
       if (entry && entry.conflict) return; // preserve for explicit export/discard
       if (PROT.test(k) && entry && typeof entry.base === "number")
         readRev[k] = entry.base;
-      push(k, rawGet.call(ls, k));
+      // A worker's record lives locally under BLOB, not under the server-side name (NS + id).
+      var queuedVal = rawGet.call(ls, k.indexOf(NS) === 0 ? BLOB : k);
+      if (queuedVal === null && k.indexOf(NS) === 0) {
+        markClean(k);
+        return;
+      }
+      push(k, queuedVal);
     });
 
     // First-run migration: upload local keys not yet present on the server.

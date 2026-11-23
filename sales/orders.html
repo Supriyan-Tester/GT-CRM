@@ -35,18 +35,50 @@
         hello.innerHTML = '<h1>Orders</h1><p id="sub">Loading…</p>';
         main.innerHTML = '<div class="empty"><b>Loading…</b></div>';
 
+        function r2(n) {
+          return Math.round((Number(n) || 0) * 100) / 100;
+        }
+        function orderGst(o) {
+          if (o.gst != null) return r2(o.gst);
+          return r2(
+            (o.items || []).reduce(function (s, i) {
+              var amt = r2(i.amount),
+                rate = Math.max(0, Number(i.tax) || 0);
+              return s + (i.gst != null ? r2(i.gst) : r2(amt * (rate / 100)));
+            }, 0),
+          );
+        }
+        function orderSubtotal(o) {
+          if (o.subtotal != null) return r2(o.subtotal);
+          return r2(
+            (o.items || []).reduce(function (s, i) {
+              return s + r2(i.amount);
+            }, 0),
+          );
+        }
         function lines(o) {
           return (
             '<div class="lines">' +
             o.items
               .map(function (i) {
+                var amt = r2(i.amount),
+                  rate = Math.max(0, Number(i.tax) || 0),
+                  gst = i.gst != null ? r2(i.gst) : r2(amt * (rate / 100)),
+                  tot = r2(amt + gst);
                 return (
                   "<div><span>" +
                   Sales.esc(i.name) +
                   " × " +
                   Sales.qty(i) +
+                  (rate
+                    ? " <small>(" +
+                      rate +
+                      "% GST: " +
+                      Sales.money(gst) +
+                      ")</small>"
+                    : "") +
                   "</span><b>" +
-                  Sales.money(i.amount) +
+                  Sales.money(tot) +
                   "</b></div>"
                 );
               })
@@ -55,6 +87,10 @@
           );
         }
         function detail(o) {
+          var sub = orderSubtotal(o),
+            gst = orderGst(o),
+            gross = r2(sub + gst),
+            disc = r2(o.discount);
           document.getElementById("hello").innerHTML =
             "<h1>Order #" +
             Sales.esc(o.id) +
@@ -95,15 +131,21 @@
                 "</p>"
               : "") +
             lines(o) +
-            '<div class="sum"><div><span>Items</span><span>' +
-            Sales.money(o.subtotal) +
+            '<div class="sum"><div><span>Before GST</span><span>' +
+            Sales.money(sub) +
             "</span></div>" +
-            (o.discount
-              ? "<div><span>Discount</span><span>− " +
-                Sales.money(o.discount) +
+            "<div><span>GST</span><span>+ " +
+            Sales.money(gst) +
+            "</span></div>" +
+            "<div><span>After GST</span><span>" +
+            Sales.money(gross) +
+            "</span></div>" +
+            (disc
+              ? "<div><span>Discount (after GST)</span><span>− " +
+                Sales.money(disc) +
                 "</span></div>"
               : "") +
-            '<div class="tot"><span>Total Amount</span><span>' +
+            '<div class="tot"><span>Final Total</span><span>' +
             Sales.money(o.total) +
             "</span></div></div>" +
             (o.notes

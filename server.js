@@ -2394,24 +2394,31 @@ function salesApi(req, res, s, p, url) {
       const oloc = b.draft ? null : where(sh, b).loc;
       const items = ids.map((id) => {
         const x = byId[id],
-          price = num(x.price);
+          price = num(x.price),
+          tax = Math.max(0, Number(x.tax) || 0),
+          amount = num(price * merged[id]),
+          gst = num(amount * (tax / 100));
         return {
           id,
           code: x.code,
           name: x.name,
           unit: x.unit || "",
           hsn: String(x.hsn || ""),
-          tax: Number(x.tax) || 0, // GST % at the time of the order
+          tax, // GST % at the time of the order
           price,
           qty: merged[id],
-          amount: num(price * merged[id]),
+          amount,
+          gst,
+          totalWithGst: num(amount + gst),
           ...(Number(x.boxQty) >= 2
             ? { boxQty: Math.floor(Number(x.boxQty)) }
             : {}),
         };
       });
       const subtotal = num(items.reduce((t, i) => t + i.amount, 0)),
-        discount = Math.min(subtotal, Math.max(0, num(b.discount))),
+        gstTotal = num(items.reduce((t, i) => t + i.gst, 0)),
+        grossWithGst = num(subtotal + gstTotal),
+        discount = Math.min(grossWithGst, Math.max(0, num(b.discount))),
         placing = !b.draft;
       let id = old ? old.id : "DR-" + Date.now().toString(36);
       if (placing) {
@@ -2435,8 +2442,9 @@ function salesApi(req, res, s, p, url) {
           status: placing ? "placed" : "draft",
           items,
           subtotal,
+          gst: gstTotal,
           discount,
-          total: num(subtotal - discount),
+          total: num(grossWithGst - discount),
           // an after-hours reason is also written at the front of the notes so every office screen that shows notes shows it
           notes:
             (afterHours ? "[After hours: " + afterHours.reason + "] " : "") +
@@ -4996,6 +5004,13 @@ function api(req, res, url) {
         s.role !== "admin")
     )
       return send(res, 403, { error: "Not allowed" });
+    // An employee's phone must never be able to delete its own whole record (punch-ins live inside it).
+    if (
+      req.method === "DELETE" &&
+      s.role === "worker" &&
+      key.indexOf("gm_crm_data_v5__") === 0
+    )
+      return send(res, 200, { ok: true, ignored: true });
     if (req.method === "PUT")
       return body(req, (err, b) => {
         if (err || !b || typeof b.v !== "string")

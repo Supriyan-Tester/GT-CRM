@@ -63,6 +63,31 @@
             .replace(/[^a-z0-9]+/g, " ")
             .trim();
         }
+        function r2(n) {
+          return Math.round((Number(n) || 0) * 100) / 100;
+        }
+        function gstRateOf(p) {
+          return Math.max(0, Number(p && p.tax) || 0);
+        }
+        function itemPricing(p, qty) {
+          var baseUnit = r2(p && p.price),
+            q = Number(qty) || 0,
+            rate = gstRateOf(p),
+            unitGst = r2(baseUnit * (rate / 100)),
+            unitIncl = r2(baseUnit + unitGst),
+            sub = r2(baseUnit * q),
+            gst = r2(sub * (rate / 100)),
+            total = r2(sub + gst);
+          return {
+            baseUnit: baseUnit,
+            rate: rate,
+            unitGst: unitGst,
+            unitIncl: unitIncl,
+            sub: sub,
+            gst: gst,
+            total: total,
+          };
+        }
         function pic(p, cls) {
           var ini = Sales.esc(
             String(p.name || "?")
@@ -82,26 +107,31 @@
         }
         function totals() {
           var n = 0,
-            sub = 0;
+            sub = 0,
+            gst = 0;
           Object.keys(cart).forEach(function (id) {
             var p = byId[id];
             if (!p) return;
+            var pr = itemPricing(p, cart[id]);
             n += Sales.isKg(p) ? 1 : cart[id];
-            sub += (Number(p.price) || 0) * cart[id];
+            sub = r2(sub + pr.sub);
+            gst = r2(gst + pr.gst);
           });
-          var d = Math.min(sub, Math.max(0, Number(discount) || 0));
+          var gross = r2(sub + gst),
+            d = Math.min(gross, Math.max(0, r2(discount)));
           return {
             lines: Object.keys(cart).length,
             units: n,
             sub: sub,
+            gst: gst,
+            gross: gross,
             disc: d,
-            total: sub - d,
+            total: r2(gross - d),
           };
         }
 
         function shell() {
-          var S = SHOP,
-            t = 0;
+          var S = SHOP;
           main.innerHTML =
             '<a class="back" href="' +
             BACK.href +
@@ -389,6 +419,30 @@
             return (!cat || p.category === cat) && (!t || p._k.indexOf(t) > -1);
           });
         }
+        function prodPriceHtml(p) {
+          var pr = itemPricing(p, 1);
+          if (!pr.rate) {
+            return (
+              '<div class="pr2"><b>' +
+              Sales.money(pr.baseUnit) +
+              '</b> <small style="color:var(--muted)">GST Exempt</small></div>'
+            );
+          }
+          return (
+            '<div class="pr2" style="display:grid;gap:2px">' +
+            "<b>" +
+            Sales.money(pr.unitIncl) +
+            ' <small style="font-weight:500;color:var(--muted)">After GST</small></b>' +
+            '<small style="color:var(--muted)">Before GST: ' +
+            Sales.money(pr.baseUnit) +
+            " · GST " +
+            pr.rate +
+            "% (" +
+            Sales.money(pr.unitGst) +
+            ")</small>" +
+            "</div>"
+          );
+        }
         function drawGrid() {
           var R = rows(),
             g = document.getElementById("grid");
@@ -416,9 +470,7 @@
                     (p.unit ? " · per " + Sales.esc(p.unit) : "") +
                     (Sales.isKg(p) ? " · in Kg, e.g. 0.5" : "") +
                     "</small>" +
-                    '<div class="pr2"><b>' +
-                    Sales.money(p.price) +
-                    "</b></div>" +
+                    prodPriceHtml(p) +
                     '<div class="pstep"><button type="button" data-s="-" tabindex="-1" aria-label="Less"' +
                     (n ? "" : " disabled") +
                     ">" +
@@ -486,7 +538,8 @@
             ? ids
                 .map(function (id) {
                   var p = byId[id],
-                    n = cart[id];
+                    n = cart[id],
+                    pr = itemPricing(p, n);
                   return (
                     '<div class="ci" data-id="' +
                     Sales.esc(id) +
@@ -496,9 +549,16 @@
                     Sales.esc(p.name) +
                     "</b><small>" +
                     Sales.esc(p.code || "") +
-                    " · " +
-                    Sales.money(p.price) +
+                    " · Before GST: " +
+                    Sales.money(pr.baseUnit) +
                     (Sales.isKg(p) ? " / Kg" : "") +
+                    (pr.rate
+                      ? " · GST " +
+                        pr.rate +
+                        "% (" +
+                        Sales.money(pr.gst) +
+                        ")"
+                      : " · GST Exempt") +
                     "</small>" +
                     (p.boxQty
                       ? '<div class="bxr"><span>' +
@@ -519,7 +579,7 @@
                     '"><button type="button" data-a="inc" aria-label="More">' +
                     Sales.ic("plus") +
                     '</button></div><div class="amt">' +
-                    Sales.money((Number(p.price) || 0) * n) +
+                    Sales.money(pr.total) +
                     "</div></div></div>"
                   );
                 })
@@ -538,22 +598,28 @@
             '<div class="cl">' +
             items +
             "</div>" +
-            '<div class="sum"><div><span>Items (' +
+            '<div class="sum"><div><span>Before GST (' +
             T.units +
-            ")</span><span>" +
+            " items)</span><span>" +
             Sales.money(T.sub) +
             "</span></div>" +
-            "<div><span>Discount</span><span>" +
+            "<div><span>GST</span><span>+ " +
+            Sales.money(T.gst) +
+            "</span></div>" +
+            "<div><span>After GST</span><span>" +
+            Sales.money(T.gross) +
+            "</span></div>" +
+            "<div><span>Discount (after GST)</span><span>" +
             (T.disc ? "− " + Sales.money(T.disc) : "₹0") +
             "</span></div>" +
             (discOn
-              ? '<div class="disc"><label for="dsc">Discount (₹)</label><input id="dsc" type="number" min="0" inputmode="decimal" value="' +
+              ? '<div class="disc"><label for="dsc">Discount after GST (₹)</label><input id="dsc" type="number" min="0" inputmode="decimal" value="' +
                 (discount || "") +
                 '" placeholder="0"></div>'
               : '<button class="btn tsoft sm" id="adsc" type="button">' +
                 Sales.ic("plus") +
                 "Add Discount</button>") +
-            '<div class="tot"><span>Total Amount</span><span>' +
+            '<div class="tot"><span>Final Total</span><span>' +
             Sales.money(T.total) +
             "</span></div></div>" +
             (AH
