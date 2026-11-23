@@ -668,6 +668,19 @@ function createAccountsRoutes(config) {
     }
 
     // The signed-in employee's own collections (their history screen).
+    // How many of my collections the office asked me to correct (drives the red count and the Home banner).
+    if (req.method === "GET" && p === "/api/accounts/collections/corrections") {
+      if (!canCollect(session)) { send(res, 403, { error: "Collection permission required." }); return true; }
+      rest("gm_accounts_collections?select=id,customer_code,customer_name_snapshot,visit_ref,correction_note&status=eq.correction_requested&collected_by=eq." + encodeURIComponent(String(session.id)) + "&order=correction_requested_at.desc&limit=200")
+        .then((list) => {
+          const seen = {}, items = [];
+          for (const x of list) { const k = x.visit_ref || x.id; if (seen[k]) continue; seen[k] = 1; items.push({ id: x.id, code: x.customer_code, customerName: x.customer_name_snapshot, note: x.correction_note || "" }); }
+          send(res, 200, { ok: true, count: items.length, items: items.slice(0, 20) });
+        })
+        .catch((e) => { console.error("Accounts corrections count:", e.message); send(res, 502, { error: "Unable to load corrections." }); });
+      return true;
+    }
+
     if (req.method === "GET" && p === "/api/accounts/collections/mine") {
       if (!canCollect(session)) { send(res, 403, { error: "Collection permission required." }); return true; }
       const q = url.searchParams;
@@ -675,7 +688,7 @@ function createAccountsRoutes(config) {
       let filter = "&collected_by=eq." + encodeURIComponent(String(session.id));
       if (dateOk(q.get("from"))) filter += "&received_at=gte." + encodeURIComponent(new Date(q.get("from") + "T00:00:00+05:30").toISOString());
       if (dateOk(q.get("to"))) filter += "&received_at=lt." + encodeURIComponent(new Date(new Date(q.get("to") + "T00:00:00+05:30").getTime() + 24 * 3600e3).toISOString());
-      rest("gm_accounts_collections?select=id,customer_code,customer_name_snapshot,method,total_amount,status,received_at,visit_ref,note" + filter + "&order=received_at.desc,id&limit=400").then(async (list) => {
+      rest("gm_accounts_collections?select=id,customer_code,customer_name_snapshot,method,total_amount,status,received_at,visit_ref,note,correction_note" + filter + "&order=received_at.desc,id&limit=400").then(async (list) => {
         const ids = list.map((x) => x.id);
         const allocations = ids.length ? await rest("gm_accounts_collection_allocations?select=collection_id,invoice_id,amount,evidence_path&collection_id=in.(" + ids.join(",") + ")") : [];
         const invIds = Array.from(new Set(allocations.map((x) => x.invoice_id)));
@@ -689,7 +702,7 @@ function createAccountsRoutes(config) {
           });
         send(res, 200, { ok: true, rows: list.map((x) => ({
           id: x.id, visitRef: x.visit_ref || "", customerCode: x.customer_code, customerName: x.customer_name_snapshot,
-          method: x.method, total: Number(x.total_amount || 0), status: x.status, receivedAt: x.received_at, note: x.note || "",
+          method: x.method, total: Number(x.total_amount || 0), status: x.status, receivedAt: x.received_at, note: x.note || "", correctionNote: x.correction_note || "",
           invoices: grouped[x.id] || [],
         })) });
       }).catch((e) => { console.error("Accounts own collections:", e.message); send(res, 502, { error: "Unable to load your collections." }); });

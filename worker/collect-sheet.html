@@ -1075,7 +1075,8 @@
           Q = new URLSearchParams(location.search),
           CODE = Q.get("code") || "",
           INV = (Q.get("inv") || "").trim(),
-          AMT = Number(Q.get("amt")) || 0;
+          AMT = Number(Q.get("amt")) || 0,
+          FIX = Q.get("fix") || "";
         var SPN = { cash: "Cash", upi: "UPI", bank_transfer: "Bank transfer" };
         var S = {
           method: "cash",
@@ -1254,6 +1255,15 @@
           if (!h) return;
           h.parentNode.classList.toggle("open");
         });
+
+        // ---- correction banner (opened from Collections history)
+        if (FIX) {
+          document.querySelector(".top h1").textContent = "Correct Collection";
+          var fb = document.createElement("div");
+          fb.style.cssText = "background:rgba(13,148,136,.1);border:1px solid rgba(13,148,136,.35);border-radius:12px;padding:12px 14px;display:grid;gap:4px;font-size:13px;margin:0 0 12px";
+          fb.innerHTML = "<b>Correction requested</b>" + (Q.get("reason") ? "<span>Note: " + esc(Q.get("reason")) + "</span>" : "") + "<span>Update the amount or bill photo below and save.</span>";
+          document.querySelector("main.wrap").insertBefore(fb, document.querySelector("main.wrap").firstChild);
+        }
 
         // ---- shop header
         $("#sName").textContent = Q.get("name") || "";

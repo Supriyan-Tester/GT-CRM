@@ -788,6 +788,9 @@
       '<button class="out" type="button" id="outBtn2">' +
       S.ic("logout") +
       "<span>Logout</span></button></div></div></div>";
+    var ca = document.createElement("script");
+    ca.src = "../shared/correction-alert.js";
+    document.body.appendChild(ca);
     document.getElementById("themeBtn").onclick = flip;
     document.getElementById("outBtn").onclick = S.logout;
     document.getElementById("outBtn2").onclick = S.logout;

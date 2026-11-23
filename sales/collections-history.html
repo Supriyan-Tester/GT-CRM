@@ -48,13 +48,14 @@ Sales.start("payhist",function(me,hello,main){
     list.forEach(function(r){
       if(r.status==="reversed")return;
       var k=r.visitRef||r.id,v=map[k];
-      if(!v){v=map[k]={id:k,name:r.customerName,at:r.receivedAt,total:0,counted:0,methods:{},invoices:[],status:r.status,note:r.note};out.push(v)}
+      if(!v){v=map[k]={id:k,name:r.customerName,at:r.receivedAt,total:0,counted:0,methods:{},invoices:[],status:r.status,note:r.note,code:r.customerCode,fixId:"",cnote:""};out.push(v)}
       v.total+=r.total;
       if(r.status!=="rejected"&&r.status!=="correction_requested")v.counted+=r.total;
       v.methods[r.method]=(v.methods[r.method]||0)+r.total;
       r.invoices.forEach(function(i){v.invoices.push({no:i.invoiceNo,amount:i.amount,url:i.evidenceUrl})});
       if(r.status==="pending_approval"&&v.status==="approved")v.status="pending_approval";
       if(r.status==="rejected"||r.status==="correction_requested")v.status=r.status;
+      if(r.status==="correction_requested"){v.fixId=r.id;v.cnote=r.correctionNote||""}
     });
     return out;
   }
@@ -67,7 +68,9 @@ Sales.start("payhist",function(me,hello,main){
       Object.keys(v.methods).map(function(m){return '<div class="ln"><span>'+MN[m]+"</span><b>"+money(v.methods[m])+"</b></div>"}).join("")+
       v.invoices.filter(function(x,i,a){return a.findIndex(function(y){return y.url===x.url})===i}).map(function(i){return '<div class="ln"><span>Invoice #'+esc(i.no)+'</span><span><img data-v="'+esc(i.url)+'" src="'+esc(i.url)+'" alt="Bill photo" onerror="this.style.display=\'none\'"></span></div>'}).join("")+
       (v.note?'<div class="ln"><span>Note</span><span>'+esc(v.note)+"</span></div>":"")+
-      (bad?'<div class="ln"><span>Next step</span><span>Record this collection again</span></div>':"")+"</div></div>";
+      (v.status==="correction_requested"&&v.cnote?'<div class="ln"><span>Office note</span><span>'+esc(v.cnote)+"</span></div>":"")+
+      (bad?'<div class="ln"><span>Next step</span><span>Record this collection again</span></div>':"")+
+      (v.status==="correction_requested"&&v.fixId&&v.code?'<a class="btn teal wide" style="margin-top:10px;width:100%" href="collect-sheet.html?c='+encodeURIComponent(v.code)+"&fix="+encodeURIComponent(v.fixId)+"&reason="+encodeURIComponent(v.cnote)+'">Correct &amp; resubmit</a>':"")+"</div></div>";
   }
   function draw(){
     var vs=visits(rows);
@@ -102,6 +105,6 @@ Sales.start("payhist",function(me,hello,main){
   var ds=$("daySel"),opts="";
   for(var k=0;k<60;k++){var dd=ymd(Date.now()-k*86400000);opts+='<option value="'+dd+'">'+(k===0?"Today":k===1?"Yesterday":dl(dd+"T12:00:00+05:30"))+"</option>"}
   ds.innerHTML=opts;ds.onchange=function(){day=ds.value;load()};
-  load();
+  if(/[?&]all=1/.test(location.search))setMode("all");else load();
 });
 </script></body></html>
