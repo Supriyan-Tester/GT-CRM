@@ -548,13 +548,11 @@ window.GMImg = {
           });
         });
       }
-      // 2. Preserve local punch-in / route unlock state if server is still un-punched for the same date
-      if (loc.punchedIn && !srv.punchedIn && (!srv.date || loc.date === srv.date)) {
-        srv.punchedIn = loc.punchedIn;
-        if (loc.punchInTime) srv.punchInTime = loc.punchInTime;
-        if (loc.routeUnlocked) srv.routeUnlocked = loc.routeUnlocked;
-        if (loc.startKm != null) srv.startKm = loc.startKm;
-        if (loc.vehicle) srv.vehicle = loc.vehicle;
+      // 2. Preserve local punch-in state (it lives inside "shift") if the server copy is still un-punched for the same day
+      var ls_ = isObj(loc.shift) ? loc.shift : null, ss_ = isObj(srv.shift) ? srv.shift : null;
+      if (ls_ && ls_.punchedIn && (!ss_ || !ss_.punchedIn) && (!srv.dayKey || !loc.dayKey || loc.dayKey === srv.dayKey)) {
+        srv.shift = Object.assign(ss_ || {}, ls_);
+        if (loc.dayKey) srv.dayKey = loc.dayKey;
         changed = true;
       }
       // 3. Never revert a shop already marked delivered/completed on this phone back to "pending"
