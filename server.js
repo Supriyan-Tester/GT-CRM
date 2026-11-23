@@ -1207,14 +1207,29 @@ function cookieToken(req) {
   );
   return m ? m[1] : null;
 }
+let lastSessLog = 0;
+function sessLog(why, req) {
+  // Diagnostic: why a signed-in person was treated as signed out (rate limited to 1 line per 5 s).
+  const n = Date.now();
+  if (n - lastSessLog < 5000) return;
+  lastSessLog = n;
+  console.log("[session] signed out: " + why + " | " + (req.method || "") + " " + String(req.url || "").slice(0, 60) + " | ua=" + String(req.headers["user-agent"] || "").slice(0, 60));
+}
 function getSession(req) {
   const t = cookieToken(req);
-  if (!t) return null;
+  if (!t) {
+    if (/^\/api\//.test(req.url || "") && !/^\/api\/(login|health)/.test(req.url || "")) sessLog("no cookie sent", req);
+    return null;
+  }
   const h = sha(t),
     s = sessions[h];
-  if (!s) return null;
+  if (!s) {
+    sessLog("cookie not found on server (server restarted or session lost)", req);
+    return null;
+  }
   const now = Date.now();
   if (s.exp < now) {
+    sessLog("session expired (" + s.role + ")", req);
     delete sessions[h];
     saveSessions();
     return null;
