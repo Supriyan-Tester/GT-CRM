@@ -1018,23 +1018,28 @@
           }, 300);
           return;
         }
-        GM.setWorker({
-          id: j.id,
-          name: j.name,
-          phone: j.phone,
-          role: "Delivery Executive",
-          onLeaveToday: false,
-          emergencyContact: j.emergency || "",
-        });
-        GM.applyTodayPlan();
-        msg.className = "msg";
-        msg.textContent = "";
-        try {
-          localStorage.setItem("gm_logged_in", "true");
-        } catch (err) {}
-        setTimeout(function () {
-          window.location.href = "worker/home.html";
-        }, 300);
+        var openWorker = function () {
+          GM.setWorker({
+            id: j.id,
+            name: j.name,
+            phone: j.phone,
+            role: "Delivery Executive",
+            onLeaveToday: false,
+            emergencyContact: j.emergency || "",
+          });
+          GM.applyTodayPlan();
+          msg.className = "msg";
+          msg.textContent = "";
+          try {
+            localStorage.setItem("gm_logged_in", "true");
+          } catch (err) {}
+          setTimeout(function () {
+            window.location.href = "worker/home.html";
+          }, 300);
+        };
+        // Bring in today's saved punch-in / shops from the server first, so a second browser does not start blank.
+        if (window.GMSync && GMSync.adoptWorker) GMSync.adoptWorker(j.id).then(openWorker, openWorker);
+        else openWorker();
       }
       // First sign-in with a temporary admin password: the admin must choose their own.
       function askNewPassword(current, dest) {
