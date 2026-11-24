@@ -1338,6 +1338,32 @@ function createAccountsRoutes(config) {
       }, 2048);
       return true;
     }
+    // Employee edits their OWN collection, only while it is still waiting for approval. This reuses the office
+    // "request correction" step (same ledger behaviour: nothing is approved, invoice amounts are released), so the
+    // existing "Correct & resubmit" screen records the fixed collection as a new one. Approved collections are locked.
+    if (req.method === "POST" && /^\/api\/accounts\/collections\/[0-9a-f-]{36}\/edit$/i.test(p)) {
+      if (!canCollect(session)) { send(res, 403, { error: "Collection permission required." }); return true; }
+      const id = p.split("/")[4];
+      rest("gm_accounts_collections?select=id,collected_by,status,visit_ref&id=eq." + id)
+        .then(async (found) => {
+          const row = found && found[0];
+          if (!row || String(row.collected_by) !== String(session.id)) return send(res, 404, { error: "Collection not found." });
+          const rows = row.visit_ref
+            ? await rest("gm_accounts_collections?select=id,status&visit_ref=eq." + encodeURIComponent(row.visit_ref) + "&collected_by=eq." + encodeURIComponent(String(session.id)))
+            : [row];
+          if (rows.some((r) => r.status === "approved")) return send(res, 409, { error: "This collection is already approved, so it can't be edited here. Ask the office to correct it." });
+          const open = rows.filter((r) => r.status === "pending_approval" || r.status === "correction_requested");
+          if (!open.length) return send(res, 409, { error: "This collection can't be edited any more." });
+          for (const r of open) {
+            if (r.status !== "pending_approval") continue;
+            await rpc("gm_accounts_request_collection_correction", { p_collection_id: r.id, p_requested_by: String(session.id).slice(0, 80), p_note: "Employee is editing this collection" });
+          }
+          logEvent(session, "Employee started editing collection " + id + " (before approval)");
+          send(res, 200, { ok: true, fixId: open[0].id });
+        })
+        .catch((e) => fail(res, e));
+      return true;
+    }
     send(res, 404, { error: "Accounts endpoint not found." });
     return true;
   }

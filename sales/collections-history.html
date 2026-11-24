@@ -53,7 +53,7 @@ Sales.start("payhist",function(me,hello,main){
       if(r.status!=="rejected"&&r.status!=="correction_requested")v.counted+=r.total;
       v.methods[r.method]=(v.methods[r.method]||0)+r.total;
       r.invoices.forEach(function(i){v.invoices.push({no:i.invoiceNo,amount:i.amount,url:i.evidenceUrl})});
-      if(r.status==="pending_approval"&&v.status==="approved")v.status="pending_approval";
+      if(r.status==="pending_approval"&&v.status==="approved")v.status="pending_approval";if(r.status==="pending_approval"&&!v.pendId)v.pendId=r.id;
       if(r.status==="rejected"||r.status==="correction_requested")v.status=r.status;
       if(r.status==="correction_requested"){v.fixId=r.id;v.cnote=r.correctionNote||""}
     });
@@ -68,9 +68,9 @@ Sales.start("payhist",function(me,hello,main){
       Object.keys(v.methods).map(function(m){return '<div class="ln"><span>'+MN[m]+"</span><b>"+money(v.methods[m])+"</b></div>"}).join("")+
       v.invoices.filter(function(x,i,a){return a.findIndex(function(y){return y.url===x.url})===i}).map(function(i){return '<div class="ln"><span>Invoice #'+esc(i.no)+'</span><span><img data-v="'+esc(i.url)+'" src="'+esc(i.url)+'" alt="Bill photo" onerror="this.style.display=\'none\'"></span></div>'}).join("")+
       (v.note?'<div class="ln"><span>Note</span><span>'+esc(v.note)+"</span></div>":"")+
-      (v.status==="correction_requested"&&v.cnote?'<div class="ln"><span>Office note</span><span>'+esc(v.cnote)+"</span></div>":"")+
+      (v.status==="correction_requested"&&v.cnote?'<div class="ln"><span>Note</span><span>'+esc(v.cnote)+"</span></div>":"")+
       (bad?'<div class="ln"><span>Next step</span><span>Record this collection again</span></div>':"")+
-      (v.status==="correction_requested"&&v.fixId&&v.code?'<a class="btn teal wide" style="margin-top:10px;width:100%" href="collect-sheet.html?c='+encodeURIComponent(v.code)+"&fix="+encodeURIComponent(v.fixId)+"&reason="+encodeURIComponent(v.cnote)+'">Correct &amp; resubmit</a>':"")+"</div></div>";
+      (v.status==="correction_requested"&&v.fixId&&v.code?'<a class="btn teal wide" style="margin-top:10px;width:100%" href="collect-sheet.html?c='+encodeURIComponent(v.code)+"&fix="+encodeURIComponent(v.fixId)+"&reason="+encodeURIComponent(v.cnote)+'">Correct &amp; resubmit</a>':"")+(v.status==="pending_approval"&&v.pendId&&v.code?'<button type="button" class="btn teal wide" data-edit="'+esc(v.pendId)+'" data-code="'+esc(v.code)+'" style="margin-top:10px;width:100%">Edit collection</button>':"")+"</div></div>";
   }
   function draw(){
     var vs=visits(rows);
@@ -91,6 +91,14 @@ Sales.start("payhist",function(me,hello,main){
     $("clBody").innerHTML=html;
     var ms=$("mSel");ms.value=method;ms.onchange=function(){method=ms.value;draw()};
     document.querySelectorAll("[data-open]").forEach(function(b){b.onclick=function(){b.parentNode.classList.toggle("open")}});
+    document.querySelectorAll("[data-edit]").forEach(function(b){b.onclick=function(){
+      if(!confirm("Edit this collection? It will be sent back to you to correct and submit again."))return;
+      b.disabled=true;b.textContent="Opening...";
+      fetch("/api/accounts/collections/"+encodeURIComponent(b.getAttribute("data-edit"))+"/edit",{method:"POST",credentials:"same-origin"})
+        .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"Could not start editing");return j})})
+        .then(function(j){window.location.href="collect-sheet.html?c="+encodeURIComponent(b.getAttribute("data-code"))+"&fix="+encodeURIComponent(j.fixId)+"&reason="+encodeURIComponent("Editing your collection")})
+        .catch(function(e){alert(e.message);b.disabled=false;b.textContent="Edit collection"});
+    }});
     document.querySelectorAll("[data-v]").forEach(function(im){im.onclick=function(){$("chImg").src=im.getAttribute("data-v");$("chView").style.display="flex"}});
   }
   function $(id){return document.getElementById(id)}
