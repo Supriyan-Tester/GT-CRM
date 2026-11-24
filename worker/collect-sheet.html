@@ -17,6 +17,10 @@
         --t-primary: #e4f5ee;
         --amber: #d97706;
       }
+      /* The light tint above made the selected Cash/UPI/Bank tile pale with white text in dark mode */
+      html[data-theme="dark"] {
+        --t-primary: #12332f;
+      }
       *,
       *::before,
       *::after {
@@ -1629,7 +1633,14 @@ function spTicks(){["cash","upi","bank_transfer"].forEach(function(m){var i=docu
               return Number(x.availableToCollect) > 0;
             });
           $("#go").textContent = "Next shop \u2192";
-          $("#go").disabled = !(visit.length > 0 || nothingToCollect);
+          $("#go").disabled = !(currentBillHandled() && (visit.length > 0 || nothingToCollect));
+        }
+        // The current bill must be collected (fully or partly) or left on Pay Later before the worker can move on.
+        function currentBillHandled() {
+          if (!S.cur) return true;
+          return visit.some(function (entry) {
+            return entry.billKey === "current";
+          });
         }
 
         // ---- current bill controls
@@ -1751,6 +1762,13 @@ function spTicks(){["cash","upi","bank_transfer"].forEach(function(m){var i=docu
         }
         // ---- finish the visit: one button after all collections are saved in their popups
         $("#go").onclick = function () {
+          if (!currentBillHandled()) {
+            $("#err").textContent = "Collect this bill, or choose Pay later, before going to the next shop.";
+            try {
+              $("#err").scrollIntoView({ block: "center" });
+            } catch (x) {}
+            return;
+          }
           var receivedTotal = visitTotal();
           if (!(receivedTotal > 0)) {
             // Nothing received: the shop had nothing to collect, or the current bill was left fully on credit.
