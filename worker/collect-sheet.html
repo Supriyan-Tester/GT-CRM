@@ -897,6 +897,25 @@
       </div>
       <div class="col">
         <section class="card pay" id="payWrap">
+          <div class="blk" id="curCard">
+            <h3 id="curH">&#8377; Amount received</h3>
+            <div id="curMsg" class="muted"></div>
+            <div id="curBox" style="display: grid; gap: 10px">
+              <div class="amt">
+                <input
+                  id="curAmt"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  inputmode="decimal"
+                  placeholder="0.00"
+                /><button class="btn" id="curFull" type="button">
+                  Full amount
+                </button>
+              </div>
+              <div class="chips" id="chips"></div>
+            </div>
+          </div>
           <div class="blk" id="payCard">
             <h3>&#128179; Payment method</h3>
             <div class="tiles" id="tiles">
@@ -948,25 +967,6 @@
               >
             </div>
             <div class="split" id="splitBox" style="display: none"><label class="sprow"><span class="spic">💵</span><span>Cash</span><input id="sp_cash" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"><span class="sptick">&#10003;</span></label><label class="sprow"><span class="spic">📱</span><span>UPI</span><input id="sp_upi" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"><span class="sptick">&#10003;</span></label><label class="sprow"><span class="spic">🏦</span><span>Bank</span><input id="sp_bank_transfer" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"><span class="sptick">&#10003;</span></label><div class="muted" id="splitMsg"></div>
-            </div>
-          </div>
-          <div class="blk" id="curCard">
-            <h3 id="curH">&#8377; Amount received</h3>
-            <div id="curMsg" class="muted"></div>
-            <div id="curBox" style="display: grid; gap: 10px">
-              <div class="amt">
-                <input
-                  id="curAmt"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  inputmode="decimal"
-                  placeholder="0.00"
-                /><button class="btn" id="curFull" type="button">
-                  Full amount
-                </button>
-              </div>
-              <div class="chips" id="chips"></div>
             </div>
           </div>
           <div class="blk" id="photoCard">
