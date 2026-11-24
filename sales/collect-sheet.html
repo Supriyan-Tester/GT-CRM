@@ -38,7 +38,13 @@
     .cs-seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--border);border-radius:999px;padding:3px;background:var(--bg)}
     .cs-seg button{border:0;border-radius:999px;padding:9px;font:inherit;font-size:14px;font-weight:700;background:none;color:var(--text);cursor:pointer}
     .cs-seg button.on{background:var(--pri,var(--primary));color:#fff}
-    .cs-sp{display:none;gap:8px}.cs-sp.open{display:grid}.cs-sp label{font-size:12px;color:var(--muted);font-weight:700;display:grid;gap:4px}
+    .cs-sp{display:none;gap:8px}.cs-sp.open{display:grid}.cs-sp .sprow{display:grid;grid-template-columns:auto 1fr minmax(105px,40%) 24px;align-items:center;gap:8px;font-size:14px;color:var(--text);font-weight:700;border:1px solid var(--border);border-radius:12px;padding:8px 10px;background:var(--card,var(--bg))}
+.cs-sp .sprow.on{border:2px solid var(--primary,var(--pri));padding:7px 9px}
+.cs-sp .sprow .spic{font-size:20px}
+.cs-sp .sprow input{min-width:0;width:100%;text-align:right}
+.cs-sp .sprow .sptick{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:13px;background:var(--border);color:transparent}
+.cs-sp .sprow.on .sptick{background:#16a34a;color:#fff}
+
     .cs-notebtn{display:flex;justify-content:space-between;align-items:center;min-height:44px;width:100%;border:0;background:none;color:var(--text);font:inherit;font-size:14px;font-weight:700;padding:0;cursor:pointer}.cs-notebtn small{font-weight:500;color:var(--muted);margin-left:6px}.cs-notebtn i{font-style:normal;color:var(--muted);transition:transform .15s}.cs-notebtn.open i{transform:rotate(180deg)}
     .cs-total{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:20px;padding-top:6px}
     .cs-err{color:var(--danger,#dc2626);font-size:13px;min-height:16px}
@@ -106,7 +112,7 @@ Sales.start("payments",function(me,hello,main){
     '<div class="cs-card cs-shop" id="csShop"><b>Loading shop...</b></div>'+
     '<div class="cs-card" id="csPay" style="display:none"><h3>Payment method</h3><div class="cs-tiles" id="csTiles"><button type="button" class="cs-tile on" data-m="cash" aria-pressed="true"><span>💵</span>Cash</button><button type="button" class="cs-tile" data-m="upi" aria-pressed="false"><span>📱</span>UPI</button><button type="button" class="cs-tile" data-m="bank_transfer" aria-pressed="false"><span>🏦</span>Bank</button></div>'+
       '<div class="cs-seg"><button type="button" class="on" id="csOne" aria-pressed="true">Single</button><button type="button" id="csSplit" aria-pressed="false">Split</button></div>'+
-      '<div class="cs-sp" id="csSpBox"><label>Cash amount<input id="sp_cash" type="number" min="0" step="0.01" placeholder="0.00"></label><label>UPI amount<input id="sp_upi" type="number" min="0" step="0.01" placeholder="0.00"></label><label>Bank transfer amount<input id="sp_bank_transfer" type="number" min="0" step="0.01" placeholder="0.00"></label><div class="cs-hint" id="csSpMsg"></div></div></div>'+
+      '<div class="cs-sp" id="csSpBox"><label class="sprow"><span class="spic">💵</span><span>Cash</span><input id="sp_cash" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"><span class="sptick">&#10003;</span></label><label class="sprow"><span class="spic">📱</span><span>UPI</span><input id="sp_upi" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"><span class="sptick">&#10003;</span></label><label class="sprow"><span class="spic">🏦</span><span>Bank</span><input id="sp_bank_transfer" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"><span class="sptick">&#10003;</span></label><div class="cs-hint" id="csSpMsg"></div></div></div>'+
     '<div class="cs-card" id="csBills"><h3>Unpaid bills</h3><div class="cs-hint">Loading bills...</div></div>'+
     '<div id="csRest" style="display:none"><div class="cs-card">'+
       '<button type="button" class="cs-notebtn" id="csNoteBtn" aria-expanded="false"><span>Add a note<small>Optional</small></span><i aria-hidden="true">▾</i></button>'+
@@ -127,6 +133,7 @@ Sales.start("payments",function(me,hello,main){
   }
 
   function splitPayments(){var o=[];["cash","upi","bank_transfer"].forEach(function(m){var v=Number($("#sp_"+m).value);if(v>0)o.push({method:m,amount:v})});return o}
+  function spTicks(){["cash","upi","bank_transfer"].forEach(function(m){var i=document.getElementById("sp_"+m);if(i&&i.parentNode)i.parentNode.classList.toggle("on",Number(i.value)>0)})}
   function splitSum(){return splitPayments().reduce(function(n,p){return n+pz(p.amount)},0)}
   function amtOf(id){var i=$('[data-a="'+id+'"]');return i?Number(i.value)||0:0}
   function setPhotoStatus(id,state,text){
@@ -153,7 +160,7 @@ var okb=$('[data-ook="'+id+'"]');if(okb)okb.disabled=!(amtOf(id)>0&&S.files[id])
     });
     var ok=S.total>0&&ready;
     $("#csOne").classList.toggle("on",!S.split);$("#csSplit").classList.toggle("on",S.split);$("#csOne").setAttribute("aria-pressed",String(!S.split));$("#csSplit").setAttribute("aria-pressed",String(S.split));
-    $("#csSpBox").classList.toggle("open",S.split);$("#csTiles").style.display=S.split?"none":"grid";
+    $("#csSpBox").classList.toggle("open",S.split);spTicks();$("#csTiles").style.display=S.split?"none":"grid";
     if(S.split){
       var p=splitPayments(),m=$("#csSpMsg"),rem=(pz(S.total)-splitSum())/100;
       if(!(S.total>0)){m.textContent="Select a bill and enter its amount first.";ok=false}

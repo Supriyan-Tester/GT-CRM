@@ -545,13 +545,12 @@
         display: grid;
         gap: 8px;
       }
-      .split label {
-        font-size: 12px;
-        color: var(--muted);
-        font-weight: 700;
-        display: grid;
-        gap: 4px;
-      }
+.sprow{display:grid;grid-template-columns:auto 1fr minmax(105px,40%) 24px;align-items:center;gap:8px;font-size:14px;color:var(--text);font-weight:700;border:1px solid var(--border);border-radius:12px;padding:8px 10px;background:var(--card,var(--bg))}
+.sprow.on{border:2px solid var(--primary,var(--pri));padding:7px 9px}
+.sprow .spic{font-size:20px}
+.sprow input{min-width:0;width:100%;text-align:right}
+.sprow .sptick{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:13px;background:var(--border);color:transparent}
+.sprow.on .sptick{background:#16a34a;color:#fff}
       .photos {
         display: flex;
         gap: 10px;
@@ -948,32 +947,7 @@
                 </select></label
               >
             </div>
-            <div class="split" id="splitBox" style="display: none">
-              <label
-                >Cash amount<input
-                  id="sp_cash"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-              /></label>
-              <label
-                >UPI amount<input
-                  id="sp_upi"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-              /></label>
-              <label
-                >Bank transfer amount<input
-                  id="sp_bank_transfer"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-              /></label>
-              <div class="muted" id="splitMsg"></div>
+            <div class="split" id="splitBox" style="display: none"><label class="sprow"><span class="spic">💵</span><span>Cash</span><input id="sp_cash" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"><span class="sptick">&#10003;</span></label><label class="sprow"><span class="spic">📱</span><span>UPI</span><input id="sp_upi" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"><span class="sptick">&#10003;</span></label><label class="sprow"><span class="spic">🏦</span><span>Bank</span><input id="sp_bank_transfer" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"><span class="sptick">&#10003;</span></label><div class="muted" id="splitMsg"></div>
             </div>
           </div>
           <div class="blk" id="curCard">
@@ -1296,6 +1270,7 @@
           });
           return o;
         }
+function spTicks(){["cash","upi","bank_transfer"].forEach(function(m){var i=document.getElementById("sp_"+m);if(i&&i.parentNode)i.parentNode.classList.toggle("on",Number(i.value)>0)})}
         function splitSum() {
           return splitPayments().reduce(function (n, p) {
             return n + pz(p.amount);
@@ -1313,6 +1288,7 @@
           $("#segOne").classList.toggle("on", !on);
           $("#segSplit").classList.toggle("on", on);
           $("#splitBox").style.display = on ? "grid" : "none";
+          spTicks();
           $("#tiles").style.display = on ? "none" : "grid";
           $("#crMethod").parentNode.style.display = on ? "none" : "grid";
           if (on) {
