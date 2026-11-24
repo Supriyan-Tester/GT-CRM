@@ -6,7 +6,7 @@
  *   CollectPopup.open({
  *     customerCode, invoiceNumber, invoiceId,      // invoiceId is "NEW" when the bill is not in Accounts yet
  *     maxAmount, startAmount, startMethod, startNote,
- *     allowPayLater, photoRequired, correctsId,
+ *     allowPayLater, photoRequired, photoOnlyWithPayLater, correctsId,
  *     callApi: function (path, body) { return promise },
  *     onSaved: function (result) {}
  *   });
@@ -148,7 +148,7 @@
             '<select class="cp-select" id="cpReceivedBy"><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank_transfer">Bank</option></select></div>' +
           '<div class="cp-split" id="cpSplitBox">' + splitHtml + "</div>" +
           '<div class="cp-msg" id="cpMessage"></div></div>' +
-        '<div><span class="cp-label">Bill photo <span class="cp-sub" id="cpPhotoHint"></span></span>' +
+        '<div id="cpPhotoSection"><span class="cp-label">Bill photo <span class="cp-sub" id="cpPhotoHint"></span></span>' +
           '<div class="cp-photo-box"><button type="button" class="cp-btn cp-ghost" id="cpCamera">📷 Camera</button><button type="button" class="cp-btn cp-ghost" id="cpGallery">🖼 Gallery</button></div>' +
           '<input type="file" id="cpCameraInput" accept="image/jpeg,image/png,image/webp" capture="environment" style="display:none">' +
           '<input type="file" id="cpGalleryInput" accept="image/jpeg,image/png,image/webp" style="display:none">' +
@@ -227,6 +227,10 @@
         tile.className = "cp-tile" + (isOn ? " on" : "");
       });
       find("cpAmountLabel").textContent = state.isPayLater ? "Received now (0 = everything on credit)" : "Amount received";
+      // options.photoOnlyWithPayLater: the photo is asked only when Pay Later is chosen (current bill in delivery).
+      var photoVisible = !options.photoOnlyWithPayLater || state.isPayLater;
+      find("cpPhotoSection").style.display = photoVisible ? "" : "none";
+      if (!photoVisible && state.photoFile) clearPhoto();
       find("cpPhotoHint").textContent = photoIsNeeded() ? "(needed)" : "(optional)";
 
       if (amount > maxAmount + 0.001) problem = "Amount cannot be more than " + formatMoney(maxAmount) + ".";
@@ -309,12 +313,15 @@
     find("cpGallery").onclick = function () { find("cpGalleryInput").click(); };
     find("cpCameraInput").onchange = function () { setPhoto(this.files[0]); this.value = ""; };
     find("cpGalleryInput").onchange = function () { setPhoto(this.files[0]); this.value = ""; };
-    find("cpRemovePhoto").onclick = function () {
+    function clearPhoto() {
       if (state.photoPreviewUrl) URL.revokeObjectURL(state.photoPreviewUrl);
       state.photoFile = null;
       state.photoPreviewUrl = "";
       state.uploadedPath = "";
       find("cpPreview").className = "cp-preview";
+    }
+    find("cpRemovePhoto").onclick = function () {
+      clearPhoto();
       refresh();
     };
     find("cpNoteToggle").onclick = function () {
