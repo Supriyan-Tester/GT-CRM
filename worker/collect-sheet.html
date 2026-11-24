@@ -1262,6 +1262,25 @@
           var i = $('[data-oa="' + id + '"]');
           return i ? Number(i.value) || 0 : 0;
         }
+function autoBalanceSplit(typedMethod, totalAmount) {
+  /* Fills the untouched split box(es) with the balance. Typed boxes stay as typed. */
+  var methods = ["cash", "upi", "bank_transfer"];
+  var typedInput = document.getElementById("sp_" + typedMethod);
+  typedInput.dataset.man = typedInput.value === "" ? "0" : "1";
+  var typedPaise = 0;
+  var autoMethods = [];
+  methods.forEach(function (method) {
+    var input = document.getElementById("sp_" + method);
+    if (input.dataset.man === "1" && input.value !== "") typedPaise += Math.round(Number(input.value) * 100);
+    else autoMethods.push(method);
+  });
+  var balancePaise = Math.round(Number(totalAmount) * 100) - typedPaise;
+  autoMethods.forEach(function (method, position) {
+    var input = document.getElementById("sp_" + method);
+    input.dataset.man = "0";
+    input.value = position === 0 && balancePaise > 0 ? (balancePaise / 100).toFixed(2) : "";
+  });
+}
         function splitPayments() {
           var o = [];
           ["cash", "upi", "bank_transfer"].forEach(function (m) {
@@ -1710,7 +1729,10 @@ function spTicks(){["cash","upi","bank_transfer"].forEach(function(m){var i=docu
           recalc();
         };
         ["cash", "upi", "bank_transfer"].forEach(function (m) {
-          $("#sp_" + m).oninput = recalc;
+          $("#sp_" + m).oninput = function () {
+            autoBalanceSplit(m, S.total);
+            recalc();
+          };
         });
         $("#note").oninput = function () {
           $("#noteCnt").textContent = this.value.length + " / 250";

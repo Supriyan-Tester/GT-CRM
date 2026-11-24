@@ -132,6 +132,25 @@ Sales.start("payments",function(me,hello,main){
     $("#csNoteBtn").classList.add("open");
   }
 
+function autoBalanceSplit(typedMethod, totalAmount) {
+  /* Fills the untouched split box(es) with the balance. Typed boxes stay as typed. */
+  var methods = ["cash", "upi", "bank_transfer"];
+  var typedInput = document.getElementById("sp_" + typedMethod);
+  typedInput.dataset.man = typedInput.value === "" ? "0" : "1";
+  var typedPaise = 0;
+  var autoMethods = [];
+  methods.forEach(function (method) {
+    var input = document.getElementById("sp_" + method);
+    if (input.dataset.man === "1" && input.value !== "") typedPaise += Math.round(Number(input.value) * 100);
+    else autoMethods.push(method);
+  });
+  var balancePaise = Math.round(Number(totalAmount) * 100) - typedPaise;
+  autoMethods.forEach(function (method, position) {
+    var input = document.getElementById("sp_" + method);
+    input.dataset.man = "0";
+    input.value = position === 0 && balancePaise > 0 ? (balancePaise / 100).toFixed(2) : "";
+  });
+}
   function splitPayments(){var o=[];["cash","upi","bank_transfer"].forEach(function(m){var v=Number($("#sp_"+m).value);if(v>0)o.push({method:m,amount:v})});return o}
   function spTicks(){["cash","upi","bank_transfer"].forEach(function(m){var i=document.getElementById("sp_"+m);if(i&&i.parentNode)i.parentNode.classList.toggle("on",Number(i.value)>0)})}
   function splitSum(){return splitPayments().reduce(function(n,p){return n+pz(p.amount)},0)}
@@ -277,7 +296,7 @@ function load(){
   }
   $("#csTiles").onclick=function(e){var t=e.target.closest("[data-m]");if(!t)return;S.method=t.getAttribute("data-m");dirty();document.querySelectorAll(".cs-tile").forEach(function(x){x.classList.toggle("on",x===t);x.setAttribute("aria-pressed",String(x===t))})};
   $("#csOne").onclick=function(){S.split=false;dirty();recalc()};$("#csSplit").onclick=function(){S.split=true;dirty();recalc()};
-  ["cash","upi","bank_transfer"].forEach(function(m){$("#sp_"+m).oninput=function(){dirty();recalc()}});
+  ["cash","upi","bank_transfer"].forEach(function(m){$("#sp_"+m).oninput=function(){autoBalanceSplit(m,S.total);dirty();recalc()}});
   $("#csNote").oninput=dirty;
   $("#csNoteBtn").onclick=function(){var n=$("#csNote"),o=n.style.display==="none";n.style.display=o?"":"none";this.setAttribute("aria-expanded",String(o));this.classList.toggle("open",o);if(o)n.focus()};
 
