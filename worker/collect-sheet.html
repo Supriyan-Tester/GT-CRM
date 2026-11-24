@@ -896,6 +896,7 @@
         </section>
       </div>
       <div class="col">
+        <section class="card" id="billsCard"><div class="muted">Loading bills…</div></section>
         <section class="card pay" id="payWrap">
           <div class="blk" id="curCard">
             <h3 id="curH">&#8377; Amount received</h3>
@@ -1040,6 +1041,22 @@
         <button class="go" id="okGo" type="button">Next Shop &rarr;</button>
       </div>
     </div>
+    <style>
+      #payWrap, #creditCard { display: none !important; }
+      .bl-row .btn { width: auto !important; flex: none; min-height: 44px; padding: 0 18px; }
+      .bl-row .muted { flex: none; }
+      .bl-head { padding: 2px 2px 8px; font-size: 16px; }
+      .bl-row { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-top: 1px solid var(--border); }
+      .bl-info { flex: 1; display: grid; gap: 2px; min-width: 0; }
+      .bl-info small { color: var(--muted); }
+      .bl-tag { justify-self: start; font-size: 11px; background: var(--t-primary); color: var(--primary); border-radius: 8px; padding: 2px 7px; font-weight: 700; }
+      .bl-done { color: var(--success) !important; font-weight: 700; }
+      .bl-thumb { width: 48px; height: 48px; border-radius: 10px; border: 1px solid var(--border); overflow: hidden; display: grid; place-items: center; font-size: 10px; color: var(--muted); flex: none; text-align: center; }
+      .bl-thumb img { width: 100%; height: 100%; object-fit: cover; }
+      .bl-total { display: flex; justify-content: space-between; align-items: center; border-top: 2px solid var(--border); margin-top: 6px; padding: 12px 2px 4px; font-size: 18px; }
+      .bl-line { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); padding: 2px; }
+    </style>
+    <script src="../shared/collect-popup.js"></script>
     <script src="../shared/theme.js"></script>
     <script>
       (function () {
@@ -1358,11 +1375,7 @@ function spTicks(){["cash","upi","bank_transfer"].forEach(function(m){var i=docu
                 " still due";
             }
           } else b.style.display = "none";
-          var crPhoto = S.cur && (S.cur.id === "NEW" || curAmount() > 0);
-          $("#go").disabled =
-            S.method === "credit"
-              ? !!(crPhoto && !S.curFile) || (on && n > 0 && !ok)
-              : !ok;
+          refreshFooter();
         }
 
         // ---- load invoices
@@ -1424,7 +1437,7 @@ function spTicks(){["cash","upi","bank_transfer"].forEach(function(m){var i=docu
                   String(x.invoice_no).trim().toLowerCase() !== key
                 );
               });
-              renderOld();
+              renderBills();
               recalc();
               if (
                 !S.cur &&
@@ -1458,6 +1471,7 @@ function spTicks(){["cash","upi","bank_transfer"].forEach(function(m){var i=docu
               S.cur = INV && AMT > 0 ? { id: "NEW", max: AMT } : null;
               $("#curBox").style.display = S.cur ? "grid" : "none";
               recalc();
+              renderBills();
             });
         }
 
@@ -1466,235 +1480,129 @@ function spTicks(){["cash","upi","bank_transfer"].forEach(function(m){var i=docu
             return String(x.id) === String(id);
           })[0];
         }
-        var CAM = "\ud83d\udcf7";
+        // ---- bills list: every bill has its own Collect button that opens the payment popup
+        var visit = []; // one entry per saved collection: { billKey, invoiceNumber, amount, label, hasPhoto, payLater }
 
-        // Refresh one selected old-credit card: progress bar, received / stays on credit, hint, OK button.
-        function oldUpdate(id) {
-          var x = oldX(id);
-          if (!x) return;
-          var inp = $('[data-oa="' + id + '"]'),
-            av = Number(x.availableToCollect),
-            out = Number(x.outstanding);
-          var v = Number(inp.value) || 0;
-          if (v > av) {
-            inp.value = av.toFixed(2);
-            v = av;
-          }
-          var has = !!S["of_" + id];
-          $("#bar_" + id).style.width =
-            (out > 0 ? Math.min(100, (v / out) * 100) : 0) + "%";
-          $("#rcv_" + id).textContent = "Received " + money(v);
-          $("#stay_" + id).textContent =
-            "Stays on credit " + money(Math.max(0, out - v));
-          var h = $("#hint_" + id);
-          h.textContent =
-            v > 0
-              ? has
-                ? ""
-                : "Add the bill photo to continue."
-              : "Enter the amount received.";
-          h.style.display = h.textContent ? "" : "none";
-          // OK needs both an amount and a bill photo.
-          $('[data-ook="' + id + '"]').disabled = !(v > 0 && has);
-          recalc();
+        function collectedFor(billKey) {
+          return visit
+            .filter(function (entry) {
+              return entry.billKey === billKey;
+            })
+            .reduce(function (sum, entry) {
+              return sum + entry.amount;
+            }, 0);
         }
-
-        function renderOld() {
-          var sum = S.old.reduce(function (a, x) {
-            return a + Number(x.outstanding || 0);
+        function visitTotal() {
+          return visit.reduce(function (sum, entry) {
+            return sum + entry.amount;
           }, 0);
-          if (!S.old.length) {
-            $("#credit").innerHTML =
-              '<div class="cr"><div class="ch" style="cursor:default"><b>\u2713 No old credit</b></div></div>';
-            $(".cr .ch").classList.add("nochev");
-            return;
-          }
-          $("#credit").innerHTML =
-            '<div class="cr has' +
-            (WIDE ? " open" : "") +
-            '"><div class="ch" data-tg><div class="ico">\ud83d\uddc2</div><div><b>Old Credit</b><small>' +
-            S.old.length +
-            (S.old.length > 1 ? " bills" : " bill") +
-            ' \u00b7 Outstanding</small></div><b class="tot2">' +
-            money(sum) +
-            '</b></div><div class="cb">' +
-            S.old
-              .map(function (x) {
-                var u = evUrl(x.evidence_path),
-                  av = Number(x.availableToCollect),
-                  id = esc(x.id);
-                return (
-                  '<div class="row"><div class="th" data-v="' +
-                  esc(u) +
-                  '">' +
-                  (u
-                    ? '<img src="' +
-                      esc(u) +
-                      '" alt="Bill" onerror="this.parentNode.textContent=\'No photo\'">'
-                    : "No photo") +
-                  "</div>" +
-                  "<div><b>Invoice No. " +
-                  esc(x.invoice_no) +
-                  '</b><small class="muted" style="display:block">\ud83d\udcc5 ' +
-                  dmy(x.invoice_date) +
-                  '</small><span class="due small">Due: ' +
-                  money(x.outstanding) +
-                  "</span>" +
-                  (Number(x.pendingAmount) > 0
-                    ? '<small class="muted" style="display:block">' +
-                      money(x.pendingAmount) +
-                      " waiting for approval</small>"
-                    : "") +
-                  "</div>" +
-                  (av > 0
-                    ? '<button type="button" class="btn" data-t="' +
-                      id +
-                      '">Collect</button>'
-                    : '<span class="muted">Collected</span>') +
-                  '<div class="more" id="more_' +
-                  id +
-                  '">' +
-                  '<div class="amt2"><div class="in"><span>\u20b9</span><input data-oa="' +
-                  id +
-                  '" type="number" min="0" max="' +
-                  av.toFixed(2) +
-                  '" step="0.01" inputmode="decimal" placeholder="0.00" aria-label="Amount received"></div>' +
-                  '<button type="button" class="cam" data-oadd="' +
-                  id +
-                  '" aria-label="Add bill photo">' +
-                  CAM +
-                  "</button></div>" +
-                  '<div class="pbar"><i id="bar_' +
-                  id +
-                  '"></i></div>' +
-                  '<div class="rc"><span id="rcv_' +
-                  id +
-                  '">Received ' +
-                  money(0) +
-                  '</span><span id="stay_' +
-                  id +
-                  '">Stays on credit ' +
-                  money(x.outstanding) +
-                  "</span></div>" +
-                  '<p class="hint" id="hint_' +
-                  id +
-                  '">No bill photo yet. Tap the camera.</p>' +
-                  '<div class="okrow"><button type="button" class="btn" data-ocancel="' +
-                  id +
-                  '">Cancel</button><button type="button" class="btn okb" data-ook="' +
-                  id +
-                  '" disabled>OK</button></div>' +
-                  '<input type="file" data-of="' +
-                  id +
-                  '" accept="image/jpeg,image/png,image/webp" capture="environment" style="display:none"></div>' +
-                  '<div class="sm" id="sm_' +
-                  id +
-                  '"><div class="t">\u2713</div><div><p id="smT_' +
-                  id +
-                  '"></p><small id="smS_' +
-                  id +
-                  '"></small></div><button type="button" class="ed" data-oedit="' +
-                  id +
-                  '">Edit</button></div></div>'
-                );
-              })
-              .join("") +
-            "</div></div>";
-          document.querySelectorAll("[data-v]").forEach(function (t) {
-            t.onclick = function () {
-              var s = t.getAttribute("data-v");
-              if (s) view(s);
-            };
+        }
+        function listBills() {
+          var bills = [];
+          if (S.cur)
+            bills.push({ billKey: "current", invoiceId: S.cur.id, invoiceNumber: INV, maxAmount: S.cur.max, isCurrent: true, source: null });
+          S.old.forEach(function (oldBill) {
+            bills.push({
+              billKey: String(oldBill.id),
+              invoiceId: oldBill.id,
+              invoiceNumber: oldBill.invoice_no,
+              maxAmount: Number(oldBill.availableToCollect),
+              isCurrent: false,
+              source: oldBill,
+            });
           });
-
-          function showMore(id, open) {
-            $("#more_" + id).className = "more" + (open ? " open" : "");
-          }
-          function showSummary(id, open) {
-            $("#sm_" + id).className = "sm" + (open ? " open" : "");
-          }
-
-          document.querySelectorAll("[data-t]").forEach(function (b) {
-            b.onclick = function () {
-              var id = b.getAttribute("data-t"),
-                on = !S.oldSel[id];
-              S.oldSel[id] = on;
-              S.oldOk[id] = false;
-              b.className = "btn" + (on ? " on" : "");
-              b.textContent = on ? "Selected" : "Collect";
-              showMore(id, on);
-              showSummary(id, false);
-              if (on) oldUpdate(id);
-              else recalc();
-            };
-          });
-          document.querySelectorAll("[data-oa]").forEach(function (i) {
-            i.oninput = function () {
-              oldUpdate(i.getAttribute("data-oa"));
-            };
-          });
-          document.querySelectorAll("[data-oadd]").forEach(function (b) {
-            var id = b.getAttribute("data-oadd"),
-              f = $('[data-of="' + id + '"]');
-            b.onclick = function () {
-              f.click();
-            };
-            f.onchange = function () {
-              var file = f.files[0];
-              if (!file) return;
-              S["of_" + id] = file;
-              uploadPhoto(file).catch(function () {});
-              b.className = "cam done";
-              b.innerHTML =
-                '<img src="' +
-                URL.createObjectURL(file) +
-                '" alt="Bill photo">';
-              oldUpdate(id);
-            };
-          });
-          document.querySelectorAll("[data-ocancel]").forEach(function (b) {
-            b.onclick = function () {
-              var id = b.getAttribute("data-ocancel"),
-                t = $('[data-t="' + id + '"]'),
-                cam = $('[data-oadd="' + id + '"]');
-              S.oldSel[id] = false;
-              S.oldOk[id] = false;
-              delete S["of_" + id];
-              $('[data-oa="' + id + '"]').value = "";
-              $('[data-of="' + id + '"]').value = "";
-              cam.className = "cam";
-              cam.innerHTML = CAM;
-              t.className = "btn";
-              t.textContent = "Collect";
-              showMore(id, false);
-              showSummary(id, false);
+          return bills;
+        }
+        function openBillPopup(bill) {
+          var remaining = Math.round((bill.maxAmount - collectedFor(bill.billKey)) * 100) / 100;
+          CollectPopup.open({
+            customerCode: CODE,
+            invoiceNumber: bill.invoiceNumber,
+            invoiceId: bill.isCurrent ? S.cur.id : bill.invoiceId,
+            maxAmount: remaining,
+            allowPayLater: bill.isCurrent,
+            photoRequired: !bill.isCurrent,
+            callApi: api,
+            onSaved: function (result) {
+              if (bill.isCurrent && S.cur.id === "NEW") S.cur.id = result.invoiceId;
+              visit.push({
+                billKey: bill.billKey,
+                invoiceNumber: bill.invoiceNumber,
+                amount: result.amount,
+                label: result.label,
+                hasPhoto: result.hasPhoto,
+                payLater: result.payLater,
+              });
+              renderBills();
               recalc();
+            },
+          });
+        }
+        function renderBills() {
+          S.billsLoaded = true;
+          var bills = listBills();
+          var receivedTotal = visitTotal();
+          var html = '<div class="bl-head"><b>Bills to collect</b></div>';
+          if (!bills.length) html += '<div class="muted">This shop has no unpaid bill left to collect.</div>';
+          bills.forEach(function (bill) {
+            var collected = collectedFor(bill.billKey);
+            var remaining = Math.round((bill.maxAmount - collected) * 100) / 100;
+            var entries = visit.filter(function (entry) {
+              return entry.billKey === bill.billKey;
+            });
+            var lastEntry = entries[entries.length - 1];
+            var photoUrl = bill.source ? evUrl(bill.source.evidence_path) : "";
+            html +=
+              '<div class="bl-row">' +
+              (bill.source
+                ? '<div class="bl-thumb" data-view="' + esc(photoUrl) + '">' + (photoUrl ? '<img src="' + esc(photoUrl) + '" alt="">' : "No photo") + "</div>"
+                : "") +
+              '<div class="bl-info"><b>Invoice No. ' + esc(bill.invoiceNumber) + "</b>" +
+              (bill.isCurrent ? ' <span class="bl-tag">This delivery</span>' : "") +
+              (bill.source ? "<small>\ud83d\udcc5 " + dmy(bill.source.invoice_date) + "</small>" : "") +
+              "<small>Due: " + money(bill.isCurrent ? bill.maxAmount : bill.source.outstanding) + "</small>" +
+              (bill.source && Number(bill.source.pendingAmount) > 0 ? "<small>" + money(bill.source.pendingAmount) + " waiting for approval</small>" : "") +
+              (collected > 0 ? '<small class="bl-done">\u2713 ' + money(collected) + " \u00b7 " + esc(lastEntry.label) + "</small>" : "") +
+              (lastEntry && lastEntry.payLater && collected === 0 ? '<small class="bl-done">\ud83e\uddfe Left on credit</small>' : "") +
+              "</div>" +
+              (remaining > 0.004
+                ? '<button type="button" class="btn" data-bill="' + esc(bill.billKey) + '">' + (collected > 0 ? "Collect rest" : "Collect") + "</button>"
+                : '<span class="muted">' + (collected > 0 ? "Done" : "Collected") + "</span>") +
+              "</div>";
+          });
+          html +=
+            '<div class="bl-total"><span>Total collected</span><b>' + money(receivedTotal) + "</b></div>";
+          visit.forEach(function (entry) {
+            if (entry.amount > 0)
+              html += '<div class="bl-line"><span>Invoice ' + esc(entry.invoiceNumber) + " \u00b7 " + esc(entry.label) + "</span><span>" + money(entry.amount) + "</span></div>";
+          });
+          $("#billsCard").innerHTML = html;
+          document.querySelectorAll("[data-bill]").forEach(function (button) {
+            button.onclick = function () {
+              var key = button.getAttribute("data-bill");
+              openBillPopup(
+                listBills().filter(function (bill) {
+                  return bill.billKey === key;
+                })[0],
+              );
             };
           });
-          document.querySelectorAll("[data-ook]").forEach(function (b) {
-            b.onclick = function () {
-              var id = b.getAttribute("data-ook"),
-                x = oldX(id),
-                v = oldAmount(id),
-                out = Number(x.outstanding);
-              if (!(v > 0) || !S["of_" + id]) return;
-              S.oldOk[id] = true;
-              $("#smT_" + id).textContent =
-                "Invoice " + x.invoice_no + " \u00b7 " + money(v) + " received";
-              $("#smS_" + id).textContent =
-                money(Math.max(0, out - v)) + " stays on credit" + (S["of_" + id] ? " \u00b7 1 photo" : "");
-              showMore(id, false);
-              showSummary(id, true);
+          document.querySelectorAll("[data-view]").forEach(function (thumb) {
+            thumb.onclick = function () {
+              var source = thumb.getAttribute("data-view");
+              if (source) view(source);
             };
           });
-          document.querySelectorAll("[data-oedit]").forEach(function (b) {
-            b.onclick = function () {
-              var id = b.getAttribute("data-oedit");
-              S.oldOk[id] = false;
-              showSummary(id, false);
-              showMore(id, true);
-            };
-          });
+        }
+        function refreshFooter() {
+          var nothingToCollect =
+            S.billsLoaded &&
+            !S.cur &&
+            !S.old.some(function (x) {
+              return Number(x.availableToCollect) > 0;
+            });
+          $("#go").textContent = "Next shop \u2192";
+          $("#go").disabled = !(visit.length > 0 || nothingToCollect);
         }
 
         // ---- current bill controls
@@ -1814,184 +1722,51 @@ function spTicks(){["cash","upi","bank_transfer"].forEach(function(m){var i=docu
             } catch (x) {}
           }
         }
-        $("#go").onclick = async function () {
-          var isCr = S.method === "credit";
-          if (isCr && !(S.total > 0)) {
-            var cb = this,
-              ce = $("#err");
-            ce.textContent = "";
-            cb.disabled = true;
-            cb.textContent = "Saving...";
+        // ---- finish the visit: one button after all collections are saved in their popups
+        $("#go").onclick = function () {
+          var receivedTotal = visitTotal();
+          if (!(receivedTotal > 0)) {
+            // Nothing received: the shop had nothing to collect, or the current bill was left fully on credit.
+            var leftOnCredit = visit.some(function (entry) {
+              return entry.billKey === "current" && entry.payLater;
+            });
             try {
-              if (S.cur && S.cur.id === "NEW") {
-                if (!S.curFile)
-                  throw fe("Add a photo of the bill.", "#photoCard");
-                if (S.curFile.size > 25 * 1024 * 1024)
-                  throw fe("Each photo must be 25 MB or smaller.", "#photoCard");
-                var cu = await uploadPhoto(S.curFile);
-                await api("/api/accounts/delivery-invoice", {
-                  customerCode: CODE,
-                  invoiceNo: INV,
-                  evidencePath: cu.evidencePath,
-                });
-              }
-              try {
-                parent.postMessage(
-                  { gmCollect: "done", credit: S.cur !== null },
-                  location.origin,
-                );
-              } catch (e) {}
-            } catch (e) {
-              showErr(e);
-              cb.disabled = false;
-              cb.textContent = "Save & Next \u2192";
-            }
+              parent.postMessage({ gmCollect: "done", credit: leftOnCredit }, location.origin);
+            } catch (e) {}
             return;
           }
-          var PM = isCr ? $("#crMethod").value : S.method;
-          var btn = this,
-            err = $("#err");
-          err.textContent = "";
-          document.querySelectorAll(".bad").forEach(function (x) {
-            x.classList.remove("bad");
+          var methodNames = [];
+          visit.forEach(function (entry) {
+            if (entry.amount > 0 && methodNames.indexOf(entry.label) < 0) methodNames.push(entry.label);
           });
-          btn.disabled = true;
-          btn.textContent = "Saving...";
-          try {
-            var allocations = [];
-            if (curAmount() > 0) {
-              var u = { evidencePath: undefined },
-                id = S.cur.id;
-              if (S.curFile) {
-                if (S.curFile.size > 25 * 1024 * 1024)
-                  throw fe("Each photo must be 25 MB or smaller.", "#photoCard");
-                u = await uploadPhoto(S.curFile);
-              }
-              if (id === "NEW") {
-                var ci = await api("/api/accounts/delivery-invoice", {
-                  customerCode: CODE,
-                  invoiceNo: INV,
-                  evidencePath: u.evidencePath,
-                });
-                id = ci.invoiceId;
-              }
-              allocations.push({
-                invoiceId: id,
-                amount: curAmount(),
-                evidencePath: u.evidencePath,
-              });
-            }
-            for (var k of Object.keys(S.oldSel)) {
-              if (!S.oldSel[k]) continue;
-              var a = oldAmount(k),
-                f = S["of_" + k];
-              if (!(a > 0)) continue;
-              if (!f)
-                throw fe(
-                  "Add the bill photo for invoice " +
-                    (oldX(k) ? oldX(k).invoice_no : "") +
-                    ".",
-                  '[data-oadd="' + k + '"]',
-                );
-              var uo = { evidencePath: undefined };
-              if (f) {
-                if (f.size > 25 * 1024 * 1024)
-                  throw fe(
-                    "Each photo must be 25 MB or smaller.",
-                    '[data-oadd="' + k + '"]',
-                  );
-                uo = await uploadPhoto(f);
-              }
-              allocations.push({
-                invoiceId: k,
-                amount: a,
-                evidencePath: uo.evidencePath,
-              });
-            }
-            if (isCr && S.cur && S.cur.id === "NEW" && !(curAmount() > 0)) {
-              if (!S.curFile)
-                throw fe("Add a photo of the bill.", "#photoCard");
-              if (S.curFile.size > 25 * 1024 * 1024)
-                throw fe("Each photo must be 25 MB or smaller.", "#photoCard");
-              var cu2 = await uploadPhoto(S.curFile);
-              await api("/api/accounts/delivery-invoice", {
-                customerCode: CODE,
-                invoiceNo: INV,
-                evidencePath: cu2.evidencePath,
-              });
-            }
-            if (!allocations.length)
-              throw fe("Enter an amount to collect.", "#curCard");
-            var key = crypto.randomUUID
-                ? crypto.randomUUID()
-                : "COL-" +
-                  Date.now() +
-                  "-" +
-                  Math.random().toString(36).slice(2),
-              label;
-            if ($("#splitChk").checked) {
-              if (splitSum() !== pz(S.total) || splitPayments().length < 2)
-                throw fe(
-                  "The payment amounts must add up to the total.",
-                  "#payCard",
-                );
-              var sp = await api("/api/accounts/collections/split", {
-                customerCode: CODE,
-                payments: splitPayments(),
-                allocations: allocations,
-                requestKey: key,
-                note: $("#note").value,
-              });
-              label = (sp.parts || splitPayments())
-                .map(function (q) {
-                  return SPN[q.method];
-                })
-                .join(" + ");
-            } else {
-              await api("/api/accounts/collections", {
-                customerCode: CODE,
-                method: PM,
-                allocations: allocations,
-                requestKey: key,
-                note: $("#note").value,
-              });
-              label = SPN[PM] + (isCr ? " + Credit" : "");
-            }
-            $("#okInv").textContent = INV ? "Invoice #" + INV : "";
-            $("#okAmt").textContent = money(S.total);
-            $("#okM").textContent = label;
-            $("#okT").textContent = new Date().toLocaleString("en-IN", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-              timeZone: "Asia/Kolkata",
-            });
-            $("#okP").textContent =
-              allocations.length +
-              (allocations.length > 1 ? " photos" : " photo") +
-              " attached";
-            var info = {
-              gmCollect: "saved",
-              inv: INV,
-              amount: S.total,
-              method: label,
-              time: $("#okT").textContent,
-              photos: $("#okP").textContent,
-            };
-            if (window.parent !== window) {
-              try {
-                parent.postMessage(info, location.origin);
-                return;
-              } catch (e2) {}
-            }
-            $("#ok").style.display = "flex";
-          } catch (e) {
-            showErr(e);
-            btn.disabled = false;
-            btn.textContent = "Save & Next \u2192";
+          var photoCount = visit.filter(function (entry) {
+            return entry.hasPhoto;
+          }).length;
+          var methodSummary = methodNames.join(" \u00b7 ");
+          var photoSummary = photoCount + (photoCount > 1 ? " photos" : " photo") + " attached";
+          var timeText = new Date().toLocaleString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: "Asia/Kolkata",
+          });
+          $("#okInv").textContent = INV ? "Invoice #" + INV : "";
+          $("#okAmt").textContent = money(receivedTotal);
+          $("#okM").textContent = methodSummary;
+          $("#okT").textContent = timeText;
+          $("#okP").textContent = photoSummary;
+          if (window.parent !== window) {
+            try {
+              parent.postMessage(
+                { gmCollect: "saved", inv: INV, amount: receivedTotal, method: methodSummary, time: timeText, photos: photoSummary },
+                location.origin,
+              );
+              return;
+            } catch (e2) {}
           }
+          $("#ok").style.display = "flex";
         };
         function close() {
           try {
