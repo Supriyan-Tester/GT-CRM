@@ -1314,6 +1314,7 @@
           $("#segSplit").classList.toggle("on", on);
           $("#splitBox").style.display = on ? "grid" : "none";
           $("#tiles").style.display = on ? "none" : "grid";
+          $("#crMethod").parentNode.style.display = on ? "none" : "grid";
           if (on) {
             var p = splitPayments(),
               m = $("#splitMsg"),
@@ -1364,7 +1365,9 @@
           } else b.style.display = "none";
           var crPhoto = S.cur && (S.cur.id === "NEW" || curAmount() > 0);
           $("#go").disabled =
-            S.method === "credit" ? !!(crPhoto && !S.curFile) : !ok;
+            S.method === "credit"
+              ? !!(crPhoto && !S.curFile) || (on && n > 0 && !ok)
+              : !ok;
         }
 
         // ---- load invoices
@@ -1719,9 +1722,6 @@
             x.classList.toggle("on", x === t);
           });
           var cr = S.method === "credit";
-          ["splitRow", "splitBox"].forEach(function (id) {
-            $("#" + id).classList.toggle("hide-credit", cr);
-          });
           $("#crMsg").style.display = cr ? "grid" : "none";
           recalc();
         };
