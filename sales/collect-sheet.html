@@ -1068,7 +1068,7 @@
             return document.querySelector(s);
           },
           Q = new URLSearchParams(location.search),
-          CODE = Q.get("code") || "",
+          CODE = Q.get("code") || Q.get("c") || "",
           INV = (Q.get("inv") || "").trim(),
           AMT = Number(Q.get("amt")) || 0,
           FIX = Q.get("fix") || "";
@@ -1528,6 +1528,7 @@ function spTicks(){["cash","upi","bank_transfer"].forEach(function(m){var i=docu
             photoRequired: !bill.isCurrent,
             photoOnlyWithPayLater: bill.isCurrent,
             callApi: api,
+            correctsId: FIX || undefined,
             onSaved: function (result) {
               if (bill.isCurrent && S.cur.id === "NEW") S.cur.id = result.invoiceId;
               visit.push({
@@ -1774,6 +1775,7 @@ function spTicks(){["cash","upi","bank_transfer"].forEach(function(m){var i=docu
           $("#ok").style.display = "flex";
         };
         function close() {
+          if (window.parent === window) { location.href = "collections-history.html"; return; }
           try {
             parent.postMessage({ gmCollect: "cancel" }, location.origin);
             return;
@@ -1783,6 +1785,7 @@ function spTicks(){["cash","upi","bank_transfer"].forEach(function(m){var i=docu
         $("#cancel").onclick = close;
         $("#x").onclick = close;
         $("#okGo").onclick = function () {
+          if (window.parent === window) { location.href = "collections-history.html"; return; }
           try {
             parent.postMessage({ gmCollect: "done" }, location.origin);
           } catch (e) {}

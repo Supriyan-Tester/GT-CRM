@@ -70,7 +70,7 @@ Sales.start("payhist",function(me,hello,main){
       (v.note?'<div class="ln"><span>Note</span><span>'+esc(v.note)+"</span></div>":"")+
       (v.status==="correction_requested"&&v.cnote?'<div class="ln"><span>Note</span><span>'+esc(v.cnote)+"</span></div>":"")+
       (bad?'<div class="ln"><span>Next step</span><span>Record this collection again</span></div>':"")+
-      (v.status==="correction_requested"&&v.fixId&&v.code?'<a class="btn teal wide" style="margin-top:10px;width:100%" href="collect-sheet.html?c='+encodeURIComponent(v.code)+"&fix="+encodeURIComponent(v.fixId)+"&reason="+encodeURIComponent(v.cnote)+'">Correct &amp; resubmit</a>':"")+(v.status==="pending_approval"&&v.pendId&&v.code?'<button type="button" class="btn teal wide" data-edit="'+esc(v.pendId)+'" data-code="'+esc(v.code)+'" style="margin-top:10px;width:100%">Edit collection</button>':"")+"</div></div>";
+      (v.status==="correction_requested"&&v.fixId&&v.code?'<a class="btn teal wide" style="margin-top:10px;width:100%" href="collect-sheet.html?c='+encodeURIComponent(v.code)+"&inv="+encodeURIComponent((v.invoices[0]&&v.invoices[0].no)||"")+"&fix="+encodeURIComponent(v.fixId)+"&reason="+encodeURIComponent(v.cnote)+'">Correct &amp; resubmit</a>':"")+(v.status==="pending_approval"&&v.pendId&&v.code?'<button type="button" class="btn teal wide" data-edit="'+esc(v.pendId)+'" data-code="'+esc(v.code)+'" data-inv="'+esc((v.invoices[0]&&v.invoices[0].no)||"")+'" style="margin-top:10px;width:100%">Edit collection</button>':"")+"</div></div>";
   }
   function draw(){
     var vs=visits(rows);
@@ -96,7 +96,7 @@ Sales.start("payhist",function(me,hello,main){
       b.disabled=true;b.textContent="Opening...";
       fetch("/api/accounts/collections/"+encodeURIComponent(b.getAttribute("data-edit"))+"/edit",{method:"POST",credentials:"same-origin"})
         .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"Could not start editing");return j})})
-        .then(function(j){window.location.href="collect-sheet.html?c="+encodeURIComponent(b.getAttribute("data-code"))+"&fix="+encodeURIComponent(j.fixId)+"&reason="+encodeURIComponent("Editing your collection")})
+        .then(function(j){window.location.href="collect-sheet.html?c="+encodeURIComponent(b.getAttribute("data-code"))+"&inv="+encodeURIComponent(b.getAttribute("data-inv")||"")+"&fix="+encodeURIComponent(j.fixId)+"&reason="+encodeURIComponent("Editing your collection")})
         .catch(function(e){alert(e.message);b.disabled=false;b.textContent="Edit collection"});
     }});
     document.querySelectorAll("[data-v]").forEach(function(im){im.onclick=function(){$("chImg").src=im.getAttribute("data-v");$("chView").style.display="flex"}});

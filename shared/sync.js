@@ -639,6 +639,7 @@ window.GMImg = {
 
   // 1) Render from the local cache immediately, then hydrate from the server asynchronously.
   // Pages already listen for gm-sync and repaint when newer server data arrives.
+  var adoptingWorker = false; // true only while a worker signs in on the login page (see GMSync.adoptWorker)
   function hydrate(items, initial) {
     if (!items || typeof items !== "object") return false;
     var startedAt = Date.now() - 50;
@@ -669,7 +670,7 @@ window.GMImg = {
       } else {
         rawRem.call(ls, BLOB);
       }
-    } else if (isWorker) {
+    } else if (isWorker || adoptingWorker) {
       var cur = rawGet.call(ls, BLOB);
       var id = wid(cur);
       if (id) {
@@ -729,6 +730,18 @@ window.GMImg = {
     has: false,
     isAdmin: isAdmin,
     ready: Promise.resolve(false),
+    // Sign-in page only: load this worker's saved record (punch-in, shops, returns) from the server BEFORE any local
+    // record exists. Without this, a second browser started with a blank record and saved it over the server copy,
+    // so the worker was asked to punch in again.
+    adoptWorker: function (id) {
+      if (!id || !/^[A-Za-z0-9_\-]{1,60}$/.test(id)) return Promise.resolve(false);
+      adoptingWorker = true;
+      try { rawSet.call(ls, BLOB, JSON.stringify({ worker: { id: id } })); } catch (e) {}
+      return window.GMSync.pull().then(
+        function (v) { adoptingWorker = false; return v; },
+        function (e) { adoptingWorker = false; throw e; }
+      );
+    },
     // Sign-in page only: forget the previous person's data kept in this browser.
     clearLocal: function () {
       var ks = [];
