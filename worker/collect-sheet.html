@@ -1522,7 +1522,6 @@ function spTicks(){["cash","upi","bank_transfer"].forEach(function(m){var i=docu
             maxAmount: remaining,
             allowPayLater: bill.isCurrent,
             photoRequired: !bill.isCurrent,
-            photoOnlyWithPayLater: bill.isCurrent,
             callApi: api,
             onSaved: function (result) {
               if (bill.isCurrent && S.cur.id === "NEW") S.cur.id = result.invoiceId;
