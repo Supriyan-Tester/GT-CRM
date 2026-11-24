@@ -1045,6 +1045,13 @@
       #payWrap, #creditCard { display: none !important; }
       .bl-row .btn { width: auto !important; flex: none; min-height: 44px; padding: 0 18px; }
       .bl-row .muted { flex: none; }
+      .bl-group { border-radius: 14px; padding: 2px 12px 6px; margin-bottom: 12px; border: 1.5px solid; }
+      .bl-old { background: var(--t-accent); border-color: var(--accent); }
+      .bl-cur { background: var(--t-primary); border-color: var(--primary); }
+      .bl-title { display: flex; justify-content: space-between; align-items: center; padding: 10px 0 6px; font-weight: 800; font-size: 15px; }
+      .bl-title small { color: var(--muted); font-weight: 600; }
+      .bl-old .btn { background: var(--accent); color: #1f1300; border-color: transparent; }
+      .bl-cur .btn { background: var(--primary); color: var(--on-primary); border-color: transparent; }
       .bl-head { padding: 2px 2px 8px; font-size: 16px; }
       .bl-row { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-top: 1px solid var(--border); }
       .bl-info { flex: 1; display: grid; gap: 2px; min-width: 0; }
@@ -1522,6 +1529,7 @@ function spTicks(){["cash","upi","bank_transfer"].forEach(function(m){var i=docu
             maxAmount: remaining,
             allowPayLater: bill.isCurrent,
             photoRequired: !bill.isCurrent,
+            photoOnlyWithPayLater: bill.isCurrent,
             callApi: api,
             onSaved: function (result) {
               if (bill.isCurrent && S.cur.id === "NEW") S.cur.id = result.invoiceId;
@@ -1542,7 +1550,9 @@ function spTicks(){["cash","upi","bank_transfer"].forEach(function(m){var i=docu
           S.billsLoaded = true;
           var bills = listBills();
           var receivedTotal = visitTotal();
-          var html = '<div class="bl-head"><b>Bills to collect</b></div>';
+          var html = "";
+          var oldRows = "";
+          var currentRows = "";
           if (!bills.length) html += '<div class="muted">This shop has no unpaid bill left to collect.</div>';
           bills.forEach(function (bill) {
             var collected = collectedFor(bill.billKey);
@@ -1552,14 +1562,13 @@ function spTicks(){["cash","upi","bank_transfer"].forEach(function(m){var i=docu
             });
             var lastEntry = entries[entries.length - 1];
             var photoUrl = bill.source ? evUrl(bill.source.evidence_path) : "";
-            html +=
+            var rowHtml =
               '<div class="bl-row">' +
               (bill.source
                 ? '<div class="bl-thumb" data-view="' + esc(photoUrl) + '">' + (photoUrl ? '<img src="' + esc(photoUrl) + '" alt="">' : "No photo") + "</div>"
                 : "") +
               '<div class="bl-info"><b>Invoice No. ' + esc(bill.invoiceNumber) + "</b>" +
-              (bill.isCurrent ? ' <span class="bl-tag">This delivery</span>' : "") +
-              (bill.source ? "<small>\ud83d\udcc5 " + dmy(bill.source.invoice_date) + "</small>" : "") +
+                            (bill.source ? "<small>\ud83d\udcc5 " + dmy(bill.source.invoice_date) + "</small>" : "") +
               "<small>Due: " + money(bill.isCurrent ? bill.maxAmount : bill.source.outstanding) + "</small>" +
               (bill.source && Number(bill.source.pendingAmount) > 0 ? "<small>" + money(bill.source.pendingAmount) + " waiting for approval</small>" : "") +
               (collected > 0 ? '<small class="bl-done">\u2713 ' + money(collected) + " \u00b7 " + esc(lastEntry.label) + "</small>" : "") +
@@ -1569,7 +1578,25 @@ function spTicks(){["cash","upi","bank_transfer"].forEach(function(m){var i=docu
                 ? '<button type="button" class="btn" data-bill="' + esc(bill.billKey) + '">' + (collected > 0 ? "Collect rest" : "Collect") + "</button>"
                 : '<span class="muted">' + (collected > 0 ? "Done" : "Collected") + "</span>") +
               "</div>";
+            if (bill.isCurrent) currentRows += rowHtml;
+            else oldRows += rowHtml;
           });
+          var oldBills = bills.filter(function (bill) {
+            return !bill.isCurrent;
+          });
+          var oldDue = oldBills.reduce(function (sum, bill) {
+            return sum + Number(bill.source.outstanding || 0);
+          }, 0);
+          // Old credit first (amber), then the current bill (green), so the two are easy to tell apart.
+          if (oldRows)
+            html +=
+              '<div class="bl-group bl-old"><div class="bl-title"><span>\ud83d\uddc2 Old credit</span><small>' +
+              oldBills.length + (oldBills.length > 1 ? " bills" : " bill") + " \u00b7 " + money(oldDue) + "</small></div>" +
+              oldRows + "</div>";
+          if (currentRows)
+            html +=
+              '<div class="bl-group bl-cur"><div class="bl-title"><span>\ud83e\uddfe Current bill</span><small>Invoice ' +
+              esc(INV) + "</small></div>" + currentRows + "</div>";
           html +=
             '<div class="bl-total"><span>Total collected</span><b>' + money(receivedTotal) + "</b></div>";
           visit.forEach(function (entry) {

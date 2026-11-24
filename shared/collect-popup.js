@@ -22,7 +22,7 @@
 
   var STYLE = [
     ".cp-overlay{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center}",
-    ".cp-sheet{background:var(--card,#fff);color:var(--text,#0f172a);width:100%;max-width:460px;max-height:94vh;overflow:auto;border-radius:20px 20px 0 0;padding:16px 16px 20px;display:grid;gap:12px;font-family:inherit}",
+    ".cp-sheet{background:var(--card,#fff);color:var(--text,#0f172a);width:100%;max-width:460px;max-height:96%;overflow:auto;border-radius:20px 20px 0 0;padding:16px 16px 0;display:grid;gap:12px;font-family:inherit}",
     "@media(min-width:700px){.cp-overlay{align-items:center}.cp-sheet{border-radius:20px}}",
     ".cp-sheet h3{margin:0;font-size:18px}.cp-sub{color:var(--muted,#64748b);font-size:13px}",
     ".cp-label{font-size:13px;font-weight:700;margin-bottom:6px;display:block}",
@@ -47,7 +47,7 @@
     ".cp-preview{display:none;align-items:center;gap:10px}.cp-preview.on{display:flex}",
     ".cp-preview img{width:56px;height:56px;object-fit:cover;border-radius:10px;border:1px solid var(--border,var(--line,#e3e7ec))}",
     ".cp-link{background:none;border:0;color:var(--primary,var(--pri,#0f766e));font:inherit;font-weight:700;cursor:pointer;padding:0}",
-    ".cp-footer{display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:4px}"
+    ".cp-footer{display:grid;grid-template-columns:1fr 2fr;gap:8px;position:sticky;bottom:0;background:var(--card,#fff);margin:0 -16px;padding:10px 16px calc(14px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--border,var(--line,#e3e7ec))}"
   ].join("\n");
 
   function addStyleOnce() {
@@ -259,7 +259,25 @@
       saveButton.disabled = state.busy || !!problem;
     }
 
+    // On phones the keyboard covers the bottom of the screen: keep the popup inside the visible part
+    // so the Cancel and Save buttons stay in view.
+    function fitToVisibleScreen() {
+      var visible = window.visualViewport;
+      if (!visible) return;
+      overlay.style.bottom = "auto";
+      overlay.style.top = visible.offsetTop + "px";
+      overlay.style.height = visible.height + "px";
+    }
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", fitToVisibleScreen);
+      window.visualViewport.addEventListener("scroll", fitToVisibleScreen);
+      fitToVisibleScreen();
+    }
     function close() {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", fitToVisibleScreen);
+        window.visualViewport.removeEventListener("scroll", fitToVisibleScreen);
+      }
       document.removeEventListener("keydown", onKey);
       if (state.photoPreviewUrl) URL.revokeObjectURL(state.photoPreviewUrl);
       overlay.remove();
@@ -401,7 +419,6 @@
       find("cpNote").classList.add("on");
     }
     refresh();
-    amountInput.focus();
   }
 
   window.CollectPopup = { open: open };
