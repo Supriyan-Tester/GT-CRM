@@ -361,14 +361,25 @@
       <script>
       /* Tap the shop photo to see it big; tap anywhere or press Esc to close. */
       function gmZoom(src) {
-        var b = document.createElement("div");
+        var b = document.createElement("div"), done = false;
         b.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:12px;cursor:zoom-out";
-        b.innerHTML = '<img alt="Shop photo" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:10px"><span style="position:absolute;top:12px;right:16px;color:#fff;font-size:30px;line-height:1">&times;</span>';
+        b.innerHTML = '<img alt="Photo" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:10px"><span style="position:absolute;top:12px;right:16px;color:#fff;font-size:30px;line-height:1">&times;</span>';
         b.firstChild.src = src;
-        function close() { b.remove(); document.removeEventListener("keydown", key); }
+        function close(fromBack) {
+          if (done) return;
+          done = true;
+          b.remove();
+          document.removeEventListener("keydown", key);
+          window.removeEventListener("popstate", pop);
+          if (fromBack !== true) { try { history.back(); } catch (e) {} }
+        }
+        function pop() { close(true); }
         function key(e) { if (e.key === "Escape") close(); }
-        b.onclick = close;
+        b.onclick = function () { close(); };
         document.addEventListener("keydown", key);
+        /* Phone Back button closes the photo instead of leaving the page. */
+        try { history.pushState({ gmZoom: 1 }, ""); } catch (e) {}
+        window.addEventListener("popstate", pop);
         document.body.appendChild(b);
       }
     </script>
