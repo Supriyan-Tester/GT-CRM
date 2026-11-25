@@ -632,7 +632,31 @@ function createAccountsRoutes(config) {
         return stats;
       })();
       statsP.catch(() => {});
-      restPage("gm_accounts_collections?select=" + cols + filter + "&order=received_at.desc,id", (page - 1) * size, size).then(async (list) => {
+      // "Old bills" filter: collections where every bill paid is dated BEFORE the day the money was collected.
+      const kindOld = q.get("kind") === "old";
+      let oldTotal = 0;
+      const prepOld = kindOld ? (async () => {
+        const cand = await rest("gm_accounts_collections?select=id,received_at&order=received_at.desc,id&limit=1500" + filter);
+        const istDay = (iso) => new Date(Date.parse(iso) + IST).toISOString().slice(0, 10);
+        const ids = cand.map((x) => x.id), allocByCol = {}, invIds = new Set();
+        for (let i = 0; i < ids.length; i += 100) {
+          const rows = await rest("gm_accounts_collection_allocations?select=collection_id,invoice_id&collection_id=in.(" + ids.slice(i, i + 100).join(",") + ")");
+          for (const r of rows) { (allocByCol[r.collection_id] || (allocByCol[r.collection_id] = [])).push(r.invoice_id); invIds.add(r.invoice_id); }
+        }
+        const invDate = {}, invList = Array.from(invIds);
+        for (let i = 0; i < invList.length; i += 100) {
+          const rows = await rest("gm_accounts_invoices?select=id,invoice_date&id=in.(" + invList.slice(i, i + 100).join(",") + ")");
+          for (const r of rows) invDate[r.id] = String(r.invoice_date || "").slice(0, 10);
+        }
+        const oldIds = cand.filter((c) => {
+          const a = allocByCol[c.id] || [], day = istDay(c.received_at);
+          return a.length > 0 && a.every((iid) => invDate[iid] && invDate[iid] < day);
+        }).map((c) => c.id);
+        oldTotal = oldIds.length;
+        const pageIds = oldIds.slice((page - 1) * size, page * size);
+        filter += pageIds.length ? "&id=in.(" + pageIds.join(",") + ")" : "&id=eq.00000000-0000-0000-0000-000000000000";
+      })() : Promise.resolve();
+      prepOld.then(() => restPage("gm_accounts_collections?select=" + cols + filter + "&order=received_at.desc,id", kindOld ? 0 : (page - 1) * size, size)).then(async (list) => {
         const ids = list.rows.map((x) => x.id);
         const allocations = ids.length ? await rest("gm_accounts_collection_allocations?select=collection_id,invoice_id,amount,evidence_path&collection_id=in.(" + ids.join(",") + ")") : [];
         const invoiceIds = Array.from(new Set(allocations.map((x) => x.invoice_id)));
@@ -655,7 +679,7 @@ function createAccountsRoutes(config) {
         }
         const stats = await statsP;
         send(res, 200, {
-          ok: true, page, pageSize: size, total: list.total,
+          ok: true, page, pageSize: size, total: kindOld ? oldTotal : list.total,
           stats,
           rows: list.rows.map((x) => ({
             ...x, total_amount: Number(x.total_amount || 0), invoices: grouped[x.id] || [],
@@ -1336,6 +1360,32 @@ function createAccountsRoutes(config) {
           })
           .catch((e) => fail(res, e));
       }, 2048);
+      return true;
+    }
+    // Employee edits their OWN collection, only while it is still waiting for approval. This reuses the office
+    // "request correction" step (same ledger behaviour: nothing is approved, invoice amounts are released), so the
+    // existing "Correct & resubmit" screen records the fixed collection as a new one. Approved collections are locked.
+    if (req.method === "POST" && /^\/api\/accounts\/collections\/[0-9a-f-]{36}\/edit$/i.test(p)) {
+      if (!canCollect(session)) { send(res, 403, { error: "Collection permission required." }); return true; }
+      const id = p.split("/")[4];
+      rest("gm_accounts_collections?select=id,collected_by,status,visit_ref&id=eq." + id)
+        .then(async (found) => {
+          const row = found && found[0];
+          if (!row || String(row.collected_by) !== String(session.id)) return send(res, 404, { error: "Collection not found." });
+          const rows = row.visit_ref
+            ? await rest("gm_accounts_collections?select=id,status&visit_ref=eq." + encodeURIComponent(row.visit_ref) + "&collected_by=eq." + encodeURIComponent(String(session.id)))
+            : [row];
+          if (rows.some((r) => r.status === "approved")) return send(res, 409, { error: "This collection is already approved, so it can't be edited here. Ask the office to correct it." });
+          const open = rows.filter((r) => r.status === "pending_approval" || r.status === "correction_requested");
+          if (!open.length) return send(res, 409, { error: "This collection can't be edited any more." });
+          for (const r of open) {
+            if (r.status !== "pending_approval") continue;
+            await rpc("gm_accounts_request_collection_correction", { p_collection_id: r.id, p_requested_by: String(session.id).slice(0, 80), p_note: "Employee is editing this collection" });
+          }
+          logEvent(session, "Employee started editing collection " + id + " (before approval)");
+          send(res, 200, { ok: true, fixId: open[0].id });
+        })
+        .catch((e) => fail(res, e));
       return true;
     }
     send(res, 404, { error: "Accounts endpoint not found." });

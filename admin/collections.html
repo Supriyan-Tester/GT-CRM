@@ -423,11 +423,28 @@
       .co-selall {
         display: flex;
         align-items: center;
-        gap: 8px;
-        font-size: 12.5px;
-        color: var(--muted);
-        margin: 0 0 8px 10px;
+        gap: 10px;
+        font-size: 13.5px;
+        font-weight: 600;
+        color: var(--text);
+        margin: 0 0 8px;
+        padding: 9px 12px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--t-primary);
         cursor: pointer;
+      }
+      .co-selall label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+      }
+      .co-selall .co-hs {
+        margin-left: auto;
+        font-weight: 500;
+        color: var(--muted);
+        font-size: 12px;
       }
       .co-lst {
         display: flex;
@@ -666,6 +683,175 @@
       .ac-seg3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
       .ac-seg3 button{height:40px;padding:0 10px;border-radius:var(--radius-btn);border:1px solid var(--border);background:transparent;color:var(--muted);font:inherit;font-weight:700;cursor:pointer}
       .ac-seg3 button.on{background:var(--primary);border-color:var(--primary);color:#fff}
+    
+      /* Column headings with the select-all tick box (admin.css hid the tick box) */
+      .a-main #coList .co-selall {
+        display: flex !important;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px !important;
+        margin: 0 0 6px !important;
+        border: 0 !important;
+        border-bottom: 1px solid var(--border) !important;
+        border-radius: 0;
+        background: none;
+        text-transform: none !important;
+        letter-spacing: 0.02em !important;
+        font-size: 12.5px !important;
+        font-weight: 700;
+        color: var(--muted) !important;
+        cursor: default;
+      }
+      .a-main #coList .co-selall label {
+        visibility: visible !important;
+        width: 18px !important;
+        flex: none;
+        display: flex !important;
+        align-items: center;
+        cursor: pointer;
+      }
+      .a-main #coList .co-selall .co-hl,
+      .a-main #coList .co-selall .co-hs {
+        display: none !important;
+      }
+      .a-main #coList .co-selall .co-hi {
+        width: 64px;
+        flex: none;
+        line-height: 1.15;
+      }
+      .a-main #coList .co-selall .co-hc {
+        flex: 1;
+        min-width: 0;
+        padding-left: 0;
+      }
+      .a-main #coList .co-selall .co-hp {
+        width: 84px;
+        flex: none;
+        text-align: center;
+        line-height: 1.15;
+      }
+      .a-main #coList .co-selall .co-ha {
+        width: 112px;
+        flex: none;
+        text-align: right;
+        padding-right: 4px;
+      }
+      @media (min-width: 901px) {
+        .a-main #coList .co-li .co-id {
+          width: 64px !important;
+        }
+      }
+      @media (max-width: 900px) {
+        .a-main #coList .co-selall .co-hi,
+        .a-main #coList .co-selall .co-hc,
+        .a-main #coList .co-selall .co-hp,
+        .a-main #coList .co-selall .co-ha {
+          display: none !important;
+        }
+        .a-main #coList .co-selall label {
+          width: auto !important;
+          gap: 8px;
+        }
+        .a-main #coList .co-selall .co-hl,
+        .a-main #coList .co-selall .co-hs {
+          display: inline !important;
+          font-weight: 600;
+          font-size: 13px;
+        }
+        .a-main #coList .co-selall .co-hs {
+          margin-left: auto;
+        }
+      }
+      /* Desktop: the box grows with the list (the page scrolls). Details panel shows only when a collection is picked. */
+      @media (min-width: 901px) {
+        .a-main .co-split {
+          height: auto !important;
+          min-height: 0 !important;
+          grid-template-columns: minmax(0, 1fr) !important;
+          align-items: start !important;
+        }
+        .a-main .co-split:has(> .co-pane.open) {
+          grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) !important;
+        }
+        .a-main .co-split > .co-pane:not(.open) {
+          display: none !important;
+        }
+        .a-main .co-split > .co-pane.open {
+          position: sticky;
+          top: 12px;
+          max-height: calc(100vh - 24px);
+          overflow: auto;
+        }
+        .a-main #coList {
+          display: block !important;
+          height: auto !important;
+        }
+        .a-main #coList .co-lst {
+          max-height: none !important;
+          min-height: 0 !important;
+          overflow: visible !important;
+          padding-right: 0 !important;
+        }
+      }
+    
+      /* Desktop: header and rows share the same fixed columns, so the headings always line up */
+      @media (min-width: 901px) {
+        .a-main #coList .co-li,
+        .a-main #coList .co-selall {
+          display: grid !important;
+          grid-template-columns: 20px 66px minmax(0, 1fr) 64px 132px;
+          column-gap: 14px !important;
+          align-items: center;
+          padding: 10px 14px !important;
+          border: 1px solid transparent !important;
+        }
+        .a-main #coList .co-selall {
+          border-bottom: 1px solid var(--border) !important;
+          font-size: 12.5px !important;
+          text-transform: none !important;
+        }
+        .a-main #coList .co-li > .co-sel,
+        .a-main #coList .co-li > .co-nosel,
+        .a-main #coList .co-selall > label {
+          grid-column: 1;
+          width: 18px !important;
+          margin: 0 !important;
+        }
+        .a-main #coList .co-li .co-id,
+        .a-main #coList .co-selall .co-hi {
+          grid-column: 2;
+          width: auto !important;
+          margin: 0 !important;
+        }
+        .a-main #coList .co-li .mid,
+        .a-main #coList .co-selall .co-hc {
+          grid-column: 3;
+          min-width: 0;
+          width: auto !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        .a-main #coList .co-li .th,
+        .a-main #coList .co-selall .co-hp {
+          grid-column: 4;
+          justify-self: center;
+          text-align: center;
+          margin: 0 !important;
+          width: 48px !important;
+        }
+        .a-main #coList .co-li .th {
+          height: 48px !important;
+        }
+        .a-main #coList .co-li .rt,
+        .a-main #coList .co-selall .co-ha {
+          grid-column: 5;
+          width: auto !important;
+          min-width: 0 !important;
+          text-align: right;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+      }
     </style>
   </head>
   <body>
@@ -736,6 +922,7 @@
           ["approved", "Approved"],
           ["rejected", "Rejected"],
           ["correction_requested", "Correction"],
+          ["old", "Collection"],
           ["credit", "Pay later"],
         ];
         var params = new URLSearchParams(location.search);
@@ -811,7 +998,7 @@
           '<div class="co-active" id="coActive"></div>' +
           '<div class="co-chips"><div class="a-seg co-seg" id="coTabs"></div></div>' +
           '<div class="card">' +
-          '<div class="co-bulk" id="coBulk"><span id="coBulkTxt"></span><button class="btn btn-success" id="coBulkGo" type="button">Approve selected</button></div>' +
+          '<div class="co-bulk" id="coBulk"><span id="coBulkTxt"></span><button class="btn btn-success" id="coBulkGo" type="button">Approve selected</button><button class="btn btn-outline" id="coBulkClear" type="button">Clear</button></div>' +
           '<div class="co-split"><div id="coList"><div class="a-empty">Loading collections…</div></div>' +
           '<aside class="co-pane" id="coModal" aria-live="polite"><div class="co-card" id="coCard"><div class="co-empty-pane"><b>Pick a collection</b><br>Click one on the left to see its details here.</div></div></aside></div></div>' +
           '<div class="co-modal co-zoom" id="coZoom"><img alt="Invoice photo" id="coZoomImg"></div>';
@@ -842,16 +1029,7 @@
         }
         function coFit() {
           var sp = document.querySelector(".co-split");
-          if (!sp) return;
-          if (window.innerWidth <= 900) {
-            sp.style.height = "";
-            return;
-          }
-          sp.style.height =
-            Math.max(
-              380,
-              window.innerHeight - sp.getBoundingClientRect().top - 66,
-            ) + "px";
+          if (sp) sp.style.height = "";
         }
         window.addEventListener("resize", coFit);
 
@@ -895,8 +1073,7 @@
             to = from + rows.length - 1,
             pages = Math.max(1, Math.ceil(data.total / data.pageSize));
           $("coList").innerHTML =
-            '<div class="co-selall"><label title="Select all pending"><input type="checkbox" class="co-sel" id="coAll" aria-label="Select all pending"><span class="co-hl">Select all</span></label><span class="co-hi">ID</span><span class="co-hc">Customer</span><span class="co-hp">Invoice photo</span><span class="co-ha">Amount / Status</span></div>' +
-            '<div class="co-lst">' +
+            '<div class="co-selall"><label title="Select all pending on this page"><input type="checkbox" class="co-sel" id="coAll" aria-label="Select all pending on this page"><span class="co-hl">Select all pending</span></label><span class="co-hs" id="coSelHint"></span><span class="co-hi">ID</span><span class="co-hc">Customer</span><span class="co-hp">Photo</span><span class="co-ha">Status</span></div>' +
             rows
               .map(function (x, i) {
                 var s = STATUS[x.status] || ["b-muted", esc(x.status)],
@@ -915,7 +1092,9 @@
                   (pend
                     ? '<input type="checkbox" class="co-sel" data-sel="' +
                       i +
-                      '" aria-label="Select collection">'
+                      '" aria-label="Select collection"' +
+                      (picked[x.id] ? " checked" : "") +
+                      '>'
                     : '<span class="co-nosel"></span>') +
                   (first.evidenceUrl
                     ? '<img class="th" loading="lazy" src="' +
@@ -967,6 +1146,7 @@
               document.querySelectorAll("[data-sel]"),
               function (c) {
                 c.checked = on;
+                pickRow(c);
               },
             );
             bulkUpdate();
@@ -983,6 +1163,10 @@
         function filterQuery(page) {
           var qs = new URLSearchParams();
           if (st.status === "credit") qs.set("method", "credit");
+          else if (st.status === "old") {
+            qs.set("kind", "old");
+            if (st.method) qs.set("method", st.method);
+          }
           else {
             if (st.status) qs.set("status", st.status);
             if (st.method) qs.set("method", st.method);
@@ -1305,26 +1489,48 @@
             if (initialMode) setReviewMode(initialMode);
           }
         }
+        // Ticked collections are remembered by id, so they stay ticked when you change page.
+        var picked = {};
         function selected() {
-          return [].map
-            .call(
-              document.querySelectorAll("[data-sel]:checked"),
-              function (c) {
-                return data.rows[Number(c.getAttribute("data-sel"))];
-              },
-            )
-            .filter(Boolean);
+          return Object.keys(picked).map(function (k) {
+            return picked[k];
+          });
+        }
+        function pickRow(c) {
+          var r = data && data.rows[Number(c.getAttribute("data-sel"))];
+          if (!r) return;
+          if (c.checked) picked[r.id] = r;
+          else delete picked[r.id];
+        }
+        function syncAll() {
+          var all = $("coAll");
+          if (!all) return;
+          var boxes = document.querySelectorAll("[data-sel]"),
+            on = document.querySelectorAll("[data-sel]:checked").length;
+          all.checked = boxes.length > 0 && on === boxes.length;
+          all.parentNode.title = "Select all pending on this page (" + on + " of " + boxes.length + " ticked)";
+          $("coSelHint").textContent = boxes.length
+            ? on + " of " + boxes.length + " pending ticked on this page"
+            : "No pending collections on this page";
         }
         function bulkUpdate() {
+          // forget ticked rows that are no longer pending
+          if (data && data.rows)
+            data.rows.forEach(function (r) {
+              if (picked[r.id] && r.status !== "pending_approval")
+                delete picked[r.id];
+            });
           var sel = selected(),
             sum = sel.reduce(function (n, x) {
               return n + Number(x.total_amount || 0);
             }, 0);
           $("coBulk").classList.toggle("show", sel.length > 0);
           $("coBulkTxt").textContent =
-            sel.length + " selected \u00B7 " + money(sum);
+            sel.length + " selected (all pages) \u00B7 " + money(sum);
+          syncAll();
         }
         function localApprove(x) {
+          delete picked[x.id];
           if (!data) return;
           var s = data.stats || (data.stats = {});
           var amt = Number(x.total_amount || 0);
@@ -1781,7 +1987,17 @@
           if (o) openDetail(data.rows[Number(o.getAttribute("data-open"))]);
         };
         $("coList").onchange = function (e) {
-          if (e.target.matches("[data-sel]")) bulkUpdate();
+          if (e.target.matches("[data-sel]")) {
+            pickRow(e.target);
+            bulkUpdate();
+          }
+        };
+        $("coBulkClear").onclick = function () {
+          picked = {};
+          [].forEach.call(document.querySelectorAll("[data-sel]"), function (c) {
+            c.checked = false;
+          });
+          bulkUpdate();
         };
         $("coBulkGo").onclick = function () {
           var sel = selected();
