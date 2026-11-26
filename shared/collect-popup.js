@@ -413,7 +413,7 @@
     };
 
     if (options.startAmount > 0) amountInput.value = Math.min(Number(options.startAmount), maxAmount).toFixed(2);
-    else amountInput.value = maxAmount > 0 ? maxAmount.toFixed(2) : "";
+    // The amount starts empty: the person types what was actually received (the Full button is still there).
     if (options.startNote) {
       find("cpNote").value = options.startNote;
       find("cpNote").classList.add("on");

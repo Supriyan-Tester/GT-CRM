@@ -3,7 +3,7 @@ services:
     name: gm-crm
     runtime: node
     plan: free
-    buildCommand: npm test
+    buildCommand: npm install && npm test
     startCommand: node server.js
     healthCheckPath: /api/health
     envVars:

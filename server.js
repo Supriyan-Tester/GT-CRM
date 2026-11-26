@@ -1465,6 +1465,13 @@ function viewFor(s, key, raw) {
             tax: p.tax,
             stock: stockOf(p), // available quantity (null = stock not tracked for this product)
             boxQty: Number(p.boxQty) >= 2 ? Math.floor(Number(p.boxQty)) : null, // pieces in one box (null = no box ordering)
+            // slot and save time of the first picture (the admin can change which slot holds the first picture)
+            img0:
+              Array.isArray(p.imgs) && p.imgs[0] && Number.isInteger(+p.imgs[0].i)
+                ? +p.imgs[0].i
+                : undefined,
+            imgAt:
+              Array.isArray(p.imgs) && p.imgs[0] ? Number(p.imgs[0].at) || 0 : undefined,
             active: true,
           })),
       );
@@ -1761,6 +1768,7 @@ const MIME = {
   ".js": "application/javascript; charset=utf-8",
   ".png": "image/png",
   ".jpg": "image/jpeg",
+  ".webp": "image/webp",
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon",
   ".woff2": "font/woff2",
@@ -1828,11 +1836,15 @@ const SALES_RADIUS = 150,
   SALES_WATCH = "gm_sales_watch_v1",
   NO_ORDER_REASONS = [
     "Shop closed",
+    "Order not needed",
+    "Stock available at shop",
+    "Owner not available",
+    "Will order next time",
+    "Other",
+    // older wording, still accepted from phones that have not refreshed yet
     "Not interested",
     "Out of stock with customer",
-    "Will order next time",
     "Customer not available",
-    "Other",
   ];
 function metres(a, b, c, d) {
   const R = 6371000,
@@ -2411,8 +2423,10 @@ function salesApi(req, res, s, p, url) {
         const x = byId[id],
           price = num(x.price),
           tax = Math.max(0, Number(x.tax) || 0),
-          amount = num(price * merged[id]),
-          gst = num(amount * (tax / 100));
+          // the selling price already includes GST: line total = price x qty; GST is taken out of it
+          lineTotal = num(price * merged[id]),
+          amount = num(lineTotal / (1 + tax / 100)),
+          gst = num(lineTotal - amount);
         return {
           id,
           code: x.code,
@@ -2424,7 +2438,7 @@ function salesApi(req, res, s, p, url) {
           qty: merged[id],
           amount,
           gst,
-          totalWithGst: num(amount + gst),
+          totalWithGst: lineTotal,
           ...(Number(x.boxQty) >= 2
             ? { boxQty: Math.floor(Number(x.boxQty)) }
             : {}),
@@ -5711,6 +5725,38 @@ async function migrateToCloud() {
   console.log("Done. Your data is now in Supabase.");
 }
 
+// ---- Bandwidth log: prints which routes and visitors send the most data (body bytes only, headers not counted) ----
+const BW = { routes: {}, ips: {}, total: 0, n: 0 };
+function bwTrack(req, res, url) {
+  let bytes = 0;
+  const w = res.write, e = res.end;
+  res.write = function (c) {
+    if (c && typeof c !== "function") bytes += Buffer.byteLength(c);
+    return w.apply(this, arguments);
+  };
+  res.end = function (c) {
+    if (c && typeof c !== "function") bytes += Buffer.byteLength(c);
+    return e.apply(this, arguments);
+  };
+  res.on("finish", () => {
+    let key = req.method + " " + url.pathname.replace(/[0-9a-f]{8}-[0-9a-f-]{27}/gi, ":id").replace(/\d+/g, "#");
+    if (url.pathname === "/api/state" && !(parseInt(url.searchParams.get("since"), 10) > 0)) key += " (FULL LOAD)";
+    const ip = clientIp(req), r = BW.routes[key] || (BW.routes[key] = { n: 0, b: 0 });
+    r.n++; r.b += bytes; BW.ips[ip] = (BW.ips[ip] || 0) + bytes; BW.total += bytes; BW.n++;
+    if (bytes > 1024 * 1024) console.log("[bandwidth] BIG " + (bytes / 1048576).toFixed(1) + " MB  " + key + "  ip=" + ip);
+  });
+}
+function bwReport() {
+  if (!BW.n) return;
+  const mb = (b) => (b / 1048576).toFixed(2) + " MB",
+    top = (o, f) => Object.keys(o).sort((a, b) => f(o[b]) - f(o[a])).slice(0, 8);
+  console.log("[bandwidth] last hour: " + BW.n + " requests, " + mb(BW.total));
+  top(BW.routes, (x) => x.b).forEach((k) => console.log("[bandwidth]   " + mb(BW.routes[k].b) + "  " + BW.routes[k].n + " req  " + k));
+  top(BW.ips, (x) => x).slice(0, 4).forEach((k) => console.log("[bandwidth]   ip " + k + "  " + mb(BW.ips[k])));
+  BW.routes = {}; BW.ips = {}; BW.total = 0; BW.n = 0;
+}
+setInterval(bwReport, 3600e3).unref();
+
 async function boot() {
   if (process.argv.includes("--migrate")) {
     await migrateToCloud();
@@ -5765,6 +5811,7 @@ async function boot() {
         res.writeHead(400);
         return res.end();
       }
+      bwTrack(req, res, url);
       if (url.pathname.startsWith("/api/")) {
         try {
           return api(req, res, url);

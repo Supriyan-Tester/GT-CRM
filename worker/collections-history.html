@@ -54,6 +54,11 @@
       .ch-fix { display: block; margin-top: 10px; padding: 11px; border-radius: 10px; background: #0d9488; color: #fff; text-align: center; font-weight: 700; font-size: 14px; text-decoration: none; }
       .ch-more img { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border); cursor: pointer; }
       .ch-st { font-weight: 700; }
+      .ch-item.fix { border: 2px solid #dc2626; }
+      .ch-item.fix .ch-st { color: #dc2626; }
+      .ch-fixhd { display: flex; align-items: center; gap: 8px; margin: 4px 2px 8px; font-size: 15px; font-weight: 800; color: #dc2626; }
+      .ch-hint { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; margin-bottom: 12px; border-radius: 14px; border: 1px solid rgba(220,38,38,.45); background: rgba(220,38,38,.09); font-size: 14px; }
+      .ch-hint a { flex: none; padding: 8px 12px; border-radius: 10px; background: #dc2626; color: #fff; font-weight: 700; font-size: 13px; text-decoration: none; }
       .ch-empty { text-align: center; color: var(--muted); padding: 28px 0; }
       #chView { position: fixed; inset: 0; z-index: 99; background: rgba(0,0,0,.9); display: none; align-items: center; justify-content: center; padding: 12px; }
       #chView img { max-width: 100%; max-height: 100%; border-radius: 10px; }
@@ -160,7 +165,7 @@
       if (!localStorage.getItem("gm_logged_in")) window.location.href = "../login.html";
       var IST = 5.5 * 3600e3;
       function ymd(d) { return new Date(new Date(d).getTime() + IST).toISOString().slice(0, 10); }
-      var todayStr = ymd(Date.now()), day = todayStr, mode = "today", rows = [], method = "all";
+      var todayStr = ymd(Date.now()), day = todayStr, mode = "today", rows = [], method = "all", corrN = 0, got = false;
       var MN = { cash: "Cash", upi: "UPI", bank_transfer: "Bank" },
         ST = { pending_approval: "Waiting for approval", approved: "Approved", rejected: "Rejected", reversed: "Reversed", correction_requested: "Correction needed" };
       function esc(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -187,17 +192,29 @@
         if (ms.length > 1) return '<span class="ch-m mix">' + ms.map(function (m) { return MN[m]; }).join(" + ") + "</span>";
         return '<span class="ch-m ' + ms[0] + '">' + MN[ms[0]] + "</span>";
       }
+      // The app writes this note itself when the employee taps Edit; it is not a message from the office.
+      function selfEdit(n) { return !n || /^(Employee is editing this collection|Editing your collection)$/i.test(n); }
+      function firstOf(v) { return v.invoices[0] || {}; }
+      function wasOf(v) {
+        var i = firstOf(v), ms = Object.keys(v.methods);
+        return money(v.total) + " \u00b7 " + ms.map(function (m) { return MN[m]; }).join(" + ") + (v.at ? " \u00b7 " + tm(v.at) : "");
+      }
+      function fixQs(v) {
+        var i = firstOf(v), ms = Object.keys(v.methods);
+        return "&was=" + encodeURIComponent(wasOf(v)) + "&amt0=" + encodeURIComponent(i.amount != null ? i.amount : v.total) + "&m0=" + encodeURIComponent(i.method || (ms.length === 1 ? ms[0] : ""));
+      }
       function item(v) {
         var nos = v.invoices.map(function (i) { return i.no; }).filter(function (x, i, a) { return x && a.indexOf(x) === i; });
-        return '<div class="ch-item"><button type="button" class="ch-row" data-open><span class="ch-ic">&#127978;</span><span class="ch-mid"><b>' + esc(v.name) + "</b><small>Inv " +
+        var fix = v.status === "correction_requested";
+        return '<div class="ch-item' + (fix ? " fix open" : "") + '"><button type="button" class="ch-row" data-open><span class="ch-ic">&#127978;</span><span class="ch-mid"><b>' + esc(v.name) + "</b><small>Inv " +
           (nos.length ? "#" + esc(nos.join(", #")) : "-") + " &bull; " + tm(v.at) + '</small></span><span class="ch-end"><b>' + money(v.total) + "</b>" + chip(v) + '</span><span class="ch-arrow">&rsaquo;</span></button>' +
           '<div class="ch-more"><div class="ln"><span>Status</span><span class="ch-st">' + (ST[v.status] || v.status) + "</span></div>" +
           Object.keys(v.methods).map(function (m) { return '<div class="ln"><span>' + MN[m] + "</span><b>" + money(v.methods[m]) + "</b></div>"; }).join("") +
           v.invoices.filter(function (x, i, a) { return a.findIndex(function (y) { return y.url === x.url; }) === i; }).map(function (i) {
             return '<div class="ln"><span>Invoice #' + esc(i.no) + '</span><span><img data-v="' + esc(i.url) + '" src="' + esc(i.url) + '" alt="Bill photo" onerror="this.style.display=\'none\'"></span></div>'; }).join("") +
           (v.note ? '<div class="ln"><span>Note</span><span>' + esc(v.note) + "</span></div>" : "") +
-          (v.status === "correction_requested" && v.cnote ? '<div class="ln"><span>Note</span><span>' + esc(v.cnote) + "</span></div>" : "") +
-          (v.status === "correction_requested" && v.fixId && v.code ? '<a class="ch-fix" href="collect-sheet.html?code=' + encodeURIComponent(v.code) + "&fix=" + encodeURIComponent(v.fixId) + "&reason=" + encodeURIComponent(v.cnote) + "&name=" + encodeURIComponent(v.name || "") + "&inv=" + encodeURIComponent((v.invoices[0] && v.invoices[0].no) || "") + '">Correct &amp; resubmit</a>' : "") + (v.status === "pending_approval" && v.pendId && v.code ? '<button type="button" class="ch-fix" data-edit="' + esc(v.pendId) + '" data-code="' + esc(v.code) + '" data-name="' + esc(v.name || "") + '" data-inv="' + esc((v.invoices[0] && v.invoices[0].no) || "") + '" style="width:100%;border:0;cursor:pointer;font-family:inherit">Edit collection</button>' : "")+ "</div></div>";
+          (v.status === "correction_requested" ? '<div class="ln"><span>' + (selfEdit(v.cnote) ? "Why" : "Office note") + "</span><span>" + (selfEdit(v.cnote) ? "You started editing. Save it again to finish." : esc(v.cnote)) + "</span></div>" : "") +
+          (v.status === "correction_requested" && v.fixId && v.code ? '<a class="ch-fix" href="collect-sheet.html?code=' + encodeURIComponent(v.code) + "&fix=" + encodeURIComponent(v.fixId) + "&reason=" + encodeURIComponent(v.cnote) + fixQs(v) + "&name=" + encodeURIComponent(v.name || "") + "&inv=" + encodeURIComponent((v.invoices[0] && v.invoices[0].no) || "") + '">' + (selfEdit(v.cnote) ? "Continue &amp; save" : "Correct &amp; resubmit") + "</a>" : "") + (v.status === "pending_approval" && v.pendId && v.code ? '<button type="button" class="ch-fix" data-edit="' + esc(v.pendId) + '" data-code="' + esc(v.code) + '" data-name="' + esc(v.name || "") + '" data-inv="' + esc((v.invoices[0] && v.invoices[0].no) || "") + '" data-qs="' + esc(fixQs(v)) + '" style="width:100%;border:0;cursor:pointer;font-family:inherit">Edit collection</button>' : "")+ "</div></div>";
       }
       function draw() {
         var vs = visits(rows);
@@ -210,9 +227,18 @@
           '<div class="ch-tiles"><div class="ch-tile c"><span class="em">&#128181;</span><small>Cash</small><strong>' + money(tot.cash) + '</strong></div><div class="ch-tile u"><span class="em">&#128241;</span><small>UPI</small><strong>' + money(tot.upi) + '</strong></div><div class="ch-tile b"><span class="em">&#129534;</span><small>Bills</small><strong>' + vs.reduce(function (n, v) { return n + v.invoices.length; }, 0) + "</strong></div></div>" +
           (tot.bank_transfer > 0 ? '<div class="ch-bank">Bank transfer: <b>' + money(tot.bank_transfer) + "</b></div>" : "") +
           '<div class="ch-sec"><h2>' + (mode === "today" ? (day === todayStr ? "Today's collection history" : "Collection history") : "All collection history") + '</h2><select id="mSel"><option value="all">All</option><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank_transfer">Bank</option></select></div>';
-        if (!f.length) html += '<div class="ch-empty">No collections ' + (mode === "today" ? "on this day" : "yet") + ".</div>";
+        // Collections the office sent back for correction: always first, in red, already opened, whatever their date.
+        var need = f.filter(function (v) { return v.status === "correction_requested"; });
+        if (mode === "today") {
+          // The Day tab only lists this day, so tell the person when a correction from another day is waiting.
+          if (corrN > need.length) html += '<div class="ch-hint"><span><b>' + corrN + (corrN === 1 ? " collection is" : " collections are") + ' waiting to be saved again</b></span><a href="collections-history.html?all=1&fix=1">Review</a></div>';
+        } else if (need.length) {
+          html += '<div class="ch-fixhd">Waiting for you (' + need.length + ")</div>" + need.map(item).join("");
+          f = f.filter(function (v) { return v.status !== "correction_requested"; });
+        }
+        if (!f.length && !need.length) html += '<div class="ch-empty">No collections ' + (mode === "today" ? "on this day" : "yet") + ".</div>";
         else if (mode === "today") html += f.map(item).join("");
-        else { var last = ""; f.forEach(function (v) { var d = ymd(v.at); if (d !== last) { last = d; html += '<div class="ch-day">' + dl(v.at) + "</div>"; } html += item(v); }); }
+        else { var last = ""; if (need.length && f.length) html += '<div class="ch-fixhd" style="color:var(--muted);margin-top:14px">Other collections</div>'; f.forEach(function (v) { var d = ymd(v.at); if (d !== last) { last = d; html += '<div class="ch-day">' + dl(v.at) + "</div>"; } html += item(v); }); }
         document.getElementById("view").innerHTML = html;
         var ms = document.getElementById("mSel"); ms.value = method; ms.onchange = function () { method = ms.value; draw(); };
         document.querySelectorAll("[data-open]").forEach(function (b) { b.onclick = function () { b.parentNode.classList.toggle("open"); }; });
@@ -223,18 +249,24 @@
             fetch("/api/accounts/collections/" + encodeURIComponent(b.getAttribute("data-edit")) + "/edit", { method: "POST", credentials: "same-origin" })
               .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Could not start editing"); return j; }); })
               .then(function (j) {
-                window.location.href = "collect-sheet.html?code=" + encodeURIComponent(b.getAttribute("data-code")) + "&fix=" + encodeURIComponent(j.fixId) + "&reason=" + encodeURIComponent("Editing your collection") + "&name=" + encodeURIComponent(b.getAttribute("data-name")) + "&inv=" + encodeURIComponent(b.getAttribute("data-inv"));
+                window.location.href = "collect-sheet.html?code=" + encodeURIComponent(b.getAttribute("data-code")) + "&fix=" + encodeURIComponent(j.fixId) + "&reason=" + encodeURIComponent("Editing your collection") + "&name=" + encodeURIComponent(b.getAttribute("data-name")) + "&inv=" + encodeURIComponent(b.getAttribute("data-inv")) + (b.getAttribute("data-qs") || "");
               })
               .catch(function (e) { alert(e.message); b.disabled = false; b.textContent = "Edit collection"; });
           };
         });
         document.querySelectorAll("[data-v]").forEach(function (im) { im.onclick = function () { document.getElementById("chImg").src = im.getAttribute("data-v"); document.getElementById("chView").style.display = "flex"; }; });
       }
+      function loadCorr() {
+        fetch("/api/accounts/collections/corrections", { credentials: "same-origin" })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) { if (j && j.ok) { corrN = Number(j.count) || 0; if (got) draw(); } })
+          .catch(function () {});
+      }
       function load() {
         var from = mode === "today" ? day : "", q = from ? "?from=" + from + "&to=" + from : "";
         fetch("/api/accounts/collections/mine" + q, { credentials: "same-origin" })
           .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Could not load"); return j; }); })
-          .then(function (j) { rows = j.rows || []; draw(); })
+          .then(function (j) { rows = j.rows || []; got = true; draw(); })
           .catch(function (e) { document.getElementById("view").innerHTML = '<div class="ch-empty">' + esc(e.message) + "</div>"; });
       }
       function setMode(m) {
@@ -255,7 +287,8 @@
         r.style.display = r.style.display === "none" ? "block" : "none";
       };
       ds.onchange = function () { day = ds.value; setMode("today"); };
-      if (/[?&]all=1/.test(location.search)) setMode("all"); else load();
+      if (/[?&](all|fix)=1/.test(location.search)) setMode("all"); else load();
+      loadCorr();
     </script>
   <script src="../shared/correction-alert.js"></script>
 </body>

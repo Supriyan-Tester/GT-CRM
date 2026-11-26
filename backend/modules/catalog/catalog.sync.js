@@ -54,7 +54,10 @@ function createCatalogSync(opts) {
 
   // Sends only rows that changed since last time, 200 at a time. If a batch is refused, tries its rows one by one
   // so a single bad row cannot hold back the others.
-  async function bulk(table, conflict, rows, idOf, stat, rep) {
+  // adopt (optional): called when a row is refused only because another row already holds the same business code
+  // (for example a product re-created in the app with a new id but the same product code). It updates that existing row
+  // instead, so the row takes the new id and the latest values rather than failing on every sync.
+  async function bulk(table, conflict, rows, idOf, stat, rep, adopt) {
     const todo = [];
     for (const r of rows) {
       if (lastSent.get(table + ":" + idOf(r)) === JSON.stringify(r)) stat.unchanged++;
@@ -75,6 +78,16 @@ function createCatalogSync(opts) {
             mark(r);
             stat.sent++;
           } catch (e) {
+            if (adopt && /23505/.test(e.message) && adopt.test.test(e.message)) {
+              try {
+                await adopt.run(r);
+                mark(r);
+                stat.sent++;
+                continue;
+              } catch (e2) {
+                e = e2;
+              }
+            }
             stat.failed++;
             if (rep.errors.length < 30) rep.errors.push(`${table} ${idOf(r)}: ${e.message}`);
           }
@@ -145,7 +158,10 @@ function createCatalogSync(opts) {
       fuelRows.push(row);
     }
     await bulk("vehicle_fuel_logs", "legacy_id", fuelRows, (r) => r.legacy_id, rep.fuel, rep);
-    await bulk("products", "legacy_id", proj.products, (r) => r.legacy_id, rep.products, rep);
+    await bulk("products", "legacy_id", proj.products, (r) => r.legacy_id, rep.products, rep, {
+      test: /product_code/,
+      run: (r) => rest("PATCH", `products?product_code=eq.${encodeURIComponent(r.product_code)}`, r, "return=minimal"),
+    });
 
     // who pinned a shop: only if that name is an employee id we already copied
     let empMap = new Map();

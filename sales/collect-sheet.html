@@ -1,1799 +1,346 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <script src="../shared/loading.js"></script>
-    <script src="../shared/sync.js"></script>
-    <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width,initial-scale=1,viewport-fit=cover"
-    />
-    <title>Collect payment - General Traders</title>
-    <link rel="stylesheet" href="../shared/theme.css" />
-    <style>
-      :root {
-        --primary: #0b7a55;
-        --on-primary: #fff;
-        --t-primary: #e4f5ee;
-        --amber: #d97706;
-      }
-      /* The light tint above made the selected Cash/UPI/Bank tile pale with white text in dark mode */
-      html[data-theme="dark"] {
-        --t-primary: #12332f;
-      }
-      *,
-      *::before,
-      *::after {
-        box-sizing: border-box;
-      }
-      html,
-      body {
-        width: 100%;
-        margin: 0;
-        overflow-x: hidden;
-        background: var(--bg);
-        color: var(--text);
-      }
-      .muted {
-        font-size: 12px;
-        color: var(--muted);
-      }
-      h3 {
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin: 0;
-      }
-      .top {
-        position: sticky;
-        top: 0;
-        z-index: 40;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
-        background: var(--card);
-        border-bottom: 1px solid var(--border);
-      }
-      .top h1 {
-        margin: 0;
-        font-size: 19px;
-      }
-      .top button {
-        border: 0;
-        background: none;
-        color: var(--text);
-        font-size: 24px;
-        line-height: 1;
-        cursor: pointer;
-        padding: 4px 8px;
-      }
-      .wrap {
-        width: 100%;
-        max-width: 560px;
-        margin: 0 auto;
-        padding: 12px 12px 104px;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr);
-        gap: 12px;
-      }
-      .col {
-        display: contents;
-      }
-      .card {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 14px;
-        display: grid;
-        gap: 12px;
-        min-width: 0;
-      }
-      .card > * {
-        min-width: 0;
-      }
-      .shop {
-        display: grid;
-        grid-template-columns: 48px 1fr;
-        gap: 12px;
-        align-items: center;
-      }
-      .shop .ic {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        background: var(--t-primary);
-        display: grid;
-        place-items: center;
-        font-size: 24px;
-      }
-      .shop b {
-        font-size: 16px;
-        display: block;
-      }
-      .meta {
-        display: flex;
-        justify-content: space-between;
-        gap: 10px;
-        font-size: 14px;
-      }
-      .meta b {
-        font-weight: 700;
-      }
-      .bill {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 8px;
-        padding: 12px 14px;
-        border-radius: 12px;
-        background: var(--t-primary);
-        color: #10231b;
-      }
-      .bill small {
-        display: block;
-        color: #4b5f55;
-        font-size: 12px;
-      }
-      .bill b {
-        font-size: clamp(24px, 8vw, 30px);
-        white-space: nowrap;
-      }
-      .stat {
-        white-space: nowrap;
-        padding: 5px 12px;
-        border-radius: 10px;
-        font-size: 12px;
-        font-weight: 700;
-        background: rgba(245, 158, 11, 0.15);
-        color: var(--amber);
-        border: 1px solid rgba(245, 158, 11, 0.4);
-      }
-      .ch {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        cursor: pointer;
-        justify-content: space-between;
-      }
-      .ch:after {
-        content: "\25BE";
-        color: var(--muted);
-        transition: transform 0.15s;
-      }
-      .coll.open > .ch:after,
-      .coll.open > .ch:after {
-        transform: rotate(180deg);
-      }
-      .coll > .cb,
-      .cr > .cb {
-        display: none;
-      }
-      .coll.open > .cb,
-      .cr.open > .cb {
-        display: grid;
-        gap: 10px;
-      }
-      #creditCard {
-        padding: 0;
-        border: 0;
-        background: none;
-      }
-      .cr {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 12px;
-        display: grid;
-        gap: 10px;
-      }
-      .cr.has {
-        border-color: #f59e0b;
-        background: #fff8ec;
-        color: #3b2a0a;
-      }
-      .cr .ch > div:nth-child(2) {
-        flex: 1;
-      }
-      .cr .ico {
-        font-size: 22px;
-      }
-      .cr small {
-        display: block;
-        color: var(--muted);
-        font-size: 12px;
-      }
-      .cr .tot2 {
-        color: var(--amber);
-        font-size: 16px;
-      }
-      .cr.open > .ch:after {
-        transform: rotate(180deg);
-      }
-      .row {
-        display: grid;
-        grid-template-columns: 56px 1fr auto;
-        gap: 10px;
-        align-items: center;
-        border-top: 1px solid var(--border);
-        padding-top: 10px;
-      }
-      .row .th {
-        width: 56px;
-        height: 56px;
-        border-radius: 10px;
-        background: var(--bg);
-        border: 1px solid var(--border);
-        display: grid;
-        place-items: center;
-        font-size: 10px;
-        color: var(--muted);
-        text-align: center;
-        cursor: pointer;
-        overflow: hidden;
-      }
-      .row .th img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-      .row b {
-        font-size: 14px;
-      }
-      .row small {
-        font-size: 12px;
-      }
-      .due {
-        display: inline-block;
-        background: rgba(220, 38, 38, 0.1);
-        color: #dc2626;
-        font-weight: 700;
-        border-radius: 8px;
-        padding: 2px 8px;
-        margin-top: 3px;
-      }
-      .btn {
-        border: 1px solid var(--border);
-        background: var(--card);
-        color: var(--text);
-        border-radius: 10px;
-        padding: 8px 14px;
-        font: inherit;
-        font-size: 13px;
-        font-weight: 700;
-        cursor: pointer;
-      }
-      .row .btn {
-        border-color: #f59e0b;
-        color: var(--amber);
-      }
-      .btn.on {
-        background: var(--primary);
-        color: var(--on-primary);
-        border-color: var(--primary);
-      }
-      /* old credit bill: selected card */
-      .more {
-        grid-column: 1/-1;
-        display: none;
-        gap: 12px;
-      }
-      .more.open {
-        display: grid;
-      }
-      .amt2 {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 52px;
-        gap: 8px;
-        align-items: center;
-      }
-      .amt2 .in {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        height: 52px;
-        padding: 0 12px;
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        background: #fff;
-        color: #1f2937;
-        font-size: 20px;
-        font-weight: 700;
-      }
-      .amt2 .in span {
-        color: #6b7280;
-      }
-      .amt2 .in input {
-        flex: 1;
-        min-width: 0;
-        width: 100%;
-        min-height: 0;
-        height: 100%;
-        border: 0;
-        padding: 0;
-        background: transparent;
-        color: inherit;
-        font: inherit;
-        outline: 0;
-      }
-      .cam {
-        position: relative;
-        width: 52px;
-        height: 52px;
-        border-radius: 12px;
-        border: 1.5px dashed var(--border);
-        background: #fff;
-        font-size: 22px;
-        cursor: pointer;
-        padding: 0;
-        display: grid;
-        place-items: center;
-        overflow: hidden;
-      }
-      .cam img {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-      .cam.done {
-        border: 1px solid var(--primary);
-      }
-      .cam.done:after {
-        content: "\2713";
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 18px;
-        height: 18px;
-        border-radius: 0 0 0 8px;
-        background: var(--primary);
-        color: #fff;
-        font-size: 11px;
-        font-weight: 900;
-        display: grid;
-        place-items: center;
-      }
-      .pbar {
-        height: 8px;
-        border-radius: 99px;
-        background: rgba(0, 0, 0, 0.08);
-        overflow: hidden;
-      }
-      .pbar i {
-        display: block;
-        height: 100%;
-        width: 0;
-        background: var(--primary);
-        transition: width 0.15s;
-      }
-      .rc {
-        display: flex;
-        justify-content: space-between;
-        gap: 8px;
-        font-size: 13px;
-        color: #6b5a3a;
-      }
-      .hint {
-        margin: 0;
-        font-size: 13px;
-        font-weight: 700;
-        color: #b45309;
-      }
-      .okrow {
-        display: flex;
-        justify-content: flex-end;
-        gap: 8px;
-      }
-      .okrow .btn {
-        height: 34px;
-        padding: 0 18px;
-        font-size: 14px;
-      }
-      .okrow .okb {
-        background: var(--primary);
-        color: var(--on-primary);
-        border-color: var(--primary);
-      }
-      .okrow .okb:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-      }
-      .sm {
-        grid-column: 1/-1;
-        display: none;
-        grid-template-columns: auto 1fr auto;
-        gap: 10px;
-        align-items: center;
-        background: var(--t-primary);
-        border: 1px solid #10b981;
-        border-radius: 14px;
-        padding: 10px 12px;
-        color: #10231b;
-      }
-      .sm.open {
-        display: grid;
-      }
-      .sm .t {
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
-        background: var(--primary);
-        color: #fff;
-        display: grid;
-        place-items: center;
-        font-size: 15px;
-        font-weight: 900;
-      }
-      .sm p {
-        margin: 0;
-        font-size: 14px;
-        font-weight: 700;
-      }
-      .sm small {
-        font-size: 12px;
-        color: #4b5f55;
-      }
-      .sm .ed {
-        border: 0;
-        background: none;
-        color: #2563eb;
-        font: inherit;
-        font-size: 13px;
-        font-weight: 700;
-        cursor: pointer;
-        padding: 4px;
-      }
-      input[type="number"],
-      textarea {
-        width: 100%;
-        min-height: 44px;
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 10px;
-        background: var(--bg);
-        color: var(--text);
-        font: inherit;
-        min-width: 0;
-      }
-      .amt {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 10px;
-        align-items: center;
-      }
-      .amt input {
-        min-height: 52px;
-        font-size: 20px;
-      }
-      .amt .btn {
-        min-height: 52px;
-        white-space: nowrap;
-      }
-      .chips {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-      .chips button {
-        flex: 1;
-        min-width: 70px;
-        min-height: 44px;
-      }
-      .tiles {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 8px;
-      }
-      .tile {
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 8px 4px;
-        min-height: 64px;
-        text-align: center;
-        background: var(--card);
-        color: var(--text);
-        font: inherit;
-        font-size: 13px;
-        font-weight: 700;
-        cursor: pointer;
-        position: relative;
-      }
-      .tile span {
-        display: block;
-        font-size: 22px;
-      }
-      .tile.on {
-        border: 2px solid var(--primary);
-        background: var(--t-primary);
-        color: #10231b;
-      }
-      .tile.on * {
-        color: inherit;
-      }
-      .tile.on:after {
-        content: "\2713";
-        position: absolute;
-        top: 4px;
-        right: 8px;
-        color: var(--primary);
-        font-weight: 900;
-      }
+<head>
+  <script src="../shared/loading.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Collect payment - General Traders Sales</title><link rel="stylesheet" href="sales.css"><link rel="stylesheet" href="../shared/dropdown.css">
+  <style>
+    .cs-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:15px;margin-bottom:13px;display:grid;gap:10px}
+    .cs-card h3{font-size:15px;margin:0}
+    .cs-hint{font-size:12px;color:var(--muted);line-height:1.5}
+    .cs-shop b{font-size:17px}.cs-shop small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+    #csBills{background:none;border:0;padding:0}
+    .cs-hero{background:linear-gradient(135deg,#0d9488,#0f766e);color:#fff;border-radius:18px;padding:18px 20px;display:grid;gap:4px}
+    .cs-hero span{font-size:14px;opacity:.9}.cs-hero b{font-size:34px;line-height:1.15;font-weight:800}.cs-hero small{font-size:14px;opacity:.9}
+    .cs-bill{border:1px solid var(--border);border-left:5px solid #d97706;border-radius:14px;padding:13px 14px;background:var(--card);display:grid;gap:10px}
+    .cs-bill.late{border-left-color:#dc2626}
+    .cs-bill .top{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 10px;align-items:center}
+    .cs-bill .amt{font-size:20px;font-weight:800;color:#d97706;text-align:right}.cs-bill.late .amt{color:#dc2626}
+    .cs-bill .tags{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+    .cs-bill .hist{grid-column:1/-1;background:var(--bg);border-radius:10px;padding:10px 12px;display:grid;gap:10px;margin-top:4px}
+    .cs-tag{font-size:12px;font-weight:700;border-radius:999px;padding:4px 10px;background:rgba(217,119,6,.14);color:#d97706}.cs-tag.red{background:rgba(220,38,38,.12);color:#dc2626}
+    .cs-bill .act{grid-column:1/-1;justify-self:end}.cs-bill .cs-pick{background:#0d9488;color:#fff;border-color:#0d9488;padding:11px 20px;font-size:15px;border-radius:12px}.cs-bill .cs-pick.on{background:#0f766e;border-color:#0f766e}
+    .cs-order{background:rgba(34,197,94,.14);color:#15803d;border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600}
+    .cs-fix{background:rgba(13,148,136,.1);border:1px solid rgba(13,148,136,.35);border-radius:12px;padding:12px 14px;display:grid;gap:4px;font-size:13px}
+    .cs-fix b{color:#0f766e}
+    .cs-bill .top b{font-size:14px}.cs-bill small{display:block;color:var(--muted);font-size:12px}
+    .cs-more{display:none;gap:9px}.cs-more.open{display:grid}
+    .cs-more input[type=number],.cs-sp input,.cs-note{width:100%;min-height:44px;border:1px solid var(--border);border-radius:10px;padding:9px 11px;background:var(--bg);color:var(--text);font:inherit;min-width:0}
+    .cs-note{min-height:72px;resize:vertical}
+    .cs-amt{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px}
+    .cs-pick{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:9px 14px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+    .cs-pick.on{background:var(--pri,var(--primary));color:#fff;border-color:var(--pri,var(--primary))}
+    .cs-photo{display:flex;gap:10px;align-items:center}.cs-bill .cs-cam{flex:1;min-height:52px;background:var(--card);color:var(--text);border:1.5px dashed var(--border);font-size:15px;padding:9px 14px}.cs-bill .cs-cam.done{border:1.5px solid #0d9488;background:rgba(13,148,136,.12);color:#0f766e}.cs-warn{font-size:13px;font-weight:700;color:#b45309}
+    .cs-thumb{position:relative;flex:0 0 52px;width:52px;height:52px;border:1.5px dashed var(--border);border-radius:12px;display:grid;place-items:center;font-size:11px;color:var(--muted);overflow:hidden;text-align:center;background:var(--bg)}
+    .cs-thumb img{width:100%;height:100%;object-fit:cover}.cs-x{position:absolute;top:0;right:0;width:20px;height:20px;border:0;border-radius:0 0 0 8px;background:#111;color:#fff;font-size:13px;line-height:1;padding:0;cursor:pointer}
+    .cs-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.cs-tile span{display:block;font-size:20px;margin-bottom:2px}
+    .cs-tile{border:1px solid var(--border);border-radius:12px;padding:12px 6px;text-align:center;background:var(--card);color:var(--text);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+    .cs-tile.on{border:2px solid var(--pri,var(--primary));background:var(--t-info)}
+    .cs-seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--border);border-radius:999px;padding:3px;background:var(--bg)}
+    .cs-seg button{border:0;border-radius:999px;padding:9px;font:inherit;font-size:14px;font-weight:700;background:none;color:var(--text);cursor:pointer}
+    .cs-seg button.on{background:var(--pri,var(--primary));color:#fff}
+    .cs-sp{display:none;gap:10px}.cs-sp.open{display:grid}
+.cs-sp label{display:grid;grid-template-columns:96px minmax(0,1fr);align-items:center;gap:10px;font-size:14px;color:var(--text);font-weight:700}
+.cs-spn{display:flex;align-items:center;gap:8px}.cs-spn i{font-style:normal;font-size:20px}
+    .cs-notebtn{display:flex;justify-content:space-between;align-items:center;min-height:44px;width:100%;border:0;background:none;color:var(--text);font:inherit;font-size:14px;font-weight:700;padding:0;cursor:pointer}.cs-notebtn small{font-weight:500;color:var(--muted);margin-left:6px}.cs-notebtn i{font-style:normal;color:var(--muted);transition:transform .15s}.cs-notebtn.open i{transform:rotate(180deg)}
+    .cs-total{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:20px;padding-top:6px}
+    .cs-err{color:var(--danger,#dc2626);font-size:13px;min-height:16px}
+    .cs-bad{border-color:var(--danger,#dc2626)!important;box-shadow:0 0 0 3px rgba(220,38,38,.16)}
+    .cs-done{text-align:center;display:grid;gap:12px;justify-items:center}
+    .cs-tick{width:62px;height:62px;border-radius:50%;background:#16a34a;color:#fff;font-size:32px;display:grid;place-items:center}
+    .cs-sum{width:100%;border:1px solid var(--border);border-radius:12px;padding:2px 12px;text-align:left}.cs-sum div{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--border);font-size:14px}.cs-sum div:first-child{border-top:0}
+  /* Old-credit bill card: same layout as the delivery app's collect screen */
+.oc{background:#fff8ec;color:#3b2a0a;border:1px solid #f59e0b;border-radius:14px;padding:12px;display:grid;gap:10px}
+.oc-ch{display:flex;align-items:center;gap:10px;cursor:pointer;justify-content:space-between}
+.oc-ch:after{content:"\25BE";color:#8a6d3b;transition:transform .15s}.oc.open>.oc-ch:after{transform:rotate(180deg)}
+.oc-ch>div:nth-child(2){flex:1}.oc-ico{font-size:22px}.oc small{display:block;color:#7a6a4a;font-size:12px}.oc-tot{color:#d97706;font-size:16px}
+.oc>.oc-cb{display:none}.oc.open>.oc-cb{display:grid;gap:10px}
+.oc-row{display:grid;grid-template-columns:56px 1fr auto;gap:10px;align-items:center;border-top:1px solid rgba(217,119,6,.25);padding-top:10px}
+.oc-th{width:56px;height:56px;border-radius:10px;background:#fff;border:1px solid #e5d9c3;display:grid;place-items:center;font-size:10px;color:#6b7280;text-align:center;cursor:pointer;overflow:hidden}
+.oc-th img{width:100%;height:100%;object-fit:cover}
+.oc-row b{font-size:14px}.oc-row small{font-size:12px}
+.oc-due{display:inline-block;background:rgba(220,38,38,.1);color:#dc2626;font-weight:700;font-size:12px;border-radius:8px;padding:2px 8px;margin-top:3px}
+.oc-late{display:inline-block;background:#dc2626;color:#fff;font-weight:700;font-size:11px;border-radius:8px;padding:2px 7px;margin-left:4px}
+.oc-btn{border:1px solid #f59e0b;background:#fff;color:#d97706;border-radius:10px;padding:8px 14px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.oc-btn.on{background:#0b7a55;color:#fff;border-color:#0b7a55}
+.oc-more{grid-column:1/-1;display:none;gap:12px}.oc-more.open{display:grid}
+.oc-amt{display:grid;grid-template-columns:minmax(0,1fr) 52px;gap:8px;align-items:center}
+.oc-in{display:flex;align-items:center;gap:8px;height:52px;padding:0 12px;border:1px solid #e5d9c3;border-radius:12px;background:#fff;color:#1f2937;font-size:20px;font-weight:700}
+.oc-in span{color:#6b7280}.oc-in input{flex:1;min-width:0;width:100%;min-height:0;height:100%;border:0;padding:0;background:transparent;color:inherit;font:inherit;outline:0}
+.oc-cam{position:relative;width:52px;height:52px;border-radius:12px;border:1.5px dashed #c9b88f;background:#fff;font-size:22px;cursor:pointer;padding:0;display:grid;place-items:center;overflow:hidden}
+.oc-cam img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.oc-cam.done{border:1px solid #0b7a55}
+.oc-cam.done:after{content:"\2713";position:absolute;top:0;right:0;width:18px;height:18px;border-radius:0 0 0 8px;background:#0b7a55;color:#fff;font-size:11px;font-weight:900;display:grid;place-items:center}
+.oc-pbar{height:8px;border-radius:99px;background:rgba(0,0,0,.08);overflow:hidden}.oc-pbar i{display:block;height:100%;width:0;background:#0b7a55;transition:width .15s}
+.oc-rc{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:#6b5a3a}
+.oc-more .cs-warn,.oc-more .cs-hint{margin:0;font-size:13px;font-weight:700;color:#b45309}
+.oc-okrow{display:flex;justify-content:flex-end;gap:8px}.oc-okrow .oc-btn{height:34px;padding:0 18px;font-size:14px}
+.oc-okrow .oc-ok{background:#0b7a55;color:#fff;border-color:#0b7a55}.oc-okrow .oc-ok:disabled{opacity:.4;cursor:not-allowed}
+.oc-sm{grid-column:1/-1;display:none;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;background:#e4f5ee;border:1px solid #10b981;border-radius:14px;padding:10px 12px;color:#10231b}.oc-sm.open{display:grid}
+.oc-sm .t{width:28px;height:28px;border-radius:50%;background:#0b7a55;color:#fff;display:grid;place-items:center;font-size:15px;font-weight:900}
+.oc-sm p{margin:0;font-size:14px;font-weight:700}.oc-sm small{font-size:12px;color:#4b5f55}
+.oc-ed{border:0;background:none;color:#2563eb;font:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:4px}
+#ocView{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:99}#ocView img{max-width:94%;max-height:90%;border-radius:8px}
+</style>
+</head><body><div id="app"></div><script src="../assets/icons.js"></script><script src="sales.js"></script><script src="../shared/dropdown.js"></script>
+<script>
+Sales.start("payments",function(me,hello,main){
+  var Q=new URLSearchParams(location.search),CODE=Q.get("c")||"",ORDER=Q.get("o")||"",FIX=Q.get("fix")||"";
+  var PRE_AMT=Number(Q.get("amt")||0),PRE_METHOD=Q.get("method")||"",PRE_NOTE=Q.get("note")||"",PRE_REASON=Q.get("reason")||"",PRE_INV=Q.get("inv")||"",WAS=Q.get("was")||"",SELF=!PRE_REASON||/^(Employee is editing this collection|Editing your collection)$/i.test(PRE_REASON);
+  if(!CODE)return location.replace("customers.html");
+  hello.innerHTML=FIX?"<h1>Correct bill collection</h1><p>Fix the details requested by office and resubmit</p>":"<h1>Collect payment</h1><p>Record money received from this shop</p>";
+  var esc=Sales.esc,SPN={cash:"Cash",upi:"UPI",bank_transfer:"Bank transfer"};
+  var S={method:"cash",split:false,bills:[],sel:{},files:{},ev:{},evp:{},evState:{},key:null,busy:false,total:0,shop:null};
+  function dirty(){S.key=null}
+  function $(s){return document.querySelector(s)}
+  function money(v){return "₹"+Number(v||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}
+  function dmy(d){var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(d||"");return m?m[3]+"/"+m[2]+"/"+m[1]:esc(d)}
+  function hist(x){var M={cash:"Cash",upi:"UPI",bank_transfer:"Bank"};if(!x.payments)return "";if(!x.payments.length)return '<small class="muted" style="display:block">No payments yet</small>';return (x.payments).map(function(p){var d=p.at?new Date(p.at).toLocaleDateString("en-IN",{day:"numeric",month:"short",timeZone:"Asia/Kolkata"}):"",ap=p.status==="approved";return '<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px 12px;font-size:12px;color:var(--muted);line-height:1.35"><span><b style="color:var(--text)">'+money(p.amount).replace(/\.00$/,"")+"</b>"+(d?" \u00b7 "+d:"")+(p.by?" \u00b7 "+esc(p.by):"")+(M[p.method]?" \u00b7 "+M[p.method]:"")+'</span><span style="font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;white-space:nowrap;background:'+(ap?"rgba(22,163,74,.14)":"rgba(217,119,6,.14)")+";color:"+(ap?"#16a34a":"#d97706")+'">'+(ap?"Approved":"Waiting for approval")+"</span></div>"}).join("")}
+  function pz(v){return Math.round(Number(v)*100)}
+  function fe(msg,sel){var e=new Error(msg);e.sel=sel;return e}
+  function rawUrl(f){return new Promise(function(ok,no){var r=new FileReader();r.onload=function(){ok(r.result)};r.onerror=no;r.readAsDataURL(f)})}
+  // Phone photos are shrunk to at most 1600 px (JPEG) before upload so they stay well under the 5 MB limit.
+  function dataUrl(f){return new Promise(function(ok){var url=URL.createObjectURL(f),img=new Image();
+    img.onload=function(){try{var k=Math.min(1,1600/Math.max(img.naturalWidth,img.naturalHeight)),c=document.createElement("canvas");c.width=Math.round(img.naturalWidth*k);c.height=Math.round(img.naturalHeight*k);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);ok(c.toDataURL("image/jpeg",0.72))}catch(e){URL.revokeObjectURL(url);rawUrl(f).then(ok)}};
+    img.onerror=function(){URL.revokeObjectURL(url);rawUrl(f).then(ok)};img.src=url})}
 
-      .seg {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        border: 1px solid var(--border);
-        border-radius: 999px;
-        padding: 3px;
-        background: var(--bg);
-      }
-      .seg button {
-        border: 0;
-        border-radius: 999px;
-        padding: 9px;
-        font: inherit;
-        font-size: 14px;
-        font-weight: 700;
-        background: none;
-        color: var(--text);
-        cursor: pointer;
-      }
-      .seg button.on {
-        background: var(--primary);
-        color: var(--on-primary);
-      }
-      .split {
-        display: grid;
-        gap: 8px;
-      }
-.sprow{display:grid;grid-template-columns:auto 1fr minmax(105px,40%) 24px;align-items:center;gap:8px;font-size:14px;color:var(--text);font-weight:700;border:1px solid var(--border);border-radius:12px;padding:8px 10px;background:var(--card,var(--bg))}
-.sprow.on{border:2px solid var(--primary,var(--pri));padding:7px 9px}
-.sprow .spic{font-size:20px}
-.sprow input{min-width:0;width:100%;text-align:right}
-.sprow .sptick{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:13px;background:var(--border);color:transparent}
-.sprow.on .sptick{background:#16a34a;color:#fff}
-      .photos {
-        display: flex;
-        gap: 10px;
-        align-items: stretch;
-      }
-      .ph {
-        border: 1.5px dashed var(--border);
-        border-radius: 14px;
-        min-height: 88px;
-        display: grid;
-        place-items: center;
-        align-content: center;
-        text-align: center;
-        font: inherit;
-        font-size: 14px;
-        font-weight: 600;
-        background: var(--bg);
-        color: var(--text);
-        cursor: pointer;
-        position: relative;
-      }
-      .ph span {
-        display: block;
-        font-size: 24px;
-      }
-      .ph img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        border-radius: 12px;
-        position: absolute;
-        inset: 0;
-      }
-      .ph .x {
-        position: absolute;
-        top: -6px;
-        right: -6px;
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        background: #111;
-        color: #fff;
-        border: 0;
-        z-index: 2;
-        font-size: 14px;
-        padding: 0;
-        cursor: pointer;
-      }
-      #curPrev {
-        flex: 0 0 56px;
-        width: 56px;
-        min-height: 56px;
-        padding: 0;
-      }
-      #addPhoto {
-        flex: 1;
-        min-height: 56px;
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        justify-content: center;
-        font-size: 15px;
-      }
-      #addPhoto span {
-        display: inline;
-        font-size: 20px;
-      }
-      #addPhoto.done {
-        border: 1.5px solid var(--primary);
-        background: var(--t-primary);
-      }
-      textarea#note {
-        min-height: 72px;
-        resize: vertical;
-      }
-      .tot {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 8px;
-        padding: 14px;
-        border-radius: 12px;
-        background: var(--t-primary);
-        color: #10231b;
-      }
-      .tot small {
-        display: block;
-        color: #4b5f55;
-        font-size: 13px;
-      }
-      .tot b {
-        font-size: 28px;
-      }
-      html[data-theme="dark"] .tile.on,
-      html[data-theme="dark"] .tot,
-      html[data-theme="dark"] .bill {
-        background: #16202a;
-        color: #f1f5f9;
-        border: 1px solid #10b981;
-      }
-      html[data-theme="dark"] .tile.on {
-        border-width: 2px;
-      }
-      html[data-theme="dark"] .tot small,
-      html[data-theme="dark"] .bill small {
-        color: #94a3b8;
-      }
-      .tot {
-        flex-wrap: wrap;
-      }
-      .tot > div {
-        min-width: 0;
-      }
-      .tot .badge {
-        max-width: 100%;
-        white-space: normal;
-        text-align: center;
-        line-height: 1.3;
-        margin-left: auto;
-      }
-      .badge {
-        padding: 7px 12px;
-        border-radius: 12px;
-        font-size: 12px;
-        font-weight: 800;
-        background: rgba(34, 197, 94, 0.18);
-        color: #16a34a;
-      }
-      .badge.warn {
-        background: rgba(245, 158, 11, 0.18);
-        color: var(--amber);
-      }
-      .go {
-        border: 0;
-        border-radius: 12px;
-        min-height: 48px;
-        padding: 10px 14px;
-        background: var(--primary);
-        color: var(--on-primary);
-        font: inherit;
-        font-size: 15px;
-        font-weight: 700;
-        cursor: pointer;
-        width: 100%;
-      }
-      .go:disabled {
-        opacity: 0.45;
-        cursor: not-allowed;
-      }
-      .bar {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 50;
-        display: flex;
-        gap: 10px;
-        padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-        background: var(--card);
-        border-top: 1px solid var(--border);
-      }
-      .bar .go {
-        flex: 1;
-        width: auto;
-      }
-      .cancel {
-        flex: 0 0 30%;
-        min-height: 48px;
-        border: 1px solid var(--border);
-        background: var(--card);
-        color: var(--text);
-        border-radius: 12px;
-        font: inherit;
-        font-weight: 700;
-        font-size: 15px;
-        cursor: pointer;
-      }
-      .hide-credit {
-        display: none !important;
-      }
-      .bad {
-        border-color: var(--danger) !important;
-        box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.18);
-      }
-      .err {
-        color: var(--danger);
-        font-size: 13px;
-        min-height: 16px;
-      }
-      #viewer,
-      #ok {
-        position: fixed;
-        inset: 0;
-        z-index: 99;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        padding: 14px;
-      }
-      #viewer {
-        background: rgba(0, 0, 0, 0.9);
-      }
-      #viewer img {
-        max-width: 100%;
-        max-height: 100%;
-        border-radius: 10px;
-      }
-      #ok {
-        background: rgba(0, 0, 0, 0.6);
-      }
-      #ok .box {
-        background: var(--card);
-        border-radius: 22px;
-        padding: 22px;
-        width: 100%;
-        max-width: 420px;
-        display: grid;
-        gap: 12px;
-        text-align: center;
-      }
-      #ok .tick {
-        width: 64px;
-        height: 64px;
-        border-radius: 50%;
-        background: #16a34a;
-        color: #fff;
-        font-size: 34px;
-        display: grid;
-        place-items: center;
-        margin: auto;
-      }
-      #ok .sum {
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 4px 12px;
-        text-align: left;
-      }
-      #ok .sum div {
-        display: flex;
-        justify-content: space-between;
-        gap: 10px;
-        padding: 9px 0;
-        border-top: 1px solid var(--border);
-        font-size: 14px;
-      }
-      #ok .sum div:first-child {
-        border-top: 0;
-      }
-      @media (min-width: 900px) {
-        .wrap {
-          max-width: 1040px;
-          grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-          gap: 16px;
-          padding: 16px 20px 110px;
-          align-items: start;
-        }
-        .col {
-          display: grid;
-          gap: 16px;
-          align-content: start;
-          min-width: 0;
-        }
-        .shop {
-          grid-template-columns: 48px 1fr;
-        }
-        .tiles {
-          grid-template-columns: repeat(4, 1fr);
-        }
-        .tile.credit {
-          grid-column: auto;
-          display: block;
-          min-height: 72px;
-        }
-        .tile.credit span {
-          display: block;
-        }
-        #photoCard > .ch:after {
-          display: none;
-        }
-        #photoCard > .ch {
-          cursor: default;
-        }
-        #photoCard > .cb {
-          display: grid !important;
-        }
-        .bar {
-          padding-left: max(20px, calc((100% - 1040px) / 2 + 20px));
-          padding-right: max(20px, calc((100% - 1040px) / 2 + 20px));
-          justify-content: flex-end;
-        }
-        .bar .go {
-          flex: 0 0 320px;
-        }
-        .cancel {
-          flex: 0 0 140px;
-        }
-      }
-      /* current bill: one payment card */
-      .pay {
-        gap: 16px;
-      }
-      .blk {
-        display: grid;
-        gap: 10px;
-        min-width: 0;
-      }
-      .req {
-        color: var(--amber);
-        font-weight: 700;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="top">
-      <h1>Collect Payment</h1>
-      <button id="x" type="button" aria-label="Close">&times;</button>
-    </div>
-    <main class="wrap">
-      <div class="col">
-        <section class="card">
-          <div class="shop">
-            <div class="ic">&#127978;</div>
-            <div>
-              <b id="sName"></b><small class="muted" id="sArea"></small
-              ><small class="muted" id="sPhone" style="display: block"></small>
-            </div>
-          </div>
-          <div class="meta">
-            <span>Invoice <b id="sInv"></b></span
-            ><span>&#128197; <b id="sDate"></b></span>
-          </div>
-          <div class="bill">
-            <div><small>Bill amount</small><b id="sAmt"></b></div>
-            <span class="stat" id="sChip">Pending</span>
-          </div>
-        </section>
-        <section class="card" id="creditCard">
-          <div id="credit">
-            <div class="muted" style="padding: 6px 2px">
-              Checking old credit…
-            </div>
-          </div>
-        </section>
-      </div>
-      <div class="col">
-        <section class="card" id="billsCard"><div class="muted">Loading bills…</div></section>
-        <section class="card pay" id="payWrap">
-          <div class="blk" id="curCard">
-            <h3 id="curH">&#8377; Amount received</h3>
-            <div id="curMsg" class="muted"></div>
-            <div id="curBox" style="display: grid; gap: 10px">
-              <div class="amt">
-                <input
-                  id="curAmt"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  inputmode="decimal"
-                  placeholder="0.00"
-                /><button class="btn" id="curFull" type="button">
-                  Full amount
-                </button>
-              </div>
-              <div class="chips" id="chips"></div>
-            </div>
-          </div>
-          <div class="blk" id="payCard">
-            <h3>&#128179; Payment method</h3>
-            <div class="tiles" id="tiles">
-              <button type="button" class="tile on" data-m="cash">
-                <span>&#128181;</span>Cash</button
-              ><button type="button" class="tile" data-m="upi">
-                <span>&#128241;</span>UPI</button
-              ><button type="button" class="tile" data-m="bank_transfer">
-                <span>&#127974;</span>Bank</button
-              ><button type="button" class="tile credit" data-m="credit">
-                <span>&#129534;</span>Pay Later
-              </button>
-            </div>
-            <div id="splitRow" style="display: grid; gap: 6px">
-              <div class="seg">
-                <button type="button" class="on" id="segOne">Single</button
-                ><button type="button" id="segSplit">Split</button>
-              </div>
-              <input type="checkbox" id="splitChk" style="display: none" />
-            </div>
-            <div id="crMsg" style="display: none; gap: 8px">
-              <div class="muted" style="font-size: 14px">
-                Amount typed below is received now. The balance goes to credit.
-                Keep 0 for full credit.
-              </div>
-              <label
-                style="
-                  display: grid;
-                  gap: 4px;
-                  font-size: 13px;
-                  font-weight: 700;
-                "
-                >Received amount paid by<select
-                  id="crMethod"
-                  style="
-                    min-height: 44px;
-                    border: 1px solid var(--border);
-                    border-radius: 10px;
-                    padding: 9px 11px;
-                    background: var(--bg);
-                    color: var(--text);
-                    font: inherit;
-                  "
-                >
-                  <option value="cash">Cash</option>
-                  <option value="upi">UPI</option>
-                  <option value="bank_transfer">Bank</option>
-                </select></label
-              >
-            </div>
-            <div class="split" id="splitBox" style="display: none"><label class="sprow"><span class="spic">💵</span><span>Cash</span><input id="sp_cash" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"><span class="sptick">&#10003;</span></label><label class="sprow"><span class="spic">📱</span><span>UPI</span><input id="sp_upi" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"><span class="sptick">&#10003;</span></label><label class="sprow"><span class="spic">🏦</span><span>Bank</span><input id="sp_bank_transfer" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"><span class="sptick">&#10003;</span></label><div class="muted" id="splitMsg"></div>
-            </div>
-          </div>
-          <div class="blk" id="photoCard">
-            <h3>
-              &#128247; Bill photo <span class="muted req">Needed only for Pay later</span>
-            </h3>
-            <div class="photos">
-              <div class="ph" id="curPrev" style="display: none"></div>
-              <button type="button" class="ph" id="addPhoto">
-                <span>&#128247;</span><b id="addTxt">Take photo</b>
-              </button>
-            </div>
-            <input
-              type="file"
-              id="curFile"
-              accept="image/jpeg,image/png,image/webp"
-              capture="environment"
-              style="display: none"
-            />
-          </div>
-          <div class="blk coll" id="noteCard">
-            <div class="ch" data-tg>
-              <h3>&#128221; Add a note <span class="muted">Optional</span></h3>
-            </div>
-            <div class="cb">
-              <textarea
-                id="note"
-                maxlength="250"
-                rows="3"
-                placeholder="Add any note about this collection..."
-              ></textarea>
-              <div class="muted" style="text-align: right" id="noteCnt">
-                0 / 250
-              </div>
-            </div>
-          </div>
-          <div class="blk" id="totCard">
-            <div class="tot">
-              <div>
-                <small>Total collected</small><b id="total">&#8377;0.00</b>
-              </div>
-              <span class="badge warn" id="match" style="display: none"></span>
-            </div>
-            <div class="err" id="err"></div>
-          </div>
-        </section>
-      </div>
-    </main>
-    <div class="bar">
-      <button class="cancel" id="cancel" type="button">Cancel</button
-      ><button class="go" id="go" type="button" disabled>
-        Save &amp; Next &rarr;
-      </button>
-    </div>
+  main.innerHTML=
+    (FIX?'<div class="cs-fix"><b>'+(SELF?"Finish your collection":"Office asked for a correction")+'</b>'+(WAS?'<span style="color:var(--muted)">You entered:</span><span style="font-size:15px;font-weight:700">'+esc(WAS)+(PRE_INV?" \u00b7 Invoice #"+esc(PRE_INV):"")+'</span>':"")+(SELF?'<span>It is on hold until you save it again. Check the amount and how it was paid, then tap Save.</span><button type="button" id="csKeep" style="justify-self:start;margin-top:4px;padding:8px 12px;border-radius:9px;border:1px solid rgba(13,148,136,.5);background:transparent;color:inherit;font:inherit;font-size:13px;font-weight:700;cursor:pointer">Keep it as it was</button>':'<span><b>Office note:</b> '+esc(PRE_REASON)+'</span><span>Fix it, then tap Save.</span>')+'</div>':"")+
+    (ORDER?'<div class="cs-order">Order #'+esc(ORDER)+' placed. You can collect any unpaid bills from this shop below.</div>':"")+
+    '<div class="cs-card cs-shop" id="csShop"><b>Loading shop...</b></div>'+
+    '<div class="cs-card" id="csPay" style="display:none;color:var(--text)"><h3>Payment method</h3><div class="cs-tiles" id="csTiles"><button type="button" class="cs-tile on" data-m="cash" aria-pressed="true"><span>💵</span>Cash</button><button type="button" class="cs-tile" data-m="upi" aria-pressed="false"><span>📱</span>UPI</button><button type="button" class="cs-tile" data-m="bank_transfer" aria-pressed="false"><span>🏦</span>Bank</button></div>'+
+      '<div class="cs-seg"><button type="button" class="on" id="csOne" aria-pressed="true">Single</button><button type="button" id="csSplit" aria-pressed="false">Split</button></div>'+
+      '<div class="cs-sp" id="csSpBox"><label><span class="cs-spn"><i>💵</i>Cash</span><input id="sp_cash" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" aria-label="Cash amount"></label><label><span class="cs-spn"><i>📱</i>UPI</span><input id="sp_upi" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" aria-label="UPI amount"></label><label><span class="cs-spn"><i>🏦</i>Bank</span><input id="sp_bank_transfer" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" aria-label="Bank transfer amount"></label><div class="cs-hint" id="csSpMsg"></div></div></div>'+
+    '<div class="cs-card" id="csBills"><h3>Unpaid bills</h3><div class="cs-hint">Loading bills...</div></div>'+
+    '<div id="csRest" style="display:none"><div class="cs-card">'+
+      '<button type="button" class="cs-notebtn" id="csNoteBtn" aria-expanded="false"><span>Add a note<small>Optional</small></span><i aria-hidden="true">▾</i></button>'+
+      '<textarea class="cs-note" id="csNote" maxlength="250" placeholder="Reference or remarks" aria-label="Note" style="display:none"></textarea>'+
+      '<div class="cs-total"><span>Total collected</span><b id="csTotal">₹0.00</b></div><div class="cs-err" id="csErr" role="status"></div>'+
+      '<button class="btn" id="csGo" type="button" disabled style="width:100%">Save collection</button><p class="cs-hint">A bill photo is optional (uploaded in background when signal allows). The collection waits for Billing/Admin approval; the shop\'s balance changes only after approval.</p></div>'+
+    '</div><div id="csDone"></div><div id="ocView"><img id="ocImg" alt="Bill photo"></div>';
 
-    <div id="viewer"><img id="viewImg" alt="Bill photo" /></div>
-    <div id="ok">
-      <div class="box">
-        <div class="tick">&#10003;</div>
-        <h2 style="margin: 0">Payment collected!</h2>
-        <div class="muted" id="okInv"></div>
-        <div class="bill" style="justify-content: center">
-          <b id="okAmt"></b>
-        </div>
-        <div class="sum">
-          <div><span>Method</span><b id="okM"></b></div>
-          <div><span>Collected on</span><b id="okT"></b></div>
-          <div><span>Bill photo</span><b id="okP"></b></div>
-          <div><span>Status</span><b>Waiting for office approval</b></div>
-        </div>
-        <button class="go" id="okGo" type="button">Next Shop &rarr;</button>
-      </div>
-    </div>
-    <style>
-      #payWrap, #creditCard { display: none !important; }
-      .bl-row .btn { width: auto !important; flex: none; min-height: 44px; padding: 0 18px; }
-      .bl-row .muted { flex: none; }
-      .bl-head { padding: 2px 2px 8px; font-size: 16px; }
-      .bl-row { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-top: 1px solid var(--border); }
-      .bl-info { flex: 1; display: grid; gap: 2px; min-width: 0; }
-      .bl-info small { color: var(--muted); }
-      .bl-tag { justify-self: start; font-size: 11px; background: var(--t-primary); color: var(--primary); border-radius: 8px; padding: 2px 7px; font-weight: 700; }
-      .bl-done { color: var(--success) !important; font-weight: 700; }
-      .bl-thumb { width: 48px; height: 48px; border-radius: 10px; border: 1px solid var(--border); overflow: hidden; display: grid; place-items: center; font-size: 10px; color: var(--muted); flex: none; text-align: center; }
-      .bl-thumb img { width: 100%; height: 100%; object-fit: cover; }
-      .bl-total { display: flex; justify-content: space-between; align-items: center; border-top: 2px solid var(--border); margin-top: 6px; padding: 12px 2px 4px; font-size: 18px; }
-      .bl-line { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); padding: 2px; }
-    </style>
-    <script src="../shared/collect-popup.js"></script>
-    <script src="../shared/theme.js"></script>
-    <script>
-      (function () {
-        var $ = function (s) {
-            return document.querySelector(s);
-          },
-          Q = new URLSearchParams(location.search),
-          CODE = Q.get("code") || Q.get("c") || "",
-          INV = (Q.get("inv") || "").trim(),
-          AMT = Number(Q.get("amt")) || 0,
-          FIX = Q.get("fix") || "";
-        var SPN = { cash: "Cash", upi: "UPI", bank_transfer: "Bank transfer" };
-        var S = {
-          method: "cash",
-          cur: null,
-          curFile: null,
-          curPrev: "",
-          old: [],
-          oldSel: {},
-          oldOk: {},
-        };
-        if (window.parent !== window) {
-          var tp = document.querySelector(".top");
-          if (tp) tp.style.display = "none";
-        }
-        var WIDE = window.matchMedia("(min-width:900px)").matches;
-        if (WIDE) $("#noteCard").classList.add("open");
+  var kb=document.getElementById("csKeep");
+  if(kb)kb.onclick=function(){
+    if(!confirm("Keep this collection as it was? It goes back to waiting for approval, with nothing changed."))return;
+    kb.disabled=true;kb.textContent="Putting it back...";
+    Sales.api("/api/accounts/collections/"+encodeURIComponent(FIX)+"/cancel-edit",{}).then(function(){location.replace("collections-history.html?all=1")})
+      .catch(function(e){alert(e.message);kb.disabled=false;kb.textContent="Keep it as it was"});
+  };
+  if(PRE_METHOD&&SPN[PRE_METHOD]){
+    S.method=PRE_METHOD;
+    document.querySelectorAll(".cs-tile").forEach(function(x){var on=x.getAttribute("data-m")===PRE_METHOD;x.classList.toggle("on",on);x.setAttribute("aria-pressed",String(on))});
+  }
+  if(PRE_NOTE){
+    $("#csNote").value=PRE_NOTE;
+    $("#csNote").style.display="";
+    $("#csNoteBtn").setAttribute("aria-expanded","true");
+    $("#csNoteBtn").classList.add("open");
+  }
 
-        function api(path, data) {
-          return fetch(path, {
-            method: data ? "POST" : "GET",
-            credentials: "same-origin",
-            headers: data ? { "Content-Type": "application/json" } : {},
-            body: data ? JSON.stringify(data) : undefined,
-          }).then(function (r) {
-            return r.json().then(function (j) {
-              if (!r.ok) throw new Error(j.error || "Request failed");
-              return j;
-            });
-          });
-        }
-        function esc(v) {
-          return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) {
-            return {
-              "&": "&amp;",
-              "<": "&lt;",
-              ">": "&gt;",
-              '"': "&quot;",
-              "'": "&#39;",
-            }[c];
-          });
-        }
-        function money(v) {
-          return (
-            "\u20b9" +
-            Number(v || 0).toLocaleString("en-IN", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })
-          );
-        }
-        function dmy(d) {
-          var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || "");
-          return m ? m[3] + "/" + m[2] + "/" + m[1] : esc(d);
-        }
-        function hist(x) {
-          var M = { cash: "Cash", upi: "UPI", bank_transfer: "Bank" };
-          if (!x.payments) return "";
-          if (!x.payments.length)
-            return '<small class="muted" style="display:block">No payments yet</small>';
-          return x.payments
-            .map(function (p) {
-              var d = p.at
-                  ? new Date(p.at).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                      timeZone: "Asia/Kolkata",
-                    })
-                  : "",
-                ap = p.status === "approved";
-              return (
-                '<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px 12px;font-size:12px;color:var(--muted);line-height:1.35"><span><b style="color:var(--text)">' +
-                money(p.amount).replace(/\.00$/, "") +
-                "</b>" +
-                (d ? " \u00b7 " + d : "") +
-                (p.by ? " \u00b7 " + esc(p.by) : "") +
-                (M[p.method] ? " \u00b7 " + M[p.method] : "") +
-                '</span><span style="font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;white-space:nowrap;background:' +
-                (ap ? "rgba(22,163,74,.14)" : "rgba(217,119,6,.14)") +
-                ";color:" +
-                (ap ? "#16a34a" : "#d97706") +
-                '">' +
-                (ap ? "Approved" : "Waiting for approval") +
-                "</span></div>"
-              );
-            })
-            .join("");
-        }
-        function pz(v) {
-          return Math.round(Number(v) * 100);
-        }
-        function evUrl(p) {
-          var t = String(p || "")
-            .split("/")
-            .pop()
-            .replace(/\.(jpg|png|webp)$/i, "");
-          return t && t !== "no-photo" ? "/api/accounts/evidence/" + t : "";
-        }
-        function rawDataUrl(f) {
-          return new Promise(function (ok, no) {
-            var r = new FileReader();
-            r.onload = function () {
-              ok(r.result);
-            };
-            r.onerror = no;
-            r.readAsDataURL(f);
-          });
-        }
-        // Shrink phone photos to max 1600 px JPEG before upload.
-        function dataUrl(f) {
-          return new Promise(function (ok) {
-            var url = URL.createObjectURL(f),
-              img = new Image();
-            img.onload = function () {
-              try {
-                var k = Math.min(
-                    1,
-                    1600 / Math.max(img.naturalWidth, img.naturalHeight),
-                  ),
-                  c = document.createElement("canvas");
-                c.width = Math.round(img.naturalWidth * k);
-                c.height = Math.round(img.naturalHeight * k);
-                c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-                URL.revokeObjectURL(url);
-                ok(c.toDataURL("image/jpeg", 0.72));
-              } catch (e) {
-                URL.revokeObjectURL(url);
-                rawDataUrl(f).then(ok);
-              }
-            };
-            img.onerror = function () {
-              URL.revokeObjectURL(url);
-              rawDataUrl(f).then(ok);
-            };
-            img.src = url;
-          });
-        }
-        // Upload each bill photo in the background as soon as it is taken, so saving does not have to wait for it.
-        var UPL = new WeakMap();
-        function uploadPhoto(f) {
-          var p = UPL.get(f);
-          if (!p) {
-            p = dataUrl(f).then(function (d) {
-              return api("/api/accounts/evidence", { data: d });
-            });
-            UPL.set(f, p);
-            p.catch(function () {
-              UPL.delete(f); // try again when saving
-            });
-          }
-          return p;
-        }
-        function view(src) {
-          $("#viewImg").src = src;
-          $("#viewer").style.display = "flex";
-        }
-        $("#viewer").onclick = function () {
-          this.style.display = "none";
-        };
-        // Amount fields: allow at most 2 decimal places (runs before the other input handlers).
-        document.addEventListener(
-          "input",
-          function (e) {
-            var t = e.target;
-            document.querySelectorAll(".bad").forEach(function (x) {
-              x.classList.remove("bad");
-            });
-            if (t && t.type === "number") {
-              var m = /^(-?\d*\.\d{2})\d+$/.exec(t.value);
-              if (m) t.value = m[1];
-            }
-          },
-          true,
-        );
-        document.addEventListener("click", function (e) {
-          var h = e.target.closest("[data-tg]");
-          if (!h) return;
-          h.parentNode.classList.toggle("open");
-        });
-
-        // ---- correction banner (opened from Collections history)
-        if (FIX) {
-          document.querySelector(".top h1").textContent = "Correct Collection";
-          var fb = document.createElement("div");
-          fb.style.cssText = "background:rgba(13,148,136,.1);border:1px solid rgba(13,148,136,.35);border-radius:12px;padding:12px 14px;display:grid;gap:4px;font-size:13px;margin:0 0 12px";
-          fb.innerHTML = "<b>Correction requested</b>" + (Q.get("reason") ? "<span>Note: " + esc(Q.get("reason")) + "</span>" : "") + "<span>Update the amount or bill photo below and save.</span>";
-          document.querySelector("main.wrap").insertBefore(fb, document.querySelector("main.wrap").firstChild);
-        }
-
-        // ---- shop header
-        $("#sName").textContent = Q.get("name") || "";
-        $("#sArea").textContent = Q.get("area") || "";
-        $("#sPhone").textContent = Q.get("phone")
-          ? "\u260e " + Q.get("phone")
-          : "";
-        $("#sInv").textContent = INV ? "#" + INV : "-";
-        $("#sDate").textContent = new Date().toLocaleDateString("en-IN", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-          timeZone: "Asia/Kolkata",
-        });
-        $("#sAmt").textContent = money(AMT);
-
-        // ---- totals
-        function curAmount() {
-          return S.cur ? Number($("#curAmt").value) || 0 : 0;
-        }
-        function oldAmount(id) {
-          var i = $('[data-oa="' + id + '"]');
-          return i ? Number(i.value) || 0 : 0;
-        }
-function autoBalanceSplit(typedMethod, totalAmount) {
-  /* Fills the untouched split box(es) with the balance. Typed boxes stay as typed. */
-  var methods = ["cash", "upi", "bank_transfer"];
-  var typedInput = document.getElementById("sp_" + typedMethod);
-  typedInput.dataset.man = typedInput.value === "" ? "0" : "1";
-  var typedPaise = 0;
-  var autoMethods = [];
-  methods.forEach(function (method) {
-    var input = document.getElementById("sp_" + method);
-    if (input.dataset.man === "1" && input.value !== "") typedPaise += Math.round(Number(input.value) * 100);
-    else autoMethods.push(method);
-  });
-  var balancePaise = Math.round(Number(totalAmount) * 100) - typedPaise;
-  autoMethods.forEach(function (method, position) {
-    var input = document.getElementById("sp_" + method);
-    input.dataset.man = "0";
-    input.value = position === 0 && balancePaise > 0 ? (balancePaise / 100).toFixed(2) : "";
-  });
+  function splitPayments(){var o=[];["cash","upi","bank_transfer"].forEach(function(m){var v=Number($("#sp_"+m).value);if(v>0)o.push({method:m,amount:v})});return o}
+  function splitSum(){return splitPayments().reduce(function(n,p){return n+pz(p.amount)},0)}
+  function amtOf(id){var i=$('[data-a="'+id+'"]');return i?Number(i.value)||0:0}
+  function setPhotoStatus(id,state,text){
+    S.evState[id]=state;
+    var h=$('[data-hint="'+id+'"]');
+    if(!h)return;
+    h.textContent=text;
+    h.style.display=text?"":"none";
+    h.className=state==="err"?"cs-warn":"cs-hint";
+  }
+  function recalc(){
+    var n=0;Object.keys(S.sel).forEach(function(id){if(S.sel[id])n+=amtOf(id)});
+    S.total=Math.round(n*100)/100;$("#csTotal").textContent=money(S.total);
+    var ready=true;
+    Object.keys(S.sel).forEach(function(id){
+      if(!S.sel[id])return;
+      var h=$('[data-hint="'+id+'"]'),msg=(amtOf(id)>0?(S.files[id]?"":"Add the bill photo to continue."):"Enter the amount received.");
+var okb=$('[data-ook="'+id+'"]');if(okb)okb.disabled=!(amtOf(id)>0&&S.files[id]);
+      if(h){
+        if(msg){h.textContent=msg;h.style.display="";h.className="cs-warn";}
+        else if(!S.evState[id]){h.style.display="none";}
+      }
+      if(msg)ready=false;
+    });
+    var ok=S.total>0&&ready;
+    $("#csOne").classList.toggle("on",!S.split);$("#csSplit").classList.toggle("on",S.split);$("#csOne").setAttribute("aria-pressed",String(!S.split));$("#csSplit").setAttribute("aria-pressed",String(S.split));
+    $("#csSpBox").classList.toggle("open",S.split);$("#csTiles").style.display=S.split?"none":"grid";
+    if(S.split){
+      var p=splitPayments(),m=$("#csSpMsg"),rem=(pz(S.total)-splitSum())/100;
+      if(!(S.total>0)){m.textContent="Select a bill and enter its amount first.";ok=false}
+      else if(rem!==0){m.textContent="Total "+money(S.total)+" · "+(rem>0?"Remaining "+money(rem):"Over by "+money(-rem));ok=false}
+      else if(p.length<2){m.textContent="Use at least two payment methods.";ok=false}
+      else m.textContent="✓ Matches total: "+p.map(function(q){return SPN[q.method]+" "+money(q.amount)}).join(" + ");
+    }
+    $("#csGo").disabled=!ok||S.busy;
+  }
+  function evUrl(p){var t=String(p||"").split("/").pop().replace(/\.(jpg|png|webp)$/i,"");return t&&t!=="no-photo"?"/api/accounts/evidence/"+t:""}
+function billX(id){return S.bills.filter(function(x){return String(x.id)===String(id)})[0]}
+// The payment method block (Cash / UPI / Bank, Single / Split) lives inside the bill that is open for collecting.
+// It moves to the bill you open last, and to another open bill if the one holding it is closed.
+function showMore(id,open){
+var m=$("#more_"+id),pay=$("#csPay");
+m.className="oc-more"+(open?" open":"");
+if(open){m.insertBefore(pay,m.querySelector(".oc-okrow"));pay.style.display="";pay.style.margin="0"}
+else if(m.contains(pay)){var o=document.querySelector(".oc-more.open");if(o)o.insertBefore(pay,o.querySelector(".oc-okrow"))}
 }
-        function splitPayments() {
-          var o = [];
-          ["cash", "upi", "bank_transfer"].forEach(function (m) {
-            var v = Number($("#sp_" + m).value);
-            if (v > 0) o.push({ method: m, amount: v });
-          });
-          return o;
-        }
-function spTicks(){["cash","upi","bank_transfer"].forEach(function(m){var i=document.getElementById("sp_"+m);if(i&&i.parentNode)i.parentNode.classList.toggle("on",Number(i.value)>0)})}
-        function splitSum() {
-          return splitPayments().reduce(function (n, p) {
-            return n + pz(p.amount);
-          }, 0);
-        }
-        function recalc() {
-          var n = curAmount();
-          Object.keys(S.oldSel).forEach(function (id) {
-            if (S.oldSel[id]) n += oldAmount(id);
-          });
-          S.total = n;
-          $("#total").textContent = money(n);
-          var on = $("#splitChk").checked,
-            ok = n > 0;
-          $("#segOne").classList.toggle("on", !on);
-          $("#segSplit").classList.toggle("on", on);
-          $("#splitBox").style.display = on ? "grid" : "none";
-          spTicks();
-          $("#tiles").style.display = on ? "none" : "grid";
-          $("#crMethod").parentNode.style.display = on ? "none" : "grid";
-          if (on) {
-            var p = splitPayments(),
-              m = $("#splitMsg"),
-              rem = (pz(n) - splitSum()) / 100;
-            if (!(n > 0)) {
-              m.textContent = "Enter the amount received below first.";
-              ok = false;
-            } else if (rem !== 0) {
-              m.textContent =
-                "Total " +
-                money(n) +
-                " \u00b7 " +
-                (rem > 0
-                  ? "Remaining " + money(rem)
-                  : "Over by " + money(-rem));
-              ok = false;
-            } else if (p.length < 2) {
-              m.textContent = "Use at least two payment methods.";
-              ok = false;
-            } else
-              m.textContent =
-                "\u2713 Matches total: " +
-                p
-                  .map(function (q) {
-                    return SPN[q.method] + " " + money(q.amount);
-                  })
-                  .join(" + ");
+function showSum(id,open){$("#sm_"+id).className="oc-sm"+(open?" open":"")}
+function ocUpdate(id){
+var x=billX(id),inp=$('[data-a="'+id+'"]');if(!x||!inp)return;
+var av=Number(x.availableToCollect),out=Number(x.outstanding),v=Number(inp.value)||0;
+if(v>av){inp.value=av.toFixed(2);v=av}
+$("#bar_"+id).style.width=(out>0?Math.min(100,v/out*100):0)+"%";
+$("#rcv_"+id).textContent="Received "+money(v);
+$("#stay_"+id).textContent="Stays on credit "+money(Math.max(0,out-v));
+recalc();
+}
+function selectBill(id,presetAmt){
+var b=$('[data-t="'+id+'"]');if(!b||S.sel[id])return;
+S.sel[id]=true;dirty();b.className="oc-btn on";b.textContent="Selected";b.setAttribute("aria-pressed","true");
+showMore(id,true);
+var inp=$('[data-a="'+id+'"]');
+if(inp&&presetAmt>0){var max=Number(inp.max)||presetAmt;inp.value=Math.min(max,presetAmt).toFixed(2)}
+ocUpdate(id);
+}
+function drawBills(){
+var due=S.bills.reduce(function(a,x){return a+Number(x.outstanding||0)},0);
+if(!S.bills.length){$("#csBills").innerHTML='<h3>Unpaid bills</h3><div class="cs-hint">✓ This shop has no unpaid bill to collect.</div>';return}
+var n=S.bills.length,now=new Date();
+$("#csBills").innerHTML='<div class="oc open"><div class="oc-ch" id="ocTg"><div class="oc-ico">🗂</div><div><b>Old Credit</b><small>'+n+(n>1?" bills":" bill")+' · Outstanding</small></div><b class="oc-tot">'+money(due)+'</b></div><div class="oc-cb">'+
+S.bills.map(function(x){
+var u=evUrl(x.evidence_path),av=Number(x.availableToCollect),id=esc(x.id),
+m=/^(\d{4})-(\d{2})-(\d{2})/.exec(x.invoice_date||""),age=m?Math.floor((now-new Date(+m[1],+m[2]-1,+m[3]))/864e5):0;
+return '<div class="oc-row"><div class="oc-th" data-v="'+esc(u)+'">'+(u?'<img src="'+esc(u)+'" alt="Bill" onerror="this.parentNode.textContent=\'No photo\'">':"No photo")+'</div>'+
+'<div><b>Invoice No. '+esc(x.invoice_no)+'</b><small class="muted" style="display:block">📅 '+dmy(x.invoice_date)+'</small><span class="oc-due">Due: '+money(x.outstanding)+'</span>'+(age>30?'<span class="oc-late">'+age+' days overdue</span>':"")+
+(Number(x.pendingAmount)>0?'<small class="muted" style="display:block">'+money(x.pendingAmount)+' waiting for approval</small>':"")+'</div>'+
+(av>0?'<button type="button" class="oc-btn" data-t="'+id+'" aria-pressed="false">Collect</button>':'<span class="muted">Collected</span>')+
+(av>0?'<div class="oc-more" id="more_'+id+'"><div class="oc-amt"><div class="oc-in"><span>₹</span><input data-a="'+id+'" type="number" min="0" max="'+av.toFixed(2)+'" step="0.01" inputmode="decimal" placeholder="0.00" aria-label="Amount received"></div>'+
+'<button type="button" class="oc-cam" data-add="'+id+'" aria-label="Add bill photo">📷</button></div>'+
+'<div class="oc-pbar"><i id="bar_'+id+'"></i></div><div class="oc-rc"><span id="rcv_'+id+'">Received '+money(0)+'</span><span id="stay_'+id+'">Stays on credit '+money(x.outstanding)+'</span></div>'+
+'<p class="cs-warn" data-hint="'+id+'">No bill photo yet. Tap the camera.</p>'+
+'<div class="oc-okrow"><button type="button" class="oc-btn" data-ocancel="'+id+'">Cancel</button><button type="button" class="oc-btn oc-ok" data-ook="'+id+'" disabled>OK</button></div>'+
+'<input type="file" data-f="'+id+'" accept="image/jpeg,image/png,image/webp" style="display:none"></div>'+
+'<div class="oc-sm" id="sm_'+id+'"><div class="t">✓</div><div><p id="smT_'+id+'"></p><small id="smS_'+id+'"></small></div><button type="button" class="oc-ed" data-oedit="'+id+'">Edit</button></div>':"")+'</div>';
+}).join("")+'</div></div>';
+$("#ocTg").onclick=function(){this.parentNode.classList.toggle("open")};
+document.querySelectorAll("[data-v]").forEach(function(t){t.onclick=function(){var u=t.getAttribute("data-v");if(u){$("#ocImg").src=u;$("#ocView").style.display="flex"}}});
+$("#ocView").onclick=function(){this.style.display="none"};
+document.querySelectorAll("[data-t]").forEach(function(b){b.onclick=function(){
+var id=b.getAttribute("data-t"),on=!S.sel[id];S.sel[id]=on;dirty();b.className="oc-btn"+(on?" on":"");b.textContent=on?"Selected":"Collect";b.setAttribute("aria-pressed",String(on));
+showMore(id,on);showSum(id,false);if(on)ocUpdate(id);else recalc()}});
+document.querySelectorAll("[data-a]").forEach(function(i){i.oninput=function(){
+var m=/^(-?\d*\.\d{2})\d+$/.exec(i.value);if(m)i.value=m[1];dirty();ocUpdate(i.getAttribute("data-a"))}});
+document.querySelectorAll("[data-add]").forEach(function(b){var id=b.getAttribute("data-add"),f=$('[data-f="'+id+'"]');
+b.onclick=function(){f.click()};
+f.onchange=function(){var file=f.files[0];if(!file)return;
+if(file.size>12*1024*1024){
+delete S.files[id];delete S.ev[id];delete S.evp[id];f.value="";b.className="oc-cam";b.textContent="📷";
+setPhotoStatus(id,"err","That photo is too large. Take it again.");
+recalc();return;
+}
+S.files[id]=file;delete S.ev[id];dirty();
+b.className="oc-cam done";b.innerHTML='<img src="'+URL.createObjectURL(file)+'" alt="Bill photo">';
+setPhotoStatus(id,"uploading","Compressing & uploading photo in background...");
+var upPromise=dataUrl(file).then(function(d){return Sales.api("/api/accounts/evidence",{data:d})});
+S.evp[id]={file:file,p:upPromise};
+upPromise.then(function(u){
+if(S.files[id]!==file)return;
+if(u&&u.evidencePath){S.ev[id]={file:file,path:u.evidencePath};setPhotoStatus(id,"done","✓ Bill photo uploaded")}
+else{setPhotoStatus(id,"","Photo queued (will save with collection if network allows)")}
+recalc();
+}).catch(function(){
+if(S.files[id]!==file)return;
+setPhotoStatus(id,"","Low/no signal — collection can still be saved");
+recalc();
+});
+recalc();
+};
+});
+document.querySelectorAll("[data-ocancel]").forEach(function(b){b.onclick=function(){
+var id=b.getAttribute("data-ocancel"),t=$('[data-t="'+id+'"]'),cam=$('[data-add="'+id+'"]');
+S.sel[id]=false;delete S.files[id];delete S.ev[id];delete S.evp[id];delete S.evState[id];dirty();
+$('[data-a="'+id+'"]').value="";$('[data-f="'+id+'"]').value="";cam.className="oc-cam";cam.textContent="📷";
+t.className="oc-btn";t.textContent="Collect";t.setAttribute("aria-pressed","false");showMore(id,false);showSum(id,false);ocUpdate(id)}});
+document.querySelectorAll("[data-ook]").forEach(function(b){b.onclick=function(){
+var id=b.getAttribute("data-ook"),x=billX(id),v=amtOf(id);
+if(!(v>0)||!S.files[id])return;
+$("#smT_"+id).textContent="Invoice "+x.invoice_no+" · "+money(v)+" received";
+$("#smS_"+id).textContent=money(Math.max(0,Number(x.outstanding)-v))+" stays on credit · 1 photo";
+showMore(id,false);showSum(id,true)}});
+document.querySelectorAll("[data-oedit]").forEach(function(b){b.onclick=function(){
+var id=b.getAttribute("data-oedit");showSum(id,false);showMore(id,true)}});
+if(PRE_INV||PRE_AMT>0){
+var target=S.bills.filter(function(b){return Number(b.availableToCollect)>0&&(PRE_INV?String(b.invoice_no)===PRE_INV||String(b.id)===PRE_INV:true);})[0]||S.bills.filter(function(b){return Number(b.availableToCollect)>0;})[0];
+if(target)selectBill(String(target.id),PRE_AMT);
+}
+}
+function load(){
+    Sales.data().then(function(d){
+      var c=(d.customers||[]).filter(function(x){return String(x.code)===CODE})[0]||{code:CODE,name:CODE};S.shop=c;
+      $("#csShop").innerHTML='<b>'+esc(c.name||c.shopName||CODE)+'</b><small>'+esc([c.code,c.area].filter(Boolean).join(" · "))+'</small>'+(c.phone?'<small>☎ '+esc(c.phone)+'</small>':"");
+    }).catch(function(){$("#csShop").innerHTML="<b>"+esc(CODE)+"</b>"});
+    Sales.api("/api/accounts/customers/"+encodeURIComponent(CODE)+"/invoices").then(function(d){
+      S.bills=(d.invoices||[]).filter(function(x){return Number(x.outstanding)>0});
+      drawBills();
+      if(S.bills.some(function(x){return Number(x.availableToCollect)>0})){$("#csRest").style.display=""}
+      recalc();
+    }).catch(function(e){$("#csBills").innerHTML='<h3>Unpaid bills</h3><div class="cs-hint">'+esc(/not found/i.test(e.message)?"This shop has no bills in Accounts yet, or it is not assigned to you.":e.message)+"</div>"});
+  }
+  $("#csTiles").onclick=function(e){var t=e.target.closest("[data-m]");if(!t)return;S.method=t.getAttribute("data-m");dirty();document.querySelectorAll(".cs-tile").forEach(function(x){x.classList.toggle("on",x===t);x.setAttribute("aria-pressed",String(x===t))})};
+  $("#csOne").onclick=function(){S.split=false;dirty();recalc()};$("#csSplit").onclick=function(){S.split=true;dirty();recalc()};
+  ["cash","upi","bank_transfer"].forEach(function(m){$("#sp_"+m).oninput=function(){dirty();recalc()}});
+  $("#csNote").oninput=dirty;
+  $("#csNoteBtn").onclick=function(){var n=$("#csNote"),o=n.style.display==="none";n.style.display=o?"":"none";this.setAttribute("aria-expanded",String(o));this.classList.toggle("open",o);if(o)n.focus()};
+
+  function showErr(e){
+    $("#csErr").textContent=e.message||"Something went wrong";
+    document.querySelectorAll(".cs-bad").forEach(function(x){x.classList.remove("cs-bad")});
+    var el=e.sel&&$(e.sel);if(el){el.classList.add("cs-bad");try{el.scrollIntoView({block:"center",behavior:"smooth"})}catch(x){}}
+  }
+  $("#csGo").onclick=async function(){
+    if(S.busy)return;var btn=this;$("#csErr").textContent="";
+    document.querySelectorAll(".cs-bad").forEach(function(x){x.classList.remove("cs-bad")});
+    S.busy=true;btn.disabled=true;btn.textContent="Saving...";
+    try{
+      var allocations=[];
+      for(var id of Object.keys(S.sel)){
+        if(!S.sel[id])continue;var a=amtOf(id),f=S.files[id];
+        if(!(a>0))throw fe("Enter an amount for every bill you selected.",'[data-a="'+id+'"]');
+        if(!f)throw fe("Add the bill photo for every selected bill.",'[data-add="'+id+'"]');
+if(f.size>12*1024*1024)throw fe("That photo is too large. Take it again.",'[data-add="'+id+'"]');
+        var ev=S.ev[id];
+        if(f&&(!ev||ev.file!==f)){
+          var pre=S.evp&&S.evp[id]&&S.evp[id].file===f?S.evp[id].p:null,u=null;
+          if(pre){
+            try{u=await Promise.race([pre,new Promise(function(res){setTimeout(function(){res(null);},2500);})]);}
+            catch(e){u=null;}
           }
-          var b = $("#match");
-          if (
-            S.cur &&
-            curAmount() > 0 &&
-            !Object.keys(S.oldSel).some(function (k) {
-              return S.oldSel[k];
-            })
-          ) {
-            b.style.display = "";
-            if (pz(curAmount()) === pz(S.cur.max)) {
-              b.className = "badge";
-              b.textContent = "\u2713 Matches bill";
-            } else {
-              b.className = "badge warn";
-              b.textContent =
-                "Part payment: " +
-                money(S.cur.max - curAmount()) +
-                " still due";
-            }
-          } else b.style.display = "none";
-          refreshFooter();
-        }
-
-        // ---- load invoices
-        function loadInvoices() {
-          api(
-            "/api/accounts/customers/" + encodeURIComponent(CODE) + "/invoices",
-          )
-            .then(function (d) {
-              var all = d.invoices || [],
-                key = INV.toLowerCase();
-              var mine = all.filter(function (x) {
-                return String(x.invoice_no).trim().toLowerCase() === key;
-              })[0];
-              if (mine) {
-                var av = Number(mine.availableToCollect);
-                S.cur = av > 0 ? { id: mine.id, max: av } : null;
-                $("#curMsg").innerHTML =
-                  (av > 0
-                    ? ""
-                    : Number(mine.outstanding) > 0
-                      ? "This bill is already collected. "
-                      : "This bill is already fully paid.") + hist(mine);
-              } else if (INV && AMT > 0) {
-                S.cur = { id: "NEW", max: AMT };
-                $("#curMsg").textContent = "";
-              } else {
-                S.cur = null;
-                $("#curMsg").textContent = "This bill is not on your plan.";
-              }
-              $("#curBox").style.display = S.cur ? "grid" : "none";
-              $("#photoCard").style.display = S.cur ? "" : "none";
-              $("#curAmt").max = S.cur ? S.cur.max : "";
-              var chips = [500, 1000, 1500, 2000]
-                .filter(function (v) {
-                  return S.cur && v < S.cur.max;
-                })
-                .slice(0, 3);
-              $("#chips").innerHTML = chips
-                .map(function (v) {
-                  return (
-                    '<button type="button" class="btn" data-c="' +
-                    v +
-                    '">\u20b9' +
-                    v.toLocaleString("en-IN") +
-                    "</button>"
-                  );
-                })
-                .join("");
-              document.querySelectorAll("[data-c]").forEach(function (b) {
-                b.onclick = function () {
-                  $("#curAmt").value = b.getAttribute("data-c");
-                  recalc();
-                };
-              });
-
-              S.old = all.filter(function (x) {
-                return (
-                  Number(x.outstanding) > 0 &&
-                  String(x.invoice_no).trim().toLowerCase() !== key
-                );
-              });
-              renderBills();
-              recalc();
-              if (
-                !S.cur &&
-                !S.old.some(function (x) {
-                  return Number(x.availableToCollect) > 0;
-                })
-              ) {
-                ["payCard", "photoCard", "noteCard", "totCard"].forEach(
-                  function (id) {
-                    $("#" + id).style.display = "none";
-                  },
-                );
-                $("#curH").textContent = "\u2713 Nothing more to collect";
-                if (!$("#curMsg").textContent)
-                  $("#curMsg").textContent =
-                    "This shop has no unpaid bill left to collect.";
-                S.method = "credit";
-                $("#go").textContent = "Next shop \u2192";
-                $("#go").disabled = false;
-              }
-            })
-            .catch(function (e) {
-              $("#credit").innerHTML =
-                '<div class="muted">' +
-                esc(
-                  /not found/i.test(e.message)
-                    ? "Could not check old credit for this shop."
-                    : e.message,
-                ) +
-                "</div>";
-              S.cur = INV && AMT > 0 ? { id: "NEW", max: AMT } : null;
-              $("#curBox").style.display = S.cur ? "grid" : "none";
-              recalc();
-              renderBills();
-            });
-        }
-
-        function oldX(id) {
-          return S.old.filter(function (x) {
-            return String(x.id) === String(id);
-          })[0];
-        }
-        // ---- bills list: every bill has its own Collect button that opens the payment popup
-        var visit = []; // one entry per saved collection: { billKey, invoiceNumber, amount, label, hasPhoto, payLater }
-
-        function collectedFor(billKey) {
-          return visit
-            .filter(function (entry) {
-              return entry.billKey === billKey;
-            })
-            .reduce(function (sum, entry) {
-              return sum + entry.amount;
-            }, 0);
-        }
-        function visitTotal() {
-          return visit.reduce(function (sum, entry) {
-            return sum + entry.amount;
-          }, 0);
-        }
-        function listBills() {
-          var bills = [];
-          if (S.cur)
-            bills.push({ billKey: "current", invoiceId: S.cur.id, invoiceNumber: INV, maxAmount: S.cur.max, isCurrent: true, source: null });
-          S.old.forEach(function (oldBill) {
-            bills.push({
-              billKey: String(oldBill.id),
-              invoiceId: oldBill.id,
-              invoiceNumber: oldBill.invoice_no,
-              maxAmount: Number(oldBill.availableToCollect),
-              isCurrent: false,
-              source: oldBill,
-            });
-          });
-          return bills;
-        }
-        function openBillPopup(bill) {
-          var remaining = Math.round((bill.maxAmount - collectedFor(bill.billKey)) * 100) / 100;
-          CollectPopup.open({
-            customerCode: CODE,
-            invoiceNumber: bill.invoiceNumber,
-            invoiceId: bill.isCurrent ? S.cur.id : bill.invoiceId,
-            maxAmount: remaining,
-            allowPayLater: bill.isCurrent,
-            photoRequired: !bill.isCurrent,
-            photoOnlyWithPayLater: bill.isCurrent,
-            callApi: api,
-            correctsId: FIX || undefined,
-            onSaved: function (result) {
-              if (bill.isCurrent && S.cur.id === "NEW") S.cur.id = result.invoiceId;
-              visit.push({
-                billKey: bill.billKey,
-                invoiceNumber: bill.invoiceNumber,
-                amount: result.amount,
-                label: result.label,
-                hasPhoto: result.hasPhoto,
-                payLater: result.payLater,
-              });
-              renderBills();
-              recalc();
-            },
-          });
-        }
-        function renderBills() {
-          S.billsLoaded = true;
-          var bills = listBills();
-          var receivedTotal = visitTotal();
-          var html = '<div class="bl-head"><b>Bills to collect</b></div>';
-          if (!bills.length) html += '<div class="muted">This shop has no unpaid bill left to collect.</div>';
-          bills.forEach(function (bill) {
-            var collected = collectedFor(bill.billKey);
-            var remaining = Math.round((bill.maxAmount - collected) * 100) / 100;
-            var entries = visit.filter(function (entry) {
-              return entry.billKey === bill.billKey;
-            });
-            var lastEntry = entries[entries.length - 1];
-            var photoUrl = bill.source ? evUrl(bill.source.evidence_path) : "";
-            html +=
-              '<div class="bl-row">' +
-              (bill.source
-                ? '<div class="bl-thumb" data-view="' + esc(photoUrl) + '">' + (photoUrl ? '<img src="' + esc(photoUrl) + '" alt="">' : "No photo") + "</div>"
-                : "") +
-              '<div class="bl-info"><b>Invoice No. ' + esc(bill.invoiceNumber) + "</b>" +
-              (bill.isCurrent ? ' <span class="bl-tag">This delivery</span>' : "") +
-              (bill.source ? "<small>\ud83d\udcc5 " + dmy(bill.source.invoice_date) + "</small>" : "") +
-              "<small>Due: " + money(bill.isCurrent ? bill.maxAmount : bill.source.outstanding) + "</small>" +
-              (bill.source && Number(bill.source.pendingAmount) > 0 ? "<small>" + money(bill.source.pendingAmount) + " waiting for approval</small>" : "") +
-              (collected > 0 ? '<small class="bl-done">\u2713 ' + money(collected) + " \u00b7 " + esc(lastEntry.label) + "</small>" : "") +
-              (lastEntry && lastEntry.payLater && collected === 0 ? '<small class="bl-done">\ud83e\uddfe Left on credit</small>' : "") +
-              "</div>" +
-              (remaining > 0.004
-                ? '<button type="button" class="btn" data-bill="' + esc(bill.billKey) + '">' + (collected > 0 ? "Collect rest" : "Collect") + "</button>"
-                : '<span class="muted">' + (collected > 0 ? "Done" : "Collected") + "</span>") +
-              "</div>";
-          });
-          html +=
-            '<div class="bl-total"><span>Total collected</span><b>' + money(receivedTotal) + "</b></div>";
-          visit.forEach(function (entry) {
-            if (entry.amount > 0)
-              html += '<div class="bl-line"><span>Invoice ' + esc(entry.invoiceNumber) + " \u00b7 " + esc(entry.label) + "</span><span>" + money(entry.amount) + "</span></div>";
-          });
-          $("#billsCard").innerHTML = html;
-          document.querySelectorAll("[data-bill]").forEach(function (button) {
-            button.onclick = function () {
-              var key = button.getAttribute("data-bill");
-              openBillPopup(
-                listBills().filter(function (bill) {
-                  return bill.billKey === key;
-                })[0],
-              );
-            };
-          });
-          document.querySelectorAll("[data-view]").forEach(function (thumb) {
-            thumb.onclick = function () {
-              var source = thumb.getAttribute("data-view");
-              if (source) view(source);
-            };
-          });
-        }
-        function refreshFooter() {
-          var nothingToCollect =
-            S.billsLoaded &&
-            !S.cur &&
-            !S.old.some(function (x) {
-              return Number(x.availableToCollect) > 0;
-            });
-          $("#go").textContent = "Next shop \u2192";
-          $("#go").disabled = !(visit.length > 0 || nothingToCollect);
-        }
-
-        // ---- current bill controls
-        $("#curAmt").oninput = function () {
-          if (S.cur && Number(this.value) > S.cur.max)
-            this.value = S.cur.max.toFixed(2);
-          recalc();
-        };
-        $("#curFull").onclick = function () {
-          if (S.cur) {
-            $("#curAmt").value = S.cur.max.toFixed(2);
-            recalc();
-          }
-        };
-        $("#tiles").onclick = function (e) {
-          var t = e.target.closest("[data-m]");
-          if (!t) return;
-          S.method = t.getAttribute("data-m");
-          document.querySelectorAll(".tile").forEach(function (x) {
-            x.classList.toggle("on", x === t);
-          });
-          var cr = S.method === "credit";
-          $("#crMsg").style.display = cr ? "grid" : "none";
-          recalc();
-        };
-        $("#segOne").onclick = function () {
-          $("#splitChk").checked = false;
-          recalc();
-        };
-        $("#segSplit").onclick = function () {
-          $("#splitChk").checked = true;
-          recalc();
-        };
-        ["cash", "upi", "bank_transfer"].forEach(function (m) {
-          $("#sp_" + m).oninput = function () {
-            autoBalanceSplit(m, S.total);
-            recalc();
-          };
-        });
-        $("#note").oninput = function () {
-          $("#noteCnt").textContent = this.value.length + " / 250";
-        };
-        function pick() {
-          $("#curFile").click();
-        }
-        $("#addPhoto").onclick = pick;
-        $("#curFile").onchange = function () {
-          var f = this.files[0];
-          if (!f) return;
-          S.curFile = f;
-          uploadPhoto(f).catch(function () {});
-          S.curPrev = URL.createObjectURL(f);
-          var p = $("#curPrev");
-          p.style.display = "";
-          p.innerHTML =
-            '<img src="' +
-            S.curPrev +
-            '" alt="Bill photo"><button type="button" class="x" id="rmPhoto">\u00d7</button>';
-          $("#addPhoto").classList.add("done");
-          $("#addTxt").textContent = "Retake photo";
-          $("#rmPhoto").onclick = function (e) {
-            e.stopPropagation();
-            S.curFile = null;
-            p.style.display = "none";
-            p.innerHTML = "";
-            $("#curFile").value = "";
-            $("#addPhoto").classList.remove("done");
-            $("#addTxt").textContent = "Take photo";
-            recalc();
-          };
-          p.onclick = function () {
-            view(S.curPrev);
-          };
-          recalc();
-        };
-
-        // ---- save
-        var LBL = {
-          "#photoCard": "Bill photo",
-          "#payCard": "Payment method",
-          "#curCard": "Amount received",
-          "#creditCard": "Old credit",
-        };
-        function fe(msg, sel) {
-          var e = new Error(msg);
-          e.sel = sel;
-          return e;
-        }
-        function showErr(e) {
-          var m = e.message || "Something went wrong",
-            sel =
-              e.sel ||
-              (/photo|evidence/i.test(m)
-                ? "#photoCard"
-                : /payment method|split|add up|Cash, UPI/i.test(m)
-                  ? "#payCard"
-                  : /amount|exceed|outstanding|total|allocation/i.test(m)
-                    ? "#curCard"
-                    : /invoice|customer/i.test(m)
-                      ? "#creditCard"
-                      : "");
-          var el = sel && $(sel),
-            label =
-              LBL[sel] ||
-              (sel && sel.indexOf("data-oadd") > -1 ? "Old credit photo" : "");
-          $("#err").textContent = m + (label ? "  \u2192 check: " + label : "");
-          if (el) {
-            var c = el.closest(".coll,.cr");
-            if (c) c.classList.add("open");
-            el.classList.add("bad");
-            try {
-              el.scrollIntoView({ block: "center", behavior: "smooth" });
-            } catch (x) {}
-          } else {
-            try {
-              $("#err").scrollIntoView({ block: "center" });
-            } catch (x) {}
+          if(u&&u.evidencePath){
+            ev=S.ev[id]={file:f,path:u.evidencePath};
+            setPhotoStatus(id,"done","✓ Bill photo uploaded");
           }
         }
-        // ---- finish the visit: one button after all collections are saved in their popups
-        $("#go").onclick = function () {
-          var receivedTotal = visitTotal();
-          if (!(receivedTotal > 0)) {
-            // Nothing received: the shop had nothing to collect, or the current bill was left fully on credit.
-            var leftOnCredit = visit.some(function (entry) {
-              return entry.billKey === "current" && entry.payLater;
-            });
-            try {
-              parent.postMessage({ gmCollect: "done", credit: leftOnCredit }, location.origin);
-            } catch (e) {}
-            return;
-          }
-          var methodNames = [];
-          visit.forEach(function (entry) {
-            if (entry.amount > 0 && methodNames.indexOf(entry.label) < 0) methodNames.push(entry.label);
-          });
-          var photoCount = visit.filter(function (entry) {
-            return entry.hasPhoto;
-          }).length;
-          var methodSummary = methodNames.join(" \u00b7 ");
-          var photoSummary = photoCount + (photoCount > 1 ? " photos" : " photo") + " attached";
-          var timeText = new Date().toLocaleString("en-IN", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            timeZone: "Asia/Kolkata",
-          });
-          $("#okInv").textContent = INV ? "Invoice #" + INV : "";
-          $("#okAmt").textContent = money(receivedTotal);
-          $("#okM").textContent = methodSummary;
-          $("#okT").textContent = timeText;
-          $("#okP").textContent = photoSummary;
-          if (window.parent !== window) {
-            try {
-              parent.postMessage(
-                { gmCollect: "saved", inv: INV, amount: receivedTotal, method: methodSummary, time: timeText, photos: photoSummary },
-                location.origin,
-              );
-              return;
-            } catch (e2) {}
-          }
-          $("#ok").style.display = "flex";
-        };
-        function close() {
-          if (window.parent === window) { location.href = "collections-history.html"; return; }
-          try {
-            parent.postMessage({ gmCollect: "cancel" }, location.origin);
-            return;
-          } catch (e) {}
-          history.back();
-        }
-        $("#cancel").onclick = close;
-        $("#x").onclick = close;
-        $("#okGo").onclick = function () {
-          if (window.parent === window) { location.href = "collections-history.html"; return; }
-          try {
-            parent.postMessage({ gmCollect: "done" }, location.origin);
-          } catch (e) {}
-        };
-
-        loadInvoices();
-        recalc();
-      })();
-    </script>
-  <script src="../shared/upi-qr.js"></script></body>
-</html>
+        allocations.push({invoiceId:id,amount:a,evidencePath:f&&ev?ev.path:undefined});
+      }
+      if(!allocations.length)throw fe("Select a bill and enter the amount received.");
+      if(!S.key)S.key=window.crypto&&crypto.randomUUID?crypto.randomUUID():"COL-"+Date.now()+"-"+Math.random().toString(36).slice(2);
+      var key=S.key,label,note=$("#csNote").value;
+      if(S.split){
+        if(splitSum()!==pz(S.total)||splitPayments().length<2)throw fe("The payment amounts must add up to the total.");
+        var sp=await Sales.api("/api/accounts/collections/split",{customerCode:CODE,payments:splitPayments(),allocations:allocations,requestKey:key,note:note,correctsId:FIX||undefined});
+        label=(sp.parts||splitPayments()).map(function(q){return SPN[q.method]}).join(" + ");
+      }else{
+        await Sales.api("/api/accounts/collections",{customerCode:CODE,method:S.method,allocations:allocations,requestKey:key,note:note,correctsId:FIX||undefined});
+        label=SPN[S.method];
+      }
+      var attachedCount=allocations.filter(function(x){return !!x.evidencePath;}).length;
+      var when=new Date().toLocaleString("en-IN",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",timeZone:"Asia/Kolkata"});
+      S.key=null;$("#csRest").style.display="none";$("#csPay").style.display="none";$("#csBills").style.display="none";
+      $("#csDone").innerHTML='<div class="cs-card cs-done"><div class="cs-tick">✓</div><h2 style="margin:0">'+(FIX?"Correction submitted!":"Payment collected!")+'</h2><b style="font-size:24px">'+money(S.total)+'</b>'+
+        '<div class="cs-sum"><div><span>Shop</span><b>'+esc((S.shop&&S.shop.name)||CODE)+'</b></div><div><span>Method</span><b>'+esc(label)+'</b></div><div><span>Bill photos</span><b>'+attachedCount+' attached</b></div><div><span>Collected on</span><b>'+when+'</b></div><div><span>Status</span><b>Waiting for office approval</b></div></div>'+
+        '<a class="btn wide" style="width:100%" href="shop.html?c='+encodeURIComponent(CODE)+'">Back to shop</a><a class="btn line wide" style="width:100%" href="collections-history.html">Collection history</a><a class="btn line wide" style="width:100%" href="customers.html">Next shop</a></div>';
+      window.scrollTo(0,0);
+    }catch(e){S.busy=false;btn.textContent="Save collection";showErr(e);recalc();return}
+    S.busy=false;
+  };
+  load();
+});
+</script><script src="../shared/upi-qr.js"></script></body></html>
