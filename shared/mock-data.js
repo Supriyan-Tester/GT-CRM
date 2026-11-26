@@ -48,6 +48,28 @@
       var raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         var st = JSON.parse(raw);
+        // A brand-new account starts as a stub ({worker:{id}}) until the first save. Fill in whatever is missing
+        // so the pages never crash on a missing shift / shops list.
+        var D = JSON.parse(JSON.stringify(DEFAULT_DATA)),
+          fixed = false;
+        Object.keys(D).forEach(function (k) {
+          if (st[k] == null) {
+            st[k] = D[k];
+            fixed = true;
+          } else if (
+            D[k] &&
+            typeof D[k] === "object" &&
+            !Array.isArray(D[k]) &&
+            typeof st[k] === "object"
+          )
+            Object.keys(D[k]).forEach(function (f) {
+              if (st[k][f] === undefined) {
+                st[k][f] = D[k][f];
+                fixed = true;
+              }
+            });
+        });
+        if (fixed) saveStore(st);
         if (st.worker && (st.worker.password || st.worker.pin)) {
           delete st.worker.password;
           delete st.worker.pin;
