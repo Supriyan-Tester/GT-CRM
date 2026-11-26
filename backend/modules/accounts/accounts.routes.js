@@ -1420,6 +1420,27 @@ function createAccountsRoutes(config) {
         .catch((e) => fail(res, e));
       return true;
     }
+    // Employee changes their mind after tapping Edit: put the collection back to "pending approval" as it was.
+    // The database function refuses unless the hold was started by the employee and the invoice amount is still free.
+    if (req.method === "POST" && /^\/api\/accounts\/collections\/[0-9a-f-]{36}\/cancel-edit$/i.test(p)) {
+      if (!canCollect(session)) { send(res, 403, { error: "Collection permission required." }); return true; }
+      const id = p.split("/")[4];
+      rest("gm_accounts_collections?select=id,collected_by,status,visit_ref&id=eq." + id)
+        .then(async (found) => {
+          const row = found && found[0];
+          if (!row || String(row.collected_by) !== String(session.id)) return send(res, 404, { error: "Collection not found." });
+          const rows = row.visit_ref
+            ? await rest("gm_accounts_collections?select=id,status&visit_ref=eq." + encodeURIComponent(row.visit_ref) + "&collected_by=eq." + encodeURIComponent(String(session.id)))
+            : [row];
+          const ids = rows.filter((r) => r.status === "correction_requested").map((r) => r.id);
+          if (!ids.length) return send(res, 409, { error: "This collection is not on hold." });
+          await rpc("gm_accounts_cancel_collection_edit", { p_collection_ids: ids, p_user: String(session.id) });
+          logEvent(session, "Employee cancelled editing collection " + id + " (put back to pending approval)");
+          send(res, 200, { ok: true });
+        })
+        .catch((e) => fail(res, e));
+      return true;
+    }
     send(res, 404, { error: "Accounts endpoint not found." });
     return true;
   }

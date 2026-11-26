@@ -192,6 +192,17 @@
         if (ms.length > 1) return '<span class="ch-m mix">' + ms.map(function (m) { return MN[m]; }).join(" + ") + "</span>";
         return '<span class="ch-m ' + ms[0] + '">' + MN[ms[0]] + "</span>";
       }
+      // The app writes this note itself when the employee taps Edit; it is not a message from the office.
+      function selfEdit(n) { return !n || /^(Employee is editing this collection|Editing your collection)$/i.test(n); }
+      function firstOf(v) { return v.invoices[0] || {}; }
+      function wasOf(v) {
+        var i = firstOf(v), ms = Object.keys(v.methods);
+        return money(v.total) + " \u00b7 " + ms.map(function (m) { return MN[m]; }).join(" + ") + (v.at ? " \u00b7 " + tm(v.at) : "");
+      }
+      function fixQs(v) {
+        var i = firstOf(v), ms = Object.keys(v.methods);
+        return "&was=" + encodeURIComponent(wasOf(v)) + "&amt0=" + encodeURIComponent(i.amount != null ? i.amount : v.total) + "&m0=" + encodeURIComponent(i.method || (ms.length === 1 ? ms[0] : ""));
+      }
       function item(v) {
         var nos = v.invoices.map(function (i) { return i.no; }).filter(function (x, i, a) { return x && a.indexOf(x) === i; });
         var fix = v.status === "correction_requested";
@@ -202,8 +213,8 @@
           v.invoices.filter(function (x, i, a) { return a.findIndex(function (y) { return y.url === x.url; }) === i; }).map(function (i) {
             return '<div class="ln"><span>Invoice #' + esc(i.no) + '</span><span><img data-v="' + esc(i.url) + '" src="' + esc(i.url) + '" alt="Bill photo" onerror="this.style.display=\'none\'"></span></div>'; }).join("") +
           (v.note ? '<div class="ln"><span>Note</span><span>' + esc(v.note) + "</span></div>" : "") +
-          (v.status === "correction_requested" && v.cnote ? '<div class="ln"><span>Note</span><span>' + esc(v.cnote) + "</span></div>" : "") +
-          (v.status === "correction_requested" && v.fixId && v.code ? '<a class="ch-fix" href="collect-sheet.html?code=' + encodeURIComponent(v.code) + "&fix=" + encodeURIComponent(v.fixId) + "&reason=" + encodeURIComponent(v.cnote) + "&name=" + encodeURIComponent(v.name || "") + "&inv=" + encodeURIComponent((v.invoices[0] && v.invoices[0].no) || "") + '">Correct &amp; resubmit</a>' : "") + (v.status === "pending_approval" && v.pendId && v.code ? '<button type="button" class="ch-fix" data-edit="' + esc(v.pendId) + '" data-code="' + esc(v.code) + '" data-name="' + esc(v.name || "") + '" data-inv="' + esc((v.invoices[0] && v.invoices[0].no) || "") + '" style="width:100%;border:0;cursor:pointer;font-family:inherit">Edit collection</button>' : "")+ "</div></div>";
+          (v.status === "correction_requested" ? '<div class="ln"><span>' + (selfEdit(v.cnote) ? "Why" : "Office note") + "</span><span>" + (selfEdit(v.cnote) ? "You started editing. Save it again to finish." : esc(v.cnote)) + "</span></div>" : "") +
+          (v.status === "correction_requested" && v.fixId && v.code ? '<a class="ch-fix" href="collect-sheet.html?code=' + encodeURIComponent(v.code) + "&fix=" + encodeURIComponent(v.fixId) + "&reason=" + encodeURIComponent(v.cnote) + fixQs(v) + "&name=" + encodeURIComponent(v.name || "") + "&inv=" + encodeURIComponent((v.invoices[0] && v.invoices[0].no) || "") + '">' + (selfEdit(v.cnote) ? "Continue &amp; save" : "Correct &amp; resubmit") + "</a>" : "") + (v.status === "pending_approval" && v.pendId && v.code ? '<button type="button" class="ch-fix" data-edit="' + esc(v.pendId) + '" data-code="' + esc(v.code) + '" data-name="' + esc(v.name || "") + '" data-inv="' + esc((v.invoices[0] && v.invoices[0].no) || "") + '" data-qs="' + esc(fixQs(v)) + '" style="width:100%;border:0;cursor:pointer;font-family:inherit">Edit collection</button>' : "")+ "</div></div>";
       }
       function draw() {
         var vs = visits(rows);
@@ -220,9 +231,9 @@
         var need = f.filter(function (v) { return v.status === "correction_requested"; });
         if (mode === "today") {
           // The Day tab only lists this day, so tell the person when a correction from another day is waiting.
-          if (corrN > need.length) html += '<div class="ch-hint"><span><b>' + corrN + (corrN === 1 ? " collection needs" : " collections need") + ' correction</b></span><a href="collections-history.html?all=1&fix=1">Review</a></div>';
+          if (corrN > need.length) html += '<div class="ch-hint"><span><b>' + corrN + (corrN === 1 ? " collection is" : " collections are") + ' waiting to be saved again</b></span><a href="collections-history.html?all=1&fix=1">Review</a></div>';
         } else if (need.length) {
-          html += '<div class="ch-fixhd">Needs your correction (' + need.length + ")</div>" + need.map(item).join("");
+          html += '<div class="ch-fixhd">Waiting for you (' + need.length + ")</div>" + need.map(item).join("");
           f = f.filter(function (v) { return v.status !== "correction_requested"; });
         }
         if (!f.length && !need.length) html += '<div class="ch-empty">No collections ' + (mode === "today" ? "on this day" : "yet") + ".</div>";
@@ -238,7 +249,7 @@
             fetch("/api/accounts/collections/" + encodeURIComponent(b.getAttribute("data-edit")) + "/edit", { method: "POST", credentials: "same-origin" })
               .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Could not start editing"); return j; }); })
               .then(function (j) {
-                window.location.href = "collect-sheet.html?code=" + encodeURIComponent(b.getAttribute("data-code")) + "&fix=" + encodeURIComponent(j.fixId) + "&reason=" + encodeURIComponent("Editing your collection") + "&name=" + encodeURIComponent(b.getAttribute("data-name")) + "&inv=" + encodeURIComponent(b.getAttribute("data-inv"));
+                window.location.href = "collect-sheet.html?code=" + encodeURIComponent(b.getAttribute("data-code")) + "&fix=" + encodeURIComponent(j.fixId) + "&reason=" + encodeURIComponent("Editing your collection") + "&name=" + encodeURIComponent(b.getAttribute("data-name")) + "&inv=" + encodeURIComponent(b.getAttribute("data-inv")) + (b.getAttribute("data-qs") || "");
               })
               .catch(function (e) { alert(e.message); b.disabled = false; b.textContent = "Edit collection"; });
           };

@@ -2265,10 +2265,74 @@
                 ? " Mark as Delivered"
                 : " I\u2019ve reached the shop";
         }
+        // No saved location for this shop: when the employee says they have reached it, offer to save the spot
+        // where they are standing right now (phone GPS, read at the moment of the tap) as the shop's location.
+        function askSavePin() {
+          if (GM.shopPin(shop) || document.getElementById("pinAsk")) return;
+          var bg = document.createElement("div");
+          bg.id = "pinAsk";
+          bg.style.cssText = "position:fixed;inset:0;z-index:9000;background:rgba(2,6,12,.6);display:flex;align-items:center;justify-content:center;padding:18px";
+          bg.innerHTML =
+            '<div role="alertdialog" aria-modal="true" aria-labelledby="pinAskT" style="background:var(--card,#fff);color:var(--text,#111);width:100%;max-width:360px;border-radius:18px;padding:22px 20px 18px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.35)">' +
+            '<h2 id="pinAskT" style="font-size:18px;margin:0 0 8px">Shop location not saved</h2>' +
+            '<p style="font-size:14px;line-height:1.5;margin:0 0 6px;color:var(--muted,#64748b)">You are at the shop now. Save the spot where you are standing as this shop\u2019s location?</p>' +
+            '<p id="pinAskMsg" style="font-size:13px;min-height:18px;margin:6px 0 12px;color:var(--muted,#64748b)" role="status"></p>' +
+            '<div style="display:grid;gap:8px"><button type="button" id="pinAskGo" class="dv-btn2" style="height:46px">Save my current location</button>' +
+            '<button type="button" id="pinAskNo" style="height:42px;border-radius:10px;border:1px solid var(--border,#d1d5db);background:transparent;color:inherit;font:inherit;font-weight:600">Not now</button></div></div>';
+          document.body.appendChild(bg);
+          var go = bg.querySelector("#pinAskGo"),
+            no = bg.querySelector("#pinAskNo"),
+            msg = bg.querySelector("#pinAskMsg"),
+            tm = 0;
+          no.onclick = function () {
+            clearInterval(tm);
+            bg.remove();
+          };
+          go.onclick = function () {
+            if (!navigator.geolocation) {
+              msg.textContent = "This phone cannot give its location.";
+              return;
+            }
+            go.disabled = true;
+            var t0 = Date.now();
+            msg.textContent = "Getting your location... 15 s. Stay where you are.";
+            tm = setInterval(function () {
+              msg.textContent = "Getting your location... " + Math.max(0, 15 - Math.floor((Date.now() - t0) / 1000)) + " s. Stay where you are.";
+            }, 500);
+            navigator.geolocation.getCurrentPosition(
+              function (pos) {
+                clearInterval(tm);
+                go.disabled = false;
+                if (pos.coords.accuracy > 100) {
+                  msg.textContent = "Signal is weak (about " + Math.round(pos.coords.accuracy) + " m). Step outside the shop and tap again.";
+                  return;
+                }
+                if (GM.savePin(shop, pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy)) {
+                  msg.textContent = "Location saved. Thank you.";
+                  var pb = document.getElementById("pinBox");
+                  if (pb) pb.style.display = "none";
+                  var d1 = document.getElementById("directionsBtn"), d2 = document.getElementById("directionsBtn2");
+                  if (d1) d1.href = GM.mapsUrl(shop);
+                  if (d2) d2.href = GM.mapsUrl(shop);
+                  setTimeout(function () { bg.remove(); }, 900);
+                } else msg.textContent = "Could not save the location.";
+              },
+              function () {
+                clearInterval(tm);
+                go.disabled = false;
+                msg.textContent = "Location was blocked or could not be found. Allow location for this site and try again.";
+              },
+              { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+            );
+          };
+        }
         reach.onclick = function () {
           GMVisit.arrive(shop, "manual", { dist: lastM });
           paint();
+          askSavePin();
         };
+        // The main "I've reached the shop" button does the same.
+        window.gmAskSavePin = askSavePin;
         setInterval(paint, 1000);
         paint();
         window.gmPaintVisit = paint;
@@ -2528,6 +2592,7 @@
           if (!(v && v.arrivedAt)) {
             GMVisit.arrive(shop, "manual", {});
             if (window.gmPaintVisit) window.gmPaintVisit();
+            if (window.gmAskSavePin) window.gmAskSavePin();
             return;
           } // first tap = reached the shop; the label changes by itself
           setRetMode("no");

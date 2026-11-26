@@ -84,7 +84,7 @@
 <script>
 Sales.start("payments",function(me,hello,main){
   var Q=new URLSearchParams(location.search),CODE=Q.get("c")||"",ORDER=Q.get("o")||"",FIX=Q.get("fix")||"";
-  var PRE_AMT=Number(Q.get("amt")||0),PRE_METHOD=Q.get("method")||"",PRE_NOTE=Q.get("note")||"",PRE_REASON=Q.get("reason")||"",PRE_INV=Q.get("inv")||"";
+  var PRE_AMT=Number(Q.get("amt")||0),PRE_METHOD=Q.get("method")||"",PRE_NOTE=Q.get("note")||"",PRE_REASON=Q.get("reason")||"",PRE_INV=Q.get("inv")||"",WAS=Q.get("was")||"",SELF=!PRE_REASON||/^(Employee is editing this collection|Editing your collection)$/i.test(PRE_REASON);
   if(!CODE)return location.replace("customers.html");
   hello.innerHTML=FIX?"<h1>Correct bill collection</h1><p>Fix the details requested by office and resubmit</p>":"<h1>Collect payment</h1><p>Record money received from this shop</p>";
   var esc=Sales.esc,SPN={cash:"Cash",upi:"UPI",bank_transfer:"Bank transfer"};
@@ -103,7 +103,7 @@ Sales.start("payments",function(me,hello,main){
     img.onerror=function(){URL.revokeObjectURL(url);rawUrl(f).then(ok)};img.src=url})}
 
   main.innerHTML=
-    (FIX?'<div class="cs-fix"><b>Correction requested</b>'+(PRE_REASON?'<span>Note: '+esc(PRE_REASON)+'</span>':"")+'<span>Update the bill amount or photo below and save.</span></div>':"")+
+    (FIX?'<div class="cs-fix"><b>'+(SELF?"Finish your collection":"Office asked for a correction")+'</b>'+(WAS?'<span style="color:var(--muted)">You entered:</span><span style="font-size:15px;font-weight:700">'+esc(WAS)+(PRE_INV?" \u00b7 Invoice #"+esc(PRE_INV):"")+'</span>':"")+(SELF?'<span>It is on hold until you save it again. Check the amount and how it was paid, then tap Save.</span><button type="button" id="csKeep" style="justify-self:start;margin-top:4px;padding:8px 12px;border-radius:9px;border:1px solid rgba(13,148,136,.5);background:transparent;color:inherit;font:inherit;font-size:13px;font-weight:700;cursor:pointer">Keep it as it was</button>':'<span><b>Office note:</b> '+esc(PRE_REASON)+'</span><span>Fix it, then tap Save.</span>')+'</div>':"")+
     (ORDER?'<div class="cs-order">Order #'+esc(ORDER)+' placed. You can collect any unpaid bills from this shop below.</div>':"")+
     '<div class="cs-card cs-shop" id="csShop"><b>Loading shop...</b></div>'+
     '<div class="cs-card" id="csPay" style="display:none;color:var(--text)"><h3>Payment method</h3><div class="cs-tiles" id="csTiles"><button type="button" class="cs-tile on" data-m="cash" aria-pressed="true"><span>💵</span>Cash</button><button type="button" class="cs-tile" data-m="upi" aria-pressed="false"><span>📱</span>UPI</button><button type="button" class="cs-tile" data-m="bank_transfer" aria-pressed="false"><span>🏦</span>Bank</button></div>'+
@@ -117,6 +117,13 @@ Sales.start("payments",function(me,hello,main){
       '<button class="btn" id="csGo" type="button" disabled style="width:100%">Save collection</button><p class="cs-hint">A bill photo is optional (uploaded in background when signal allows). The collection waits for Billing/Admin approval; the shop\'s balance changes only after approval.</p></div>'+
     '</div><div id="csDone"></div><div id="ocView"><img id="ocImg" alt="Bill photo"></div>';
 
+  var kb=document.getElementById("csKeep");
+  if(kb)kb.onclick=function(){
+    if(!confirm("Keep this collection as it was? It goes back to waiting for approval, with nothing changed."))return;
+    kb.disabled=true;kb.textContent="Putting it back...";
+    Sales.api("/api/accounts/collections/"+encodeURIComponent(FIX)+"/cancel-edit",{}).then(function(){location.replace("collections-history.html?all=1")})
+      .catch(function(e){alert(e.message);kb.disabled=false;kb.textContent="Keep it as it was"});
+  };
   if(PRE_METHOD&&SPN[PRE_METHOD]){
     S.method=PRE_METHOD;
     document.querySelectorAll(".cs-tile").forEach(function(x){var on=x.getAttribute("data-m")===PRE_METHOD;x.classList.toggle("on",on);x.setAttribute("aria-pressed",String(on))});

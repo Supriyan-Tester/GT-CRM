@@ -662,6 +662,66 @@
   }
 
   /* S.start(page, build): checks the sign-in, draws the menu and header, then calls build(user, titleEl, mainEl). */
+  // Popup for a shop that has no saved location: saves the spot where the salesperson is standing right now.
+  // Shown once per shop per session. Uses the same /api/sales/pin as the shop page.
+  S.offerPin = function (shop) {
+    if (!shop || !shop.code || (Number(shop.lat) && Number(shop.lng)) || document.getElementById("pinAsk")) return;
+    try { if (sessionStorage.getItem("gm_pinask_" + shop.code)) return; sessionStorage.setItem("gm_pinask_" + shop.code, "1"); } catch (e) {}
+    var bg = document.createElement("div");
+    bg.id = "pinAsk";
+    bg.style.cssText = "position:fixed;inset:0;z-index:9000;background:rgba(2,6,12,.6);display:flex;align-items:center;justify-content:center;padding:18px";
+    bg.innerHTML =
+      '<div role="alertdialog" aria-modal="true" aria-labelledby="pinAskT" style="background:var(--card,#fff);color:var(--text,#111);width:100%;max-width:360px;border-radius:18px;padding:22px 20px 18px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.35)">' +
+      '<h2 id="pinAskT" style="font-size:18px;margin:0 0 8px">Shop location not saved</h2>' +
+      '<p style="font-size:14px;line-height:1.5;margin:0 0 6px;color:var(--muted,#64748b)">If you are at the shop now, save the spot where you are standing as this shop\u2019s location.</p>' +
+      '<div id="pinAskMsg" style="font-size:13px;min-height:18px;margin:6px 0 12px;color:var(--muted,#64748b)" role="status"></div>' +
+      '<div style="display:grid;gap:8px"><button type="button" id="pinAskGo" class="btn teal" style="width:100%">Save my current location</button>' +
+      '<button type="button" id="pinAskNo" class="btn line" style="width:100%">Not now</button></div></div>';
+    document.body.appendChild(bg);
+    var go = bg.querySelector("#pinAskGo"), no = bg.querySelector("#pinAskNo"), msg = bg.querySelector("#pinAskMsg"), tm = 0, wid = null;
+    function stop() { clearInterval(tm); if (wid != null && navigator.geolocation) navigator.geolocation.clearWatch(wid); wid = null; }
+    no.onclick = function () { stop(); bg.remove(); };
+    function save(p) {
+      msg.textContent = "Saving...";
+      S.api("/api/sales/pin", { code: shop.code, lat: p.coords.latitude, lng: p.coords.longitude, acc: Math.round(p.coords.accuracy || 0) })
+        .then(function () {
+          shop.lat = p.coords.latitude; shop.lng = p.coords.longitude;
+          msg.textContent = "Location saved. Thank you.";
+          setTimeout(function () { bg.remove(); }, 900);
+        })
+        .catch(function (e) { go.disabled = false; msg.textContent = (e && e.message) || "Could not save the location."; });
+    }
+    go.onclick = function () {
+      if (!navigator.geolocation) { msg.textContent = "This phone cannot give its location."; return; }
+      go.disabled = true;
+      var best = null, t0 = Date.now(), fin = false;
+      function done() {
+        if (fin) return; fin = true; stop();
+        if (!best) { go.disabled = false; msg.textContent = "Could not get your location. Go outside the shop and try again."; return; }
+        var acc = Math.round(best.coords.accuracy || 0);
+        if (acc <= 100) return save(best);
+        go.disabled = false;
+        msg.textContent = acc > 500
+          ? "Signal too weak (about " + acc + " m). Stand at the shop front in the open and try again."
+          : "Signal weak (about " + acc + " m). Go outside and try again.";
+      }
+      function show() { msg.textContent = "Getting your location... " + Math.max(0, 15 - Math.floor((Date.now() - t0) / 1000)) + " s. Stay where you are."; }
+      show();
+      tm = setInterval(function () { if (Date.now() - t0 >= 15000) done(); else show(); }, 500);
+      wid = navigator.geolocation.watchPosition(
+        function (p) {
+          if (!best || p.coords.accuracy < best.coords.accuracy) best = p;
+          if (best.coords.accuracy <= 15) done();
+        },
+        function (e) {
+          if (best) return done();
+          fin = true; stop(); go.disabled = false;
+          msg.textContent = e && e.code === 1 ? "Location is blocked. Allow location for this site and try again." : "Could not get your location. Go outside the shop and try again.";
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+      );
+    };
+  };
   S.start = function (page, build) {
     // These pages need the price list and shops. Ask for them now, in parallel with the sign-in check, instead of after it.
     if (/^(home|customers|order|products|shop)$/.test(page)) {
