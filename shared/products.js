@@ -212,7 +212,9 @@
     return (
       '<span class="pr-th ' +
       (cls || "") +
-      '">' +
+      '"' +
+      (im ? ' data-zoom="' + esc(p.id) + '" title="Click to enlarge"' : "") +
+      ">" +
       (im
         ? '<img src="' + PR.imgUrl(p, im) + '" alt="" loading="lazy">'
         : '<span class="pr-th-i">' + GA.icon("box") + "</span>") +
@@ -402,4 +404,256 @@
   PR.hasErr = function (e) {
     return Object.keys(e).length > 0;
   };
+
+  /* ---------- crop a picture before it is added ---------- */
+  (function () {
+    var css = document.createElement("style");
+    css.textContent =
+      ".pr-th[data-zoom]{cursor:zoom-in}" +
+      ".pz-bd{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:16px}" +
+      ".pz-bd img{max-width:92vw;max-height:86vh;object-fit:contain;border-radius:10px;background:#fff}" +
+      ".pz-x,.pz-nv{position:absolute;border:0;border-radius:50%;width:42px;height:42px;background:rgba(255,255,255,.9);color:#111;font:700 22px/1 system-ui;cursor:pointer}" +
+      ".pz-x{top:14px;right:14px}.pz-nv.l{left:14px}.pz-nv.r{right:14px}" +
+      ".pc-bd{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:12px}" +
+      ".pc-box{background:var(--card,#fff);color:var(--text,#111);border-radius:14px;max-width:96vw;width:640px;max-height:96vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4)}" +
+      ".pc-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line,#e6eaf0)}" +
+      ".pc-h b{margin-right:auto;font-size:16px}" +
+      ".pc-h button,.pc-f button{border:1px solid var(--line,#d5dbe3);background:transparent;color:inherit;border-radius:8px;padding:7px 12px;font:600 13px system-ui;cursor:pointer}" +
+      ".pc-h button.on{background:var(--primary,#0f766e);border-color:var(--primary,#0f766e);color:#fff}" +
+      ".pc-s{padding:14px;display:flex;justify-content:center;align-items:center;overflow:auto;background:rgba(0,0,0,.06)}" +
+      ".pc-w{position:relative;line-height:0;touch-action:none;user-select:none}" +
+      ".pc-w img{display:block;max-width:100%;max-height:60vh;-webkit-user-drag:none}" +
+      ".pc-c{position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.55);cursor:move;touch-action:none}" +
+      ".pc-c i{position:absolute;width:22px;height:22px;background:#fff;border:2px solid var(--primary,#0f766e);border-radius:50%;touch-action:none}" +
+      ".pc-c i.nw{left:-11px;top:-11px;cursor:nwse-resize}.pc-c i.ne{right:-11px;top:-11px;cursor:nesw-resize}" +
+      ".pc-c i.sw{left:-11px;bottom:-11px;cursor:nesw-resize}.pc-c i.se{right:-11px;bottom:-11px;cursor:nwse-resize}" +
+      ".pc-f{display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--line,#e6eaf0)}" +
+      ".pc-f button.go{background:var(--primary,#0f766e);border-color:var(--primary,#0f766e);color:#fff}";
+    document.head.appendChild(css);
+  })();
+
+  // Opens a crop window. Resolves with the cropped File, the original File ("Use original"), or null (Cancel).
+  PR.crop = function (file) {
+    return new Promise(function (resolve) {
+      var url = URL.createObjectURL(file),
+        im = new Image(),
+        bd,
+        done = false;
+      function finish(v) {
+        if (done) return;
+        done = true;
+        document.removeEventListener("keydown", onKey);
+        if (bd) bd.remove();
+        URL.revokeObjectURL(url);
+        resolve(v);
+      }
+      function onKey(e) {
+        if (e.key === "Escape") finish(null);
+      }
+      im.onerror = function () {
+        finish(file); // cannot preview it: add as it is
+      };
+      im.onload = function () {
+        bd = document.createElement("div");
+        bd.className = "pc-bd";
+        bd.innerHTML =
+          '<div class="pc-box" role="dialog" aria-label="Crop image"><div class="pc-h"><b>Crop image</b>' +
+          '<button type="button" data-a="1:1" class="on">Square</button><button type="button" data-a="4:3">4:3</button><button type="button" data-a="3:4">3:4</button><button type="button" data-a="0">Free</button></div>' +
+          '<div class="pc-s"><div class="pc-w"><img alt=""><div class="pc-c"><i class="nw" data-h="nw"></i><i class="ne" data-h="ne"></i><i class="sw" data-h="sw"></i><i class="se" data-h="se"></i></div></div></div>' +
+          '<div class="pc-f"><button type="button" data-x="cancel">Cancel</button><button type="button" data-x="orig">Use original</button><button type="button" class="go" data-x="ok">Crop &amp; add</button></div></div>';
+        document.body.appendChild(bd);
+        document.addEventListener("keydown", onKey);
+        var img = bd.querySelector("img"),
+          wrap = bd.querySelector(".pc-w"),
+          box = bd.querySelector(".pc-c"),
+          asp = 1,
+          R = { x: 0, y: 0, w: 0, h: 0 },
+          dw = 0,
+          dh = 0;
+        img.src = url;
+        function paint() {
+          box.style.left = R.x + "px";
+          box.style.top = R.y + "px";
+          box.style.width = R.w + "px";
+          box.style.height = R.h + "px";
+        }
+        function reset() {
+          dw = img.clientWidth;
+          dh = img.clientHeight;
+          var w = dw * 0.9,
+            h = dh * 0.9;
+          if (asp) {
+            if (w / h > asp) w = h * asp;
+            else h = w / asp;
+          }
+          R = { x: (dw - w) / 2, y: (dh - h) / 2, w: w, h: h };
+          paint();
+        }
+        if (img.complete && img.clientWidth) reset();
+        else img.onload = reset;
+        window.addEventListener("resize", reset);
+        bd.addEventListener("click", function (e) {
+          if (e.target === bd) return finish(null);
+          var a = e.target.closest("[data-a]");
+          if (a) {
+            [].forEach.call(bd.querySelectorAll("[data-a]"), function (b) {
+              b.classList.toggle("on", b === a);
+            });
+            var p = a.dataset.a.split(":");
+            asp = p.length > 1 ? +p[0] / +p[1] : 0;
+            reset();
+            return;
+          }
+          var x = e.target.closest("[data-x]");
+          if (!x) return;
+          if (x.dataset.x === "cancel") finish(null);
+          else if (x.dataset.x === "orig") finish(file);
+          else out();
+        });
+        // drag the box to move it, drag a corner to resize it
+        var drag = null;
+        function pt(e) {
+          var r = wrap.getBoundingClientRect();
+          return { x: e.clientX - r.left, y: e.clientY - r.top };
+        }
+        box.addEventListener("pointerdown", function (e) {
+          var h = e.target.dataset && e.target.dataset.h,
+            p = pt(e);
+          drag = h
+            ? {
+                h: h,
+                ax: h.indexOf("w") > -1 ? R.x + R.w : R.x,
+                ay: h.indexOf("n") > -1 ? R.y + R.h : R.y,
+                dx: h.indexOf("e") > -1 ? 1 : -1,
+                dy: h.indexOf("s") > -1 ? 1 : -1,
+              }
+            : { m: 1, ox: p.x - R.x, oy: p.y - R.y };
+          try {
+            box.setPointerCapture(e.pointerId);
+          } catch (x) {}
+          e.preventDefault();
+        });
+        box.addEventListener("pointermove", function (e) {
+          if (!drag) return;
+          var p = pt(e);
+          if (drag.m) {
+            R.x = Math.max(0, Math.min(dw - R.w, p.x - drag.ox));
+            R.y = Math.max(0, Math.min(dh - R.h, p.y - drag.oy));
+          } else {
+            var maxW = drag.dx > 0 ? dw - drag.ax : drag.ax,
+              maxH = drag.dy > 0 ? dh - drag.ay : drag.ay,
+              w = Math.max(24, Math.min(maxW, drag.dx * (p.x - drag.ax))),
+              h = Math.max(24, Math.min(maxH, drag.dy * (p.y - drag.ay)));
+            if (asp) {
+              h = w / asp;
+              if (h > maxH) {
+                h = maxH;
+                w = h * asp;
+              }
+            }
+            R.w = w;
+            R.h = h;
+            R.x = drag.dx > 0 ? drag.ax : drag.ax - w;
+            R.y = drag.dy > 0 ? drag.ay : drag.ay - h;
+          }
+          paint();
+        });
+        function end() {
+          drag = null;
+        }
+        box.addEventListener("pointerup", end);
+        box.addEventListener("pointercancel", end);
+        function out() {
+          var sx = im.naturalWidth / dw,
+            sy = im.naturalHeight / dh,
+            cw = Math.round(R.w * sx),
+            ch = Math.round(R.h * sy),
+            k = Math.min(1, 1600 / Math.max(cw, ch)),
+            c = document.createElement("canvas"),
+            png = /png$/i.test(file.type) || /\.png$/i.test(file.name);
+          c.width = Math.max(1, Math.round(cw * k));
+          c.height = Math.max(1, Math.round(ch * k));
+          var g = c.getContext("2d");
+          if (!png) {
+            g.fillStyle = "#fff";
+            g.fillRect(0, 0, c.width, c.height);
+          }
+          g.drawImage(im, R.x * sx, R.y * sy, cw, ch, 0, 0, c.width, c.height);
+          c.toBlob(
+            function (b) {
+              if (!b) return finish(file);
+              var base = String(file.name || "picture").replace(/\.[^.]+$/, "");
+              finish(
+                new File([b], base + (png ? ".png" : ".jpg"), {
+                  type: png ? "image/png" : "image/jpeg",
+                }),
+              );
+            },
+            png ? "image/png" : "image/jpeg",
+            0.92,
+          );
+        }
+      };
+      im.src = url;
+    });
+  };
+
+  /* ---------- click a product picture to see it bigger ---------- */
+  PR.zoom = function (p, start) {
+    var list = ((p && p.imgs) || []).filter(Boolean),
+      n = Math.min(Math.max(0, start || 0), Math.max(0, list.length - 1));
+    if (!list.length) return;
+    var bd = document.createElement("div");
+    bd.className = "pz-bd";
+    function show() {
+      bd.innerHTML =
+        '<img alt="' +
+        esc(p.name || "") +
+        '" src="' +
+        PR.imgUrl(p, list[n]) +
+        '"><button type="button" class="pz-x" aria-label="Close">&times;</button>' +
+        (list.length > 1
+          ? '<button type="button" class="pz-nv l" aria-label="Previous">&lsaquo;</button><button type="button" class="pz-nv r" aria-label="Next">&rsaquo;</button>'
+          : "");
+    }
+    function close() {
+      document.removeEventListener("keydown", key, true);
+      bd.remove();
+    }
+    function key(e) {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        close();
+      } else if (list.length > 1 && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+        n = (n + (e.key === "ArrowRight" ? 1 : list.length - 1)) % list.length;
+        show();
+      }
+    }
+    bd.addEventListener("click", function (e) {
+      var b = e.target.closest("button");
+      if (b && b.classList.contains("pz-nv")) {
+        n = (n + (b.classList.contains("r") ? 1 : list.length - 1)) % list.length;
+        show();
+      } else if (!e.target.closest("img")) close();
+    });
+    document.addEventListener("keydown", key, true);
+    show();
+    document.body.appendChild(bd);
+  };
+  document.addEventListener(
+    "click",
+    function (e) {
+      var t = e.target.closest && e.target.closest(".pr-th[data-zoom]");
+      if (!t) return;
+      var p = PR.load().filter(function (x) {
+        return String(x.id) === t.getAttribute("data-zoom");
+      })[0];
+      if (!p) return;
+      e.preventDefault();
+      e.stopPropagation();
+      PR.zoom(p, 0);
+    },
+    true,
+  );
+
 })();

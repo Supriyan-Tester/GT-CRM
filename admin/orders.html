@@ -25,13 +25,14 @@
         margin: 0 0 14px;
       }
       .om-bar {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        display: flex;
+        flex-wrap: wrap;
         gap: 10px;
         margin-bottom: 14px;
       }
       .om-bar > * {
         min-width: 0;
+        flex: 1 1 150px;
       }
       .om-bar input,
       .om-bar select {
@@ -46,7 +47,7 @@
         font-size: 14px;
       }
       .om-bar .om-q {
-        grid-column: 1 / -1;
+        flex: 2 1 260px;
       }
       .om-foot label {
         white-space: nowrap;
@@ -66,8 +67,11 @@
         padding: 0 8px;
       }
       @media (max-width: 700px) {
-        .om-bar {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+        .om-bar > * {
+          flex-basis: calc(50% - 10px);
+        }
+        .om-bar .om-q {
+          flex-basis: 100%;
         }
         .om-k {
           grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1005,10 +1009,11 @@
       };
 
       var st = {
-        from: addDays(istDay(), -29),
+        from: istDay(),
         to: istDay(),
         rep: "",
         area: "",
+        sort: "new",
         status: "all",
         q: "",
         per: 10,
@@ -1025,6 +1030,7 @@
         '<input type="date" id="omTo" aria-label="To date">' +
         '<select id="omRep" aria-label="Sales person"></select>' +
         '<select id="omArea" aria-label="Area"></select>' +
+        '<select id="omSort" aria-label="Sort by"><option value="new">Newest first</option><option value="old">Oldest first</option><option value="az">Shop A-Z</option><option value="za">Shop Z-A</option><option value="areaaz">Area A-Z</option><option value="areaza">Area Z-A</option></select>' +
         '<input class="om-q" id="omQ" type="search" placeholder="Search order ID, customer, shop, salesperson...">' +
         "</div>" +
         '<div class="om-k" id="omK"></div>' +
@@ -1056,6 +1062,11 @@
       };
       $("omRep").onchange = function () {
         st.rep = this.value;
+        st.page = 1;
+        draw();
+      };
+      $("omSort").onchange = function () {
+        st.sort = this.value;
         st.page = 1;
         draw();
       };
@@ -1281,7 +1292,8 @@
           lines = o._items.map(function (i) {
             var t = taxInfo(i),
               amt = r2(i.amount),
-              gst = r2(amt * f * (t.rate / 100));
+              gst =
+                i.gst != null ? r2(i.gst) : r2(amt * f * (t.rate / 100));
             return {
               i: i,
               hsn: t.hsn,
@@ -1675,6 +1687,21 @@
             );
           })
           .sort(function (a, b) {
+            function nm(o, f) {
+              return String(o[f] || "").trim();
+            }
+            var k = st.sort,
+              f = k === "az" || k === "za" ? "shop" : "area",
+              c = 0;
+            if (k === "old") return (a.t || 0) - (b.t || 0);
+            if (k !== "new") {
+              c = nm(a, f).localeCompare(nm(b, f), undefined, {
+                sensitivity: "base",
+                numeric: true,
+              });
+              if (k === "za" || k === "areaza") c = -c;
+              if (c) return c;
+            }
             return (b.t || 0) - (a.t || 0);
           });
         $("omExp").onclick = function () {
@@ -1697,7 +1724,7 @@
         });
 
         $("omList").innerHTML = rows.length
-          ? '<table class="om-t"><thead><tr><th class="oc-ck"><input type="checkbox" id="omCkAll" aria-label="Select all orders on this page"></th><th>Order ID</th><th>Customer / Shop</th><th>Order Date</th><th>Items</th><th class="r" title="Order total before GST">Amount (ex-GST)</th><th>Status</th><th>Order Taken By</th><th class="r">Actions</th></tr></thead><tbody>' +
+          ? '<table class="om-t"><thead><tr><th class="oc-ck"><input type="checkbox" id="omCkAll" aria-label="Select all orders on this page"></th><th>Order ID</th><th>Customer / Shop</th><th>Order Date</th><th>Items</th><th class="r" title="Order total after GST and discount">Amount (incl. GST)</th><th>Status</th><th>Order Taken By</th><th class="r">Actions</th></tr></thead><tbody>' +
             rows
               .map(function (o, i) {
                 var can = o.status === "cancelled";
@@ -2248,9 +2275,14 @@
                 );
               })
               .join("") +
-            '</tbody></table><div class="om-tot"><span>Subtotal</span><span>' +
+            '</tbody></table><div class="om-tot"><span>Subtotal (before GST)</span><span>' +
             money(o.subtotal) +
             "</span></div>" +
+            (o.gst
+              ? '<div class="om-tot"><span>GST</span><span>+ ' +
+                money(o.gst) +
+                "</span></div>"
+              : "") +
             (o.discount
               ? '<div class="om-tot"><span>Discount</span><span>− ' +
                 money(o.discount) +

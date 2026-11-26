@@ -69,14 +69,18 @@
             Number(p.mrp) > 0
               ? "<small>MRP " + Sales.rupee(p.mrp) + "</small>"
               : "";
-          var gst =
-            p.tax !== "" && p.tax != null
-              ? '<small class="gst">GST ' + Sales.esc(p.tax) + "%</small>"
-              : "";
+          var rate = Math.max(0, Number(p.tax) || 0),
+            base = Math.round((Number(p.price) || 0) * 100) / 100,
+            gstAmt = Math.round(base * rate) / 100,
+            incl = Math.round((base + gstAmt) * 100) / 100,
+            gst = rate ? "" : '<small class="gst">GST Exempt</small>';
           return (
             '<div class="pr"><div class="th"><img loading="lazy" alt="" src="/api/pfile?p=' +
             encodeURIComponent(p.id) +
-            '&i=0"><span hidden>' +
+            "&i=" +
+            (p.img0 != null ? p.img0 : 0) +
+            (p.imgAt ? "&t=" + p.imgAt : "") +
+            '"><span hidden>' +
             ini +
             '</span></div><div class="pn"><b>' +
             Sales.esc(p.name) +
@@ -84,7 +88,7 @@
             sub +
             "</small></div>" +
             '<div class="pp"><b>' +
-            Sales.rupee(p.price) +
+            Sales.rupee(base) +
             "</b><small>" +
             (p.unit ? "per " + Sales.esc(p.unit) : "") +
             "</small>" +

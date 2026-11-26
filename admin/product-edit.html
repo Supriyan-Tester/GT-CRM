@@ -577,9 +577,7 @@
       function draw() {
         var body = [s0, s1, s2, s3][step]();
         pg.innerHTML =
-          '<div class="pr-crumb"><a href="products.html">Products</a> &rsaquo; ' +
-          (editCode ? "Edit Product" : "Add Product") +
-          '</div><div class="pr-wiz">' +
+          '<div class="pr-wiz">' +
           side() +
           '<section class="card pr-main"><div class="pr-mh"><div><p>' +
           (editCode
@@ -589,14 +587,15 @@
                 esc(src.name) +
                 ". Give it a new code and name."
               : "Add a new product to your catalogue.") +
-          '</p></div><a class="btn btn-secondary a-btn" href="products.html" id="pCancel">Cancel</a></div>' +
+          '</p></div></div>' +
           body +
-          '<div class="pr-foot2">' +
+          '<div class="pr-foot2"><div class="pr-fl"><a class="btn btn-secondary a-btn" href="products.html" id="pCancel">Cancel</a>' +
           (step
             ? '<button class="btn btn-secondary a-btn" type="button" id="pBack">' +
               DP.icon("close").replace(/.*/, "") +
               "&lsaquo; Back</button>"
-            : "<span></span>") +
+            : "") +
+          "</div>" +
           (step < 3
             ? '<button class="btn a-btn" type="button" id="pNext">Next &rarr;</button>'
             : '<button class="btn a-btn" type="button" id="pSave">' +
@@ -765,7 +764,27 @@
           }
         return -1;
       }
+      // every picture goes through the crop window first (Cancel skips it, "Use original" keeps it as it is)
       function addFiles(fs) {
+        var q = fs.slice(0, step === 0 ? 1 : fs.length);
+        (function next() {
+          var f = q.shift();
+          if (!f) return;
+          if (PR.checkImg(f)) {
+            addFilesNow([f]); // shows the "choose a JPG..." message
+            return next();
+          }
+          if (imgs.length >= PR.MAXIMG && step !== 0) {
+            addFilesNow([f]); // shows the "up to N pictures" message
+            return next();
+          }
+          PR.crop(f).then(function (c) {
+            if (c) addFilesNow([c]);
+            next();
+          });
+        })();
+      }
+      function addFilesNow(fs) {
         var msg = "",
           single = step === 0;
         fs.forEach(function (f) {

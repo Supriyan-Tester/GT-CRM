@@ -77,7 +77,9 @@
             [c.area, c.address].filter(Boolean).map(Sales.esc).join(" · ") ||
             "No address yet";
           return (
-            '<div class="shop">' +
+            '<div class="shop" style="cursor:pointer" data-go="shop.html?c=' +
+            encodeURIComponent(c.code) +
+            '&from=customers">' +
             (PH[c.code]
               ? '<div class="tile" style="padding:0;overflow:hidden"><img src="/api/photo?code=' +
                 encodeURIComponent(c.code) +
@@ -102,13 +104,19 @@
             "</small>" +
             (c.phone ? "<small>" + Sales.esc(c.phone) + "</small>" : "") +
             "</a>" +
-            '<div class="acts"><a class="btn teal sm" href="order.html?c=' +
+            '<div class="acts"><a class="btn teal sm" href="shop.html?c=' +
             encodeURIComponent(c.code) +
             '&from=customers">' +
             Sales.ic("cart") +
             "Take Order</a></div></div>"
           );
         }
+        // the whole row opens the shop page (the Take Order button goes there too)
+        list.addEventListener("click", function (e) {
+          if (e.target.closest("a, button")) return;
+          var r = e.target.closest("[data-go]");
+          if (r) location.href = r.getAttribute("data-go");
+        });
         function draw() {
           var R = rows();
           document.getElementById("sub").textContent =
