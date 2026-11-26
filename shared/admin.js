@@ -536,10 +536,14 @@
       if ((w.password || "").length < 6 || (w.password || "").length > 15)
         err = err || "Password must be 6 to 15 characters.";
       if (err) return { ok: false, error: err };
+      // Ids are never reused: d.maxN remembers the highest number ever given, even after that employee is deleted.
       var n =
-        d.workers.reduce(function (m, x) {
-          return Math.max(m, parseInt(x.id.slice(1), 10) || 0);
-        }, 0) + 1;
+        Math.max(
+          d.workers.reduce(function (m, x) {
+            return Math.max(m, parseInt(x.id.slice(1), 10) || 0);
+          }, 0),
+          parseInt(d.maxN, 10) || 0,
+        ) + 1;
       var rec = {
         id: "W" + String(n).padStart(3, "0"),
         name: w.name.trim(),
@@ -550,6 +554,7 @@
         created: today(),
       };
       d.workers.push(rec);
+      d.maxN = n;
       save(d);
       return { ok: true, worker: rec };
     },

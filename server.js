@@ -4752,7 +4752,13 @@ function api(req, res, url) {
               ". Mark them as relieved instead, so the history stays.",
             reasons,
           });
+        // Remember the highest employee number ever used, so a deleted employee's id (e.g. W005) is never given to a new person.
+        const maxN = (wd.workers || []).reduce(
+          (m, x) => Math.max(m, parseInt(String((x && x.id) || "").slice(1), 10) || 0),
+          parseInt(wd.maxN, 10) || 0,
+        );
         const nd = Object.assign({}, wd, {
+          maxN,
           workers: wd.workers.filter((x) => x && x.id !== id),
           leaves: (wd.leaves || []).filter((l) => l && l.workerId !== id),
         });
