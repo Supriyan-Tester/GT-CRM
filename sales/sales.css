@@ -51,8 +51,8 @@
   --line: #e6eaf0;
   --text: #0f172a;
   --muted: #64748b;
-  --pri: #2563eb;
-  --pri-soft: #e8effd;
+  --pri: #0f766e;
+  --pri-soft: #e6f4f1;
   --on-pri: #fff;
   --teal: #0d9488;
   --teal-soft: #dff5f2;
@@ -60,7 +60,7 @@
   --amber-soft: #fdf0dc;
   --red: #dc2626;
   --red-soft: #fdeaea;
-  --sel: #eaf1ff;
+  --sel: #e6f4f1;
   --glow: #ccf0ea;
   --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.05);
   --r: 14px;
@@ -74,16 +74,16 @@ html[data-theme="dark"] {
   --line: #243038;
   --text: #f1f5f9;
   --muted: #94a3b8;
-  --pri: #4b8bff;
-  --pri-soft: #1a2a4a;
-  --on-pri: #fff;
+  --pri: #2dd4bf;
+  --pri-soft: #12332f;
+  --on-pri: #06201d;
   --teal: #2dd4bf;
   --teal-soft: #12302e;
   --amber: #fbbf24;
   --amber-soft: #35290f;
   --red: #f87171;
   --red-soft: #3a1c1c;
-  --sel: #182740;
+  --sel: #12332f;
   --glow: #123a36;
   --shadow: none;
 }
@@ -1131,7 +1131,7 @@ html[data-theme="dark"] .add {
   height: 22px;
   border-radius: 11px;
   background: var(--pri);
-  color: #fff;
+  color: var(--on-pri);
   font-size: 12px;
   font-weight: 700;
   display: grid;
@@ -1541,7 +1541,7 @@ html[data-theme="dark"] .add {
 }
 .seg button.on {
   background: var(--pri);
-  color: #fff;
+  color: var(--on-pri);
 }
 .stops {
   display: flex;
@@ -1590,7 +1590,7 @@ html[data-theme="dark"] .add {
 .st.current .dot {
   background: var(--pri);
   border-color: var(--pri);
-  color: #fff;
+  color: var(--on-pri);
 }
 .st b {
   display: block;

@@ -125,6 +125,36 @@ function createAccountsRoutes(config) {
     if (!isRead) { readCache.clear(); summaryCache.clear(); }
     return out;
   }
+  // When an employee re-submits a collection the office sent back (status correction_requested), the old row must be closed,
+  // otherwise it stays on the Home banner and red count forever and shows next to the new one. It is marked "reversed":
+  // it was never approved, so nothing was posted to the ledger, and "reversed" rows are hidden from the history and ignored
+  // by every balance check. Only the employee's OWN rows still waiting for correction are touched, and a failure here is
+  // logged but never undoes the new collection that was already saved.
+  async function closeCorrection(session, correctsId) {
+    try {
+      const id = String(correctsId || "").trim();
+      if (!/^[0-9a-f-]{36}$/i.test(id)) return;
+      const me = encodeURIComponent(String(session.id));
+      const headers = { apikey: KEY, Authorization: "Bearer " + KEY };
+      readCache.clear();
+      const found = await fetchImpl(URL + "/rest/v1/gm_accounts_collections?select=id,visit_ref&id=eq." + id + "&collected_by=eq." + me + "&status=eq.correction_requested", { headers });
+      if (!found.ok) throw new Error("lookup failed (" + found.status + ")");
+      const row = (await found.json())[0];
+      if (!row) return; // already closed, not theirs, or not waiting for correction
+      const scope = row.visit_ref ? "visit_ref=eq." + encodeURIComponent(row.visit_ref) : "id=eq." + id;
+      const done = await fetchImpl(URL + "/rest/v1/gm_accounts_collections?" + scope + "&collected_by=eq." + me + "&status=eq.correction_requested", {
+        method: "PATCH",
+        headers: Object.assign({ "Content-Type": "application/json", Prefer: "return=minimal" }, headers),
+        body: JSON.stringify({ status: "reversed" }),
+      });
+      if (!done.ok) throw new Error("update failed (" + done.status + ")");
+      readCache.clear(); summaryCache.clear();
+      logEvent(session, "Re-submitted a collection that needed correction (old record " + id + " closed)");
+    } catch (e) {
+      readCache.clear(); summaryCache.clear();
+      console.error("Accounts close correction:", e && e.message);
+    }
+  }
   // Message raised by our own database functions (shown to the admin), or "" for anything else.
   function dbMessage(e) {
     try { const j = JSON.parse(String(e && e.message || "")); if (j && j.code === "P0001" && j.message) return String(j.message).slice(0, 200); } catch (_) {}
@@ -911,7 +941,8 @@ function createAccountsRoutes(config) {
                 p_collector_name: String(session.name || config.employeeName(session.id) || "Employee").slice(0, 120),
                 p_parts: valid.parts.map((x) => ({ method: x.method, allocations: x.allocations })),
                 p_note: valid.note,
-              }).then((result) => {
+              }).then(async (result) => {
+                await closeCorrection(session, input && input.correctsId);
                 notifyCollection(session, customer, valid.parts.reduce((n, x) => n + Number(x.total || 0), 0), valid.parts.map((x) => ({ cash: "Cash", upi: "UPI", bank_transfer: "Bank" }[x.method] || x.method)).join(" + "));
                 send(res, 201, { ...result, parts: valid.parts.map((x) => ({ method: x.method, total: x.total })) });
               });
@@ -960,6 +991,7 @@ function createAccountsRoutes(config) {
                 p_note: valid.note,
               });
             }).then(async (result) => {
+              await closeCorrection(session, input && input.correctsId);
               notifyCollection(session, customer, valid.allocations.reduce((n, a) => n + Number(a.amount || 0), 0), { cash: "Cash", upi: "UPI", bank_transfer: "Bank" }[valid.method] || valid.method);
               let autoApproved = false, approveError = "";
               if (input && input.autoApprove) {
@@ -1384,6 +1416,27 @@ function createAccountsRoutes(config) {
           }
           logEvent(session, "Employee started editing collection " + id + " (before approval)");
           send(res, 200, { ok: true, fixId: open[0].id });
+        })
+        .catch((e) => fail(res, e));
+      return true;
+    }
+    // Employee changes their mind after tapping Edit: put the collection back to "pending approval" as it was.
+    // The database function refuses unless the hold was started by the employee and the invoice amount is still free.
+    if (req.method === "POST" && /^\/api\/accounts\/collections\/[0-9a-f-]{36}\/cancel-edit$/i.test(p)) {
+      if (!canCollect(session)) { send(res, 403, { error: "Collection permission required." }); return true; }
+      const id = p.split("/")[4];
+      rest("gm_accounts_collections?select=id,collected_by,status,visit_ref&id=eq." + id)
+        .then(async (found) => {
+          const row = found && found[0];
+          if (!row || String(row.collected_by) !== String(session.id)) return send(res, 404, { error: "Collection not found." });
+          const rows = row.visit_ref
+            ? await rest("gm_accounts_collections?select=id,status&visit_ref=eq." + encodeURIComponent(row.visit_ref) + "&collected_by=eq." + encodeURIComponent(String(session.id)))
+            : [row];
+          const ids = rows.filter((r) => r.status === "correction_requested").map((r) => r.id);
+          if (!ids.length) return send(res, 409, { error: "This collection is not on hold." });
+          await rpc("gm_accounts_cancel_collection_edit", { p_collection_ids: ids, p_user: String(session.id) });
+          logEvent(session, "Employee cancelled editing collection " + id + " (put back to pending approval)");
+          send(res, 200, { ok: true });
         })
         .catch((e) => fail(res, e));
       return true;

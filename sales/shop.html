@@ -21,10 +21,15 @@
     <link rel="stylesheet" href="../shared/dropdown.css" />
     <style>
       .gps-wait { display:flex; align-items:center; gap:8px; font-size:14px; }
-      .gps-spin { width:16px; height:16px; flex:none; border:3px solid #cbd5e1; border-top-color:#2563eb; border-radius:50%; animation:gpsSpin .8s linear infinite; }
+      .gps-spin { width:16px; height:16px; flex:none; border:3px solid #cbd5e1; border-top-color:#0f766e; border-radius:50%; animation:gpsSpin .8s linear infinite; }
       @keyframes gpsSpin { to { transform:rotate(360deg); } }
       .gps-bar { height:6px; margin-top:8px; border-radius:3px; background:#e2e8f0; overflow:hidden; }
-      .gps-bar i { display:block; height:100%; width:0; background:#2563eb; transition:width .5s linear; }
+      .gps-bar i { display:block; height:100%; width:0; background:#0f766e; transition:width .5s linear; }
+      /* "Save shop location" button: filled teal with a soft pulsing ring so it is easy to spot */
+      #pinBtn{background:var(--pri,#0f766e);color:#fff;border:0;font-weight:800;animation:pinPulse 1.6s ease-out infinite}
+      #pinBtn:disabled{animation:none;opacity:.7}
+      @keyframes pinPulse{0%{box-shadow:0 0 0 0 rgba(15,118,110,.55)}70%{box-shadow:0 0 0 12px rgba(15,118,110,0)}100%{box-shadow:0 0 0 0 rgba(15,118,110,0)}}
+      @media (prefers-reduced-motion:reduce){#pinBtn{animation:none}}
     </style>
   </head>
   <body>
@@ -71,7 +76,7 @@
             (S.lat && S.lng
               ? ""
               : '<p class="note">This shop has no map pin yet. If you are at the shop, save its location.</p>' +
-                '<button class="btn line" id="pinBtn" type="button" style="margin-top:8px;width:100%">Save shop location (stand at the shop)</button>' +
+                '<button class="btn line" id="pinBtn" type="button" style="margin-top:8px;width:100%">\ud83d\udccd Save shop location (stand at the shop)</button>' +
                 '<p class="note" id="pinMsg"></p>')
           );
         }

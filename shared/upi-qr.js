@@ -7,6 +7,9 @@
   function show(anchor) {
     remove();
     if (!anchor || !anchor.parentNode) return;
+    /* Keep the Single / Split switch right under the tiles: the QR goes after it, not between the two. */
+    var after = anchor.nextElementSibling;
+    if (after && after.matches && after.matches(".cs-seg, .seg, .cp-seg")) anchor = after;
     var img = new Image();
     img.alt = "UPI QR code";
     img.style.cssText = "display:block;margin:8px auto 0;width:100%;max-width:260px;border-radius:10px;background:#fff;padding:8px";

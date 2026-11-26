@@ -930,6 +930,7 @@
                 '<div class="card empty"><b>Shop not found</b><span><a class="link" href="customers.html">Back to My Customers</a></span></div>';
               return;
             }
+            if (!DRAFT) setTimeout(function () { Sales.offerPin(SHOP); }, 600);
             LIST = d.customers.filter(function (c) {
               return c && c.code;
             });

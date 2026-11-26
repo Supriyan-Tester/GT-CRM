@@ -8,6 +8,11 @@
   st.textContent =
     ".gm-badge{display:inline-block;min-width:18px;height:18px;line-height:18px;padding:0 5px;margin-left:6px;border-radius:999px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;text-align:center;vertical-align:middle}" +
     ".gm-corr{display:flex;align-items:center;gap:12px;justify-content:space-between;padding:12px 14px;margin:0 0 12px;border-radius:14px;border:1px solid rgba(220,38,38,.45);background:rgba(220,38,38,.09);color:inherit;font-size:14px}" +
+    // in the bottom menu the red count sits on the corner of the icon, not on a line of its own under the label
+    ".nav a{position:relative}" +
+    ".nav a>.gm-badge{position:absolute;top:5px;left:calc(50% + 6px);margin:0;min-width:16px;height:16px;line-height:16px;font-size:10px;padding:0 4px;box-shadow:0 0 0 2px var(--card,#fff)}" +
+    "@media (min-width:900px){.nav a>.gm-badge{position:static;margin-left:auto;box-shadow:none;font-size:11px;min-width:18px;height:18px;line-height:18px}}" +
+    ".hm-q{position:relative}.hm-q>.gm-badge{position:absolute;top:8px;right:8px;margin:0}" +
     ".gm-corr small{display:block;opacity:.8;margin-top:2px;font-size:12px}" +
     ".gm-corr a{flex:none;padding:9px 14px;border-radius:10px;background:#dc2626;color:#fff;font-weight:700;font-size:13px;text-decoration:none}";
   document.head.appendChild(st);
@@ -22,6 +27,8 @@
     document.querySelectorAll('a[href$="advances.html"],a[href$="collections.html"],a[href$="collections-history.html"]').forEach(function (a) {
       if (a.classList.contains("gm-corr-btn")) return;
       var b = a.querySelector(".gm-badge");
+      // Only the menu links get the red count, never a button such as "Record a collection".
+      if (a.classList.contains("btn")) { if (b) b.remove(); return; }
       if (!count) { if (b) b.remove(); return; }
       if (!b) { b = document.createElement("span"); b.className = "gm-badge"; a.appendChild(b); }
       if (b.textContent !== String(count)) b.textContent = count;
@@ -33,9 +40,14 @@
     var host = document.querySelector("main.app") || document.getElementById("main");
     if (!host) return;
     var one = count === 1 && items[0];
-    var html = "<div><b>Office asked you to correct " + count + (count === 1 ? " collection" : " collections") + "</b>" +
-      (one ? "<small>" + esc(items[0].customerName) + (items[0].note ? ": " + esc(items[0].note) : "") + "</small>" : "") + "</div>" +
-      '<a class="gm-corr-btn" href="collections-history.html?all=1">Review</a>';
+    // "Employee is editing this collection" is written by the app when the employee taps Edit, not by the office.
+    var self = items.length && items.every(function (x) { return !x.note || /^(Employee is editing this collection|Editing your collection)$/i.test(x.note); });
+    var title = self
+      ? (count === 1 ? "1 collection is on hold. Save it again to finish." : count + " collections are on hold. Save them again to finish.")
+      : "Office asked you to correct " + count + (count === 1 ? " collection" : " collections");
+    var html = "<div><b>" + title + "</b>" +
+      (one ? "<small>" + esc(items[0].customerName) + (!self && items[0].note ? ": " + esc(items[0].note) : self ? ": you started editing it" : "") + "</small>" : "") + "</div>" +
+      '<a class="gm-corr-btn" href="collections-history.html?all=1&fix=1">' + (self ? "Continue" : "Review") + "</a>";
     if (!old) { old = document.createElement("div"); old.id = "gmCorr"; old.className = "gm-corr"; host.insertBefore(old, host.firstChild); }
     if (old.parentNode !== host) host.insertBefore(old, host.firstChild);
     if (old.innerHTML !== html) old.innerHTML = html;

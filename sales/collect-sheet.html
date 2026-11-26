@@ -38,7 +38,9 @@
     .cs-seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--border);border-radius:999px;padding:3px;background:var(--bg)}
     .cs-seg button{border:0;border-radius:999px;padding:9px;font:inherit;font-size:14px;font-weight:700;background:none;color:var(--text);cursor:pointer}
     .cs-seg button.on{background:var(--pri,var(--primary));color:#fff}
-    .cs-sp{display:none;gap:8px}.cs-sp.open{display:grid}.cs-sp label{font-size:12px;color:var(--muted);font-weight:700;display:grid;gap:4px}
+    .cs-sp{display:none;gap:10px}.cs-sp.open{display:grid}
+.cs-sp label{display:grid;grid-template-columns:96px minmax(0,1fr);align-items:center;gap:10px;font-size:14px;color:var(--text);font-weight:700}
+.cs-spn{display:flex;align-items:center;gap:8px}.cs-spn i{font-style:normal;font-size:20px}
     .cs-notebtn{display:flex;justify-content:space-between;align-items:center;min-height:44px;width:100%;border:0;background:none;color:var(--text);font:inherit;font-size:14px;font-weight:700;padding:0;cursor:pointer}.cs-notebtn small{font-weight:500;color:var(--muted);margin-left:6px}.cs-notebtn i{font-style:normal;color:var(--muted);transition:transform .15s}.cs-notebtn.open i{transform:rotate(180deg)}
     .cs-total{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:20px;padding-top:6px}
     .cs-err{color:var(--danger,#dc2626);font-size:13px;min-height:16px}
@@ -82,7 +84,7 @@
 <script>
 Sales.start("payments",function(me,hello,main){
   var Q=new URLSearchParams(location.search),CODE=Q.get("c")||"",ORDER=Q.get("o")||"",FIX=Q.get("fix")||"";
-  var PRE_AMT=Number(Q.get("amt")||0),PRE_METHOD=Q.get("method")||"",PRE_NOTE=Q.get("note")||"",PRE_REASON=Q.get("reason")||"",PRE_INV=Q.get("inv")||"";
+  var PRE_AMT=Number(Q.get("amt")||0),PRE_METHOD=Q.get("method")||"",PRE_NOTE=Q.get("note")||"",PRE_REASON=Q.get("reason")||"",PRE_INV=Q.get("inv")||"",WAS=Q.get("was")||"",SELF=!PRE_REASON||/^(Employee is editing this collection|Editing your collection)$/i.test(PRE_REASON);
   if(!CODE)return location.replace("customers.html");
   hello.innerHTML=FIX?"<h1>Correct bill collection</h1><p>Fix the details requested by office and resubmit</p>":"<h1>Collect payment</h1><p>Record money received from this shop</p>";
   var esc=Sales.esc,SPN={cash:"Cash",upi:"UPI",bank_transfer:"Bank transfer"};
@@ -101,12 +103,12 @@ Sales.start("payments",function(me,hello,main){
     img.onerror=function(){URL.revokeObjectURL(url);rawUrl(f).then(ok)};img.src=url})}
 
   main.innerHTML=
-    (FIX?'<div class="cs-fix"><b>Correction requested</b>'+(PRE_REASON?'<span>Note: '+esc(PRE_REASON)+'</span>':"")+'<span>Update the bill amount or photo below and save.</span></div>':"")+
+    (FIX?'<div class="cs-fix"><b>'+(SELF?"Finish your collection":"Office asked for a correction")+'</b>'+(WAS?'<span style="color:var(--muted)">You entered:</span><span style="font-size:15px;font-weight:700">'+esc(WAS)+(PRE_INV?" \u00b7 Invoice #"+esc(PRE_INV):"")+'</span>':"")+(SELF?'<span>It is on hold until you save it again. Check the amount and how it was paid, then tap Save.</span><button type="button" id="csKeep" style="justify-self:start;margin-top:4px;padding:8px 12px;border-radius:9px;border:1px solid rgba(13,148,136,.5);background:transparent;color:inherit;font:inherit;font-size:13px;font-weight:700;cursor:pointer">Keep it as it was</button>':'<span><b>Office note:</b> '+esc(PRE_REASON)+'</span><span>Fix it, then tap Save.</span>')+'</div>':"")+
     (ORDER?'<div class="cs-order">Order #'+esc(ORDER)+' placed. You can collect any unpaid bills from this shop below.</div>':"")+
     '<div class="cs-card cs-shop" id="csShop"><b>Loading shop...</b></div>'+
-    '<div class="cs-card" id="csPay" style="display:none"><h3>Payment method</h3><div class="cs-tiles" id="csTiles"><button type="button" class="cs-tile on" data-m="cash" aria-pressed="true"><span>💵</span>Cash</button><button type="button" class="cs-tile" data-m="upi" aria-pressed="false"><span>📱</span>UPI</button><button type="button" class="cs-tile" data-m="bank_transfer" aria-pressed="false"><span>🏦</span>Bank</button></div>'+
+    '<div class="cs-card" id="csPay" style="display:none;color:var(--text)"><h3>Payment method</h3><div class="cs-tiles" id="csTiles"><button type="button" class="cs-tile on" data-m="cash" aria-pressed="true"><span>💵</span>Cash</button><button type="button" class="cs-tile" data-m="upi" aria-pressed="false"><span>📱</span>UPI</button><button type="button" class="cs-tile" data-m="bank_transfer" aria-pressed="false"><span>🏦</span>Bank</button></div>'+
       '<div class="cs-seg"><button type="button" class="on" id="csOne" aria-pressed="true">Single</button><button type="button" id="csSplit" aria-pressed="false">Split</button></div>'+
-      '<div class="cs-sp" id="csSpBox"><label>Cash amount<input id="sp_cash" type="number" min="0" step="0.01" placeholder="0.00"></label><label>UPI amount<input id="sp_upi" type="number" min="0" step="0.01" placeholder="0.00"></label><label>Bank transfer amount<input id="sp_bank_transfer" type="number" min="0" step="0.01" placeholder="0.00"></label><div class="cs-hint" id="csSpMsg"></div></div></div>'+
+      '<div class="cs-sp" id="csSpBox"><label><span class="cs-spn"><i>💵</i>Cash</span><input id="sp_cash" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" aria-label="Cash amount"></label><label><span class="cs-spn"><i>📱</i>UPI</span><input id="sp_upi" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" aria-label="UPI amount"></label><label><span class="cs-spn"><i>🏦</i>Bank</span><input id="sp_bank_transfer" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" aria-label="Bank transfer amount"></label><div class="cs-hint" id="csSpMsg"></div></div></div>'+
     '<div class="cs-card" id="csBills"><h3>Unpaid bills</h3><div class="cs-hint">Loading bills...</div></div>'+
     '<div id="csRest" style="display:none"><div class="cs-card">'+
       '<button type="button" class="cs-notebtn" id="csNoteBtn" aria-expanded="false"><span>Add a note<small>Optional</small></span><i aria-hidden="true">▾</i></button>'+
@@ -115,6 +117,13 @@ Sales.start("payments",function(me,hello,main){
       '<button class="btn" id="csGo" type="button" disabled style="width:100%">Save collection</button><p class="cs-hint">A bill photo is optional (uploaded in background when signal allows). The collection waits for Billing/Admin approval; the shop\'s balance changes only after approval.</p></div>'+
     '</div><div id="csDone"></div><div id="ocView"><img id="ocImg" alt="Bill photo"></div>';
 
+  var kb=document.getElementById("csKeep");
+  if(kb)kb.onclick=function(){
+    if(!confirm("Keep this collection as it was? It goes back to waiting for approval, with nothing changed."))return;
+    kb.disabled=true;kb.textContent="Putting it back...";
+    Sales.api("/api/accounts/collections/"+encodeURIComponent(FIX)+"/cancel-edit",{}).then(function(){location.replace("collections-history.html?all=1")})
+      .catch(function(e){alert(e.message);kb.disabled=false;kb.textContent="Keep it as it was"});
+  };
   if(PRE_METHOD&&SPN[PRE_METHOD]){
     S.method=PRE_METHOD;
     document.querySelectorAll(".cs-tile").forEach(function(x){var on=x.getAttribute("data-m")===PRE_METHOD;x.classList.toggle("on",on);x.setAttribute("aria-pressed",String(on))});
@@ -165,7 +174,14 @@ var okb=$('[data-ook="'+id+'"]');if(okb)okb.disabled=!(amtOf(id)>0&&S.files[id])
   }
   function evUrl(p){var t=String(p||"").split("/").pop().replace(/\.(jpg|png|webp)$/i,"");return t&&t!=="no-photo"?"/api/accounts/evidence/"+t:""}
 function billX(id){return S.bills.filter(function(x){return String(x.id)===String(id)})[0]}
-function showMore(id,open){$("#more_"+id).className="oc-more"+(open?" open":"")}
+// The payment method block (Cash / UPI / Bank, Single / Split) lives inside the bill that is open for collecting.
+// It moves to the bill you open last, and to another open bill if the one holding it is closed.
+function showMore(id,open){
+var m=$("#more_"+id),pay=$("#csPay");
+m.className="oc-more"+(open?" open":"");
+if(open){m.insertBefore(pay,m.querySelector(".oc-okrow"));pay.style.display="";pay.style.margin="0"}
+else if(m.contains(pay)){var o=document.querySelector(".oc-more.open");if(o)o.insertBefore(pay,o.querySelector(".oc-okrow"))}
+}
 function showSum(id,open){$("#sm_"+id).className="oc-sm"+(open?" open":"")}
 function ocUpdate(id){
 var x=billX(id),inp=$('[data-a="'+id+'"]');if(!x||!inp)return;
@@ -201,7 +217,7 @@ return '<div class="oc-row"><div class="oc-th" data-v="'+esc(u)+'">'+(u?'<img sr
 '<div class="oc-pbar"><i id="bar_'+id+'"></i></div><div class="oc-rc"><span id="rcv_'+id+'">Received '+money(0)+'</span><span id="stay_'+id+'">Stays on credit '+money(x.outstanding)+'</span></div>'+
 '<p class="cs-warn" data-hint="'+id+'">No bill photo yet. Tap the camera.</p>'+
 '<div class="oc-okrow"><button type="button" class="oc-btn" data-ocancel="'+id+'">Cancel</button><button type="button" class="oc-btn oc-ok" data-ook="'+id+'" disabled>OK</button></div>'+
-'<input type="file" data-f="'+id+'" accept="image/jpeg,image/png,image/webp" capture="environment" style="display:none"></div>'+
+'<input type="file" data-f="'+id+'" accept="image/jpeg,image/png,image/webp" style="display:none"></div>'+
 '<div class="oc-sm" id="sm_'+id+'"><div class="t">✓</div><div><p id="smT_'+id+'"></p><small id="smS_'+id+'"></small></div><button type="button" class="oc-ed" data-oedit="'+id+'">Edit</button></div>':"")+'</div>';
 }).join("")+'</div></div>';
 $("#ocTg").onclick=function(){this.parentNode.classList.toggle("open")};
@@ -264,7 +280,7 @@ function load(){
     Sales.api("/api/accounts/customers/"+encodeURIComponent(CODE)+"/invoices").then(function(d){
       S.bills=(d.invoices||[]).filter(function(x){return Number(x.outstanding)>0});
       drawBills();
-      if(S.bills.some(function(x){return Number(x.availableToCollect)>0})){$("#csRest").style.display="";$("#csPay").style.display=""}
+      if(S.bills.some(function(x){return Number(x.availableToCollect)>0})){$("#csRest").style.display=""}
       recalc();
     }).catch(function(e){$("#csBills").innerHTML='<h3>Unpaid bills</h3><div class="cs-hint">'+esc(/not found/i.test(e.message)?"This shop has no bills in Accounts yet, or it is not assigned to you.":e.message)+"</div>"});
   }
