@@ -1465,6 +1465,13 @@ function viewFor(s, key, raw) {
             tax: p.tax,
             stock: stockOf(p), // available quantity (null = stock not tracked for this product)
             boxQty: Number(p.boxQty) >= 2 ? Math.floor(Number(p.boxQty)) : null, // pieces in one box (null = no box ordering)
+            // slot and save time of the first picture (the admin can change which slot holds the first picture)
+            img0:
+              Array.isArray(p.imgs) && p.imgs[0] && Number.isInteger(+p.imgs[0].i)
+                ? +p.imgs[0].i
+                : undefined,
+            imgAt:
+              Array.isArray(p.imgs) && p.imgs[0] ? Number(p.imgs[0].at) || 0 : undefined,
             active: true,
           })),
       );
@@ -1828,11 +1835,15 @@ const SALES_RADIUS = 150,
   SALES_WATCH = "gm_sales_watch_v1",
   NO_ORDER_REASONS = [
     "Shop closed",
+    "Order not needed",
+    "Stock available at shop",
+    "Owner not available",
+    "Will order next time",
+    "Other",
+    // older wording, still accepted from phones that have not refreshed yet
     "Not interested",
     "Out of stock with customer",
-    "Will order next time",
     "Customer not available",
-    "Other",
   ];
 function metres(a, b, c, d) {
   const R = 6371000,
@@ -2411,8 +2422,10 @@ function salesApi(req, res, s, p, url) {
         const x = byId[id],
           price = num(x.price),
           tax = Math.max(0, Number(x.tax) || 0),
-          amount = num(price * merged[id]),
-          gst = num(amount * (tax / 100));
+          // the selling price already includes GST: line total = price x qty; GST is taken out of it
+          lineTotal = num(price * merged[id]),
+          amount = num(lineTotal / (1 + tax / 100)),
+          gst = num(lineTotal - amount);
         return {
           id,
           code: x.code,
@@ -2424,7 +2437,7 @@ function salesApi(req, res, s, p, url) {
           qty: merged[id],
           amount,
           gst,
-          totalWithGst: num(amount + gst),
+          totalWithGst: lineTotal,
           ...(Number(x.boxQty) >= 2
             ? { boxQty: Math.floor(Number(x.boxQty)) }
             : {}),

@@ -307,10 +307,10 @@
   };
   var REASONS = [
     "Shop closed",
-    "Not interested",
-    "Out of stock with customer",
+    "Order not needed",
+    "Stock available at shop",
+    "Owner not available",
     "Will order next time",
-    "Customer not available",
     "Other",
   ];
   // "Mark visited, no order": asks the reason and saves. The phone's position is recorded for the admin when it is shared.
@@ -318,9 +318,9 @@
     var bg = document.createElement("div");
     bg.className = "sheet-bg on";
     bg.innerHTML =
-      '<div class="sheet" role="dialog" aria-label="Mark as visited"><h3>Mark as Visited (No Order)</h3><p class="note" style="padding:0 8px 8px">' +
+      '<div class="sheet" role="dialog" aria-label="Report no order"><h3>Report: No Order</h3><p class="note" style="padding:0 8px 8px">' +
       S.esc(shop.name) +
-      '. You must be at the shop. Your location is saved with this visit and the office is told.</p><div class="rsn" id="rsn"><b>Reason for no order <em style="color:var(--red)">*</em></b>' +
+      '. You must be at the shop. Your location is saved with this visit and the office is told.</p><div class="rsn" id="rsn"><b>Why was no order taken? <em style="color:var(--red)">*</em></b>' +
       REASONS.map(function (r, i) {
         return (
           '<label><input type="radio" name="rs" value="' +
@@ -333,7 +333,7 @@
       '</div><label class="note" for="vn" style="display:block;padding:10px 8px 4px">Notes (optional, needed for Other)</label><textarea class="notes" id="vn" maxlength="300" placeholder="Add notes…"></textarea>' +
       '<div class="verr" id="verr" role="alert"></div><div class="rowh" style="padding-top:10px"><button class="btn line grow" id="vc" type="button">Cancel</button><button class="btn teal grow" id="vg" type="button">' +
       S.ic("check") +
-      "Mark as Visited</button></div></div>";
+      "Submit Report</button></div></div>";
     document.body.appendChild(bg);
     function close() {
       bg.remove();
@@ -369,12 +369,12 @@
         })
         .then(function (j) {
           close();
-          S.toast("Marked visited. The office has been told.");
+          S.toast("Report sent. The office has been told.");
           if (done) done(j);
         })
         .catch(function (e) {
           go.disabled = false;
-          go.innerHTML = S.ic("check") + "Mark as Visited";
+          go.innerHTML = S.ic("check") + "Submit Report";
           err.textContent = e.message || "Could not save. Try again.";
         });
     };
