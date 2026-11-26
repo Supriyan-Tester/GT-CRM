@@ -7,7 +7,7 @@ const root = path.join(__dirname, "..");
 const routes = fs.readFileSync(path.join(root, "backend/modules/accounts/accounts.routes.js"), "utf8");
 const server = fs.readFileSync(path.join(root, "server.js"), "utf8");
 const storage = fs.readFileSync(path.join(root, "storage.js"), "utf8");
-const sales = fs.readFileSync(path.join(root, "sales/collect-sheet.html"), "utf8");
+const sales = fs.readFileSync(path.join(root, "sales/collect-sheet.html"), "utf8") + fs.readFileSync(path.join(root, "shared/collect-popup.js"), "utf8");
 const worker = fs.readFileSync(path.join(root, "worker/collections.html"), "utf8");
 const admin = fs.readFileSync(path.join(root, "admin/accounts.html"), "utf8");
 for (const token of ["image/jpeg", "image/png", "image/webp", "MAX_EVIDENCE", "files.put", "files.get", "X-Content-Type-Options"]) assert(routes.includes(token), "Missing upload validation/storage control: "+token);
@@ -17,7 +17,7 @@ assert(routes.includes("canAccessCustomer(session, customerCode)"), "Customer le
 assert(server.includes("deliveryAssignment.workerId === session.id"), "Delivery collection customer scope must use assigned orders");
 assert(storage.includes('accounts: "accounts"'), "Local accounts evidence storage directory missing");
 assert(storage.includes('await remote.list()') && storage.includes('"accounts/evidence"'), "Remote evidence folder must be indexed on startup");
-for (const token of ["data-f=", "availableToCollect", "requestKey"]) assert(sales.includes(token), "Sales collection UI missing "+token);
+for (const token of ["cpGalleryInput", "availableToCollect", "requestKey"]) assert(sales.includes(token), "Sales collection UI missing "+token);
 for (const token of ["data-photo", "availableToCollect", "requestKey"]) assert(worker.includes(token), "Delivery collection UI missing "+token);
 for (const token of ["acEvidenceChecked", "acApprove", "evidenceUrl"]) assert(admin.includes(token), "Admin approval evidence control missing "+token);
 console.log("Accounts evidence regression: 16 assertions passed.");

@@ -126,9 +126,10 @@ const body = (extra) => base({ payments: [{ method: "cash", amount: 4500 }, { me
   assert(/revoke all on function public\.gm_accounts_record_split_collection\(text,text,text,text,text,jsonb,text\) from public,anon,authenticated/.test(sql) && /grant execute on function public\.gm_accounts_record_split_collection\(text,text,text,text,text,jsonb,text\) to service_role/.test(sql), "not callable by browsers");
 
   // Pages.
-  for (const [name, page, ids] of [["sales", read("sales/collect-sheet.html"), ["csSplit", "sp_"]], ["worker", read("worker/collections.html"), ["splitChk", "sp_"]]]) {
+  for (const [name, page, ids] of [["sales", read("sales/collect-sheet.html") + read("shared/collect-popup.js"), ["data-mode", "data-split"]], ["worker", read("worker/collections.html"), ["splitChk", "sp_"]]]) {
     assert(page.includes("/api/accounts/collections/split") && page.includes("splitPayments()") && (page.includes("splitOk()") || name === "sales"), name + " page uses the split route and checks the sum");
-    assert(page.includes('id="' + ids[0] + '"') && page.includes('id="' + ids[1] + 'cash"') && page.includes('id="' + ids[1] + 'upi"') && page.includes('id="' + ids[1] + 'bank_transfer"'), name + " page has the split inputs");
+    if (name === "sales") assert(page.includes('data-mode="split"') && page.includes("data-split=") && ["cash", "upi", "bank_transfer"].every((m) => page.includes('"' + m + '"')), "sales popup has the split inputs");
+    else assert(page.includes('id="' + ids[0] + '"') && page.includes('id="' + ids[1] + 'cash"') && page.includes('id="' + ids[1] + 'upi"') && page.includes('id="' + ids[1] + 'bank_transfer"'), name + " page has the split inputs");
     assert(page.includes("/api/accounts/collections\"") || page.includes('"/api/accounts/collections",'), name + " page still posts single-method collections");
   }
   const adminPage = read("admin/collections.html");
