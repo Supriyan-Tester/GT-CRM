@@ -22,6 +22,8 @@
     document.querySelectorAll('a[href$="advances.html"],a[href$="collections.html"],a[href$="collections-history.html"]').forEach(function (a) {
       if (a.classList.contains("gm-corr-btn")) return;
       var b = a.querySelector(".gm-badge");
+      // Only the menu links get the red count, never a button such as "Record a collection".
+      if (a.classList.contains("btn")) { if (b) b.remove(); return; }
       if (!count) { if (b) b.remove(); return; }
       if (!b) { b = document.createElement("span"); b.className = "gm-badge"; a.appendChild(b); }
       if (b.textContent !== String(count)) b.textContent = count;
@@ -35,7 +37,7 @@
     var one = count === 1 && items[0];
     var html = "<div><b>Office asked you to correct " + count + (count === 1 ? " collection" : " collections") + "</b>" +
       (one ? "<small>" + esc(items[0].customerName) + (items[0].note ? ": " + esc(items[0].note) : "") + "</small>" : "") + "</div>" +
-      '<a class="gm-corr-btn" href="collections-history.html?all=1">Review</a>';
+      '<a class="gm-corr-btn" href="collections-history.html?all=1&fix=1">Review</a>';
     if (!old) { old = document.createElement("div"); old.id = "gmCorr"; old.className = "gm-corr"; host.insertBefore(old, host.firstChild); }
     if (old.parentNode !== host) host.insertBefore(old, host.firstChild);
     if (old.innerHTML !== html) old.innerHTML = html;
