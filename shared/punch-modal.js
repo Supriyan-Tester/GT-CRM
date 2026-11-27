@@ -29,6 +29,7 @@
     ".pm-veh small{display:block;font-size:12px;color:var(--muted)}.pm-veh strong{font-size:15px}" +
     ".pm-lab{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}" +
     ".pm-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}" +
+    ".pm-two .pm-box2{height:52px;box-sizing:border-box;display:flex;align-items:center;padding:0 14px}.pm-two .field{height:52px;box-sizing:border-box}.pm-two .field input{height:100%;box-sizing:border-box;margin:0}" +
     ".pm-box2{background:var(--t-info);border-radius:12px;padding:10px 12px}.pm-box2 small{display:block;font-size:12px;color:var(--muted)}.pm-box2 strong{font-size:18px;font-weight:800}" +
     ".pm-driven{margin-top:10px;text-align:center;padding:12px;border-radius:12px;background:linear-gradient(135deg,var(--hero1),var(--hero2));color:var(--on-hero)}" +
     ".pm-driven small{display:block;font-size:11.5px;opacity:.9;text-transform:uppercase;letter-spacing:.04em}.pm-driven strong{font-size:26px;font-weight:800}" +
@@ -452,9 +453,9 @@
       "</div>" +
       (HELPER
         ? ""
-        : '<div class="pm-two"><div class="pm-box2"><small>Morning KM</small><strong>' +
+        : '<div class="pm-two"><div><span class="pm-lab">Morning KM</span><div class="pm-box2"><strong>' +
           startKm.toLocaleString("en-IN") +
-          '</strong></div><div><label class="pm-lab" for="pmEnd">Evening KM (now)</label><div class="field" id="pmEndF"><input type="number" id="pmEnd" inputmode="numeric" placeholder="' +
+          '</strong></div></div><div><label class="pm-lab" for="pmEnd">Evening KM (now)</label><div class="field" id="pmEndF"><input type="number" id="pmEnd" inputmode="numeric" placeholder="' +
           startKm +
           '" style="font-weight:700;font-size:18px"></div></div></div><div class="msg" id="pmMsg"></div><div class="pm-driven"><small>You drove today</small><strong id="pmDriven">-- km</strong></div>') +
       '<label class="pm-check" style="margin-top:12px"><input type="checkbox" id="pmInv"><div><b>' +
@@ -462,10 +463,6 @@
         ? "I gave goods, keys and bills to the office"
         : "I gave keys and bills to the office") +
       "</b></div></label></div>";
-    $("pmBody").insertAdjacentHTML(
-      "beforeend",
-      '<a class="pm-wa" id="pmWa" href="#" target="_blank" rel="noopener">Send day report on WhatsApp (optional)</a>',
-    );
     $("pmFoot").innerHTML =
       '<button type="button" class="pm-go red" id="pmGo" disabled>Punch Out - End Day</button><div class="pm-todo" id="pmTodo"></div>';
     var needDepotO = function () {
@@ -536,7 +533,7 @@
         ? "Still to do: " + todo.join(", ")
         : "";
       var v = HELPER ? NaN : parseInt(endEl.value, 10);
-      $("pmWa").href =
+      if ($("pmWa")) $("pmWa").href =
         "https://api.whatsapp.com/send?text=" +
         encodeURIComponent(
           "GM-CRM Day Report - " +
