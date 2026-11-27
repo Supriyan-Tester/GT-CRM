@@ -779,7 +779,7 @@
           >
           <a href="orders.html" class="hm-q" id="assignedOrdersCard" hidden
             ><span class="chip c-a"
-              ><svg class="icon" data-icon="package"></svg
+              ><svg class="icon" data-icon="box"></svg
             ></span>
             <div><b>Assigned Orders</b><small>Delivery tasks from office</small></div></a
           >
@@ -822,7 +822,7 @@
           ><svg class="icon" data-icon="home"></svg>Home</a
         >
         <a href="route.html"><svg class="icon" data-icon="map"></svg>Route</a>
-        <a href="orders.html" id="assignedOrdersNav" hidden><svg class="icon" data-icon="package"></svg>Assigned Orders</a>
+        <a href="orders.html" id="assignedOrdersNav" hidden><svg class="icon" data-icon="box"></svg>Assigned Orders</a>
         <a href="advances.html"
           ><svg class="icon" data-icon="coin"></svg>Account</a
         >
@@ -1008,7 +1008,7 @@
           '<div class="hm-veh"><div>Vehicle<b>' +
           esc(shift.assignedVehicle || "--") +
           "</b></div>" +
-          (GM.getData().crewRole === "helper"
+          (GM.isHelper()
             ? ""
             : "<div>Start KM<b>" + esc(shift.startKm || "--") + "</b></div>") +
           (routeName ? "<div>Route<b>" + esc(routeName) + "</b></div>" : "") +
@@ -1040,7 +1040,7 @@
             "/" +
             total +
             "</b>Delivered</div>" +
-            (GM.getData().crewRole === "helper"
+            (GM.isHelper()
               ? ""
               : "<div><b>" + (shift.drivenKm || 0) + " km</b>Driven</div>") +
             "<div><b>" +

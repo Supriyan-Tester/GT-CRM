@@ -377,6 +377,7 @@ function logEvents(s, evs) {
         list.slice(-30).some((x) => x.dedupe === e.dedupe && now - x.t < 120000)
       )
         return;
+      console.log("[activity] " + (a.role || "") + " " + (a.name || "") + " | " + e.type + ": " + String(e.text || "").slice(0, 200));
       const rec = {
         t: now,
         by: a.name,
@@ -2715,6 +2716,30 @@ function api(req, res, url) {
     if (!okOrigin) return send(res, 403, { error: "bad origin" });
   }
 
+  if (p === "/api/client-log" && req.method === "POST")
+    return body(
+      req,
+      (err, b) => {
+        if (err || !b || typeof b !== "object")
+          return send(res, 400, { error: "Bad request" });
+        const ip = clientIp(req),
+          now = Date.now(),
+          r = CLIENT_LOG[ip] || (CLIENT_LOG[ip] = { t: now, n: 0 });
+        if (now - r.t > 60000) {
+          r.t = now;
+          r.n = 0;
+        }
+        if (++r.n > 20) return send(res, 429, { error: "Slow down" });
+        const c = (v, n) => String(v == null ? "" : v).replace(/[\r\n]+/g, " ").slice(0, n);
+        console.error(
+          "[browser-error] " + c(b.page, 120) + " | " + c(b.msg, 300) + " | " + c(b.src, 100) + ":" + c(b.line, 8) + ":" + c(b.col, 8) +
+            " ip=" + ip + " ua=" + c(req.headers["user-agent"], 80),
+        );
+        send(res, 200, { ok: true });
+      },
+      4096,
+    );
+
   if (p === "/api/login" && req.method === "POST")
     return body(
       req,
@@ -2757,6 +2782,7 @@ function api(req, res, url) {
             ? (auth.workers[wk.id] || {}).h
             : null;
         const good = checkPw(pw, hash) && !!(a || wk);
+        console.log("[login] " + (good ? "OK" : "FAILED") + " phone=******" + phone.slice(-4) + " ip=" + ip);
         if (!good) {
           noteFail(kp, 5);
           noteFail(ki, 25);
@@ -2849,6 +2875,7 @@ function api(req, res, url) {
           role: "worker",
           id: wk.id,
           name: wk.name,
+          empRole: empRoleOf(wk.id),
           phone: wk.phone,
           emergency: wk.emergency || "",
         });
@@ -4515,6 +4542,52 @@ function api(req, res, url) {
       }));
     return send(res, 200, { month: mo, months, events });
   }
+  // The office clears a Sales person's punch for one day (wrong or test punch) so they can punch in again.
+  // Only that day's Sales punch is removed, from both places it is kept; the change is written to the activity log.
+  if (p === "/api/reset-punch" && req.method === "POST")
+    return body(
+      req,
+      (err, b) => {
+        if (s.role !== "admin" || !hasAny(acctOf(s), ["helper"]))
+          return send(res, 403, { error: "Not allowed" });
+        if (err || !b || typeof b !== "object")
+          return send(res, 400, { error: "bad request" });
+        const id = typeof b.id === "string" ? b.id : "",
+          date = typeof b.date === "string" ? b.date : "";
+        if (!/^[A-Za-z0-9_-]{1,40}$/.test(id) || !/^\d{4}-\d{2}-\d{2}$/.test(date))
+          return send(res, 400, { error: "bad request" });
+        let was = null;
+        const all = stored("gm_sales_attendance_v1");
+        if (all && typeof all === "object" && !Array.isArray(all) && all[id] && all[id][date]) {
+          const copy = JSON.parse(JSON.stringify(all));
+          was = copy[id][date];
+          delete copy[id][date];
+          setItem("gm_sales_attendance_v1", JSON.stringify(copy));
+        }
+        const rk = "gm_crm_data_v5__" + id,
+          r0 = stored(rk);
+        if (r0 && typeof r0 === "object" && !Array.isArray(r0)) {
+          const rec = JSON.parse(JSON.stringify(r0)),
+            m = date.slice(0, 7),
+            d = String(Number(date.slice(8)));
+          const e = rec.attendanceLog && rec.attendanceLog[m] && rec.attendanceLog[m][d];
+          if (e && e.source === "sales") {
+            was = was || e;
+            delete rec.attendanceLog[m][d];
+            setItem(rk, JSON.stringify(rec));
+          }
+        }
+        if (!was) return send(res, 404, { error: "No Sales punch was found for that day." });
+        logEvents(s, [
+          {
+            type: "attendance",
+            text: "Office cleared the Sales punch of " + id + " for " + date + " (was in " + (was.inTime || "-") + ", out " + (was.outTime || "-") + ")",
+          },
+        ]);
+        send(res, 200, { ok: true });
+      },
+      4096,
+    );
   // The office closes a day the employee forgot to punch out. The check-out time and closing km are written into the employee's
   // own record (the same place a real punch-out writes), so the Vehicles page shows the day as returned and moves the odometer.
   if (p === "/api/close-day" && req.method === "POST")
@@ -5604,7 +5677,7 @@ function serveStatic(req, res, url) {
         '"';
       const hdr = {
         "Content-Type": MIME[ext],
-        "Cache-Control": ext === ".html" ? "no-cache" : "public, max-age=86400",
+        "Cache-Control": ext === ".html" || ext === ".js" || ext === ".css" ? "no-cache" : "public, max-age=86400", // pages, scripts and styles are re-checked every time (a tiny "not modified" answer when unchanged), so a new deploy reaches phones at once
         ETag: tag,
         Vary: "Accept-Encoding",
       };
@@ -5733,8 +5806,19 @@ async function migrateToCloud() {
 
 // ---- Bandwidth log: prints which routes and visitors send the most data (body bytes only, headers not counted) ----
 const BW = { routes: {}, ips: {}, total: 0, n: 0 };
+const CLIENT_LOG = {};
+// Anything that would crash the server is written to the Render log first, then the server stops and Render restarts it, exactly as before.
+process.on("uncaughtException", (e) => {
+  console.error("[CRASH] uncaughtException: " + ((e && e.stack) || e));
+  process.exit(1);
+});
+process.on("unhandledRejection", (e) => {
+  console.error("[CRASH] unhandledRejection: " + ((e && e.stack) || e));
+  process.exit(1);
+});
 function bwTrack(req, res, url) {
   let bytes = 0;
+  const t0 = Date.now();
   const w = res.write, e = res.end;
   res.write = function (c) {
     if (c && typeof c !== "function") bytes += Buffer.byteLength(c);
@@ -5749,6 +5833,10 @@ function bwTrack(req, res, url) {
     if (url.pathname === "/api/state" && !(parseInt(url.searchParams.get("since"), 10) > 0)) key += " (FULL LOAD)";
     const ip = clientIp(req), r = BW.routes[key] || (BW.routes[key] = { n: 0, b: 0 });
     r.n++; r.b += bytes; BW.ips[ip] = (BW.ips[ip] || 0) + bytes; BW.total += bytes; BW.n++;
+    // Render log: every change (POST/PUT/PATCH/DELETE), every error (status 400+) and every slow request (over 2 s). Plain page loads and polling are left out so the log stays readable.
+    const ms = Date.now() - t0, m = req.method;
+    if (url.pathname !== "/api/health" && (res.statusCode >= 400 || ms > 2000 || (m !== "GET" && m !== "HEAD" && url.pathname.startsWith("/api/"))))
+      console.log("[req] " + m + " " + url.pathname + " " + res.statusCode + " " + ms + "ms ip=" + ip);
     if (bytes > 1024 * 1024) console.log("[bandwidth] BIG " + (bytes / 1048576).toFixed(1) + " MB  " + key + "  ip=" + ip);
   });
 }
@@ -5822,7 +5910,7 @@ async function boot() {
         try {
           return api(req, res, url);
         } catch (e) {
-          console.error("Request error:", e && e.message);
+          console.error("[error] " + req.method + " " + url.pathname + " -> " + ((e && e.stack) || e));
           if (!res.headersSent) send(res, 500, { error: "Server error" });
           return;
         }

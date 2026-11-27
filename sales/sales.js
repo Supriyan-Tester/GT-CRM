@@ -612,16 +612,61 @@
     };
   };
 
+  /* Vehicle + odometer dialog used when punching in (choose vehicle, starting km) and out (ending km).
+     o = { title, text, vehicles?, min?, confirm }. Resolves { vehicleId, km } or null when cancelled. */
+  S.kmDialog = function (o) {
+    return new Promise(function (resolve) {
+      var bg = document.createElement("div"),
+        ctl = "width:100%;box-sizing:border-box;padding:12px;border-radius:12px;border:1px solid var(--line,#cbd5e1);background:transparent;color:inherit;font:inherit;margin:4px 0 10px",
+        vs = o.vehicles || [];
+      bg.style.cssText = "position:fixed;inset:0;z-index:9000;background:rgba(2,6,12,.65);display:flex;align-items:center;justify-content:center;padding:18px";
+      bg.innerHTML =
+        '<div role="alertdialog" aria-modal="true" style="background:var(--card,#fff);color:var(--text,#111);width:100%;max-width:380px;border-radius:20px;padding:22px 20px;box-shadow:0 20px 60px rgba(0,0,0,.35)">' +
+        '<h2 style="font-size:18px;margin:0 0 6px">' + S.esc(o.title || "") + "</h2>" +
+        '<p style="font-size:14px;line-height:1.5;margin:0 0 12px;color:var(--muted,#64748b)">' + S.esc(o.text || "") + "</p>" +
+        (vs.length
+          ? '<label style="font-size:13px;font-weight:600">Vehicle</label><select id="kmVeh" style="' + ctl + '"><option value="">Select vehicle</option>' +
+            vs.map(function (v) { return '<option value="' + S.esc(v.id) + '">' + S.esc(v.number + (v.type ? " (" + v.type + ")" : "")) + "</option>"; }).join("") +
+            "</select>"
+          : "") +
+        '<label style="font-size:13px;font-weight:600">' + (vs.length ? "Current odometer reading (km)" : "Ending odometer reading (km)") + "</label>" +
+        '<input id="kmVal" type="number" inputmode="numeric" min="0" step="1" placeholder="Odometer reading" style="' + ctl + '">' +
+        '<div id="kmHint" style="font-size:12.5px;color:var(--muted,#64748b);min-height:16px"></div>' +
+        '<div id="kmErr" role="alert" style="font-size:13px;color:#dc2626;min-height:18px;margin:4px 0 8px"></div>' +
+        '<div style="display:grid;gap:8px"><button type="button" id="kmGo" class="btn teal" style="width:100%">' + S.esc(o.confirm || "Confirm") + '</button>' +
+        '<button type="button" id="kmNo" class="btn line" style="width:100%">Cancel</button></div></div>';
+      document.body.appendChild(bg);
+      var sel = bg.querySelector("#kmVeh"), inp = bg.querySelector("#kmVal"), hint = bg.querySelector("#kmHint"), err = bg.querySelector("#kmErr");
+      function pick() { return sel ? vs.filter(function (v) { return v.id === sel.value; })[0] : null; }
+      function floor() { var v = pick(); return v ? v.lastKm || 0 : o.min != null ? o.min : 0; }
+      function showHint() {
+        var f = floor();
+        hint.textContent = f ? (pick() ? "Last recorded reading for this vehicle: " : "Starting reading: ") + f.toLocaleString("en-IN") + " km" : "";
+      }
+      if (sel) sel.onchange = showHint;
+      showHint();
+      function done(v) { bg.remove(); resolve(v); }
+      bg.querySelector("#kmNo").onclick = function () { done(null); };
+      bg.querySelector("#kmGo").onclick = function () {
+        var v = pick(), km = Math.round(Number(inp.value));
+        if (vs.length && !v) { err.textContent = "Choose the vehicle you are using."; return; }
+        if (!(km > 0)) { err.textContent = "Enter the odometer reading (km)."; inp.focus(); return; }
+        if (km < floor()) { err.textContent = "The reading cannot be less than " + floor().toLocaleString("en-IN") + " km."; inp.focus(); return; }
+        done({ vehicleId: v ? v.id : "", km: km });
+      };
+    });
+  };
+
   /* Punch-in popup. Until Sales has punched in today, a popup covers the whole panel (no close button) so nothing else can be
      used. Only Punch In (or Logout) works. If attendance cannot be read, nothing is blocked here: the server still refuses orders. */
   function punchPopup() {
     S.api("/api/sales/attendance?month=" + S.today().slice(0, 7))
       .then(function (r) {
-        if (r && !r.todayEntry) openPopup();
+        if (r && !r.todayEntry) openPopup(r.vehicles);
       })
       .catch(function () {});
   }
-  function openPopup() {
+  function openPopup(vehicles) {
     var st = document.createElement("style");
     st.textContent =
       ".pi-bg{position:fixed;inset:0;z-index:450;background:rgba(2,6,12,.65);display:flex;align-items:center;justify-content:center;padding:18px}" +
@@ -642,9 +687,18 @@
     document.getElementById("piOut").onclick = S.logout;
     var go = document.getElementById("piGo");
     go.onclick = function () {
-      go.disabled = true;
-      go.textContent = "Punching in…";
-      S.api("/api/sales/attendance", { action: "punch-in" })
+      var ask = vehicles && vehicles.length
+        ? S.kmDialog({ title: "Punch in", text: "Choose your vehicle and enter the odometer reading.", vehicles: vehicles, confirm: "Punch In" })
+        : Promise.resolve({});
+      ask.then(function (v) {
+        if (!v) return;
+        go.disabled = true;
+        go.textContent = "Punching in…";
+        punchNow(v);
+      });
+    };
+    function punchNow(v) {
+      S.api("/api/sales/attendance", { action: "punch-in", vehicleId: v.vehicleId || "", startKm: v.km || null })
         .then(function () {
           bg.remove();
           st.remove();
@@ -658,7 +712,7 @@
           if (S.isOpenSessionError(e)) S.forgotPunchOutDialog();
           else S.toast(e.message || "Could not punch in. Try again.", true);
         });
-    };
+    }
   }
 
   /* S.start(page, build): checks the sign-in, draws the menu and header, then calls build(user, titleEl, mainEl). */

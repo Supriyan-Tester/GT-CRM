@@ -17,7 +17,9 @@ const app = path.join(tmp, "app");
 const port = 18000 + Math.floor(Math.random() * 10000);
 
 // Routes that are public ON PURPOSE. Anything else must refuse a request that has no login.
-const PUBLIC_API = new Set(["/api/health", "/api/ready", "/api/login", "/api/logout"]);
+// /api/client-log lets a page report a browser error even before sign-in (for example on the login page).
+// It only writes one cleaned line to the server log, accepts at most 4 KB, and is limited to 20 calls a minute per address.
+const PUBLIC_API = new Set(["/api/health", "/api/ready", "/api/login", "/api/logout", "/api/client-log"]);
 // Responses that count as "refused". 405 (wrong method) and 404 on a method the route does not offer are fine too, see below.
 const REFUSED = new Set([401, 403]);
 

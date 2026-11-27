@@ -981,8 +981,21 @@
         // the newly authenticated account's data before opening its workspace.
         if (window.GMSync) {
           GMSync.clearLocal();
-          var ready = Promise.resolve(j.role !== "sales" ? GMSync.pull() : true);
-          ready.then(function () { continueEnter(j, typedPw); });
+          // Never hang on "Signing in...": if the data load fails or takes over 8 s, open the workspace anyway (it loads its own data).
+          var opened = false;
+          var openOnce = function () {
+            if (opened) return;
+            opened = true;
+            continueEnter(j, typedPw);
+          };
+          var ready;
+          try {
+            ready = Promise.resolve(j.role !== "sales" ? GMSync.pull() : true);
+          } catch (e) {
+            ready = Promise.resolve();
+          }
+          ready.then(openOnce, openOnce);
+          setTimeout(openOnce, 8000);
           return;
         }
         continueEnter(j, typedPw);
@@ -1023,6 +1036,7 @@
             id: j.id,
             name: j.name,
             phone: j.phone,
+            empRole: j.empRole || "",
             role: "Delivery Executive",
             onLeaveToday: false,
             emergencyContact: j.emergency || "",

@@ -724,7 +724,8 @@ function createAccountsRoutes(config) {
     // The signed-in employee's own collections (their history screen).
     // How many of my collections the office asked me to correct (drives the red count and the Home banner).
     if (req.method === "GET" && p === "/api/accounts/collections/corrections") {
-      if (!canCollect(session)) { send(res, 403, { error: "Collection permission required." }); return true; }
+      // People who do not collect money (helpers, loaders...) simply have nothing to correct: an empty list, not an error.
+      if (!canCollect(session)) { send(res, 200, { ok: true, count: 0, items: [] }); return true; }
       rest("gm_accounts_collections?select=id,customer_code,customer_name_snapshot,visit_ref,correction_note&status=eq.correction_requested&collected_by=eq." + encodeURIComponent(String(session.id)) + "&order=correction_requested_at.desc&limit=200")
         .then((list) => {
           const seen = {}, items = [];
