@@ -217,7 +217,7 @@ return '<div class="oc-row"><div class="oc-th" data-v="'+esc(u)+'">'+(u?'<img sr
 '<div class="oc-pbar"><i id="bar_'+id+'"></i></div><div class="oc-rc"><span id="rcv_'+id+'">Received '+money(0)+'</span><span id="stay_'+id+'">Stays on credit '+money(x.outstanding)+'</span></div>'+
 '<p class="cs-warn" data-hint="'+id+'">No bill photo yet. Tap the camera.</p>'+
 '<div class="oc-okrow"><button type="button" class="oc-btn" data-ocancel="'+id+'">Cancel</button><button type="button" class="oc-btn oc-ok" data-ook="'+id+'" disabled>OK</button></div>'+
-'<input type="file" data-f="'+id+'" accept="image/jpeg,image/png,image/webp" style="display:none"></div>'+
+'<input type="file" data-f="'+id+'" accept="image/jpeg,image/png,image/webp" capture="environment" style="display:none"></div>'+
 '<div class="oc-sm" id="sm_'+id+'"><div class="t">✓</div><div><p id="smT_'+id+'"></p><small id="smS_'+id+'"></small></div><button type="button" class="oc-ed" data-oedit="'+id+'">Edit</button></div>':"")+'</div>';
 }).join("")+'</div></div>';
 $("#ocTg").onclick=function(){this.parentNode.classList.toggle("open")};
