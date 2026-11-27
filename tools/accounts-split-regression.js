@@ -69,7 +69,7 @@ const send = (res, code, value) => { res.status = code; res.payload = value; res
 const routes = createAccountsRoutes({
   url: "https://example.supabase.co", key: "k", send, body: (req, cb) => cb(null, req.input),
   customerLookup: (c) => (c === "C1" ? { code: "C1", name: "Shop" } : null), canAccessCustomer: (s, c) => c === "C1",
-  canBill: (x) => x.role === "admin", canCollect: (x) => x.role === "sales", files: known, fetch: fakeFetch,
+  canBill: (x) => x.role === "admin", canCollect: (x) => x.role === "sales" || x.role === "worker", isActiveDeliveryWorker: (id) => id === "w1", planStopFor: (x) => (x.role === "worker" ? { amount: 1 } : null), files: known, fetch: fakeFetch,
 });
 const post = (input, session) => new Promise((resolve) => {
   const res = { done: () => resolve(res) };
@@ -95,10 +95,15 @@ const body = (extra) => base({ payments: [{ method: "cash", amount: 4500 }, { me
   const sent = JSON.parse(rpcCalls()[0].opts.body);
   assert.strictEqual(sent.p_request_key, "visit-1");
   assert.strictEqual(sent.p_collected_by, "e1", "recorded under the signed-in employee");
-  // a bill photo is optional when money is received: the route saves the fixed "no photo" marker
+  // Sales staff must attach a photo to an old credit bill: without one the request is refused before the database.
   const before = rpcCalls().length;
-  const np = await post(body({ allocations: [{ invoiceId: A, amount: 5000 }, { invoiceId: B, amount: 2000 }] }), sales);
-  assert.strictEqual(np.status, 201, "collection without photos is accepted");
+  const noPhotoAlloc = [{ invoiceId: A, amount: 5000 }, { invoiceId: B, amount: 2000 }];
+  assert.strictEqual((await post(body({ allocations: noPhotoAlloc }), sales)).status, 400, "sales: old credit bill needs a photo");
+  assert.strictEqual(rpcCalls().length, before, "refused before the database");
+  // A Delivery worker paying a bill from today's plan may skip the photo: the route saves the fixed "no photo" marker.
+  const worker = { role: "worker", id: "w1", name: "Delivery" };
+  const np = await post(body({ allocations: noPhotoAlloc }), worker);
+  assert.strictEqual(np.status, 201, "worker: plan bill without photo is accepted");
   const npSent = JSON.parse(rpcCalls()[before].opts.body);
   assert(npSent.p_parts.every((x) => x.allocations.every((y) => y.evidencePath === "accounts/evidence/no-photo")), "saved with the no-photo marker");
   assert.deepStrictEqual(sent.p_parts, [
