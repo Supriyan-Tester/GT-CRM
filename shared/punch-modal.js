@@ -313,6 +313,9 @@
     var done = shops.filter(function (s) {
       return s.status === "delivered";
     }).length;
+    var pendingN = shops.filter(function (s) {
+      return s.status === "pending" || s.status === "retry";
+    }).length;
     var cancelled = shops.filter(function (s) {
       return s.status === "cancelled";
     });
@@ -420,6 +423,12 @@
           "</strong></div>"
         : "") +
       "</div></div>" +
+      (pendingN
+        ? '<div role="alert" style="border:1.5px solid var(--danger,#dc2626);background:var(--t-danger,#fef2f2);color:var(--danger,#b91c1c);border-radius:14px;padding:12px 14px;font-size:14px;font-weight:700;line-height:1.4">\u26a0 You still have ' +
+          pendingN +
+          (pendingN === 1 ? " shop" : " shops") +
+          " not delivered yet.<div style=\"font-weight:500;font-size:12px;margin-top:3px\">Finish or mark them as a problem before you end the day.</div></div>"
+        : "") +
       '<div class="pm-card"><div class="pm-st">' +
       n() +
       "Are you at the depot?</div>" +
