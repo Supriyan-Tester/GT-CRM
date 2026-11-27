@@ -1025,9 +1025,17 @@
           "</span><span>" +
           pct +
           "%</span></div>";
+        // Punch Out is always here once punched in. With shops still pending it is the quieter button and warns about them.
         if (!nextShop)
           inner +=
             '<a class="hm-cta" href="punch-out.html">End Day &amp; Punch Out</a>';
+        else
+          inner +=
+            '<a class="hm-cta alt" href="punch-out.html" style="margin-top:10px">Punch Out</a><p class="sub" style="margin:6px 0 0;font-size:12px;text-align:center">' +
+            pendingCount +
+            " shop" +
+            (pendingCount === 1 ? " is" : "s are") +
+            " still pending</p>";
         heroWrap.innerHTML = hero("", inner);
       } else {
         heroWrap.innerHTML = hero(
