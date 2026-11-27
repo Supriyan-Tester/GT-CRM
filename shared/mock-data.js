@@ -273,6 +273,8 @@
       var d = loadStore(),
         w = d.worker,
         t = new Date();
+      // A brand-new employee can have no shift record yet; create it so the plan code below never crashes (this blocked login).
+      if (!d.shift || typeof d.shift !== "object") d.shift = {};
       var key =
         t.getFullYear() +
         "-" +
