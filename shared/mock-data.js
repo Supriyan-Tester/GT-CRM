@@ -265,6 +265,14 @@
       saveStore(d);
     },
 
+    // A helper rides along and never drives, so no odometer. Today's plan decides first (driver or helper);
+    // with no plan today, the employee's own role (Helper) decides.
+    isHelper: function () {
+      var d = loadStore();
+      if (d.crewRole) return d.crewRole === "helper";
+      return !!(d.worker && d.worker.empRole === "Helper");
+    },
+
     // Loads today's plan built in the admin Daily plan page for THIS worker (several workers can each have one).
     // First time today: replaces the shops and starts a fresh shift on the plan's vehicle.
     // If the admin edits the plan later the same day: shops already delivered, cancelled or marked retry are kept,

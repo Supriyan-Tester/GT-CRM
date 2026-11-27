@@ -18,6 +18,19 @@ function createAccountsRoutes(config) {
   const isSuperAdmin = config.isSuperAdmin || (() => false);
   const planInvoiceOwner = config.planInvoiceOwner || (() => null);
   const planStopFor = config.planStopFor || (() => null);
+  // Sales and Delivery employees must attach a bill photo to every OLD credit bill. The bill from today's delivery plan
+  // is exempt here because only the screen knows whether it was left on Pay Later (the photo is asked only for that).
+  function requireOldBillPhotos(session, customerCode, invoiceRows, allocations) {
+    if (session.role !== "sales" && session.role !== "worker") return;
+    const byId = {};
+    for (const r of invoiceRows || []) byId[r.id] = r;
+    for (const a of allocations) {
+      if (a.evidencePath !== NO_PHOTO) continue;
+      const inv = byId[a.invoiceId];
+      if (session.role === "worker" && inv && planStopFor(session, customerCode, inv.invoice_no)) continue;
+      throw new Error("A bill photo is required for old credit bills. Take the photo and try again.");
+    }
+  }
   const notifyAdmin = config.notifyAdmin || (() => {});
   const logEvent = (session, text) => {
     try { if (config.logEvents) config.logEvents(session, [{ type: "accounts", text }]); } catch (e) {}
@@ -724,7 +737,8 @@ function createAccountsRoutes(config) {
     // The signed-in employee's own collections (their history screen).
     // How many of my collections the office asked me to correct (drives the red count and the Home banner).
     if (req.method === "GET" && p === "/api/accounts/collections/corrections") {
-      if (!canCollect(session)) { send(res, 403, { error: "Collection permission required." }); return true; }
+      // People who do not collect money (helpers, loaders...) simply have nothing to correct: an empty list, not an error.
+      if (!canCollect(session)) { send(res, 200, { ok: true, count: 0, items: [] }); return true; }
       rest("gm_accounts_collections?select=id,customer_code,customer_name_snapshot,visit_ref,correction_note&status=eq.correction_requested&collected_by=eq." + encodeURIComponent(String(session.id)) + "&order=correction_requested_at.desc&limit=200")
         .then((list) => {
           const seen = {}, items = [];
@@ -919,7 +933,7 @@ function createAccountsRoutes(config) {
           const invoiceIds = Array.from(new Set(requested.map((x) => String((x && x.invoiceId) || "").trim()).filter(Boolean)));
           if (!invoiceIds.length || invoiceIds.length !== requested.length) throw new Error("Choose valid invoice allocations.");
           if (invoiceIds.some((id) => !/^[0-9a-f-]{36}$/i.test(id))) throw new Error("Choose valid invoice allocations.");
-          rest("gm_accounts_invoices?select=id,customer_code,initial_outstanding&id=in.(" + invoiceIds.join(",") + ")&customer_code=eq." + encodeURIComponent(String(input.customerCode)))
+          rest("gm_accounts_invoices?select=id,customer_code,invoice_no,initial_outstanding&id=in.(" + invoiceIds.join(",") + ")&customer_code=eq." + encodeURIComponent(String(input.customerCode)))
             .then(async (invoiceRows) => {
               const allocRows = await rest("gm_accounts_collection_allocations?select=invoice_id,amount,collection_id&invoice_id=in.(" + invoiceIds.join(",") + ")");
               const collectionIds = Array.from(new Set(allocRows.map((x) => x.collection_id)));
@@ -929,6 +943,7 @@ function createAccountsRoutes(config) {
               for (const row of allocRows) if (approvedIds.has(row.collection_id)) paid[row.invoice_id] = (paid[row.invoice_id] || 0) + Number(row.amount || 0);
               for (const inv of invoiceRows) balances[inv.id] = { customerCode: inv.customer_code, outstandingAmount: Number((Number(inv.initial_outstanding) - (paid[inv.id] || 0)).toFixed(2)) };
               const valid = validateSplitCollection(input, balances);
+              for (const part of valid.parts) requireOldBillPhotos(session, valid.customerCode, invoiceRows, part.allocations);
               for (const part of valid.parts) for (const allocation of part.allocations) {
                 if (allocation.evidencePath !== NO_PHOTO && (!/^accounts\/evidence\/[0-9a-f-]{36}\.(jpg|png|webp)$/i.test(allocation.evidencePath) || !files || !files.has(allocation.evidencePath)))
                   throw new Error("Upload and verify a bill photo for every invoice allocation.");
@@ -964,7 +979,7 @@ function createAccountsRoutes(config) {
           const invoiceIds = Array.from(new Set(requested.map((x) => String((x && x.invoiceId) || "").trim()).filter(Boolean)));
           if (!invoiceIds.length || invoiceIds.length !== requested.length) throw new Error("Choose valid invoice allocations.");
           let valid;
-          rest("gm_accounts_invoices?select=id,customer_code,initial_outstanding&id=in.(" + invoiceIds.join(",") + ")&customer_code=eq." + encodeURIComponent(String(input.customerCode)))
+          rest("gm_accounts_invoices?select=id,customer_code,invoice_no,initial_outstanding&id=in.(" + invoiceIds.join(",") + ")&customer_code=eq." + encodeURIComponent(String(input.customerCode)))
             .then(async (invoiceRows) => {
               const balances = {};
               const allocRows = await rest("gm_accounts_collection_allocations?select=invoice_id,amount,collection_id&invoice_id=in.(" + invoiceIds.join(",") + ")");
@@ -975,6 +990,7 @@ function createAccountsRoutes(config) {
               for (const row of allocRows) if (approvedIds.has(row.collection_id)) paid[row.invoice_id] = (paid[row.invoice_id] || 0) + Number(row.amount || 0);
               for (const inv of invoiceRows) balances[inv.id] = { customerCode: inv.customer_code, outstandingAmount: Number((Number(inv.initial_outstanding) - (paid[inv.id] || 0)).toFixed(2)) };
               valid = validateCollection(input, balances);
+              requireOldBillPhotos(session, valid.customerCode, invoiceRows, valid.allocations);
               for (const allocation of valid.allocations) {
                 if (allocation.evidencePath !== NO_PHOTO && (!/^accounts\/evidence\/[0-9a-f-]{36}\.(jpg|png|webp)$/i.test(allocation.evidencePath) || !files || !files.has(allocation.evidencePath)))
                   throw new Error("Upload and verify a bill photo for every invoice allocation.");

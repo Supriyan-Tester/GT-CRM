@@ -47,7 +47,8 @@
           ORD = [],
           visited = false,
           BACK = { href: "customers.html", label: "Customers" },
-          tab = location.hash === "#orders" ? "orders" : "overview";
+          tab = location.hash === "#orders" ? "orders" : "overview",
+          PHOTOS = {}; // shops that have a photo, so we only ask for photos that exist (no 404 in the console)
 
         function kv(k, v) {
           return v ? "<span>" + k + "</span><b>" + v + "</b>" : "";
@@ -106,7 +107,8 @@
                 "</i><b>No orders yet</b><span>Orders you place for this shop will show here.</span></div>";
         }
         function draw() {
-          var nav = Sales.navLink(S);
+          var nav = Sales.navLink(S),
+            pk = String(S.code || "").replace(/[^A-Za-z0-9_-]/g, "");
           document.getElementById("sub").textContent = S.name;
           main.innerHTML =
             '<a class="back" href="' +
@@ -115,9 +117,9 @@
             Sales.ic("chevron-left") +
             BACK.label +
             "</a>" +
-            '<img src="/api/photo?code=' +
+            (PHOTOS[pk] ? '<img src="/api/photo?code=' +
             encodeURIComponent(String(S.code || "").replace(/[^A-Za-z0-9_-]/g, "")) +
-            '" alt="Shop photo" onclick="gmZoom(this.src)" style="display:block;width:100%;max-height:240px;object-fit:cover;border-radius:16px;margin:0 0 12px;cursor:zoom-in" onload="var t=document.getElementById(\'shTile\');if(t)t.remove()" onerror="this.remove()">' +
+            '" alt="Shop photo" onclick="gmZoom(this.src)" style="display:block;width:100%;max-height:240px;object-fit:cover;border-radius:16px;margin:0 0 12px;cursor:zoom-in" onload="var t=document.getElementById(\'shTile\');if(t)t.remove()" onerror="this.remove()">' : "") +
             '<div class="card"><div class="shead"><div class="tile t0" id="shTile">' +
             Sales.esc(Sales.init(S.name)) +
             '</div><div class="info"><h2>' +
@@ -338,7 +340,14 @@
             });
           };
         }
-        Promise.all([Sales.data(), Sales.mine()])
+        Promise.all([
+          Sales.data(),
+          Sales.mine(),
+          fetch("/api/photos")
+            .then(function (r) { return r.json(); })
+            .then(function (j) { return (j && j.photos) || {}; })
+            .catch(function () { return {}; }),
+        ])
           .then(function (r) {
             S = r[0].customers.filter(function (c) {
               return c.code === CODE;
@@ -349,6 +358,7 @@
               return;
             }
             ORD = r[1].orders || [];
+            PHOTOS = r[2] || {};
             BACK = Sales.backTo(r[1], r[0]);
             visited = !!(
               r[1].visits &&

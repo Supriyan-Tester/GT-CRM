@@ -1092,6 +1092,12 @@
     };
     fillEdit();
   }
+  // The day's saved Sales punch for this person (only Sales punches can be cleared here), or null.
+  function salesPunch(w, ds) {
+    var lg = ((DB.rec[w.id] || {}).attendanceLog || {})[ds.slice(0, 7)] || {},
+      e = lg[+ds.slice(8)];
+    return e && e.source === "sales" ? e : null;
+  }
   function closeEdit() {
     var o = $("atM");
     if (o) o.remove();
@@ -1304,6 +1310,9 @@
       (e
         ? '<button class="btn btn-outline" id="mReset">Remove my correction</button>'
         : "") +
+      (salesPunch(w, M.ds)
+        ? '<button class="btn btn-outline" id="mClear" style="color:#dc2626;border-color:#dc2626">Clear punch</button>'
+        : "") +
       '<button class="btn btn-outline" id="mCan">Cancel</button><button class="btn" id="mSave">Save attendance</button></div></div>';
     function keep() {
       M.keep = true;
@@ -1434,6 +1443,49 @@
       keep();
       saveEdit(w);
     };
+    if ($("mClear"))
+      $("mClear").onclick = function () {
+        var ent = salesPunch(w, M.ds);
+        if (!ent) return;
+        if (
+          !window.confirm(
+            "Clear " + w.name + "'s punch for " + M.ds + " (in " + (ent.inTime || "-") + ", out " + (ent.outTime || "-") + ")?\n\nThis deletes the entry so they can punch in again. This cannot be undone.",
+          )
+        )
+          return;
+        $("mClear").disabled = true;
+        fetch("/api/reset-punch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: w.id, date: M.ds }),
+        })
+          .then(function (r) {
+            return r.json().then(
+              function (j) { return { ok: r.ok, j: j || {} }; },
+              function () { return { ok: false, j: {} }; },
+            );
+          })
+          .then(
+            function (x) {
+              if (!x.ok) {
+                $("mClear").disabled = false;
+                $("mErr").textContent = x.j.error || "Could not clear the punch. Try again.";
+                return;
+              }
+              var lg = ((DB.rec[w.id] || {}).attendanceLog || {})[M.ds.slice(0, 7)];
+              if (lg) delete lg[+M.ds.slice(8)];
+              logEdit(w, "Cleared the Sales punch for " + M.ds);
+              persist();
+              closeEdit();
+              toast("Punch cleared for " + w.name);
+              route();
+            },
+            function () {
+              $("mClear").disabled = false;
+              $("mErr").textContent = "No connection. Try again.";
+            },
+          );
+      };
     if ($("mReset"))
       $("mReset").onclick = function () {
         delete DB.edits.edits[w.id][M.ds];

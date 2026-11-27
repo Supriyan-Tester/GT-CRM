@@ -630,7 +630,7 @@
       var selfieInput = document.getElementById("selfieInput");
       var selfieImg = document.getElementById("selfieImg");
 
-      var HELPER = GM.getData().crewRole === "helper"; // a helper rides along: no odometer to read
+      var HELPER = GM.isHelper(); // a helper rides along: no odometer to read
       var lastKm = shift.lastRecordedKm || 0;
       document.getElementById("assignedVehicleName").textContent =
         shift.assignedVehicle || "No vehicle assigned yet";

@@ -1,3 +1,29 @@
+/* Browser errors are sent to the server so they show up in the Render log ([browser-error]). */
+(function () {
+  try {
+    var sent = 0;
+    var rep = function (o) {
+      if (sent >= 5) return;
+      sent++;
+      try {
+        o.page = location.pathname;
+        fetch("/api/client-log", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(o),
+          keepalive: true,
+        }).catch(function () {});
+      } catch (e) {}
+    };
+    window.addEventListener("error", function (e) {
+      rep({ msg: e.message, src: String(e.filename || "").split("/").slice(-2).join("/"), line: e.lineno, col: e.colno });
+    });
+    window.addEventListener("unhandledrejection", function (e) {
+      var r = e.reason;
+      rep({ msg: "Unhandled promise: " + ((r && r.message) || r), src: "promise" });
+    });
+  } catch (e) {}
+})();
 /* Lightweight loading feedback for GM-CRM.
    - Initial page rendering is never blocked by a full-screen overlay.
    - Navigation and user-triggered requests show a top progress bar immediately.

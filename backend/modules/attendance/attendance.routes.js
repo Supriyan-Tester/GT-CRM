@@ -20,6 +20,13 @@ function handleSalesAttendanceRoute(deps) {
     const value = stored("gm_sales_attendance_v1");
     return value && typeof value === "object" && !Array.isArray(value) ? value : {};
   };
+  // Vehicles a Sales person may choose at punch-in (active ones from the office vehicle list).
+  const activeVehicles = () => {
+    const list = stored("gm_admin_vehicles_v1");
+    return (Array.isArray(list) ? list : [])
+      .filter((v) => v && v.id && v.number && v.active !== false && (!v.status || v.status === "active"))
+      .map((v) => ({ id: v.id, number: v.number, type: v.type || "", lastKm: Math.round(Number(v.lastKm) || 0) }));
+  };
   const attendanceTime = (timestamp) => {
     const date = new Date(timestamp + 5.5 * 3600e3);
     return String(date.getUTCHours()).padStart(2, "0") + ":" + String(date.getUTCMinutes()).padStart(2, "0");
@@ -56,6 +63,7 @@ function handleSalesAttendanceRoute(deps) {
       days,
       todayEntry: mine[today] || null,
       pendingEntry,
+      vehicles: activeVehicles(),
     });
   }
 
@@ -72,13 +80,24 @@ function handleSalesAttendanceRoute(deps) {
         const previousOpenDate = findPunchOutDate(mine, now);
         if (previousOpenDate && previousOpenDate !== date)
           return send(res, 409, { error: "You forgot to punch out yesterday. Please contact the admin to punch in." });
+        // Sales people travel by vehicle: they must choose it and enter the odometer. (If the office has no active vehicle yet, this step is skipped.)
+        const vehicles = activeVehicles();
+        let veh = null, startKm = null;
+        if (vehicles.length) {
+          veh = vehicles.filter((v) => v.id === payload.vehicleId)[0];
+          if (!veh) return send(res, 400, { error: "Choose the vehicle you are using." });
+          startKm = Math.round(Number(payload.startKm));
+          if (!(startKm > 0)) return send(res, 400, { error: "Enter the odometer reading (km)." });
+          if (startKm < veh.lastKm)
+            return send(res, 400, { error: "The odometer cannot be less than the last reading for this vehicle (" + veh.lastKm + " km)." });
+        }
         const time = attendanceTime(now), settings = stored("gm_admin_settings_v1") || {};
         const late = clockMins(time) > clockMins(/^\d{1,2}:\d{2}$/.test(settings.lateAfter || "") ? settings.lateAfter : "08:30");
         const entry = {
           day: Number(date.slice(8)),
           weekday: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date(date + "T00:00:00Z").getUTCDay()],
           status: late ? "late" : "present", inTime: time, outTime: "-", hours: "-", km: 0,
-          vehicle: "", startKm: null, endKm: null, inAt: now, outAt: null, source: "sales",
+          vehicle: veh ? veh.number : "", vehicleId: veh ? veh.id : "", startKm, endKm: null, inAt: now, outAt: null, source: "sales",
         };
         mine[date] = entry;
         const keep = Object.keys(mine).sort().slice(-90), trimmed = {};
@@ -86,7 +105,7 @@ function handleSalesAttendanceRoute(deps) {
         all[s.id] = trimmed;
         setItem("gm_sales_attendance_v1", JSON.stringify(all));
         syncSalesAttendanceToEmployee(date, entry);
-        logEvents(s, [{ type: "attendance", text: "Sales punched in at " + time }]);
+        logEvents(s, [{ type: "attendance", text: "Sales punched in at " + time + (veh ? " (" + veh.number + ", start " + startKm + " km)" : "") }]);
         notifyAdmin("sales_attendance", actorOf(s).name + " punched in", "Punched in at " + time + (late ? " (late)." : "."), actorOf(s).name);
         return send(res, 200, { ok: true, action: payload.action, entry });
       }
@@ -96,8 +115,29 @@ function handleSalesAttendanceRoute(deps) {
       if (!punchOutEntry || !punchOutEntry.inAt || punchOutEntry.outAt)
         return send(res, 409, { error: "You must punch in before punching out." });
 
+      // Ending odometer is needed when the day was started with a starting reading (days punched in before this rule are not blocked).
+      let endKm = null;
+      if (punchOutEntry.startKm != null) {
+        endKm = Math.round(Number(payload.endKm));
+        if (!(endKm > 0)) return send(res, 400, { error: "Enter the ending odometer reading (km)." });
+        if (endKm < Number(punchOutEntry.startKm))
+          return send(res, 400, { error: "The ending odometer cannot be less than the starting reading (" + punchOutEntry.startKm + " km)." });
+      }
       const time = attendanceTime(now);
       const entry = Object.assign({}, punchOutEntry, { outTime: time, outAt: now, hours: attendanceHours(punchOutEntry.inAt, now) });
+      if (endKm != null) {
+        entry.endKm = endKm;
+        entry.km = endKm - Number(punchOutEntry.startKm);
+        // keep the vehicle's last odometer reading up to date for the next person
+        try {
+          const vl = stored("gm_admin_vehicles_v1"), vlist = Array.isArray(vl) ? JSON.parse(JSON.stringify(vl)) : null;
+          const vv = vlist && vlist.filter((x) => x && x.id === punchOutEntry.vehicleId)[0];
+          if (vv && endKm > (Number(vv.lastKm) || 0)) {
+            vv.lastKm = endKm;
+            setItem("gm_admin_vehicles_v1", JSON.stringify(vlist));
+          }
+        } catch (e) {}
+      }
       mine[punchOutDate] = entry;
       const keep = Object.keys(mine).sort().slice(-90), trimmed = {};
       keep.forEach((day) => { trimmed[day] = mine[day]; });
@@ -105,7 +145,7 @@ function handleSalesAttendanceRoute(deps) {
       setItem("gm_sales_attendance_v1", JSON.stringify(all));
       syncSalesAttendanceToEmployee(punchOutDate, entry);
       const dateNote = punchOutDate === date ? "" : " for " + punchOutDate;
-      logEvents(s, [{ type: "attendance", text: "Sales punched out" + dateNote + " at " + time + " (" + entry.hours + ")" }]);
+      logEvents(s, [{ type: "attendance", text: "Sales punched out" + dateNote + " at " + time + " (" + entry.hours + (endKm != null ? ", " + entry.km + " km driven" : "") + ")" }]);
       notifyAdmin("sales_attendance", actorOf(s).name + " punched out", "Punched out" + dateNote + " at " + time + " (" + entry.hours + ").", actorOf(s).name);
       return send(res, 200, { ok: true, action: payload.action, entry, date: punchOutDate });
     }, 4096);

@@ -697,7 +697,7 @@
         checkReturns.checked = true;
       } else $("returnsListContainer").innerHTML = rows.join("");
 
-      var HELPER = GM.getData().crewRole === "helper";
+      var HELPER = GM.isHelper();
       if (HELPER) {
         var kc = $("startKmDisplay").closest(".po-card");
         if (kc) kc.style.display = "none";

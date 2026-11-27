@@ -278,12 +278,13 @@ textarea#note{min-height:72px;resize:vertical}
         else if (!uc.ok) go = false;
       }
       if (go && to > 0 && !uo.ok) go = false;
+      if (go && Object.keys(S.sel).some(function (k) { return k !== "cur" && S.sel[k] && amt(k) > 0 && !S.files[k]; })) { go = false; msg = "Add the bill photo for every old bill."; }
       if (go && !S.cur && !(to > 0)) go = false;
     }
     $("#go").disabled = !go;
     $("#hintBar").textContent = go ? "" : msg;
-    // the bill photo is only for Pay Later (current bill only)
-    document.querySelectorAll(".cam").forEach(function (c) { c.style.display = isCr ? "" : "none"; });
+    // the current bill's photo is only for Pay Later; every old credit bill always needs its photo
+    document.querySelectorAll('.cam[data-add="cur"]').forEach(function (c) { c.style.display = isCr ? "" : "none"; });
     // no empty gap where the photo button was: the amount box takes the free space
     document.querySelectorAll(".amt2").forEach(function (g) {
       var cols = [];
@@ -328,7 +329,7 @@ textarea#note{min-height:72px;resize:vertical}
   function billReady(k) {
     var v = amt(k);
     if (k === "cur") return S.pm.cur.method === "credit" ? !(curPhotoNeeded() && !S.files.cur) : v > 0;
-    return v > 0;
+    return v > 0 && !!S.files[k]; // old credit bill: amount and photo are both required
   }
   function bUpdate(k) {
     var b = S.B[k], inp = $('[data-a="' + k + '"]');
@@ -343,7 +344,7 @@ textarea#note{min-height:72px;resize:vertical}
     if (k === "cur") {
       if (S.pm.cur.method === "credit") t = curPhotoNeeded() && !S.files.cur ? "Add photo." : "";
       else t = v > 0 ? "" : "Enter amount or choose Pay Later.";
-    } else t = v > 0 ? "" : "Enter amount.";
+    } else t = !(v > 0) ? "Enter amount." : !S.files[k] ? "Add bill photo. Tap the camera." : "";
     h.textContent = t; h.style.display = t && k !== "cur" ? "" : "none"; // the current bill's hint is already in the bottom bar
     var okb = $('[data-ook="' + k + '"]');
     if (okb) okb.disabled = !billReady(k);
@@ -357,11 +358,11 @@ textarea#note{min-height:72px;resize:vertical}
       (b.av > 0 ? (cur ? '<span class="due" style="margin:0;font-size:15px;align-self:start;position:relative;top:-3px">' + String(b.dueLabel).replace(/^Bill amount:\s*/, "") + "</span>" : '<button type="button" class="btn" data-t="' + k + '" aria-pressed="false">Collect</button>') : '<span class="muted">Collected</span>') + "</div>" +
       (b.av > 0 ?
         '<div class="more" id="more_' + k + '"><div class="amt2"><div class="in"><span>₹</span><input data-a="' + k + '" type="number" min="0" max="' + b.av.toFixed(2) + '" step="0.01" inputmode="decimal" placeholder="0.00" aria-label="Amount received"></div>' +
-        (cur ? '<button type="button" class="btn full" data-full="' + k + '">Full</button><button type="button" class="cam" data-add="' + k + '" aria-label="Add bill photo">' + CAM + "</button>" : "") + "</div>" +
+        (cur ? '<button type="button" class="btn full" data-full="' + k + '">Full</button>' : "") + '<button type="button" class="cam" data-add="' + k + '" aria-label="Add bill photo">' + CAM + "</button></div>" +
         '<div class="pbar"><i id="bar_' + k + '"></i></div><div class="rc"><span id="rcv_' + k + '">Paid ' + money(0) + '</span><span id="stay_' + k + '">Credit ' + money(b.out) + "</span></div>" +
         '<p class="hint" id="hint_' + k + '"></p>' +
         (cur ? payHtml("cur") + noteHtml() : '<div class="okrow"><button type="button" class="btn" data-ocancel="' + k + '">Cancel</button><button type="button" class="btn okb" data-ook="' + k + '" disabled>OK</button></div>') +
-        (cur ? '<input type="file" data-f="' + k + '" accept="image/jpeg,image/png,image/webp" style="display:none">' : "") + "</div>" +
+        '<input type="file" data-f="' + k + '" accept="image/jpeg,image/png,image/webp" capture="environment" style="display:none"></div>' +
         '<div class="sm" id="sm_' + k + '"><div class="t">✓</div><div><p id="smT_' + k + '"></p><small id="smS_' + k + '"></small></div><button type="button" class="ed" data-oedit="' + k + '">Edit</button></div>' : "") + "</div>";
   }
   function renderBills() {
@@ -417,6 +418,7 @@ textarea#note{min-height:72px;resize:vertical}
         var k = b.getAttribute("data-ocancel"), t = $('[data-t="' + k + '"]');
         S.sel[k] = false; S.ok[k] = false;
         $('[data-a="' + k + '"]').value = "";
+        if (k !== "cur") { delete S.files[k]; var cb = $('[data-add="' + k + '"]'), fi = $('[data-f="' + k + '"]'); if (fi) fi.value = ""; if (cb) { cb.className = "cam"; cb.innerHTML = CAM; } }
         t.className = "btn"; t.textContent = "Collect"; t.setAttribute("aria-pressed", "false");
         showMore(k, false); showSum(k, false); bUpdate(k);
       };
@@ -540,6 +542,12 @@ textarea#note{min-height:72px;resize:vertical}
         var a = amt(k);
         if (a > 0) allocOld.push({ invoiceId: k, amount: a });
       });
+      for (var oa of allocOld) {
+        var of = S.files[oa.invoiceId];
+        if (!of) throw fe("Add the bill photo for every old bill.", '[data-add="' + oa.invoiceId + '"]');
+        if (of.size > 25 * 1024 * 1024) throw fe("Photo max 25 MB.", '[data-add="' + oa.invoiceId + '"]');
+        oa.evidencePath = (await uploadPhoto(of)).evidencePath;
+      }
       if (!allocCur.length && !allocOld.length) throw fe("Enter amount.");
       // old bills and the current bill are saved as two collections, each with its own payment option
       var jobs = [];

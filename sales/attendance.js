@@ -71,9 +71,18 @@
     }
     function punch(action) {
       if (busy) return;
+      var entry = data.todayEntry || (data.pendingEntry && data.pendingEntry.entry) || null, ask;
+      if (action === "punch-in" && data.vehicles && data.vehicles.length)
+        ask = Sales.kmDialog({ title: "Punch in", text: "Choose your vehicle and enter the odometer reading.", vehicles: data.vehicles, confirm: "Punch In" });
+      else if (action === "punch-out" && entry && entry.startKm != null)
+        ask = Sales.kmDialog({ title: "Punch out", text: (entry.vehicle ? "Vehicle " + entry.vehicle + ". " : "") + "Enter the ending odometer reading.", min: entry.startKm, confirm: "Punch Out" });
+      else ask = Promise.resolve({});
+      ask.then(function (v) { if (v) doPunch(action, v); });
+    }
+    function doPunch(action, v) {
       var btn = el("saPunch");
       busy = true; btn.disabled = true; btn.textContent = action === "punch-in" ? "Punching in…" : "Punching out…";
-      Sales.api("/api/sales/attendance", { action: action }).then(function () {
+      Sales.api("/api/sales/attendance", action === "punch-in" ? { action: action, vehicleId: v.vehicleId || "", startKm: v.km || null } : { action: action, endKm: v.km || null }).then(function () {
         Sales.toast(action === "punch-in" ? "Punched in successfully." : "Punched out successfully. You are being signed out. See you tomorrow!");
         // Like the delivery panel: after punch-out the person is signed out
         if (action === "punch-out") { setTimeout(Sales.logout, 1800); return null; }
