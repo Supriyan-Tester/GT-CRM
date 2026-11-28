@@ -11,264 +11,106 @@
     <link rel="stylesheet" href="../shared/admin.css" />
     <script src="../shared/theme.js"></script>
     <style>
-      .ret-wrap {
-        display: grid;
-        gap: 14px;
-        max-width: 1100px;
-      }
-      .ret-intro {
-        color: var(--muted);
-        font-size: 13px;
-      }
-      .ret-bar {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        flex-wrap: wrap;
-      }
-      .ret-bar .ret-count {
-        margin-left: auto;
-        font-size: 12px;
-        color: var(--muted);
-      }
-      .ret-bar label {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        font-size: 13px;
-        color: var(--muted);
-      }
-      .ret-bar input[type="date"] {
-        border: 1px solid var(--border);
-        background: var(--bg);
-        color: var(--text);
-        border-radius: 9px;
-        padding: 8px 10px;
-        font: inherit;
-        font-size: 13px;
-      }
-      .ret-banner {
-        font-size: 13px;
-        padding: 10px 12px;
-        border-radius: 10px;
-        background: var(--soft);
-        color: var(--muted);
-      }
-      .ret-card {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 16px;
-        display: grid;
-        gap: 14px;
-      }
-      .ret-top {
-        display: flex;
-        gap: 12px;
-        align-items: flex-start;
-        justify-content: space-between;
-        flex-wrap: wrap;
-      }
-      .ret-title {
-        font-weight: 800;
-      }
-      .ret-meta {
-        font-size: 12px;
-        color: var(--muted);
-        margin-top: 3px;
-        line-height: 1.5;
-      }
-      .ret-pill {
-        font-size: 11px;
-        font-weight: 700;
-        padding: 5px 10px;
-        border-radius: 20px;
-        background: var(--soft);
-        color: var(--muted);
-        white-space: nowrap;
-      }
-      .ret-pill.wait {
-        background: #fef3c7;
-        color: #92400e;
-      }
-      .ret-pill.done {
-        background: var(--t-primary);
-        color: var(--primary);
-      }
-      .ret-items {
-        display: grid;
-        gap: 10px;
-      }
-      .ret-item {
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 14px;
-        display: grid;
-        gap: 12px;
-        grid-template-columns: minmax(180px, 0.8fr) minmax(0, 2fr);
-        align-items: start;
-      }
-      .ret-item > .ret-info b {
-        display: block;
-      }
-      .ret-form {
-        display: grid;
-        gap: 10px;
-        min-width: 0;
-      }
-      .ret-row {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 8px;
-      }
-      .ret-row.two {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-      .ret-row.four {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-      }
-      .ret-f {
-        font-size: 11px;
-        color: var(--muted);
-        display: grid;
-        gap: 5px;
-        min-width: 0;
-        align-content: start;
-      }
-      .ret-f[hidden] {
-        display: none;
-      }
-      .ret-f input,
-      .ret-f select {
-        width: 100%;
-        min-width: 0;
-        box-sizing: border-box;
-        border: 1px solid var(--border);
-        background: var(--bg);
-        color: var(--text);
-        border-radius: 9px;
-        padding: 9px;
-        font: inherit;
-        font-size: 13px;
-      }
-      .ret-f input:focus,
-      .ret-f select:focus {
-        outline: 2px solid var(--primary);
-        outline-offset: -1px;
-      }
-      .ret-left {
-        font-size: 12px;
-        font-weight: 700;
-        color: var(--primary);
-      }
-      .ret-left.bad,
-      .ret-diff.bad {
-        color: var(--danger);
-      }
-      .ret-diff {
-        font-size: 12px;
-        font-weight: 700;
-        color: var(--primary);
-      }
-      .ret-actions {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        align-items: center;
-      }
-      .ret-btn {
-        border: 1px solid var(--border);
-        background: var(--card);
-        color: var(--text);
-        padding: 9px 14px;
-        border-radius: 9px;
-        font-weight: 700;
-        font-size: 13px;
-        cursor: pointer;
-      }
-      .ret-btn:disabled {
-        opacity: 0.6;
-        cursor: default;
-      }
-      .ret-btn.primary {
-        background: var(--primary);
-        color: white;
-        border-color: var(--primary);
-      }
-      .ret-empty {
-        padding: 28px;
-        text-align: center;
-        color: var(--muted);
-        border: 1px dashed var(--border);
-        border-radius: 14px;
-      }
-      .ret-hint {
-        font-size: 12px;
-        color: var(--muted);
-      }
-      .ret-ledger {
-        border: 1px solid var(--primary);
-        background: var(--t-primary);
-        border-radius: 12px;
-        padding: 14px;
-        display: grid;
-        gap: 10px;
-      }
-      .ret-ledger-title {
-        font-size: 13px;
-        font-weight: 800;
-        color: var(--primary);
-      }
-      .ret-ledger-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-        gap: 10px;
-        align-items: end;
-      }
-      .ret-total {
-        font-size: 18px;
-        font-weight: 800;
-        color: var(--text);
-      }
-      .ret-note {
-        font-size: 13px;
-        font-weight: 600;
-        padding: 10px 12px;
-        border-radius: 10px;
-        background: #fee2e2;
-        color: #991b1b;
-      }
-      .ret-note[hidden] {
-        display: none;
-      }
-      .ret-done {
-        color: var(--primary);
-        font-weight: 700;
-        font-size: 13px;
-      }
-      @media (max-width: 800px) {
-        .ret-item {
-          grid-template-columns: 1fr;
-        }
-        .ret-row.four {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-      }
-      @media (max-width: 600px) {
-        .ret-row.two,
-        .ret-ledger-grid {
-          grid-template-columns: 1fr;
-        }
-        .ret-card {
-          padding: 12px;
-        }
-        .ret-bar .ret-count {
-          margin-left: 0;
-          width: 100%;
-        }
-        .ret-actions .ret-btn {
-          width: 100%;
-        }
+      .ret-wrap{display:grid;gap:14px;max-width:1320px}
+      .ret-intro{color:var(--muted);font-size:13px}
+      .ret-banner{font-size:13px;padding:10px 12px;border-radius:10px;background:var(--soft);color:var(--muted)}
+      /* stats */
+      .ret-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+      .ret-kpi{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 16px;display:flex;gap:12px;align-items:center;min-width:0}
+      .ret-kpi i{width:6px;height:32px;border-radius:4px;flex:none}
+      .ret-kpi b{display:block;font-size:21px;font-weight:800;line-height:1.1}
+      .ret-kpi span{font-size:12px;color:var(--muted)}
+      /* bar */
+      .ret-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+      .ret-bar .ret-count{margin-left:auto;font-size:12px;color:var(--muted)}
+      .ret-bar label{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted)}
+      .ret-bar input[type="date"]{border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:9px;padding:8px 10px;font:inherit;font-size:13px}
+      .ret-tabs{display:flex;gap:4px;background:var(--soft);padding:4px;border-radius:12px}
+      .ret-tab{border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:9px;cursor:pointer;white-space:nowrap}
+      .ret-tab.on{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(15,23,42,.1)}
+      .ret-tab em{font-style:normal;margin-left:6px;font-size:11px;padding:1px 7px;border-radius:10px;background:var(--bg);color:var(--muted)}
+      .ret-tab.on em{background:var(--t-primary);color:var(--primary)}
+      /* layout */
+      .ret-main{display:grid;grid-template-columns:minmax(0,1fr) 430px;gap:16px;align-items:start}
+      .ret-list{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+      .ret-rowc{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.5fr) 70px 130px 80px;gap:12px;align-items:center;padding:13px 16px;border-bottom:1px solid var(--border);cursor:pointer}
+      .ret-rowc:last-child{border-bottom:0}
+      .ret-rowc:hover{background:var(--soft)}
+      .ret-rowc.sel{background:var(--t-primary);box-shadow:inset 3px 0 0 var(--primary)}
+      .ret-rowc .shop{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .ret-rowc .sub{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .ret-rowc .items{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .ret-rowc .pcs{font-weight:700}
+      .ret-rowc .time{font-size:12px;color:var(--muted);text-align:right}
+      .ret-pill{font-size:11px;font-weight:700;padding:5px 10px;border-radius:20px;background:var(--soft);color:var(--muted);white-space:nowrap;justify-self:start}
+      .ret-pill.wait{background:#fef3c7;color:#92400e}
+      .ret-pill.sup{background:var(--t-info);color:var(--info)}
+      .ret-pill.done{background:var(--t-primary);color:var(--primary)}
+      /* panel */
+      .ret-panel{background:var(--card);border:1px solid var(--border);border-radius:14px;position:sticky;top:12px;max-height:calc(100vh - 120px);display:flex;flex-direction:column;overflow:hidden}
+      .ret-phead{padding:16px 18px 12px;display:flex;gap:10px;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--border)}
+      .ret-title{font-weight:800;font-size:15px}
+      .ret-meta{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5}
+      .ret-close{display:none;border:0;background:var(--soft);color:var(--text);width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer}
+      .ret-pbody{padding:14px 18px;overflow:auto;display:grid;gap:10px;align-content:start}
+      .ret-pfoot{padding:12px 18px 16px;border-top:1px solid var(--border);display:grid;gap:10px}
+      .ret-sec{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
+      .ret-item{border:1px solid var(--border);border-radius:12px;padding:12px;display:grid;gap:10px;min-width:0}
+      .ret-det>summary{list-style:none;cursor:pointer;display:flex;gap:10px;justify-content:space-between;align-items:flex-start}
+      .ret-det>summary::-webkit-details-marker{display:none}
+      .ret-det>summary:after{content:"▾";color:var(--muted);font-size:12px;margin-left:6px}
+      .ret-det:not([open])>summary:after{content:"▸"}
+      .ret-info b{display:block}
+      .ret-live{font-size:11px;color:var(--muted);margin-top:3px;display:block}
+      .ret-form{display:grid;gap:10px;min-width:0;margin-top:10px}
+      .ret-splitbar{display:flex;height:8px;border-radius:6px;overflow:hidden;background:var(--soft)}
+      .ret-splitbar span:nth-child(1){background:#16a34a}.ret-splitbar span:nth-child(2){background:#2563eb}.ret-splitbar span:nth-child(3){background:#dc2626}
+      .ret-line{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;font-weight:700}
+      .ret-line i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px}
+      .ret-step{display:flex;align-items:center;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg)}
+      .ret-step button{border:0;background:var(--soft);color:var(--muted);width:32px;height:32px;font-size:16px;cursor:pointer}
+      .ret-step input{width:62px!important;border:0!important;text-align:center;font-weight:800!important;background:transparent!important;border-radius:0!important;padding:6px 2px!important;-moz-appearance:textfield}
+      .ret-step input::-webkit-outer-spin-button,.ret-step input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+      .ret-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+      .ret-f{font-size:11px;color:var(--muted);display:grid;gap:5px;min-width:0;align-content:start}
+      .ret-f[hidden]{display:none}
+      .ret-f input,.ret-f select{width:100%;min-width:0;box-sizing:border-box;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:9px;padding:9px;font:inherit;font-size:13px}
+      .ret-f input:focus,.ret-f select:focus{outline:2px solid var(--primary);outline-offset:-1px}
+      .ret-more summary{cursor:pointer;font-size:12px;font-weight:700;color:var(--primary);list-style:none}
+      .ret-more summary::-webkit-details-marker{display:none}
+      .ret-more .ret-row{margin-top:8px}
+      .ret-left{font-size:12px;font-weight:700;color:var(--primary)}
+      .ret-left.bad,.ret-diff.bad{color:var(--danger)}
+      .ret-diff{font-size:12px;font-weight:700;color:var(--primary)}
+      .ret-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+      .ret-btn{border:1px solid var(--border);background:var(--card);color:var(--text);padding:9px 14px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer}
+      .ret-btn:disabled{opacity:.6;cursor:default}
+      .ret-btn.primary{background:var(--primary);color:var(--on-primary,#fff);border-color:var(--primary)}
+      .ret-actions .ret-btn.primary.inspect{flex:1;padding:12px}
+      .ret-empty{padding:28px;text-align:center;color:var(--muted);border:1px dashed var(--border);border-radius:14px}
+      .ret-list .ret-empty{border:0}
+      .ret-hint{font-size:12px;color:var(--muted)}
+      .ret-ledger{border:1px solid var(--primary);background:var(--t-primary);border-radius:12px;padding:12px;display:grid;gap:10px}
+      .ret-ledger-title{font-size:13px;font-weight:800;color:var(--primary)}
+      .ret-ledger-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px;align-items:end}
+      .ret-total{font-size:18px;font-weight:800;color:var(--text)}
+      .ret-note{font-size:13px;font-weight:600;padding:10px 12px;border-radius:10px;background:#fee2e2;color:#991b1b}
+      .ret-note[hidden]{display:none}
+      .ret-done{color:var(--primary);font-weight:700;font-size:13px}
+      .ret-dim{display:none}
+      @media (max-width:1100px){.ret-main{grid-template-columns:minmax(0,1fr) 380px}.ret-rowc{grid-template-columns:minmax(0,1.2fr) 60px 120px}.ret-rowc .items,.ret-rowc .time{display:none}}
+      @media (max-width:800px){
+        .ret-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+        .ret-main{grid-template-columns:1fr}
+        .ret-tabs{width:100%}.ret-tab{flex:1;padding:7px 6px}
+        .ret-rowc{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"shop pill" "items pcs";gap:6px 10px;padding:14px}
+        .ret-rowc>div:nth-child(1){grid-area:shop}.ret-rowc .items{display:block;grid-area:items;font-size:12px}
+        .ret-rowc .pcs{grid-area:pcs;text-align:right}.ret-rowc .ret-pill{grid-area:pill;justify-self:end}.ret-rowc .time{display:none}
+        .ret-panel{position:fixed;left:0;right:0;bottom:0;top:auto;max-height:88vh;border-radius:24px 24px 0 0;z-index:60;transform:translateY(105%);transition:transform .22s ease;box-shadow:0 -10px 30px rgba(15,23,42,.25)}
+        .ret-main.open .ret-panel{transform:none}
+        .ret-main.open .ret-dim{display:block;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:55}
+        .ret-close{display:block}
+        .ret-bar .ret-count{margin-left:0;width:100%}
       }
     </style>
   </head>
@@ -284,6 +126,8 @@
         let all = [];
         let invCache = {};
         let loadN = 0;
+        let tab = "";
+        let selId = "";
         const sess = (GA.session && GA.session()) || {};
         const isSuper = sess.super === true;
 
@@ -291,12 +135,18 @@
           <div class="ret-wrap">
             <p class="ret-intro">Check the goods that came back, put good units back in stock and confirm the credit for the customer's invoice.</p>
             ${isSuper ? "" : '<div class="ret-banner">Only the Super Admin can approve returns. You can view them here.</div>'}
+            <div class="ret-kpis" id="retKpis"></div>
             <div class="ret-bar">
+              <div class="ret-tabs" id="retTabs"></div>
               <label>Date <input type="date" id="retDate"></label>
-              <button class="ret-btn" id="retClear" type="button">Show open returns</button>
+              <button class="ret-btn" id="retClear" type="button">Clear date</button>
               <span class="ret-count" id="retCount"></span>
             </div>
-            <div id="retList"><div class="ret-empty">Loading…</div></div>
+            <div class="ret-main" id="retMain">
+              <div class="ret-list" id="retList"><div class="ret-empty">Loading…</div></div>
+              <div class="ret-dim" id="retDim"></div>
+              <aside class="ret-panel" id="retPanel"><div class="ret-empty" style="border:0;margin:auto">Select a return</div></aside>
+            </div>
           </div>
         `;
 
@@ -308,13 +158,7 @@
         }
 
         function money(value) {
-          return (
-            "₹" +
-            Number(value || 0).toLocaleString("en-IN", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })
-          );
+          return "₹" + Number(value || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
         function r2(n) {
@@ -335,7 +179,7 @@
           });
         }
 
-        // One message line per card, instead of browser pop-ups.
+        // One message line per panel, instead of browser pop-ups.
         function say(card, msg) {
           const n = card && card.querySelector(".ret-note");
           if (!n) return;
@@ -363,6 +207,58 @@
           return r2(item.provisionalCredit != null ? item.provisionalCredit : item.returnedAmount);
         }
 
+        function isClosed(r) {
+          return r.status === "closed" || r.status === "reconciliation_complete";
+        }
+
+        function replacementWaiting(r) {
+          return (r.items || []).some(function (i) {
+            return i.replacementStockPending;
+          });
+        }
+
+        function groupOf(r) {
+          if (!r.inspectedAt) return "inspect";
+          if (replacementWaiting(r) || !isClosed(r)) return "supplier";
+          return "closed";
+        }
+
+        function totalQty(r) {
+          return (r.items || []).reduce(function (n, i) {
+            return n + (Number(i.returnedQty) || 0);
+          }, 0);
+        }
+
+        function creditOf(r) {
+          return r2(
+            (r.items || []).reduce(function (n, i) {
+              return n + suggestedOf(i);
+            }, 0)
+          );
+        }
+
+        function localDateStr(ts) {
+          const d = new Date(ts);
+          return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+        }
+
+        function timeLabel(ts) {
+          const d = new Date(ts);
+          if (isNaN(d)) return "";
+          return localDateStr(d) === localDateStr(Date.now())
+            ? d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+            : d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+        }
+
+        function pillFor(r) {
+          const g = groupOf(r);
+          return g === "inspect"
+            ? ["wait", "Needs checking"]
+            : g === "closed"
+              ? ["done", "Closed"]
+              : ["sup", "With supplier"];
+        }
+
         function infoHtml(item, extra) {
           const price = item.unitPrice
             ? ` × ${money(item.unitPrice)} = ${money(item.returnedAmount || item.returnedQty * item.unitPrice)}`
@@ -375,7 +271,11 @@
             </div>`;
         }
 
-        function renderItem(item, inspected) {
+        function stepInput(cls, qty, value) {
+          return `<div class="ret-step"><button type="button" class="st-b" data-d="-1">−</button><input class="${cls}" type="number" min="0" max="${qty}" step="0.001" value="${value}"><button type="button" class="st-b" data-d="1">+</button></div>`;
+        }
+
+        function renderItem(item, inspected, first) {
           const suggested = suggestedOf(item);
           const qty = Number(item.returnedQty) || 0;
 
@@ -388,38 +288,40 @@
           if (!inspected) {
             return `
               <div class="ret-item" data-product="${esc(item.productId)}" data-qty="${qty}" data-suggested="${suggested}">
-                ${infoHtml(item)}
-                <div class="ret-form">
-                  <div class="ret-row">
-                    <label class="ret-f">Good (back to stock)
-                      <input class="restock" type="number" min="0" max="${qty}" step="0.001" value="0">
-                    </label>
-                    <label class="ret-f">To supplier
-                      <input class="company" type="number" min="0" max="${qty}" step="0.001" value="0">
-                    </label>
-                    <label class="ret-f">Damaged
-                      <input class="damaged" type="number" min="0" max="${qty}" step="0.001" value="${qty}">
-                    </label>
-                  </div>
-                  <div class="ret-left">All ${qty} units assigned</div>
-                  <div class="ret-row two">
+                <details class="ret-det" ${first ? "open" : ""}>
+                  <summary>
+                    <div class="ret-info">
+                      <b>${esc(item.productName)}</b>
+                      <div class="ret-meta">Returned ${esc(item.returnedQty)}${item.returnReason ? " · " + esc(item.returnReason) : ""}</div>
+                      <span class="ret-live"></span>
+                    </div>
+                  </summary>
+                  <div class="ret-form">
+                    <div class="ret-splitbar"><span></span><span></span><span></span></div>
+                    <div class="ret-line"><span><i style="background:#16a34a"></i>Good (back to stock)</span>${stepInput("restock", qty, 0)}</div>
+                    <div class="ret-line"><span><i style="background:#2563eb"></i>To supplier</span>${stepInput("company", qty, 0)}</div>
+                    <div class="ret-line"><span><i style="background:#dc2626"></i>Damaged</span>${stepInput("damaged", qty, qty)}</div>
+                    <div class="ret-left">All ${qty} units assigned</div>
                     <label class="ret-f supplier-box" hidden>Supplier name
                       <input class="company-name" placeholder="Required">
                     </label>
-                    <label class="ret-f">Inspection note (optional)
-                      <input class="inspection-note" placeholder="Condition, packing, expiry…">
-                    </label>
-                  </div>
-                  <div class="ret-row two">
                     <label class="ret-f">Credit to give (₹) · worker deducted ${money(suggested)}
                       <input class="credit-amt" type="number" min="0" step="0.01" value="${suggested}">
                     </label>
-                    <label class="ret-f">Reason (if credit is different)
-                      <input class="credit-reason" maxlength="160" placeholder="e.g. 40% credit, heavily damaged">
-                    </label>
+                    <div class="ret-diff"></div>
+                    <details class="ret-more">
+                      <summary>+ Note / reason</summary>
+                      <div class="ret-row">
+                        <label class="ret-f">Inspection note
+                          <input class="inspection-note" placeholder="Condition, expiry…">
+                        </label>
+                        <label class="ret-f">Reason (if credit differs)
+                          <input class="credit-reason" maxlength="160" placeholder="e.g. 40% credit">
+                        </label>
+                      </div>
+                    </details>
                   </div>
-                  <div class="ret-diff"></div>
-                </div>
+                </details>
               </div>`;
           }
 
@@ -448,7 +350,7 @@
           if (item.replacementStockPending) {
             replacementHtml = `
               <div class="ret-hint">Replacement received: ${esc(item.replacementReceivedQty)}. Check it before it goes into stock.</div>
-              <div class="ret-row two">
+              <div class="ret-row">
                 <label class="ret-f">Accept into stock
                   <input class="replacement-accepted" type="number" min="0" max="${Number(item.replacementReceivedQty)}" step="0.001" value="${Number(item.replacementReceivedQty)}">
                 </label>
@@ -456,11 +358,7 @@
                   <input class="replacement-damaged" type="number" min="0" max="${Number(item.replacementReceivedQty)}" step="0.001" value="0">
                 </label>
               </div>
-              ${
-                isSuper
-                  ? '<div class="ret-actions"><button class="ret-btn primary replacement-inspect" type="button">Accept replacement</button></div>'
-                  : ""
-              }`;
+              ${isSuper ? '<div class="ret-actions"><button class="ret-btn primary replacement-inspect" type="button">Accept replacement</button></div>' : ""}`;
           } else if (item.replacementInspectedAt) {
             replacementHtml = `<div class="ret-meta">Replacement checked: ${esc(item.replacementStockAcceptedQty)} accepted, ${esc(item.replacementDamagedQty)} damaged.</div>`;
           }
@@ -468,8 +366,8 @@
           return `
             <div class="ret-item" data-product="${esc(item.productId)}">
               ${infoHtml(item, `<div class="ret-meta">${summary}</div>`)}
-              <div class="ret-form">
-                <div class="ret-row four">
+              <div class="ret-form" style="margin-top:0">
+                <div class="ret-row">
                   <label class="ret-f">Supplier status
                     <select class="company-status">
                       ${opt("awaiting_dispatch", "Awaiting dispatch")}
@@ -525,109 +423,167 @@
             </div>`;
         }
 
-        function render() {
+        function updateItem(item) {
+          const qty = Number(item.dataset.qty) || 0;
+          const g = Number(item.querySelector(".restock").value) || 0;
+          const s = Number(item.querySelector(".company").value) || 0;
+          const d = Number(item.querySelector(".damaged").value) || 0;
+          const left = Math.round((qty - (g + s + d)) * 1000) / 1000;
+          const out = item.querySelector(".ret-left");
+          out.textContent =
+            Math.abs(left) < 0.0005
+              ? "All " + qty + " units assigned"
+              : left > 0
+                ? left + (left === 1 ? " unit" : " units") + " still to assign"
+                : Math.abs(left) + (Math.abs(left) === 1 ? " unit" : " units") + " too many";
+          out.classList.toggle("bad", Math.abs(left) >= 0.0005);
+          item.querySelector(".supplier-box").hidden = !(s > 0);
+          item.querySelector(".ret-live").textContent = "Good " + g + " · Supplier " + s + " · Damaged " + d;
+          const bars = item.querySelectorAll(".ret-splitbar span");
+          const base = qty > 0 ? qty : 1;
+          bars[0].style.width = Math.min(100, (g / base) * 100) + "%";
+          bars[1].style.width = Math.min(100, (s / base) * 100) + "%";
+          bars[2].style.width = Math.min(100, (d / base) * 100) + "%";
+        }
+
+        function renderKpis(base) {
+          const inspectN = base.filter(function (r) { return groupOf(r) === "inspect"; }).length;
+          const supN = base.filter(function (r) { return groupOf(r) === "supplier"; }).length;
+          let good = 0;
+          let pending = 0;
+          base.forEach(function (r) {
+            if (r.inspectedAt) good += (r.items || []).reduce(function (n, i) { return n + (Number(i.restockQty) || 0); }, 0);
+            else pending += creditOf(r);
+          });
+          const k = function (color, val, label) {
+            return `<div class="ret-kpi"><i style="background:${color}"></i><div><b>${val}</b><span>${label}</span></div></div>`;
+          };
+          document.getElementById("retKpis").innerHTML =
+            k("#f59e0b", inspectN, "To inspect") +
+            k("#2563eb", supN, "With supplier") +
+            k("#16a34a", Math.round(good * 1000) / 1000, "Back in stock (pcs)") +
+            k("#dc2626", money(pending), "Credit pending");
+        }
+
+        function renderTabs(base) {
+          const c = { inspect: 0, supplier: 0, closed: 0 };
+          base.forEach(function (r) { c[groupOf(r)]++; });
+          const t = function (key, label) {
+            return `<button type="button" class="ret-tab ${tab === key ? "on" : ""}" data-tab="${key}">${label}<em>${c[key]}</em></button>`;
+          };
+          document.getElementById("retTabs").innerHTML = t("inspect", "To inspect") + t("supplier", "With supplier") + t("closed", "Closed");
+        }
+
+        function renderPanel() {
+          const el = document.getElementById("retPanel");
+          const r = rows.find(function (x) { return x.id === selId; });
+          if (!r) {
+            el.removeAttribute("data-ret");
+            el.innerHTML = '<div class="ret-empty" style="border:0;margin:auto">Select a return</div>';
+            return;
+          }
+          const inspected = Boolean(r.inspectedAt);
+          const custCode = r.customerCode || r.orderCode || "";
+          const openInvs = invCache[custCode] || [];
+          const defaultAmt = creditOf(r);
+
+          let invOptions = '<option value="">No open invoice found</option>';
+          if (openInvs.length) {
+            invOptions =
+              '<option value="">Choose an invoice</option>' +
+              openInvs
+                .map(function (inv) {
+                  const isMatch = r.invoiceNo && String(inv.invoice_no).toLowerCase() === String(r.invoiceNo).toLowerCase();
+                  const maxDue = Math.floor(Number(inv.availableToCollect || 0));
+                  return `<option value="${esc(inv.id)}" data-invno="${esc(inv.invoice_no)}" data-max="${maxDue}" ${isMatch ? "selected" : ""}>#${esc(inv.invoice_no)} · due ${money(inv.availableToCollect)}</option>`;
+                })
+                .join("");
+          }
+
+          const p = pillFor(r);
+          el.setAttribute("data-ret", r.id);
+          el.innerHTML = `
+            <div class="ret-phead">
+              <div>
+                <div class="ret-title">${esc(r.shop || "Customer not listed")}</div>
+                <div class="ret-meta">${esc(r.orderCode)} · ${esc(r.workerName)} · ${esc(new Date(r.createdAt).toLocaleString("en-IN"))}<br>${esc(r.id)}</div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center"><span class="ret-pill ${p[0]}">${p[1]}</span><button class="ret-close" type="button" aria-label="Close">✕</button></div>
+            </div>
+            <div class="ret-pbody">
+              <div class="ret-sec">${inspected ? "Items" : isSuper ? "Split each item" : "Items"}</div>
+              ${r.items.map(function (item, idx) { return renderItem(item, inspected, idx === 0); }).join("")}
+            </div>
+            <div class="ret-pfoot">
+              <div class="ret-note" role="alert" hidden></div>
+              ${footerFor(r, inspected, invOptions, defaultAmt)}
+            </div>`;
+          el.querySelectorAll(".ret-item[data-qty]").forEach(updateItem);
+        }
+
+        function renderList() {
           const el = document.getElementById("retList");
-          document.getElementById("retCount").textContent = rows.length
-            ? rows.length + (rows.length === 1 ? " return" : " returns")
-            : "";
-          if (!rows.length) {
+          const list = rows.filter(function (r) { return groupOf(r) === tab; }).slice().reverse();
+          document.getElementById("retCount").textContent = list.length ? list.length + (list.length === 1 ? " return" : " returns") : "";
+          if (!list.length) {
             const hasDate = Boolean(document.getElementById("retDate").value);
             el.innerHTML = `<div class="ret-empty">${
-              hasDate ? "No returns on this date." : "No open returns. Everything has been checked."
+              hasDate
+                ? "No returns here on this date."
+                : tab === "inspect"
+                  ? "Nothing to check. Everything has been inspected."
+                  : "Nothing here."
             }</div>`;
             return;
           }
-
-          el.innerHTML =
-            '<div class="ret-wrap">' +
-            rows
-              .slice()
-              .reverse()
-              .map(function (r) {
-                const inspected = Boolean(r.inspectedAt);
-                const custCode = r.customerCode || r.orderCode || "";
-                const openInvs = invCache[custCode] || [];
-                const defaultAmt = r2(
-                  r.items.reduce(function (sum, i) {
-                    return sum + suggestedOf(i);
-                  }, 0)
-                );
-
-                let invOptions = '<option value="">No open invoice found</option>';
-                if (openInvs.length) {
-                  invOptions =
-                    '<option value="">Choose an invoice</option>' +
-                    openInvs
-                      .map(function (inv) {
-                        const isMatch =
-                          r.invoiceNo && String(inv.invoice_no).toLowerCase() === String(r.invoiceNo).toLowerCase();
-                        const maxDue = Math.floor(Number(inv.availableToCollect || 0));
-                        return `<option value="${esc(inv.id)}" data-invno="${esc(inv.invoice_no)}" data-max="${maxDue}" ${
-                          isMatch ? "selected" : ""
-                        }>#${esc(inv.invoice_no)} · due ${money(inv.availableToCollect)}</option>`;
-                      })
-                      .join("");
-                }
-
-                const status = String(r.status || "pending_inspection");
-                const pillCls = !inspected ? "wait" : status === "closed" || status === "reconciliation_complete" ? "done" : "";
-                const pillTxt = !inspected
-                  ? "Needs checking"
-                  : status === "closed" || status === "reconciliation_complete"
-                    ? "Closed"
-                    : "With supplier";
-
-                return `
-                  <section class="ret-card" data-ret="${esc(r.id)}">
-                    <div class="ret-top">
-                      <div>
-                        <div class="ret-title">${esc(r.shop || "Customer not listed")}</div>
-                        <div class="ret-meta">${esc(r.id)} · ${esc(r.orderCode)} · ${esc(r.workerName)} · ${esc(new Date(r.createdAt).toLocaleString("en-IN"))}</div>
-                      </div>
-                      <span class="ret-pill ${pillCls}">${pillTxt}</span>
-                    </div>
-                    <div class="ret-items">${r.items.map((item) => renderItem(item, inspected)).join("")}</div>
-                    <div class="ret-note" role="alert" hidden></div>
-                    ${footerFor(r, inspected, invOptions, defaultAmt)}
-                  </section>`;
-              })
-              .join("") +
-            "</div>";
+          el.innerHTML = list
+            .map(function (r) {
+              const p = pillFor(r);
+              const names = (r.items || [])
+                .map(function (i) { return esc(i.productName) + " ×" + esc(i.returnedQty); })
+                .join(", ");
+              return `
+                <div class="ret-rowc ${r.id === selId ? "sel" : ""}" data-sel="${esc(r.id)}">
+                  <div><div class="shop">${esc(r.shop || "Customer not listed")}</div><div class="sub">${esc(r.orderCode)} · ${esc(r.workerName)}</div></div>
+                  <div class="items">${names}</div>
+                  <div class="pcs">${esc(totalQty(r))} pcs</div>
+                  <span class="ret-pill ${p[0]}">${p[1]}</span>
+                  <div class="time">${esc(timeLabel(r.createdAt))}</div>
+                </div>`;
+            })
+            .join("");
         }
 
-        function localDateStr(ts) {
-          const d = new Date(ts);
-          return (
-            d.getFullYear() +
-            "-" +
-            String(d.getMonth() + 1).padStart(2, "0") +
-            "-" +
-            String(d.getDate()).padStart(2, "0")
-          );
+        function render() {
+          renderKpis(rows);
+          renderTabs(rows);
+          // First visit: land on a tab that has something in it.
+          if (!tab) {
+            const has = function (g) { return rows.some(function (r) { return groupOf(r) === g; }); };
+            tab = has("inspect") ? "inspect" : has("supplier") ? "supplier" : has("closed") ? "closed" : "inspect";
+            renderTabs(rows);
+          }
+          const list = rows.filter(function (r) { return groupOf(r) === tab; }).slice().reverse();
+          if (!list.some(function (r) { return r.id === selId; })) {
+            // Desktop opens the first return; on phones the sheet stays closed until a tap.
+            selId = list.length && window.matchMedia("(min-width: 801px)").matches ? list[0].id : "";
+            if (!selId) document.getElementById("retMain").classList.remove("open");
+          }
+          renderList();
+          renderPanel();
         }
 
         function apply() {
           const dateVal = document.getElementById("retDate").value;
           rows = dateVal
-            ? all.filter(function (r) {
-                return localDateStr(r.createdAt) === dateVal;
-              })
-            : all.filter(function (r) {
-                const replacementWaiting = (r.items || []).some(function (i) {
-                  return i.replacementStockPending;
-                });
-                return replacementWaiting || (r.status !== "closed" && r.status !== "reconciliation_complete");
-              });
+            ? all.filter(function (r) { return localDateStr(r.createdAt) === dateVal; })
+            : all.slice();
 
           const customerCodes = Array.from(
             new Set(
               rows
-                .filter(function (r) {
-                  return !r.inspectedAt;
-                })
-                .map(function (r) {
-                  return r.customerCode || r.orderCode;
-                })
+                .filter(function (r) { return !r.inspectedAt; })
+                .map(function (r) { return r.customerCode || r.orderCode; })
                 .filter(Boolean)
             )
           );
@@ -651,10 +607,21 @@
             });
         }
 
-        document.getElementById("retDate").addEventListener("change", apply);
+        function openSheet(on) {
+          document.getElementById("retMain").classList.toggle("open", on);
+        }
+
+        document.getElementById("retDate").addEventListener("change", function () {
+          tab = "";
+          apply();
+        });
         document.getElementById("retClear").addEventListener("click", function () {
           document.getElementById("retDate").value = "";
+          tab = "";
           apply();
+        });
+        document.getElementById("retDim").addEventListener("click", function () {
+          openSheet(false);
         });
 
         // Live checks while the Super Admin fills a product in.
@@ -664,23 +631,7 @@
           if (!item) return;
           const card = t.closest("[data-ret]");
 
-          if (t.matches(".restock, .company, .damaged")) {
-            const qty = Number(item.dataset.qty) || 0;
-            const sum =
-              (Number(item.querySelector(".restock").value) || 0) +
-              (Number(item.querySelector(".company").value) || 0) +
-              (Number(item.querySelector(".damaged").value) || 0);
-            const left = Math.round((qty - sum) * 1000) / 1000;
-            const out = item.querySelector(".ret-left");
-            out.textContent =
-              Math.abs(left) < 0.0005
-                ? "All " + qty + " units assigned"
-                : left > 0
-                  ? left + (left === 1 ? " unit" : " units") + " still to assign"
-                  : Math.abs(left) + (Math.abs(left) === 1 ? " unit" : " units") + " too many";
-            out.classList.toggle("bad", Math.abs(left) >= 0.0005);
-            item.querySelector(".supplier-box").hidden = !((Number(item.querySelector(".company").value) || 0) > 0);
-          }
+          if (t.matches(".restock, .company, .damaged")) updateItem(item);
 
           if (t.matches(".credit-amt")) {
             const sug = Number(item.dataset.suggested) || 0;
@@ -693,6 +644,8 @@
                   ? money(Math.abs(diff)) + " less than the worker deducted. The customer still owes this."
                   : money(diff) + " more than the worker deducted. Only what is still due on the invoice can be credited.";
             note.classList.toggle("bad", diff < 0);
+            // A different credit needs a reason, so show that box.
+            if (Math.abs(diff) >= 0.01) item.querySelector(".ret-more").open = true;
             const total = Array.from(card.querySelectorAll(".credit-amt")).reduce(function (n, i) {
               return n + (Number(i.value) || 0);
             }, 0);
@@ -702,8 +655,48 @@
         });
 
         root.addEventListener("click", function (e) {
-          const btn = e.target.closest && e.target.closest("button");
-          const card = e.target.closest("[data-ret]");
+          const target = e.target;
+
+          // Tabs
+          const tabBtn = target.closest && target.closest(".ret-tab");
+          if (tabBtn) {
+            tab = tabBtn.dataset.tab;
+            selId = "";
+            render();
+            return;
+          }
+
+          // Pick a return
+          const rowEl = target.closest && target.closest(".ret-rowc");
+          if (rowEl) {
+            if (rowEl.dataset.sel !== selId) {
+              selId = rowEl.dataset.sel;
+              renderList();
+              renderPanel();
+            }
+            openSheet(true);
+            return;
+          }
+
+          if (target.closest && target.closest(".ret-close")) {
+            openSheet(false);
+            return;
+          }
+
+          // + / - buttons next to the quantity boxes
+          const stepBtn = target.closest && target.closest(".st-b");
+          if (stepBtn) {
+            const inp = stepBtn.parentNode.querySelector("input");
+            const max = Number(inp.max);
+            let v = (Number(inp.value) || 0) + Number(stepBtn.dataset.d);
+            v = Math.max(0, max ? Math.min(max, v) : v);
+            inp.value = Math.round(v * 1000) / 1000;
+            inp.dispatchEvent(new Event("input", { bubbles: true }));
+            return;
+          }
+
+          const btn = target.closest && target.closest("button");
+          const card = target.closest && target.closest("[data-ret]");
           if (!btn || !card) return;
           const ret = rows.find(function (x) {
             return x.id === card.dataset.ret;
@@ -733,14 +726,21 @@
                 creditReason: el.querySelector(".credit-reason").value.trim(),
               };
               if (Math.abs(it.restockQty + it.companyQty + it.damagedQty - qty) > 0.0005) {
+                const det = el.querySelector(".ret-det");
+                if (det) det.open = true;
                 say(card, name + ": good + supplier + damaged must add up to " + qty + ".");
                 return;
               }
               if (it.companyQty > 0 && !it.companyName) {
+                const det = el.querySelector(".ret-det");
+                if (det) det.open = true;
                 say(card, name + ": enter the supplier name.");
                 return;
               }
               if (Math.abs(it.creditAmount - sug) > 0.009 && !it.creditReason) {
+                const det = el.querySelector(".ret-det");
+                if (det) det.open = true;
+                el.querySelector(".ret-more").open = true;
                 say(card, name + ": add a reason, the credit is different from what the worker deducted.");
                 return;
               }
@@ -761,11 +761,7 @@
               say(card, "Choose the invoice to credit " + money(creditAmount) + ", or set the credits to 0.");
               return;
             }
-            if (
-              !confirm(
-                "Approve this return?\n\nCredit to the customer: " + money(creditAmount) + "\nThis can't be edited afterwards."
-              )
-            )
+            if (!confirm("Approve this return?\n\nCredit to the customer: " + money(creditAmount) + "\nThis can't be edited afterwards."))
               return;
 
             btn.disabled = true;

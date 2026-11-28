@@ -913,6 +913,7 @@
           oid = ((n.title || "").match(/[A-Z]{1,4}-\d+/) || [""])[0];
         if (t === "punchin" || t === "punchout")
           return w ? "attendance.html#worker/" + encodeURIComponent(w.id) : "attendance.html";
+        if (t === "return_pending") return "returns.html";
         if (t === "problem" || t === "cancelled" || t === "return")
           return "problems.html?x=1" + wq;
         if (t === "delivered" || t === "route")
@@ -961,6 +962,7 @@
             problem: ["alert-triangle", "a", "Problem"],
             cancelled: ["close", "d", "Cancelled"],
             return: ["trash", "i", "Return"],
+            return_pending: ["trash", "a", "Return waiting approval"],
             route: ["check", "s", "Route done"],
             punchin: ["clock", "p", "Punch in"],
             punchout: ["power", "p", "Punch out"],
@@ -2331,4 +2333,63 @@ GA.tile = function (cls, icon, n, label, sub) {
   if (document.readyState === "loading")
     document.addEventListener("DOMContentLoaded", go);
   else go();
+})();
+
+/* Returns waiting for approval: a count badge on the Returns menu item, and a banner on the admin home page
+   when a return has been waiting for more than a day. Only shown to people who may open the Returns page. */
+(function () {
+  var page = location.pathname.split("/").pop() || "index.html", tries = 0;
+  var st = document.createElement("style");
+  st.textContent =
+    ".a-rbdg{margin-left:auto;background:#dc2626;color:#fff;border-radius:999px;font-style:normal;font-weight:700;font-size:11px;line-height:1;padding:3px 7px}" +
+    "#aRetBanner{display:block;margin:12px 16px 0;padding:12px 14px;border-radius:12px;background:rgba(217,119,6,.14);border:1px solid rgba(217,119,6,.5);color:inherit;text-decoration:none;font-size:14px;line-height:1.45}" +
+    "#aRetBanner b{color:#b45309}";
+  document.head.appendChild(st);
+  function paint(list) {
+    var link = document.querySelector('.a-nav a[href="returns.html"]'), old = document.querySelector(".a-rbdg");
+    if (old) old.remove();
+    if (link && list.length) {
+      var b = document.createElement("em");
+      b.className = "a-rbdg";
+      b.textContent = list.length > 99 ? "99+" : String(list.length);
+      b.title = list.length + " return(s) waiting for approval";
+      link.appendChild(b);
+    }
+    var bn = document.getElementById("aRetBanner");
+    if (bn) bn.remove();
+    if (page !== "index.html") return;
+    var limit = Date.now() - 86400000,
+      aged = list.filter(function (r) { return Number(r.createdAt) && Number(r.createdAt) < limit; });
+    if (!aged.length) return;
+    var oldest = aged.reduce(function (m, r) { return Math.min(m, Number(r.createdAt)); }, Date.now()),
+      days = Math.max(1, Math.floor((Date.now() - oldest) / 86400000)),
+      top = document.querySelector(".a-main .a-top");
+    if (!top) return;
+    var a = document.createElement("a");
+    a.id = "aRetBanner";
+    a.href = "returns.html";
+    a.innerHTML =
+      "<b>" + list.length + " return" + (list.length === 1 ? "" : "s") + " waiting for approval</b> (oldest " + days +
+      " day" + (days === 1 ? "" : "s") + "). Customer balances stay higher than they should until these are approved. Tap to open Returns.";
+    top.parentNode.insertBefore(a, top.nextSibling);
+  }
+  function load() {
+    fetch("/api/inventory/returns", { credentials: "same-origin", cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (d && Array.isArray(d.returns))
+          paint(d.returns.filter(function (r) { return r && r.status === "pending_inspection"; }));
+      })
+      .catch(function () {});
+  }
+  function start() {
+    if (!document.querySelector('.a-nav a[href="returns.html"]')) {
+      if (++tries < 40) setTimeout(start, 250);
+      return;
+    }
+    load();
+    setInterval(load, 60000);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+  else start();
 })();

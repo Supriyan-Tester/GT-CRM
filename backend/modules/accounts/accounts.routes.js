@@ -479,7 +479,17 @@ function createAccountsRoutes(config) {
             }
             return inv;
           });
-          const result = invoices.map((inv) => ({ ...inv, payments: (paymentsBy[inv.id] || []).sort((x, y) => String(x.at).localeCompare(String(y.at))), approvedPaid: Number((approved[inv.id] || 0).toFixed(2)), pendingAmount: Number((pending[inv.id] || 0).toFixed(2)), outstanding: Number((Number(inv.initial_outstanding) - (approved[inv.id] || 0)).toFixed(2)), availableToCollect: Number((Number(inv.initial_outstanding) - (approved[inv.id] || 0) - (pending[inv.id] || 0)).toFixed(2)) }));
+          // Returns the delivery person recorded that the Super Admin has not approved yet (the bill is not reduced for them).
+          const pendingReturnFor = (inv) => {
+            const list = db("gm_inventory_returns_v1"), key = String(inv.invoice_no || "").trim().toLowerCase();
+            let n = 0;
+            (Array.isArray(list) ? list : []).forEach((r) => {
+              if (r && r.status === "pending_inspection" && key && String(r.invoiceNo || "").trim().toLowerCase() === key && String(r.customerCode || "") === String(customerCode))
+                n += Number(r.suggestedCredit) || 0;
+            });
+            return Math.round(n * 100) / 100;
+          };
+          const result = invoices.map((inv) => ({ ...inv, pendingReturn: pendingReturnFor(inv), payments: (paymentsBy[inv.id] || []).sort((x, y) => String(x.at).localeCompare(String(y.at))), approvedPaid: Number((approved[inv.id] || 0).toFixed(2)), pendingAmount: Number((pending[inv.id] || 0).toFixed(2)), outstanding: Number((Number(inv.initial_outstanding) - (approved[inv.id] || 0)).toFixed(2)), availableToCollect: Number((Number(inv.initial_outstanding) - (approved[inv.id] || 0) - (pending[inv.id] || 0)).toFixed(2)) }));
           send(res, 200, { ok: true, customerCode, invoices: result, canEdit: !!canEditInvoice(session) });
         }).catch((e) => { console.error("Accounts invoice read:", e.message); send(res, 502, { error: "Unable to load customer ledger." }); });
       return true;

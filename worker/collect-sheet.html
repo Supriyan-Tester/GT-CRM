@@ -460,7 +460,8 @@ textarea#note{min-height:72px;resize:vertical}
       S.old = all.filter(function (x) { return Number(x.outstanding) > 0 && String(x.invoice_no).trim().toLowerCase() !== key; });
       S.old.forEach(function (x) {
         S.B[x.id] = { key: x.id, inv: x.invoice_no, date: dmy(x.invoice_date), thumb: evUrl(x.evidence_path), dueLabel: "Due " + money(x.outstanding), av: Number(x.availableToCollect), out: Number(x.outstanding),
-          extra: Number(x.pendingAmount) > 0 ? '<small class="muted" style="display:block">' + money(x.pendingAmount) + " pending</small>" : "" };
+          extra: (Number(x.pendingAmount) > 0 ? '<small class="muted" style="display:block">' + money(x.pendingAmount) + " pending</small>" : "") +
+            (Number(x.pendingReturn) > 0 ? '<small style="display:block;color:#b45309;font-weight:700">' + money(x.pendingReturn) + " return pending approval (bill " + esc(x.invoice_no) + ")</small>" : "") };
       });
       renderBills(); recalc();
       if (!S.cur && !S.old.some(function (x) { return Number(x.availableToCollect) > 0; })) {

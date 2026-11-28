@@ -3243,6 +3243,16 @@ function api(req, res, url) {
               })),
             });
           setItem("gm_inventory_returns_v1", JSON.stringify(returns));
+          // Tell the office right away: the bill stays unreduced in the ledger until the Super Admin approves this return.
+          notifyAdmin(
+            "return_pending",
+            "Return waiting approval: " + (o.shop || o.code),
+            wk.name + " recorded a return" + (planInvNo ? " on bill " + planInvNo : "") + ": " +
+              returnedLines.slice(0, 3).map((x) => x.name + " x" + x.returnedQty).join(", ") +
+              (returnedLines.length > 3 ? " +" + (returnedLines.length - 3) + " more" : "") +
+              ". Credit Rs " + suggestedCredit + " is waiting for approval in Returns.",
+            wk.name,
+          );
         }
         o.stages = o.stages || {};
         o.stages.delivered = { at: now, by: wk.name + " (Delivery)" };
@@ -3341,6 +3351,15 @@ function api(req, res, url) {
           items,
         });
         setItem("gm_inventory_returns_v1", JSON.stringify(returns));
+        notifyAdmin(
+          "return_pending",
+          "Return waiting approval: " + (clean(b.shopName, 120) || shopCode || billNo),
+          wk.name + " recorded a return" + (billNo ? " on bill " + billNo : "") + ": " +
+            items.slice(0, 3).map((x) => x.productName + " x" + x.returnedQty).join(", ") +
+            (items.length > 3 ? " +" + (items.length - 3) + " more" : "") +
+            ". Credit Rs " + items.reduce((n, x) => n + x.provisionalCredit, 0) + " is waiting for approval in Returns.",
+          wk.name,
+        );
         logEvents(s, [
           { type: "order", text: "Recorded route return " + returnId },
         ]);

@@ -210,7 +210,7 @@ var u=evUrl(x.evidence_path),av=Number(x.availableToCollect),id=esc(x.id),
 m=/^(\d{4})-(\d{2})-(\d{2})/.exec(x.invoice_date||""),age=m?Math.floor((now-new Date(+m[1],+m[2]-1,+m[3]))/864e5):0;
 return '<div class="oc-row"><div class="oc-th" data-v="'+esc(u)+'">'+(u?'<img src="'+esc(u)+'" alt="Bill" onerror="this.parentNode.textContent=\'No photo\'">':"No photo")+'</div>'+
 '<div><b>Invoice No. '+esc(x.invoice_no)+'</b><small class="muted" style="display:block">📅 '+dmy(x.invoice_date)+'</small><span class="oc-due">Due: '+money(x.outstanding)+'</span>'+(age>30?'<span class="oc-late">'+age+' days overdue</span>':"")+
-(Number(x.pendingAmount)>0?'<small class="muted" style="display:block">'+money(x.pendingAmount)+' waiting for approval</small>':"")+'</div>'+
+(Number(x.pendingAmount)>0?'<small class="muted" style="display:block">'+money(x.pendingAmount)+' waiting for approval</small>':"")+(Number(x.pendingReturn)>0?'<small style="display:block;color:#b45309;font-weight:700">'+money(x.pendingReturn)+' return pending approval (bill '+esc(x.invoice_no)+')</small>':"")+'</div>'+
 (av>0?'<button type="button" class="oc-btn" data-t="'+id+'" aria-pressed="false">Collect</button>':'<span class="muted">Collected</span>')+
 (av>0?'<div class="oc-more" id="more_'+id+'"><div class="oc-amt"><div class="oc-in"><span>₹</span><input data-a="'+id+'" type="number" min="0" max="'+av.toFixed(2)+'" step="0.01" inputmode="decimal" placeholder="0.00" aria-label="Amount received"></div>'+
 '<button type="button" class="oc-cam" data-add="'+id+'" aria-label="Add bill photo">📷</button></div>'+
