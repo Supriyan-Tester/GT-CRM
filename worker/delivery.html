@@ -3228,13 +3228,18 @@
           '<div style="padding:14px 16px;font-weight:700;border-bottom:1px solid var(--border,#ddd)">Collect payment</div>' +
           '<iframe style="flex:1;border:0;width:100%" title="Collect payment"></iframe>' +
           '</div>';
+        // Returns already recorded for this bill (pending approval) are taken off the amount to collect.
+        var retDed = (GM.getReturns() || [])
+          .filter(function (r) { return r.billNo === shop.billNo; })
+          .reduce(function (t, r) { return t + (Number(r.deductionAmount) || 0); }, 0);
         box.querySelector("iframe").src =
           "collect-sheet.html?embed=1&code=" + encodeURIComponent(code) +
           "&area=" + encodeURIComponent(shop.area || shop.address || "") +
           "&phone=" + encodeURIComponent(shop.phone || "") +
           "&name=" + encodeURIComponent(shop.name || "") +
           "&inv=" + encodeURIComponent(shop.billNo || "") +
-          "&amt=" + encodeURIComponent(Math.round(Number(shop.billAmount)) || "");
+          "&amt=" + encodeURIComponent(Math.round(Number(shop.billAmount)) || "") +
+          "&ret=" + encodeURIComponent(Math.round(retDed * 100) / 100 || "");
         document.body.appendChild(box);
         window.__collectBox = box;
         // Remember that this shop's payment popup is open, so a page refresh brings it back until "Done" is tapped.
@@ -3363,4 +3368,4 @@
     </script>
 <script src="../shared/correction-alert.js"></script>
 </body>
-</html>   
+</html>

@@ -5570,6 +5570,17 @@ function api(req, res, url) {
   send(res, 404, { error: "not found" });
 }
 
+// Version of this deploy. Render sets RENDER_GIT_COMMIT, so the number stays the same while the server restarts or wakes up
+// and changes only with a new deploy. (On a computer, the start time is used.)
+const DEPLOY_VER = String(process.env.RENDER_GIT_COMMIT || process.env.DEPLOY_VERSION || Date.now()).slice(0, 12);
+// Adds ?v=<deploy> to the page's own scripts and style sheets, so every deploy makes phones fetch the new files once,
+// and keeps the long cache (no extra downloads) for the rest of the time. Links to other sites are left alone.
+function versionLinks(html) {
+  return html.replace(
+    /(\b(?:src|href)=)(["'])((?!https?:|\/\/|data:)[^"'?#]+\.(?:js|css))\2/gi,
+    (m, a, q, u) => a + q + u + "?v=" + DEPLOY_VER + q,
+  );
+}
 const ZIPPABLE = new Set([
     ".html",
     ".css",
@@ -5671,6 +5682,8 @@ function serveStatic(req, res, url) {
       // "no-cache" means: ask the server every time, but the answer is a tiny "not modified" while the file is unchanged. A new deploy changes the tag, so updates still show at once.
       const tag =
         'W/"' +
+        DEPLOY_VER +
+        "-" +
         st2.size.toString(36) +
         "-" +
         Math.floor(st2.mtimeMs).toString(36) +
@@ -5710,6 +5723,7 @@ function serveStatic(req, res, url) {
           res.writeHead(404);
           return res.end("Not found");
         }
+        if (ext === ".html") data = Buffer.from(versionLinks(data.toString("utf8")), "utf8");
         const done = (buf, used) => {
           if (used) hdr["Content-Encoding"] = used;
           if (ZIPPABLE.has(ext)) {

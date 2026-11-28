@@ -144,7 +144,7 @@ textarea#note{min-height:72px;resize:vertical}
 (function () {
   var $ = function (s) { return document.querySelector(s); },
     Q = new URLSearchParams(location.search),
-    CODE = Q.get("code") || "", INV = (Q.get("inv") || "").trim(), AMT = Number(Q.get("amt")) || 0, FIX = Q.get("fix") || "";
+    CODE = Q.get("code") || "", INV = (Q.get("inv") || "").trim(), AMT = Number(Q.get("amt")) || 0, RET = Number(Q.get("ret")) || 0, FIX = Q.get("fix") || "";
   var SPN = { cash: "Cash", upi: "UPI", bank_transfer: "Bank transfer" }, CAM = "\ud83d\udcf7";
   // sel: bill is open for collecting; files: bill photo; B: bill details by key ("cur" = the bill from the route plan)
   var S = { pm: { cur: { method: "cash", split: false }, old: { method: "cash", split: false } }, done: {}, cur: null, old: [], sel: {}, ok: {}, files: {}, B: {}, total: 0 };
@@ -445,12 +445,17 @@ textarea#note{min-height:72px;resize:vertical}
       S.curNote = "";
       if (mine) {
         var av = Number(mine.availableToCollect), out = Number(mine.outstanding);
+        // A return the delivery person recorded is still waiting for approval, so the ledger has not reduced the bill yet:
+        // take it off here (only the part the ledger has not already credited).
+        var pendRet = Math.max(0, RET - (Number(mine.returnAmount) || 0));
+        if (pendRet > 0) { av = Math.max(0, av - pendRet); out = Math.max(0, out - pendRet); }
         S.cur = av > 0 ? { id: mine.id, max: av, out: out } : null;
         S.B.cur = { key: "cur", inv: INV, date: today, noThumb: 1, tag: '<span class="tagn">Current bill</span>', dueLabel: "Bill amount: " + money(out > 0 ? out : mine.original_amount), av: av, out: out,
-          extra: (av > 0 ? "" : '<small class="muted" style="display:block">' + (out > 0 ? "Already collected." : "Already paid.") + "</small>") + hist(mine) };
+          extra: (pendRet > 0 ? '<small class="muted" style="display:block">Return ' + money(pendRet) + " deducted (waiting for approval)</small>" : "") + (av > 0 ? "" : '<small class="muted" style="display:block">' + (out > 0 ? "Already collected." : "Already paid.") + "</small>") + hist(mine) };
       } else if (INV && AMT > 0) {
-        S.cur = { id: "NEW", max: AMT, out: AMT };
-        S.B.cur = { key: "cur", inv: INV, date: today, noThumb: 1, dueLabel: "Bill amount: " + money(AMT), av: AMT, out: AMT, tag: '<span class="tagn">New bill</span>' };
+        var netA = Math.max(0, AMT - RET);
+        S.cur = netA > 0 ? { id: "NEW", max: netA, out: netA } : null;
+        S.B.cur = { key: "cur", inv: INV, date: today, noThumb: 1, dueLabel: "Bill amount: " + money(netA), av: netA, out: netA, tag: '<span class="tagn">New bill</span>', extra: RET > 0 ? '<small class="muted" style="display:block">Return ' + money(Math.min(RET, AMT)) + " deducted (waiting for approval)</small>" : "" };
       } else { S.cur = null; delete S.B.cur; S.curNote = "Bill not in plan."; }
       S.old = all.filter(function (x) { return Number(x.outstanding) > 0 && String(x.invoice_no).trim().toLowerCase() !== key; });
       S.old.forEach(function (x) {
@@ -465,8 +470,9 @@ textarea#note{min-height:72px;resize:vertical}
     }).catch(function (e) {
       $("#bills").innerHTML = '<div class="muted">' + esc(/not found/i.test(e.message) ? "Can't load bills." : e.message) + "</div>";
       if (INV && AMT > 0) {
-        S.cur = { id: "NEW", max: AMT, out: AMT };
-        S.B.cur = { key: "cur", inv: INV, date: "", noThumb: 1, dueLabel: "Bill amount: " + money(AMT), av: AMT, out: AMT, tag: '<span class="tagn">New bill</span>' };
+        var netB = Math.max(0, AMT - RET);
+        S.cur = netB > 0 ? { id: "NEW", max: netB, out: netB } : null;
+        S.B.cur = { key: "cur", inv: INV, date: "", noThumb: 1, dueLabel: "Bill amount: " + money(netB), av: netB, out: netB, tag: '<span class="tagn">New bill</span>', extra: RET > 0 ? '<small class="muted" style="display:block">Return ' + money(Math.min(RET, AMT)) + " deducted (waiting for approval)</small>" : "" };
         renderBills();
       }
       recalc();
